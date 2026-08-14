@@ -1,0 +1,81 @@
+# AI事管家移动端
+
+当前目录是基于 Expo SDK 57、React Native 与 Expo Router 的移动端前端工程。
+
+## 当前实现范围
+
+第一版严格以 Ardot 文件“清单设计”的现有视觉稿为准，使用本地 Mock 数据实现以下可运行页面：
+
+- 登录、注册、找回密码。
+- 今日、日历、清单、笔记、我的。
+- 任务详情、新建任务、笔记详情、专注、设置。
+- 全局 AI 助手对话层。
+
+当前阶段不连接后端，不定义临时网络 DTO，也不会让 Mock 数据进入后续正式 API 契约。任务勾选、筛选、搜索、计时、表单输入和页面跳转均为本地交互，用于尽快验收视觉与操作感受。
+
+## 启动方式
+
+在仓库根目录执行：
+
+```bash
+pnpm install
+pnpm mobile:web
+```
+
+也可以进入本目录启动 iOS 或 Android：
+
+```bash
+pnpm ios
+pnpm android
+```
+
+## Android 真机实时预览
+
+项目使用 `expo-dev-client` 提供真机开发预览。开发预览 APK 只需要安装一次；之后修改 TypeScript、JavaScript、页面样式或本地交互时，在电脑保存文件即可通过 Fast Refresh 自动刷新手机画面。
+
+电脑与 Android 手机连接同一个局域网后，在仓库根目录启动实时服务：
+
+```bash
+pnpm mobile:live
+```
+
+随后打开手机上的“清单”开发预览版，选择检测到的本地开发服务。首次连接也可以扫描 Expo CLI 显示的二维码。
+
+以下变更仍需要重新构建并安装开发预览 APK：
+
+- 新增或升级包含 Android 原生代码的依赖。
+- 修改应用图标、启动图、包名等原生配置。
+- 升级 Expo SDK 或 React Native。
+
+如果同一 Wi-Fi 下无法连接，可检查电脑防火墙、路由器客户端隔离与 VPN；必要时改用 Expo Tunnel 模式。
+
+## Android APK 预览包
+
+当前 Android Release APK 已将 JavaScript 与静态资源完整打入安装包，安装后无需连接电脑或 Metro 服务即可运行。该版本仍使用本地 Mock 数据，只用于前端视觉与交互验收。
+
+本地构建需要 JDK 17、Android SDK Platform 36、Build Tools 36，以及 Android NDK 27。配置好 `JAVA_HOME` 与 `ANDROID_HOME` 后执行：
+
+```bash
+cd apps/mobile/android
+./gradlew :app:assembleRelease \
+  -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+  --no-daemon
+```
+
+原始产物位于：
+
+```text
+apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+```
+
+当前 Release 配置使用开发调试证书签名，适合直接安装和内部验收，不可作为应用商店正式发布包。正式发布前需要配置独立且妥善保管的生产签名密钥，并重新生成发行产物。
+
+在 Android 手机上打开 APK 后，如果系统拦截安装，需要为当前浏览器或文件管理器临时开启“允许安装未知应用”。
+
+## 质量检查
+
+```bash
+pnpm check
+```
+
+后续接入正式业务时，页面只能通过 `packages/api-client` 的生成 Client 与 Zod 校验器访问网络数据，不能直接把本地 Mock 类型扩展为手写 DTO。

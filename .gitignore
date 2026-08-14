@@ -1,0 +1,42 @@
+# 依赖与包管理器缓存
+node_modules/
+.pnpm-store/
+
+# 构建、测试与本地输出
+dist/
+build/
+coverage/
+output/
+*.apk
+*.aab
+*.log
+*.tsbuildinfo
+
+# 本地环境与敏感配置
+.env
+.env.*
+!.env.example
+local.properties
+*.keystore
+*.jks
+*.p8
+*.p12
+*.pem
+*.key
+*.mobileprovision
+
+# Expo 与 React Native 生成目录
+.expo/
+.metro-health-check*
+apps/mobile/android/
+apps/mobile/ios/
+
+# 编辑器与操作系统文件
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Go 本地测试产物
+*.test
+*.out

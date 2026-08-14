@@ -1,0 +1,29 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #eef1f0;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #eef1f0;
+}
+
+#root {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 0 36px rgb(16 55 42 / 10%);
+}
+
+* {
+  box-sizing: border-box;
+}

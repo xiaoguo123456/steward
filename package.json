@@ -1,0 +1,14 @@
+{
+  "name": "ai-steward",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "mobile:start": "pnpm --filter mobile start",
+    "mobile:live": "pnpm --filter mobile live",
+    "mobile:web": "pnpm --filter mobile web",
+    "mobile:lint": "pnpm --filter mobile lint",
+    "mobile:typecheck": "pnpm --filter mobile typecheck",
+    "check": "pnpm mobile:lint && pnpm mobile:typecheck"
+  }
+}
