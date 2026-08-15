@@ -112,11 +112,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.xl,
     backgroundColor: colors.background,
-    shadowColor: '#0F2F24',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.05,
-    shadowRadius: 11,
-    elevation: 2,
   },
   avatar: {
     width: 56,

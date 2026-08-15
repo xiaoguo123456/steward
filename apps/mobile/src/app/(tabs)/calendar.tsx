@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
+import { nextAgenda } from '@/mocks/data';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type CalendarCell = {
@@ -60,8 +61,8 @@ const calendarCells: CalendarCell[] = [
 
 const agenda = [
   {
-    title: '完成产品需求评审文档',
-    time: '10:00 — 11:30 · 工作',
+    title: nextAgenda.title,
+    time: `${nextAgenda.time} · ${nextAgenda.location}`,
     color: colors.blue,
   },
   { title: '健身 30 分钟', time: '19:00 — 20:00 · 健康', color: colors.primary },
@@ -70,6 +71,14 @@ const agenda = [
 
 export default function CalendarScreen() {
   const [selectedDay, setSelectedDay] = useState(18);
+  const [monthExpanded, setMonthExpanded] = useState(false);
+  const selectedDayIndex = calendarCells.findIndex(
+    (cell) => !cell.muted && cell.day === selectedDay,
+  );
+  const selectedWeekStart = Math.floor(Math.max(selectedDayIndex, 0) / 7) * 7;
+  const visibleCalendarCells = monthExpanded
+    ? calendarCells
+    : calendarCells.slice(selectedWeekStart, selectedWeekStart + 7);
 
   return (
     <AppScreen>
@@ -99,7 +108,7 @@ export default function CalendarScreen() {
         <View style={styles.divider} />
 
         <View style={styles.grid}>
-          {calendarCells.map((cell, index) => {
+          {visibleCalendarCells.map((cell, index) => {
             const selected = !cell.muted && cell.day === selectedDay;
             return (
               <Pressable
@@ -128,6 +137,31 @@ export default function CalendarScreen() {
             );
           })}
         </View>
+
+        <Pressable
+          accessibilityHint={
+            monthExpanded
+              ? '收起后仅显示当前选中日期所在的一周'
+              : '展开后显示完整月份'
+          }
+          accessibilityLabel={monthExpanded ? '收起月历' : '展开完整月历'}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: monthExpanded }}
+          onPress={() => setMonthExpanded((current) => !current)}
+          style={({ pressed }) => [
+            styles.calendarToggle,
+            pressed && styles.calendarTogglePressed,
+          ]}
+        >
+          <Text style={styles.calendarToggleText}>
+            {monthExpanded ? '收起月历' : '展开月历'}
+          </Text>
+          <AppIcon
+            color={colors.textSecondary}
+            name={monthExpanded ? 'chevron-up' : 'chevron-down'}
+            size={15}
+          />
+        </Pressable>
 
         <View style={styles.agendaHeader}>
           <Text style={styles.agendaTitle}>今天 · 6月{selectedDay}日</Text>
@@ -249,8 +283,27 @@ const styles = StyleSheet.create({
     height: 4,
     marginTop: 1,
   },
+  calendarToggle: {
+    minHeight: 44,
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    borderRadius: radius.sm,
+  },
+  calendarTogglePressed: {
+    backgroundColor: colors.surface,
+  },
+  calendarToggleText: {
+    color: colors.textSecondary,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
   agendaHeader: {
-    marginTop: 38,
+    marginTop: 20,
     marginBottom: 6,
     flexDirection: 'row',
     alignItems: 'center',

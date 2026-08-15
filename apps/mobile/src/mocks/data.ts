@@ -69,6 +69,20 @@ export const completedTasks: TaskItem[] = [
   },
 ];
 
+export const nextAgenda = {
+  id: 'product-review-meeting',
+  title: '产品需求评审',
+  time: '10:00 — 11:30',
+  location: '3 号会议室',
+  relativeTime: '45 分钟后',
+};
+
+export const dailyBrief = {
+  title: '下午有一段完整空档',
+  summary: '14:00 后有 90 分钟空闲，适合处理“购买下周出差机票”。',
+  source: '根据今天的任务与日程',
+};
+
 export const notes = [
   {
     id: 'requirements-meeting',

@@ -6,6 +6,7 @@ export const colors = {
   primarySoft: '#ECFBF3',
   primaryTrack: '#DDF6E9',
   background: '#FFFFFF',
+  surfaceSubtle: '#F7F8F8',
   surface: '#F3F4F6',
   surfaceRaised: '#FFFFFF',
   text: '#1A1D1C',
@@ -46,10 +47,15 @@ export const fontFamily = Platform.select({
   default: undefined,
 });
 
-export const shadow = {
-  shadowColor: '#0B6B4B',
-  shadowOffset: { width: 0, height: 7 },
-  shadowOpacity: 0.16,
-  shadowRadius: 14,
-  elevation: 7,
-} as const;
+export const shadow = Platform.select({
+  web: {
+    boxShadow: '0 7px 14px rgba(11, 107, 75, 0.16)',
+  },
+  default: {
+    shadowColor: '#0B6B4B',
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 7,
+  },
+});

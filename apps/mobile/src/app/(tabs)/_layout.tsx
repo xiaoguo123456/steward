@@ -24,7 +24,7 @@ function CaptureTabButton() {
   const router = useRouter();
 
   return (
-    <View pointerEvents="box-none" style={styles.captureSlot}>
+    <View style={styles.captureSlot}>
       <Pressable
         accessibilityLabel="新建任务"
         accessibilityRole="button"
@@ -80,9 +80,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="today"
         options={{
-          title: '今日',
+          title: '首页',
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="checkmark-circle" focused={focused} inactive="checkmark-circle-outline" />
+            <TabIcon active="home" focused={focused} inactive="home-outline" />
           ),
         }}
       />
@@ -151,6 +151,7 @@ const styles = StyleSheet.create({
   captureSlot: {
     flex: 1,
     alignItems: 'center',
+    pointerEvents: 'box-none',
   },
   captureButton: {
     position: 'absolute',
