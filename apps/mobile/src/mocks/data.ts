@@ -50,6 +50,65 @@ export const todayTasks: TaskItem[] = [
   },
 ];
 
+export const tomorrowTasks: TaskItem[] = [
+  {
+    id: 'trip-materials',
+    title: '准备出差资料',
+    list: '工作',
+    time: '09:00',
+    color: '#3B82F6',
+    priority: 'high',
+  },
+  {
+    id: 'utility-bill',
+    title: '缴纳水电费',
+    list: '生活',
+    time: '18:00',
+    color: '#F59E0B',
+    priority: 'medium',
+  },
+];
+
+export const unscheduledTasks: TaskItem[] = [
+  {
+    id: 'expense-receipts',
+    title: '整理出差报销凭证',
+    list: '工作',
+    time: '未安排',
+    color: '#3B82F6',
+    priority: 'medium',
+  },
+  {
+    id: 'car-service',
+    title: '预约汽车保养',
+    list: '生活',
+    time: '未安排',
+    color: '#F59E0B',
+  },
+  {
+    id: 'product-ideas',
+    title: '补充产品灵感清单',
+    list: '收集箱',
+    time: '未安排',
+    color: '#10B981',
+  },
+  {
+    id: 'reading-list',
+    title: '整理下个月阅读清单',
+    list: '收集箱',
+    time: '未安排',
+    color: '#10B981',
+  },
+  {
+    id: 'cat-litter',
+    title: '购买猫砂',
+    list: '购物清单',
+    time: '未安排',
+    color: '#8B5CF6',
+    priority: 'low',
+  },
+];
+
 export const completedTasks: TaskItem[] = [
   {
     id: 'morning-run',

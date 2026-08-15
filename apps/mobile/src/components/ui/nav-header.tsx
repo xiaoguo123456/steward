@@ -8,9 +8,10 @@ import { AppIcon } from './icon';
 type NavHeaderProps = {
   title?: string;
   right?: ReactNode;
+  onBack?: () => void;
 };
 
-export function NavHeader({ title, right }: NavHeaderProps) {
+export function NavHeader({ title, right, onBack }: NavHeaderProps) {
   const router = useRouter();
 
   return (
@@ -19,12 +20,12 @@ export function NavHeader({ title, right }: NavHeaderProps) {
         accessibilityLabel="返回"
         accessibilityRole="button"
         hitSlop={12}
-        onPress={() => router.back()}
+        onPress={onBack ?? (() => router.back())}
         style={styles.side}
       >
         <AppIcon name="chevron-back" size={24} />
       </Pressable>
-      <Text numberOfLines={1} style={styles.title}>
+      <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>
         {title}
       </Text>
       <View style={[styles.side, styles.right]}>{right}</View>

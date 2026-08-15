@@ -5,7 +5,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
-import { completedTasks, todayTasks } from '@/mocks/data';
+import {
+  completedTasks,
+  todayTasks,
+  tomorrowTasks,
+  unscheduledTasks,
+} from '@/mocks/data';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 const detailRows = [
@@ -20,7 +25,10 @@ export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [doneSubtasks, setDoneSubtasks] = useState(new Set(['book-room']));
   const task = useMemo(
-    () => [...todayTasks, ...completedTasks].find((item) => item.id === id),
+    () =>
+      [...todayTasks, ...tomorrowTasks, ...unscheduledTasks, ...completedTasks].find(
+        (item) => item.id === id,
+      ),
     [id],
   );
 

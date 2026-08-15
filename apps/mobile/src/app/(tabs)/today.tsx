@@ -150,16 +150,12 @@ export default function HomeScreen() {
 
         <HomeSectionHeader
           aside="查看日历"
-          onAsidePress={() =>
-            router.push({ pathname: '/lists', params: { view: 'calendar' } })
-          }
+          onAsidePress={() => router.push('/calendar')}
           title="今日提醒"
         />
         <Pressable
           accessibilityRole="button"
-          onPress={() =>
-            router.push({ pathname: '/lists', params: { view: 'calendar' } })
-          }
+          onPress={() => router.push('/calendar')}
           style={({ pressed }) => [styles.brief, pressed && styles.briefPressed]}
         >
           <View style={styles.briefIcon}>

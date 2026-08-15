@@ -217,8 +217,8 @@ flowchart TD
 
 - `apps/mobile` 的底部壳层只承载四个一级路由：`today`、`lists`、`notes`、`data`；内部领域名和路由保持稳定，用户可见名称统一为“首页、计划、笔记、数据”。
 - 底栏中心保留独立 `capture/new` 主操作。它在布局上占据中间槽位，但不进入 Tab 路由集合、不拥有选中态，也不保存独立滚动栈。移动端以当前一级页上方的底部聊天输入面板呈现该逻辑路由；关闭面板后仍停留在原页面。
-- `projects` 是 `lists` 下由“项目快捷栏 → 更多 → 管理项目”进入的二级路由；Project 是跨 Task、Event、Note、Record 的归属容器，不与待办、日程 Tab 平级。快捷栏和项目选择器复用同一 Project scope 状态，管理页继续由 `features/projects`、后端 Object Domain 和对应 Contracts 独立维护。
-- `lists` 内部使用 `list/calendar` 两种布局状态；`calendar` 是计划页常驻子视图，不是模态路由、底部 Tab 或新的 Object Domain。它按日期范围聚合已确认 Task、Event、重要日期与 Project 日期节点，复用计划页的 Project scope、时区和实体详情路由。
+- `projects` 是 `lists` 下由“清单详情 → 项目筛选 → 管理项目”进入的二级路由；Project 是跨 Task、Event、Note、Record 的归属容器，不与待办、日程 Tab 平级，也不在计划首屏常驻。清单详情与项目选择器复用同一 Project scope 状态，管理页继续由 `features/projects`、后端 Object Domain 和对应 Contracts 独立维护。
+- `calendar` 是从计划页右上角进入的独立二级路由，不是底部 Tab、模态弹窗或新的 Object Domain。它按日期范围聚合已确认 Task、Event、重要日期与 Project 日期节点，复用计划详情层的 Project scope、时区和实体详情路由；返回时保留计划页滚动与选择状态。
 - Project 管理页不调用直接创建接口；“告诉 AI 一个新目标”和 Project 详情的“新增内容”都打开 `capture/new`，分别携带 `origin=project_manager` 或可见的 `suggested_project_id` 上下文。上下文只影响候选建议，不授权客户端跳过确认或强制 AI 创建某种类型。
 - 账户与设置只由首页左上角头像进入独立 Stack，不占 Tab；Search、Notification 的深链可以直接打开任一正式实体，返回时回到原来源。
 - App Shell 在首页、计划、笔记、数据和设置 Stack 上方挂载同一个 `AIAssistantFab`，点击后展示 `AIConversationSheet`。两者读取 Capture Questions Query，不复制问题正文到全局 Store；中央 `capture/new` 不读取待答数量，也不显示角标。Capture 编辑／确认页改用自身内联状态并隐藏悬浮入口。无 open question、processing 或 ready question 时不渲染入口。
@@ -2819,7 +2819,7 @@ ADR 必须记录背景、选择、备选方案、后果和替换条件，不重�
 ## 21.3 App
 
 - [ ] Tab 路由只包含 `today/lists/notes/data`，中央 Capture 无选中态，账户与设置从头像进入。
-- [ ] 计划的 list/calendar 复用 Project scope 与生成 Query；Calendar 渲染不在 App 自行推断日期归属。
+- [ ] 计划详情列表与独立 Calendar 二级页复用 Project scope 与生成 Query；Calendar 渲染不在 App 自行推断日期归属。
 - [ ] 全局 `AIAssistantFab + AIConversationSheet` 只读取 Open Question Query，中央 Capture 按钮无 AI 角标；Capture 页面内联展示，问题正文不复制到全局 Store。
 - [ ] 五种 Capture 本地状态互斥规则一致。
 - [ ] Feature 只使用 `packages/ui` 导出的品牌组件、Token 和语义图标，不直接导入 Tamagui／Phosphor 或写裸色值。
