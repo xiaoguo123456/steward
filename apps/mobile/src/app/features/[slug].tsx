@@ -16,7 +16,6 @@ import { NavHeader } from '@/components/ui/nav-header';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type FeatureSlug =
-  | 'exercise'
   | 'recipes'
   | 'ledger'
   | 'important-dates'
@@ -39,13 +38,6 @@ type CheckItem = {
 };
 
 const featureMeta: Record<FeatureSlug, FeatureMeta> = {
-  exercise: {
-    title: '运动',
-    summary: '把训练安排到今天，并把完成结果沉淀为打卡记录。',
-    icon: 'fitness-outline',
-    color: colors.primaryStrong,
-    soft: colors.primarySoft,
-  },
   recipes: {
     title: '食谱',
     summary: '从今天吃什么开始，选好菜单后可以直接生成购物清单。',
@@ -89,12 +81,6 @@ const featureMeta: Record<FeatureSlug, FeatureMeta> = {
     soft: '#EEF1F0',
   },
 };
-
-const exerciseItems: CheckItem[] = [
-  { id: 'warmup', title: '动态热身', meta: '5 分钟' },
-  { id: 'strength', title: '全身力量训练', meta: '20 分钟 · 6 个动作' },
-  { id: 'stretch', title: '拉伸放松', meta: '5 分钟' },
-];
 
 const recipes = [
   { id: 'pasta', title: '番茄牛肉意面', meta: '30 分钟 · 约 620 千卡' },
@@ -215,46 +201,6 @@ function LinkRow({
       </View>
       <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
     </Pressable>
-  );
-}
-
-function ExerciseContent() {
-  const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
-  const [running, setRunning] = useState(false);
-  const completedCount = doneIds.size;
-
-  const toggleItem = (itemId: string) => {
-    setDoneIds((current) => {
-      const next = new Set(current);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
-  };
-
-  return (
-    <>
-      <SectionTitle aside={`${completedCount}/${exerciseItems.length}`} title="今日训练" />
-      <View style={styles.rows}>
-        {exerciseItems.map((item) => (
-          <CheckRow
-            checked={doneIds.has(item.id)}
-            item={item}
-            key={item.id}
-            onToggle={() => toggleItem(item.id)}
-          />
-        ))}
-      </View>
-      <View style={styles.actionBlock}>
-        <PrimaryButton
-          label={running ? '结束本次训练' : '开始 30 分钟训练'}
-          onPress={() => setRunning((current) => !current)}
-        />
-        <Text style={styles.actionHint}>
-          {running ? '训练进行中，结束后会生成一条运动记录。' : '完成记录会进入“打卡”的运动趋势。'}
-        </Text>
-      </View>
-    </>
   );
 }
 
@@ -610,7 +556,6 @@ function MoreContent() {
 }
 
 function FeatureContent({ slug }: { slug: FeatureSlug }) {
-  if (slug === 'exercise') return <ExerciseContent />;
   if (slug === 'recipes') return <RecipesContent />;
   if (slug === 'ledger') return <LedgerContent />;
   if (slug === 'important-dates') return <ImportantDatesContent />;

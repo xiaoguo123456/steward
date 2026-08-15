@@ -31,7 +31,7 @@ const homeShortcuts: HomeShortcut[] = [
     icon: 'fitness-outline',
     color: colors.primaryStrong,
     background: colors.primarySoft,
-    href: { pathname: '/features/[slug]', params: { slug: 'exercise' } },
+    href: '/features/exercise' as Href,
   },
   {
     label: '食谱',
