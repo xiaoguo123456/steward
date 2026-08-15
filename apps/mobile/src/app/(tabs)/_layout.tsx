@@ -115,9 +115,13 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="data"
         options={{
-          title: '数据',
+          title: '打卡',
           tabBarIcon: ({ focused }) => (
-            <TabIcon active="pie-chart" focused={focused} inactive="pie-chart-outline" />
+            <TabIcon
+              active="checkmark-circle"
+              focused={focused}
+              inactive="checkmark-circle-outline"
+            />
           ),
         }}
       />

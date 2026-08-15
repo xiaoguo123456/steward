@@ -55,7 +55,7 @@ export default function FocusScreen() {
             <AppIcon name="ellipsis-horizontal" size={22} />
           </Pressable>
         }
-        title="专注"
+        title="番茄钟"
       />
       <View style={styles.content}>
         <View style={styles.segment}>

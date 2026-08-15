@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -17,22 +17,71 @@ type HomeSectionHeaderProps = {
   onAsidePress?: () => void;
 };
 
-type ShortcutPlaceholder = {
+type HomeShortcut = {
   label: string;
   icon: React.ComponentProps<typeof AppIcon>['name'];
   color: string;
   background: string;
+  href: Href;
 };
 
-const shortcutPlaceholders: ShortcutPlaceholder[] = [
-  { label: '入口一', icon: 'radio-outline', color: '#F28B4B', background: '#FFF1E7' },
-  { label: '入口二', icon: 'clipboard-outline', color: '#F59B55', background: '#FFF2E9' },
-  { label: '入口三', icon: 'book-outline', color: '#6689E8', background: '#EEF2FF' },
-  { label: '入口四', icon: 'checkbox-outline', color: '#28B98E', background: '#E8F9F3' },
-  { label: '入口五', icon: 'trophy-outline', color: '#E6B82F', background: '#FFF8D8' },
-  { label: '入口六', icon: 'calendar-outline', color: '#4A9DF0', background: '#EAF4FF' },
-  { label: '入口七', icon: 'bag-handle-outline', color: '#F18C4A', background: '#FFF1E8' },
-  { label: '入口八', icon: 'grid-outline', color: '#E8B92D', background: '#FFF8D6' },
+const homeShortcuts: HomeShortcut[] = [
+  {
+    label: '运动',
+    icon: 'fitness-outline',
+    color: colors.primaryStrong,
+    background: colors.primarySoft,
+    href: { pathname: '/features/[slug]', params: { slug: 'exercise' } },
+  },
+  {
+    label: '食谱',
+    icon: 'restaurant-outline',
+    color: '#D56C28',
+    background: '#FFF1E7',
+    href: { pathname: '/features/[slug]', params: { slug: 'recipes' } },
+  },
+  {
+    label: '番茄钟',
+    icon: 'timer-outline',
+    color: '#D9485F',
+    background: '#FFF0F2',
+    href: '/focus',
+  },
+  {
+    label: '记账',
+    icon: 'wallet-outline',
+    color: '#3978B8',
+    background: '#EAF4FF',
+    href: { pathname: '/features/[slug]', params: { slug: 'ledger' } },
+  },
+  {
+    label: '重要日',
+    icon: 'gift-outline',
+    color: '#C04C81',
+    background: '#FDEEF5',
+    href: { pathname: '/features/[slug]', params: { slug: 'important-dates' } },
+  },
+  {
+    label: '购物',
+    icon: 'cart-outline',
+    color: '#7657C8',
+    background: '#F2EEFF',
+    href: { pathname: '/features/[slug]', params: { slug: 'shopping' } },
+  },
+  {
+    label: '复盘',
+    icon: 'refresh-outline',
+    color: '#187A75',
+    background: '#E9F7F5',
+    href: { pathname: '/features/[slug]', params: { slug: 'review' } },
+  },
+  {
+    label: '更多',
+    icon: 'grid-outline',
+    color: '#68716D',
+    background: '#EEF1F0',
+    href: { pathname: '/features/[slug]', params: { slug: 'more' } },
+  },
 ];
 
 function HomeSectionHeader({ title, aside, count, onAsidePress }: HomeSectionHeaderProps) {
@@ -103,19 +152,24 @@ export default function HomeScreen() {
           title="首页"
         />
 
-        <View
-          accessible
-          accessibilityLabel="快捷入口，共 8 个，功能待定"
-          style={styles.shortcutPanel}
-        >
+        <View style={styles.shortcutPanel}>
           <View style={styles.shortcutGrid}>
-            {shortcutPlaceholders.map((item) => (
-              <View key={item.label} style={styles.shortcutItem}>
+            {homeShortcuts.map((item) => (
+              <Pressable
+                accessibilityLabel={`打开${item.label}`}
+                accessibilityRole="button"
+                key={item.label}
+                onPress={() => router.push(item.href)}
+                style={({ pressed }) => [
+                  styles.shortcutItem,
+                  pressed && styles.shortcutItemPressed,
+                ]}
+              >
                 <View style={[styles.shortcutIcon, { backgroundColor: item.background }]}>
                   <AppIcon color={item.color} name={item.icon} size={21} />
                 </View>
                 <Text style={styles.shortcutLabel}>{item.label}</Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>
@@ -203,6 +257,9 @@ const styles = StyleSheet.create({
     width: '25%',
     minHeight: 76,
     alignItems: 'center',
+  },
+  shortcutItemPressed: {
+    opacity: 0.56,
   },
   shortcutIcon: {
     width: 40,

@@ -43,7 +43,6 @@ const trackers: Tracker[] = [
     updated: '昨天 08:10',
     trend: '较上周下降 0.3 kg',
     bars: [27, 26, 25, 25, 24, 23, 22],
-    dueToday: true,
   },
   {
     id: 'water',
@@ -55,6 +54,19 @@ const trackers: Tracker[] = [
     updated: '今天 16:20',
     trend: '今日目标完成 90%',
     bars: [15, 21, 18, 25, 23, 27, 26],
+    dueToday: true,
+  },
+  {
+    id: 'reading',
+    name: '阅读',
+    icon: 'book-outline',
+    color: '#D56C28',
+    soft: '#FFF1E7',
+    latest: '30 分钟',
+    updated: '昨天 21:35',
+    trend: '已连续打卡 6 天',
+    bars: [16, 21, 24, 18, 27, 25, 23],
+    dueToday: true,
   },
 ];
 
@@ -72,7 +84,8 @@ export default function DataScreen() {
     () => trackers.filter((tracker) => tracker.dueToday && !recordedIds.has(tracker.id)),
     [recordedIds],
   );
-  const completedToday = trackers.filter((tracker) => tracker.dueToday).length - pendingTrackers.length;
+  const todayTrackerCount = trackers.filter((tracker) => tracker.dueToday).length;
+  const completedToday = todayTrackerCount - pendingTrackers.length;
 
   return (
     <AppScreen>
@@ -86,12 +99,12 @@ export default function DataScreen() {
               <Text style={styles.manageText}>管理</Text>
             </Pressable>
           }
-          subtitle={`今天已完成 ${completedToday}/2`}
-          title="数据"
+          subtitle={`今天已完成 ${completedToday}/${todayTrackerCount}`}
+          title="打卡"
         />
 
         <View style={styles.sectionHeading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>今日待记录</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>今日待打卡</Text>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{pendingTrackers.length} 项</Text>
           </View>
@@ -104,17 +117,17 @@ export default function DataScreen() {
                 <TrackerIcon tracker={tracker} />
                 <View style={styles.pendingCopy}>
                   <Text style={styles.pendingName}>{tracker.name}</Text>
-                  <Text style={styles.pendingMeta}>今天还没有记录</Text>
+                  <Text style={styles.pendingMeta}>今天还没有打卡</Text>
                 </View>
                 <Pressable
-                  accessibilityLabel={`记录${tracker.name}`}
+                  accessibilityLabel={`打卡${tracker.name}`}
                   accessibilityRole="button"
                   onPress={() =>
                     setRecordedIds((current) => new Set([...current, tracker.id]))
                   }
                   style={({ pressed }) => [styles.recordButton, pressed && styles.recordPressed]}
                 >
-                  <Text style={styles.recordText}>记录</Text>
+                  <Text style={styles.recordText}>打卡</Text>
                 </Pressable>
               </View>
             ))}
@@ -125,15 +138,15 @@ export default function DataScreen() {
               <AppIcon color={colors.primaryStrong} name="checkmark" size={20} />
             </View>
             <View>
-              <Text style={styles.completedTitle}>今天的记录已完成</Text>
-              <Text style={styles.completedCopy}>新的记录会立即更新下方最近值</Text>
+              <Text style={styles.completedTitle}>今天的打卡已完成</Text>
+              <Text style={styles.completedCopy}>完成结果会立即更新下方趋势</Text>
             </View>
           </View>
         )}
 
         <View style={styles.sectionHeading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>我的记录</Text>
-          <Text style={styles.sectionMeta}>{trackers.length} 个记录项目</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>我的打卡</Text>
+          <Text style={styles.sectionMeta}>{trackers.length} 个项目</Text>
         </View>
         <View style={styles.trackerList}>
           {trackers.map((tracker) => (
