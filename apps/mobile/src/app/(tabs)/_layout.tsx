@@ -87,9 +87,9 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="calendar"
+        name="lists"
         options={{
-          title: '日历',
+          title: '计划',
           tabBarIcon: ({ focused }) => (
             <TabIcon active="calendar" focused={focused} inactive="calendar-outline" />
           ),
@@ -104,15 +104,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="lists"
-        options={{
-          title: '清单',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon active="list" focused={focused} inactive="list-outline" />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="notes"
         options={{
           title: '笔记',
@@ -121,6 +112,16 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="data"
+        options={{
+          title: '数据',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon active="pie-chart" focused={focused} inactive="pie-chart-outline" />
+          ),
+        }}
+      />
+      <Tabs.Screen name="calendar" options={{ href: null }} />
       <Tabs.Screen name="me" options={{ href: null }} />
     </Tabs>
   );
