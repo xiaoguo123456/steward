@@ -1,7 +1,11 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppIcon } from '@/components/ui/icon';
+import {
+  AppIcon,
+  SportModeIcon,
+  type SportModeIconName,
+} from '@/components/ui/icon';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 import { workoutAccent } from '../mock-data';
@@ -78,11 +82,11 @@ export function WorkoutSectionTitle({ title, aside, onAsidePress }: SectionTitle
 }
 
 export function WorkoutIconTile({
-  icon,
+  mode,
   selected = false,
   size = 44,
 }: {
-  icon: ComponentProps<typeof AppIcon>['name'];
+  mode: SportModeIconName;
   selected?: boolean;
   size?: number;
 }) {
@@ -94,9 +98,9 @@ export function WorkoutIconTile({
         selected && styles.iconTileSelected,
       ]}
     >
-      <AppIcon
+      <SportModeIcon
         color={selected ? colors.background : colors.primaryStrong}
-        name={icon}
+        mode={mode}
         size={Math.round(size * 0.46)}
       />
     </View>

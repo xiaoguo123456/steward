@@ -9,7 +9,8 @@ export type WorkoutModeDefinition = {
   id: WorkoutMode;
   label: string;
   cue: string;
-  icon: ComponentProps<typeof AppIcon>['name'];
+  defaultGoal: string;
+  detail: string;
 };
 
 export type WorkoutHistoryItem = {
@@ -36,25 +37,29 @@ export const workoutModes: WorkoutModeDefinition[] = [
     id: 'running',
     label: '户外跑步',
     cue: '记录路线与配速',
-    icon: 'walk',
+    defaultGoal: '自由跑',
+    detail: 'GPS 路线 · 实时配速',
   },
   {
     id: 'walking',
     label: '健走',
     cue: '轻松走，慢慢养成',
-    icon: 'footsteps-outline',
+    defaultGoal: '自由走',
+    detail: '步数 · 路线 · 时长',
   },
   {
     id: 'cycling',
     label: '骑行',
     cue: '记录速度与海拔',
-    icon: 'bicycle-outline',
+    defaultGoal: '自由骑',
+    detail: '速度 · 里程 · 海拔',
   },
   {
     id: 'strength',
     label: '力量训练',
     cue: '跟着动作完成每组',
-    icon: 'barbell-outline',
+    defaultGoal: '全身入门',
+    detail: '6 个动作 · 约 25 分钟',
   },
 ];
 
@@ -184,21 +189,11 @@ export const recentWorkouts: WorkoutHistoryItem[] = [
   },
 ];
 
-export const weeklyWorkoutDays = [
-  { label: '一', state: 'done' },
-  { label: '二', state: 'done' },
-  { label: '三', state: 'current' },
-  { label: '四', state: 'idle' },
-  { label: '五', state: 'planned' },
-  { label: '六', state: 'idle' },
-  { label: '日', state: 'idle' },
-] as const;
-
 export const workoutAccent = {
-  background: '#F7F9F7',
-  ink: '#17201B',
+  background: '#F4F7F5',
+  ink: '#101915',
   muted: '#66736C',
-  hairline: '#E4EAE6',
+  hairline: '#DEE7E1',
   coral: '#F26B5E',
   coralSoft: '#FFF1EF',
   mapWater: '#DCEFFC',

@@ -18,8 +18,14 @@
 
 | 页面 | 路由 | 说明 |
 |---|---|---|
-| 运动首页 | `/features/exercise` | 模式选择、本周习惯和最近运动 |
+| 运动首页 | `/features/exercise` | 四种运动的直接入口和最近两条运动记录；不承载目标设置 |
 | 运动准备 | `/features/exercise/[mode]/prepare` | 目标、播报、定位或训练计划确认 |
 | 运动进行中 | `/features/exercise/[mode]/active` | 户外地图数据或力量动作组数 |
 | 运动总结 | `/features/exercise/[mode]/summary` | 模式化总结、感受选择和本地保存确认 |
 | 历史记录 | `/features/exercise/history` | 按模式筛选并查看历史摘要 |
+
+## 图标策略
+
+- 通用操作继续使用项目既有线性图标；运动模式使用 Pictogrammers Material Design Icons 的同一套成熟运动图形。
+- 页面只传入 `running`、`walking`、`cycling`、`strength` 语义名称，具体字形、品牌色和光学尺寸由 `components/ui/icon` 统一适配，Feature 不直接导入图标库。
+- 四个运动入口均使用深品牌绿图标与相同浅中性底色，不以颜色区分默认选择，也不维护手绘 SVG。

@@ -1,5 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
+
+import { colors } from '@/theme/tokens';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -11,4 +13,41 @@ type AppIconProps = {
 
 export function AppIcon({ name, size = 22, color = '#1A1D1C' }: AppIconProps) {
   return <Ionicons color={color} name={name} size={size} />;
+}
+
+export type SportModeIconName = 'running' | 'walking' | 'cycling' | 'strength';
+
+type MaterialCommunityIconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+const sportModeIconSpecs = {
+  running: { name: 'run-fast', opticalScale: 1.02 },
+  walking: { name: 'walk', opticalScale: 1 },
+  cycling: { name: 'bike-fast', opticalScale: 1.08 },
+  strength: { name: 'weight-lifter', opticalScale: 1.02 },
+} satisfies Record<
+  SportModeIconName,
+  { name: MaterialCommunityIconName; opticalScale: number }
+>;
+
+type SportModeIconProps = {
+  mode: SportModeIconName;
+  size?: number;
+  color?: string;
+};
+
+export function SportModeIcon({
+  mode,
+  size = 28,
+  color = colors.primaryStrong,
+}: SportModeIconProps) {
+  const spec = sportModeIconSpecs[mode];
+
+  return (
+    <MaterialCommunityIcons
+      accessible={false}
+      color={color}
+      name={spec.name}
+      size={Math.round(size * spec.opticalScale)}
+    />
+  );
 }

@@ -390,7 +390,7 @@ CI 必须执行：
 | 框架 | Expo + React Native |
 | 路由 | Expo Router |
 | UI 基础组件与 Token | Tamagui；统一从 `packages/ui` 二次封装后导出 |
-| 图标 | Phosphor React Native；统一从 `packages/ui/Icon` 语义映射后导出 |
+| 图标 | Phosphor React Native 为通用默认；经评审的成熟领域图标库按整组接入；统一从 `packages/ui/Icon` 语义映射后导出 |
 | 服务端状态 | TanStack Query |
 | 本地 UI 状态 | Zustand；只存跨组件瞬时状态 |
 | 表单 | React Hook Form + 共享 Schema 适配 |
@@ -400,7 +400,7 @@ CI 必须执行：
 | 上传 | 支持进度、取消和后台恢复的上传适配层 |
 | 推送 | Expo Notifications 适配层 |
 
-Expo Router 使用文件路由并支持深链，适合把通知与来源链接稳定映射到页面；TanStack Query 官方提供 React Native 的网络、焦点和在线状态接入方式。Tamagui 负责可主题化基础组件和跨平台 Token，Phosphor React Native 提供统一图标语言；Feature 只能依赖 `packages/ui` 的品牌封装，不直接导入二者，也不得在页面中写裸色值或自行维护 SVG。参考：[Expo Router](https://docs.expo.dev/router/introduction/)、[TanStack Query React Native](https://tanstack.com/query/latest/docs/framework/react/react-native)、[Tamagui Expo Guide](https://tamagui.dev/docs/guides/expo)、[Phosphor React Native](https://www.npmjs.com/package/phosphor-react-native)。
+Expo Router 使用文件路由并支持深链，适合把通知与来源链接稳定映射到页面；TanStack Query 官方提供 React Native 的网络、焦点和在线状态接入方式。Tamagui 负责可主题化基础组件和跨平台 Token，Phosphor React Native 提供通用图标语言；默认图标库无法覆盖完整领域语义时，可以整组接入经评审、授权清晰的成熟图标库，例如运动模式使用 Pictogrammers Material Design Icons。所有字形仍由 `packages/ui/Icon` 完成语义映射与光学校准；Feature 只能依赖品牌封装，不直接导入图标包，也不得在页面中写裸色值或自行维护 SVG。参考：[Expo Router](https://docs.expo.dev/router/introduction/)、[TanStack Query React Native](https://tanstack.com/query/latest/docs/framework/react/react-native)、[Tamagui Expo Guide](https://tamagui.dev/docs/guides/expo)、[Phosphor React Native](https://www.npmjs.com/package/phosphor-react-native)。
 
 ## 5.3 后端与基础设施
 
@@ -2790,7 +2790,7 @@ AI Schema/Prompt：是/否
 | ADR-012 | 数据库权威 Reminder Schedule |
 | ADR-013 | 字段级 Provenance 与不可变确认映射 |
 | ADR-014 | 资源和账号删除状态机 |
-| ADR-015 | Tamagui 品牌组件封装与 Phosphor 语义图标适配层 |
+| ADR-015 | Tamagui 品牌组件封装、默认 Phosphor 与成熟领域图标库的语义适配层 |
 | ADR-016 | 首页／计划／笔记／数据一级信息架构、TaskList 与未确认 Capture 隔离 |
 | ADR-017 | 计划列表／日历双布局、重要日期与 Project 日期投影 |
 | ADR-018 | 全局 AI 待答问题、revision 失效与最小上下文边界 |
@@ -2824,7 +2824,7 @@ ADR 必须记录背景、选择、备选方案、后果和替换条件，不重�
 - [ ] 计划详情列表与独立 Calendar 二级页复用 Project scope 与生成 Query；Calendar 渲染不在 App 自行推断日期归属。
 - [ ] 全局 `AIAssistantFab + AIConversationSheet` 只读取 Open Question Query，中央 Capture 按钮无 AI 角标；Capture 页面内联展示，问题正文不复制到全局 Store。
 - [ ] 五种 Capture 本地状态互斥规则一致。
-- [ ] Feature 只使用 `packages/ui` 导出的品牌组件、Token 和语义图标，不直接导入 Tamagui／Phosphor 或写裸色值。
+- [ ] Feature 只使用 `packages/ui` 导出的品牌组件、Token 和语义图标，不直接导入 Tamagui／任何底层图标库或写裸色值。
 - [ ] 草稿、上传进度和 revision 可恢复。
 - [ ] 页面覆盖加载、空、错误、离线和版本冲突。
 - [ ] Token 只存安全存储。

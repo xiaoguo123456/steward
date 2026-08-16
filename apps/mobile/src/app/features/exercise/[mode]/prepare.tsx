@@ -52,7 +52,7 @@ export default function WorkoutPrepareScreen() {
       <NavHeader title={outdoor ? '运动准备' : '训练准备'} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.modeIntro}>
-          <WorkoutIconTile icon={modeDefinition.icon} selected size={54} />
+          <WorkoutIconTile mode={modeDefinition.id} selected size={54} />
           <View style={styles.modeIntroCopy}>
             <Text accessibilityRole="header" style={styles.modeTitle}>
               {modeDefinition.label}

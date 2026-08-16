@@ -138,7 +138,7 @@ function HistoryRow({
       style={({ pressed }) => [styles.historyRow, pressed && styles.historyRowPressed]}
     >
       <View style={styles.historyMain}>
-        <WorkoutIconTile icon={definition.icon} size={42} />
+        <WorkoutIconTile mode={definition.id} size={42} />
         <View style={styles.historyCopy}>
           <Text style={styles.historyTitle}>{item.title}</Text>
           <Text style={styles.historyDate}>{item.date}</Text>
