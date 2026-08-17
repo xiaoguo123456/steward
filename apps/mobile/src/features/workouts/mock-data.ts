@@ -3,7 +3,12 @@ import type { ComponentProps } from 'react';
 import { AppIcon } from '@/components/ui/icon';
 import { colors } from '@/theme/tokens';
 
-import type { WorkoutGoal, WorkoutMode } from './model';
+import type {
+  OutdoorWorkoutMode,
+  OutdoorWorkoutTarget,
+  WorkoutGoal,
+  WorkoutMode,
+} from './model';
 
 export type WorkoutModeDefinition = {
   id: WorkoutMode;
@@ -63,32 +68,116 @@ export const workoutModes: WorkoutModeDefinition[] = [
   },
 ];
 
-export const workoutGoals: Record<WorkoutMode, WorkoutGoal[]> = {
+export const outdoorWorkoutTargets: Record<OutdoorWorkoutMode, OutdoorWorkoutTarget[]> = {
   running: [
-    { id: 'open', label: '不限目标', value: '自由跑' },
-    { id: 'distance-3', label: '距离', value: '3 公里' },
-    { id: 'distance-5', label: '距离', value: '5 公里' },
-    { id: 'time-30', label: '时间', value: '30 分钟' },
+    {
+      id: 'open',
+      label: '自由',
+      value: '自由跑',
+      description: '不限距离和时长，按今天的状态结束',
+    },
+    {
+      id: 'distance',
+      label: '距离',
+      unit: '公里',
+      description: '达到目标后提醒你，也可以继续运动',
+      defaultValue: 5,
+      minimumValue: 0.5,
+      maximumValue: 50,
+      step: 0.5,
+      presets: [3, 5, 10],
+    },
+    {
+      id: 'duration',
+      label: '时长',
+      unit: '分钟',
+      description: '按计划时长运动，结束前会语音提醒',
+      defaultValue: 30,
+      minimumValue: 5,
+      maximumValue: 180,
+      step: 5,
+      presets: [20, 30, 45, 60],
+    },
   ],
   walking: [
-    { id: 'open', label: '不限目标', value: '自由走' },
-    { id: 'steps-6000', label: '步数', value: '6000 步' },
-    { id: 'time-30', label: '时间', value: '30 分钟' },
-    { id: 'distance-3', label: '距离', value: '3 公里' },
+    {
+      id: 'open',
+      label: '自由',
+      value: '自由走',
+      description: '轻松走一走，不给今天增加压力',
+    },
+    {
+      id: 'steps',
+      label: '步数',
+      unit: '步',
+      description: '达到目标步数后提醒你，也可以继续走',
+      defaultValue: 6000,
+      minimumValue: 1000,
+      maximumValue: 30000,
+      step: 500,
+      presets: [3000, 6000, 10000],
+    },
+    {
+      id: 'distance',
+      label: '距离',
+      unit: '公里',
+      description: '按距离养成稳定的健走习惯',
+      defaultValue: 3,
+      minimumValue: 0.5,
+      maximumValue: 20,
+      step: 0.5,
+      presets: [1, 3, 5],
+    },
+    {
+      id: 'duration',
+      label: '时长',
+      unit: '分钟',
+      description: '达到目标时长后提醒你',
+      defaultValue: 30,
+      minimumValue: 5,
+      maximumValue: 180,
+      step: 5,
+      presets: [20, 30, 45, 60],
+    },
   ],
   cycling: [
-    { id: 'open', label: '不限目标', value: '自由骑' },
-    { id: 'distance-10', label: '距离', value: '10 公里' },
-    { id: 'time-45', label: '时间', value: '45 分钟' },
-    { id: 'distance-20', label: '距离', value: '20 公里' },
-  ],
-  strength: [
-    { id: 'beginner', label: '全身入门', value: '25 分钟' },
-    { id: 'upper', label: '上肢激活', value: '20 分钟' },
-    { id: 'lower', label: '下肢基础', value: '25 分钟' },
-    { id: 'open', label: '自由训练', value: '自己安排' },
+    {
+      id: 'open',
+      label: '自由',
+      value: '自由骑',
+      description: '不限距离和时长，按路线自由骑行',
+    },
+    {
+      id: 'distance',
+      label: '距离',
+      unit: '公里',
+      description: '达到目标后提醒你，路线记录不会中断',
+      defaultValue: 10,
+      minimumValue: 1,
+      maximumValue: 100,
+      step: 1,
+      presets: [10, 20, 30, 50],
+    },
+    {
+      id: 'duration',
+      label: '时长',
+      unit: '分钟',
+      description: '按计划时长骑行，结束前会提醒',
+      defaultValue: 45,
+      minimumValue: 10,
+      maximumValue: 240,
+      step: 5,
+      presets: [30, 45, 60, 90],
+    },
   ],
 };
+
+export const strengthWorkoutGoals: WorkoutGoal[] = [
+  { id: 'beginner', label: '全身入门', value: '25 分钟' },
+  { id: 'upper', label: '上肢激活', value: '20 分钟' },
+  { id: 'lower', label: '下肢基础', value: '25 分钟' },
+  { id: 'open', label: '自由训练', value: '自己安排' },
+];
 
 export const strengthExercises: StrengthExercise[] = [
   {

@@ -29,3 +29,9 @@
 - 通用操作继续使用项目既有线性图标；运动模式使用 Pictogrammers Material Design Icons 的同一套成熟运动图形。
 - 页面只传入 `running`、`walking`、`cycling`、`strength` 语义名称，具体字形、品牌色和光学尺寸由 `components/ui/icon` 统一适配，Feature 不直接导入图标库。
 - 四个运动入口均使用深品牌绿图标与相同浅中性底色，不以颜色区分默认选择，也不维护手绘 SVG。
+
+## 交互组件策略
+
+- 户外运动的目标类型使用 Expo UI `SegmentedControl`，目标数值使用 Expo UI `Slider`；它们分别映射 Android Material 3、iOS SwiftUI 和 Web 原生控件。
+- Feature 只使用 `components/ui/selection-controls` 的品牌适配组件，不直接导入 `@expo/ui`；品牌色、外观和后续平台差异由适配层统一处理。
+- 开始按钮继续复用运动模块统一主按钮，开关使用 React Native 平台 `Switch`，不在页面里重复实现同类基础控件。

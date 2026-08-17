@@ -9,6 +9,29 @@ export type WorkoutGoal = {
   value: string;
 };
 
+export type WorkoutTargetKind = 'open' | 'distance' | 'duration' | 'steps';
+
+export type OpenWorkoutTarget = {
+  id: 'open';
+  label: string;
+  value: string;
+  description: string;
+};
+
+export type NumericWorkoutTarget = {
+  id: Exclude<WorkoutTargetKind, 'open'>;
+  label: string;
+  unit: string;
+  description: string;
+  defaultValue: number;
+  minimumValue: number;
+  maximumValue: number;
+  step: number;
+  presets: number[];
+};
+
+export type OutdoorWorkoutTarget = OpenWorkoutTarget | NumericWorkoutTarget;
+
 export function isWorkoutMode(value: string | undefined): value is WorkoutMode {
   return workoutModeValues.includes(value as WorkoutMode);
 }

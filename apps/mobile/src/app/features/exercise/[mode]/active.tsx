@@ -136,11 +136,9 @@ function OutdoorActiveWorkout({
               accessibilityLabel="结束运动"
               accessibilityRole="button"
               onPress={() => setShowEndConfirm(true)}
-              style={({ pressed }) => [styles.stopControl, pressed && styles.controlPressed]}
+              style={({ pressed }) => [styles.stopButton, pressed && styles.controlPressed]}
             >
-              <View style={styles.stopButton}>
-                <View style={styles.stopSquare} />
-              </View>
+              <View style={styles.stopSquare} />
               <Text style={styles.stopLabel}>结束</Text>
             </Pressable>
           </View>
@@ -567,16 +565,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   outdoorControls: {
-    minHeight: 126,
+    minHeight: 112,
     marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 28,
+    gap: 24,
   },
   pauseButton: {
-    width: 112,
-    height: 112,
+    width: 96,
+    height: 96,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
@@ -590,21 +588,15 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '700',
   },
-  stopControl: {
-    minWidth: 74,
-    minHeight: 104,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   stopButton: {
-    width: 66,
-    height: 66,
+    width: 96,
+    height: 96,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: workoutAccent.coral,
-    backgroundColor: colors.background,
+    backgroundColor: workoutAccent.coralSoft,
   },
   stopSquare: {
     width: 21,
@@ -613,12 +605,12 @@ const styles = StyleSheet.create({
     backgroundColor: workoutAccent.coral,
   },
   stopLabel: {
-    marginTop: 7,
+    marginTop: 6,
     color: workoutAccent.coral,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: '700',
   },
   controlPressed: {
     opacity: 0.72,
