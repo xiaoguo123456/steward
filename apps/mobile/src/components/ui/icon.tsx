@@ -12,7 +12,7 @@ type AppIconProps = {
 };
 
 export function AppIcon({ name, size = 22, color = '#1A1D1C' }: AppIconProps) {
-  return <Ionicons color={color} name={name} size={size} />;
+  return <Ionicons accessible={false} color={color} name={name} size={size} />;
 }
 
 export type SportModeIconName = 'running' | 'walking' | 'cycling' | 'strength';
