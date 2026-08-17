@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~57.0.10",
     "@expo/vector-icons": "^15.0.2",
+    "@react-native-community/slider": "5.2.0",
     "expo": "~57.0.12",
     "expo-constants": "~57.0.10",
     "expo-dev-client": "~57.0.11",

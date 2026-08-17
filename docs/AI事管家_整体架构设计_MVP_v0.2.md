@@ -390,7 +390,7 @@ CI 必须执行：
 |---|---|
 | 框架 | Expo + React Native |
 | 路由 | Expo Router |
-| UI 基础组件与 Token | Tamagui 负责品牌组件与 Token；Expo UI 提供分段控件、滑杆等平台原生标准输入；统一从 `packages/ui` 二次封装后导出 |
+| UI 基础组件与 Token | Tamagui 负责品牌组件与 Token；Expo UI 提供分段控件等平台原生标准输入，滑杆使用 Expo 官方支持的 `@react-native-community/slider`；统一从 `packages/ui` 二次封装后导出 |
 | 图标 | Phosphor React Native 为通用默认；经评审的成熟领域图标库按整组接入；统一从 `packages/ui/Icon` 语义映射后导出 |
 | 服务端状态 | TanStack Query |
 | 本地 UI 状态 | Zustand；只存跨组件瞬时状态 |
@@ -401,7 +401,7 @@ CI 必须执行：
 | 上传 | 支持进度、取消和后台恢复的上传适配层 |
 | 推送 | Expo Notifications 适配层 |
 
-Expo Router 使用文件路由并支持深链，适合把通知与来源链接稳定映射到页面；TanStack Query 官方提供 React Native 的网络、焦点和在线状态接入方式。Tamagui 负责可主题化基础组件和跨平台 Token；Expo UI 为分段控件、滑杆等标准输入提供 Android Material 3、iOS SwiftUI 与 Web 实现，仍须经 `packages/ui` 品牌适配后使用。Phosphor React Native 提供通用图标语言；默认图标库无法覆盖完整领域语义时，可以整组接入经评审、授权清晰的成熟图标库，例如运动模式使用 Pictogrammers Material Design Icons。所有字形仍由 `packages/ui/Icon` 完成语义映射与光学校准；Feature 只能依赖品牌封装，不直接导入底层 UI 或图标包，也不得在页面中写裸色值或自行维护 SVG。参考：[Expo Router](https://docs.expo.dev/router/introduction/)、[TanStack Query React Native](https://tanstack.com/query/latest/docs/framework/react/react-native)、[Tamagui Expo Guide](https://tamagui.dev/docs/guides/expo)、[Expo UI](https://docs.expo.dev/versions/latest/sdk/ui/)、[Phosphor React Native](https://www.npmjs.com/package/phosphor-react-native)。
+Expo Router 使用文件路由并支持深链，适合把通知与来源链接稳定映射到页面；TanStack Query 官方提供 React Native 的网络、焦点和在线状态接入方式。Tamagui 负责可主题化基础组件和跨平台 Token；Expo UI 提供分段控件等标准输入，滑杆采用 Expo 官方支持的 `@react-native-community/slider`，两者都必须经 `packages/ui` 品牌适配后使用。Phosphor React Native 提供通用图标语言；默认图标库无法覆盖完整领域语义时，可以整组接入经评审、授权清晰的成熟图标库，例如运动模式使用 Pictogrammers Material Design Icons。所有字形仍由 `packages/ui/Icon` 完成语义映射与光学校准；Feature 只能依赖品牌封装，不直接导入底层 UI 或图标包，也不得在页面中写裸色值或自行维护 SVG。参考：[Expo Router](https://docs.expo.dev/router/introduction/)、[TanStack Query React Native](https://tanstack.com/query/latest/docs/framework/react/react-native)、[Tamagui Expo Guide](https://tamagui.dev/docs/guides/expo)、[Expo UI](https://docs.expo.dev/versions/latest/sdk/ui/)、[React Native Community Slider](https://docs.expo.dev/versions/latest/sdk/slider/)、[Phosphor React Native](https://www.npmjs.com/package/phosphor-react-native)。
 
 ## 5.3 后端与基础设施
 

@@ -72,7 +72,7 @@ function WeekHome() {
           <Text style={styles.goalMeta}>每日约 1850 千卡</Text>
         </View>
         <Text style={styles.goalAction}>饮食档案</Text>
-        <AppIcon color={recipeColors.faint} name="chevron-forward" size={16} />
+        <AppIcon color={recipeColors.muted} name="chevron-forward" size={18} />
       </Pressable>
 
       {hasPendingPlan ? (
@@ -330,37 +330,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   goalContext: {
-    minHeight: 54,
+    minHeight: 68,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
   },
   goalCopy: {
     flex: 1,
     minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 8,
+    gap: 2,
   },
   goalTitle: {
     color: recipeColors.ink,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
   },
   goalMeta: {
     color: recipeColors.muted,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '500',
     fontVariant: ['tabular-nums'],
   },
   goalAction: {
-    marginRight: 2,
+    marginRight: 4,
     color: colors.primaryStrong,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
   },
   pendingNotice: {

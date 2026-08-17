@@ -128,8 +128,14 @@ export function WorkoutTargetSelector({
             </Pressable>
           </View>
 
-          <Text style={styles.sliderLabel}>拖动调整</Text>
           <AppSlider
+            accessibilityLabel={`调整${selectedTarget.label}目标`}
+            accessibilityValue={{
+              max: selectedTarget.maximumValue,
+              min: selectedTarget.minimumValue,
+              now: value,
+              text: formatWorkoutTargetValue(selectedTarget, value),
+            }}
             max={selectedTarget.maximumValue}
             min={selectedTarget.minimumValue}
             onValueChange={onValueChange}
@@ -250,18 +256,11 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '600',
   },
-  sliderLabel: {
-    marginTop: 2,
-    color: workoutAccent.muted,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-  },
   slider: {
-    height: 38,
+    height: 44,
   },
   rangeLabels: {
-    marginTop: -6,
+    marginTop: -8,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },

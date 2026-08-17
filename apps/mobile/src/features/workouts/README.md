@@ -9,7 +9,7 @@
 ## 数据边界
 
 - 当前状态、路线、历史记录和统计均为本地 Mock，仅用于视觉与交互验收，不是权威运动数据。
-- 当前不请求定位、计步器或后台运动权限，也不新增原生依赖。
+- 当前不请求定位、计步器或后台运动权限；除标准输入控件外，不新增运动数据相关原生依赖。
 - “保存运动记录”是用户主动确认动作，但当前只更新本地预览状态，不写入正式 Record。
 - 后续接入正式能力时，运动结果投影到既有 Tracker / Record；网络字段必须来自 `packages/contracts/openapi`，移动端只能使用生成的 API Client 与 Zod 校验器。
 - 真实 GPS 会话、运动状态机、重复检测和时间语义需要在跨端设计完成后实现，不能把本模块的 Mock 类型直接升级为网络 DTO。
@@ -32,6 +32,6 @@
 
 ## 交互组件策略
 
-- 户外运动的目标类型使用 Expo UI `SegmentedControl`，目标数值使用 Expo UI `Slider`；它们分别映射 Android Material 3、iOS SwiftUI 和 Web 原生控件。
-- Feature 只使用 `components/ui/selection-controls` 的品牌适配组件，不直接导入 `@expo/ui`；品牌色、外观和后续平台差异由适配层统一处理。
+- 户外运动的目标类型使用 Expo UI `SegmentedControl`，目标数值使用 Expo 官方支持的 `@react-native-community/slider`。滑杆保留逻辑步长，但使用无密集刻度的细轨道与统一圆形滑块，避免大范围目标产生视觉噪声。
+- Feature 只使用 `components/ui/selection-controls` 的品牌适配组件，不直接导入 `@expo/ui` 或 `@react-native-community/slider`；品牌色、外观和后续平台差异由适配层统一处理。
 - 开始按钮继续复用运动模块统一主按钮，开关使用 React Native 平台 `Switch`，不在页面里重复实现同类基础控件。

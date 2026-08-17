@@ -1,5 +1,7 @@
 import { SegmentedControl } from '@expo/ui/community/segmented-control';
-import { Host, Slider } from '@expo/ui';
+import NativeSlider, {
+  type SliderProps as NativeSliderProps,
+} from '@react-native-community/slider';
 import type { ComponentProps } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
@@ -15,26 +17,38 @@ export function AppSegmentedControl(props: AppSegmentedControlProps) {
   return <SegmentedControl appearance="light" tintColor={colors.primary} {...props} />;
 }
 
-type AppSliderProps = ComponentProps<typeof Slider> & {
+type AppSliderProps = Omit<
+  NativeSliderProps,
+  | 'maximumTrackTintColor'
+  | 'maximumValue'
+  | 'minimumTrackTintColor'
+  | 'minimumValue'
+  | 'thumbSize'
+  | 'thumbTintColor'
+> & {
+  max?: number;
+  min?: number;
   style?: StyleProp<ViewStyle>;
 };
 
-export function AppSlider({ style, ...props }: AppSliderProps) {
+export function AppSlider({ max = 1, min = 0, style, ...props }: AppSliderProps) {
   return (
-    <Host
-      colorScheme="light"
-      matchContents={{ vertical: true }}
-      seedColor={colors.primary}
-      style={[styles.sliderHost, style]}
-    >
-      <Slider {...props} />
-    </Host>
+    <NativeSlider
+      maximumTrackTintColor={colors.borderStrong}
+      maximumValue={max}
+      minimumTrackTintColor={colors.primaryStrong}
+      minimumValue={min}
+      style={[styles.slider, style]}
+      thumbSize={22}
+      thumbTintColor={colors.primaryStrong}
+      {...props}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  sliderHost: {
+  slider: {
     width: '100%',
-    justifyContent: 'center',
+    minHeight: 44,
   },
 });
