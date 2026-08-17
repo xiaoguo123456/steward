@@ -9,7 +9,8 @@ import {
   RecipeImage,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { getRecipe, recipeColors } from '@/features/recipes/mock-data';
+import { getRecipe } from '@/features/recipes/mock-data';
+import { recipeColors } from '@/features/recipes/theme';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { useClientReady } from '@/features/recipes/use-client-ready';
 import { colors, fontFamily, radius } from '@/theme/tokens';

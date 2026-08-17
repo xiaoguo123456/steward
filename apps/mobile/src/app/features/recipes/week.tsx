@@ -10,8 +10,9 @@ import {
   RecipeImage,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { getRecipe, recipeColors, weekDays } from '@/features/recipes/mock-data';
+import { getRecipe, weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
+import { recipeColors } from '@/features/recipes/theme';
 import { mealSlotLabels, mealSlotOrder } from '@/features/recipes/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 

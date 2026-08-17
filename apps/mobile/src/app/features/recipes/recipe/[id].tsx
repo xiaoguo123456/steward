@@ -19,8 +19,9 @@ import {
   RecipePrimaryButton,
   RecipeSectionTitle,
 } from '@/features/recipes/components/recipe-ui';
-import { getRecipe, recipeColors, weekDays } from '@/features/recipes/mock-data';
+import { getRecipe, weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
+import { recipeColors } from '@/features/recipes/theme';
 import { useClientReady } from '@/features/recipes/use-client-ready';
 import { mealSlotLabels, mealSlotOrder, type MealSlot } from '@/features/recipes/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
@@ -154,7 +155,9 @@ export default function RecipeDetailScreen() {
             </View>
           </View>
 
-          <InlineNotice icon="sparkles-outline">{recipe.recommendation}</InlineNotice>
+          <InlineNotice icon="restaurant-outline" tone="neutral">
+            {recipe.recommendation}
+          </InlineNotice>
 
           <View style={styles.section}>
             <RecipeSectionTitle aside="每份估算" title="营养信息" />
@@ -399,7 +402,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   tag: {
-    color: colors.primaryStrong,
+    color: recipeColors.muted,
     fontFamily,
     fontSize: 12,
     lineHeight: 18,

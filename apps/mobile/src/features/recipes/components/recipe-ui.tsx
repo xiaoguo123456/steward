@@ -6,13 +6,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '@/components/ui/icon';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
-import { recipeColors, weekDays } from '../mock-data';
+import { weekDays } from '../mock-data';
 import {
   mealSlotLabels,
   type MealSlot,
   type Recipe,
   type WeekDayId,
 } from '../model';
+import { recipeColors } from '../theme';
 
 export function RecipeImage({
   recipe,
@@ -186,18 +187,16 @@ export function RecipeSectionTitle({
 
 export function NutritionStrip({
   recipes,
-  targetCalories = 1850,
 }: {
   recipes: Recipe[];
-  targetCalories?: number;
 }) {
   const calories = recipes.reduce((total, recipe) => total + recipe.calories, 0);
   const protein = recipes.reduce((total, recipe) => total + recipe.protein, 0);
   const fiber = recipes.reduce((total, recipe) => total + recipe.fiber, 0);
   const metrics = [
-    { label: '热量', value: `${calories}`, unit: `/ ${targetCalories} 千卡`, progress: calories / targetCalories },
-    { label: '蛋白质', value: `${protein}`, unit: '/ 110 克', progress: protein / 110 },
-    { label: '膳食纤维', value: `${fiber}`, unit: '/ 25 克', progress: fiber / 25 },
+    { label: '热量', value: `${calories}`, unit: '千卡' },
+    { label: '蛋白质', value: `${protein}`, unit: '克' },
+    { label: '膳食纤维', value: `${fiber}`, unit: '克' },
   ];
 
   return (
@@ -208,14 +207,6 @@ export function NutritionStrip({
           <Text style={styles.nutritionValue}>
             {metric.value} <Text style={styles.nutritionUnit}>{metric.unit}</Text>
           </Text>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${Math.min(100, Math.max(8, metric.progress * 100))}%` },
-              ]}
-            />
-          </View>
           {index < metrics.length - 1 ? <View style={styles.nutritionDivider} /> : null}
         </View>
       ))}
@@ -492,15 +483,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: recipeColors.ink,
     fontFamily,
-    fontSize: 18,
-    lineHeight: 25,
+    fontSize: 16,
+    lineHeight: 23,
     fontWeight: '700',
   },
   sectionAction: {
     color: colors.primaryStrong,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: '600',
   },
   sectionMeta: {
@@ -510,12 +501,13 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   nutritionStrip: {
-    minHeight: 96,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    minHeight: 74,
+    paddingVertical: 12,
     flexDirection: 'row',
-    borderRadius: radius.lg,
-    backgroundColor: recipeColors.surfaceMuted,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: recipeColors.line,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: recipeColors.line,
   },
   nutritionMetric: {
     flex: 1,
@@ -525,35 +517,23 @@ const styles = StyleSheet.create({
   nutritionLabel: {
     color: recipeColors.muted,
     fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 15,
   },
   nutritionValue: {
     marginTop: 4,
     color: recipeColors.ink,
     fontFamily,
-    fontSize: 17,
-    lineHeight: 23,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
   nutritionUnit: {
-    color: recipeColors.faint,
-    fontSize: 9,
-    lineHeight: 14,
+    color: recipeColors.muted,
+    fontSize: 10,
+    lineHeight: 15,
     fontWeight: '500',
-  },
-  progressTrack: {
-    height: 4,
-    marginTop: 8,
-    overflow: 'hidden',
-    borderRadius: radius.pill,
-    backgroundColor: '#D8E1DC',
-  },
-  progressFill: {
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primaryStrong,
   },
   nutritionDivider: {
     position: 'absolute',
@@ -561,7 +541,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: StyleSheet.hairlineWidth,
     height: '100%',
-    backgroundColor: '#D8E1DC',
+    backgroundColor: recipeColors.line,
   },
   mealRow: {
     minHeight: 132,
@@ -616,7 +596,7 @@ const styles = StyleSheet.create({
   },
   mealReason: {
     marginTop: 3,
-    color: colors.primaryStrong,
+    color: recipeColors.muted,
     fontFamily,
     fontSize: 11,
     lineHeight: 16,
@@ -669,11 +649,11 @@ const styles = StyleSheet.create({
   },
   cardReason: {
     marginTop: 3,
-    color: colors.primaryStrong,
+    color: recipeColors.muted,
     fontFamily,
     fontSize: 11,
     lineHeight: 16,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   notice: {
     minHeight: 50,
@@ -697,7 +677,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: recipeColors.surfaceMuted,
   },
   iconButtonActive: {
     backgroundColor: recipeColors.orangeSoft,

@@ -9,8 +9,10 @@ import {
   InlineNotice,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { getRecipe, recipeColors, weekDays } from '@/features/recipes/mock-data';
+import { getRecipe, weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
+import { recipeColors } from '@/features/recipes/theme';
+import { useClientReady } from '@/features/recipes/use-client-ready';
 import {
   ingredientGroupLabels,
   mealSlotOrder,
@@ -111,7 +113,8 @@ function buildShoppingItems(recipeIds: string[]): ShoppingItem[] {
 export default function RecipeShoppingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ scope?: string }>();
-  const scope = params.scope === 'week' ? 'week' : 'day';
+  const clientReady = useClientReady();
+  const scope = clientReady && params.scope === 'week' ? 'week' : 'day';
   const { plan, selectedDayId, hasPendingPlan } = useRecipePrototype();
   const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set(['seasoning-低盐生抽']));
   const [created, setCreated] = useState(false);

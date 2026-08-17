@@ -19,9 +19,9 @@ import {
   InlineNotice,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { recipeColors } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { goalLabels, type RecipeGoal, type RecipeProfile } from '@/features/recipes/model';
+import { recipeColors } from '@/features/recipes/theme';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 const goalOptions: {
@@ -129,13 +129,12 @@ function GoalStep({
               onPress={() => setDraft((current) => ({ ...current, goal: option.id }))}
               style={({ pressed }) => [
                 styles.choiceRow,
-                selected && styles.choiceRowSelected,
                 pressed && styles.pressed,
               ]}
             >
               <View style={[styles.choiceIcon, selected && styles.choiceIconSelected]}>
                 <AppIcon
-                  color={selected ? colors.background : colors.primaryStrong}
+                  color={colors.primaryStrong}
                   name={option.icon}
                   size={21}
                 />
@@ -570,9 +569,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: recipeColors.line,
   },
-  choiceRowSelected: {
-    backgroundColor: '#F6FAF7',
-  },
   choiceIcon: {
     width: 42,
     height: 42,
@@ -580,10 +576,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
+    backgroundColor: recipeColors.surfaceMuted,
   },
   choiceIconSelected: {
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primarySoft,
   },
   choiceCopy: {
     flex: 1,

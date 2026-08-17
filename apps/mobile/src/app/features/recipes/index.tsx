@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 
-import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
@@ -27,17 +26,18 @@ import {
 import {
   categoryOptions,
   getRecipe,
-  recipeColors,
   recipes,
   weekDays,
 } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
+import { useClientReady } from '@/features/recipes/use-client-ready';
 import {
   goalLabels,
   mealSlotOrder,
   type Recipe,
   type RecipeCategory,
 } from '@/features/recipes/model';
+import { recipeColors } from '@/features/recipes/theme';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 function recipeRoute(recipeId: string) {
@@ -67,20 +67,18 @@ function WeekHome() {
         onPress={() => router.push('/features/recipes/questionnaire' as Href)}
         style={({ pressed }) => [styles.goalContext, pressed && styles.pressed]}
       >
-        <View style={styles.goalIcon}>
-          <AppIcon color={colors.primaryStrong} name="leaf-outline" size={19} />
-        </View>
         <View style={styles.goalCopy}>
-          <Text style={styles.goalTitle}>{goalLabels[profile.goal]} · 约 1850 千卡</Text>
-          <Text style={styles.goalMeta}>依据你的偏好生成，可随时调整</Text>
+          <Text style={styles.goalTitle}>{goalLabels[profile.goal]}</Text>
+          <Text style={styles.goalMeta}>每日约 1850 千卡</Text>
         </View>
-        <AppIcon color={recipeColors.faint} name="chevron-forward" size={17} />
+        <Text style={styles.goalAction}>饮食档案</Text>
+        <AppIcon color={recipeColors.faint} name="chevron-forward" size={16} />
       </Pressable>
 
       {hasPendingPlan ? (
         <View style={styles.pendingNotice}>
-          <InlineNotice icon="sparkles-outline">
-            当前显示的是待确认菜单，原菜单仍会保留到你确认采用。
+          <InlineNotice icon="information-circle-outline" tone="neutral">
+            新菜单待确认，确认前不会替换当前菜单。
           </InlineNotice>
         </View>
       ) : null}
@@ -218,7 +216,7 @@ function DiscoverHome() {
 
       {!normalizedSearch && category === 'recommended' ? (
         <View style={styles.featuredSection}>
-          <RecipeSectionTitle aside="根据本周目标" title="今天值得做" />
+          <RecipeSectionTitle aside="适合当前目标" title="今日精选" />
           <Pressable
             accessibilityLabel={`${featured.title}，查看菜谱`}
             accessibilityRole="button"
@@ -233,10 +231,9 @@ function DiscoverHome() {
               <Text numberOfLines={2} style={styles.featuredMeta}>
                 {featured.recommendation}
               </Text>
-              <View style={styles.featuredTags}>
-                <Text style={styles.featuredTag}>{featured.timeMinutes} 分钟</Text>
-                <Text style={styles.featuredTag}>{featured.tags[0]}</Text>
-              </View>
+              <Text style={styles.featuredFacts}>
+                {featured.timeMinutes} 分钟 · {featured.difficulty} · {featured.tags[0]}
+              </Text>
             </View>
           </Pressable>
         </View>
@@ -264,7 +261,7 @@ function DiscoverHome() {
             <AppIcon color={recipeColors.faint} name="search-outline" size={27} />
           </View>
           <Text style={styles.emptyTitle}>没有找到合适的菜谱</Text>
-          <Text style={styles.emptyCopy}>试试缩短关键词，或者切换到“为你推荐”。</Text>
+          <Text style={styles.emptyCopy}>试试缩短关键词，或者切换到“精选”。</Text>
           <RecipePrimaryButton
             label="查看推荐"
             onPress={() => {
@@ -283,9 +280,9 @@ function DiscoverHome() {
 export default function RecipesHomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ view?: string }>();
-  const [tab, setTab] = useState<'week' | 'discover'>(
-    params.view === 'discover' ? 'discover' : 'week',
-  );
+  const clientReady = useClientReady();
+  const [tabOverride, setTabOverride] = useState<'week' | 'discover' | null>(null);
+  const tab = tabOverride ?? (clientReady && params.view === 'discover' ? 'discover' : 'week');
 
   return (
     <AppScreen backgroundColor={recipeColors.background} includeBottomInset>
@@ -304,7 +301,7 @@ export default function RecipesHomeScreen() {
         title="食谱"
       />
       <View style={styles.tabContainer}>
-        <RecipeTabs onChange={setTab} value={tab} />
+        <RecipeTabs onChange={setTabOverride} value={tab} />
       </View>
       <ScrollView
         contentContainerStyle={styles.content}
@@ -313,7 +310,6 @@ export default function RecipesHomeScreen() {
       >
         {tab === 'week' ? <WeekHome /> : <DiscoverHome />}
       </ScrollView>
-      <AiFab />
     </AppScreen>
   );
 }
@@ -333,28 +329,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: recipeColors.surfaceMuted,
   },
   goalContext: {
-    minHeight: 64,
-    paddingHorizontal: 12,
+    minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.lg,
-    backgroundColor: recipeColors.surfaceMuted,
-  },
-  goalIcon: {
-    width: 38,
-    height: 38,
-    marginRight: 10,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: recipeColors.line,
   },
   goalCopy: {
     flex: 1,
     minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
   },
   goalTitle: {
     color: recipeColors.ink,
@@ -364,17 +352,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   goalMeta: {
-    marginTop: 2,
     color: recipeColors.muted,
     fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 18,
+    fontVariant: ['tabular-nums'],
+  },
+  goalAction: {
+    marginRight: 2,
+    color: colors.primaryStrong,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
   },
   pendingNotice: {
     marginTop: 12,
   },
   dateBlock: {
-    marginTop: 12,
+    marginTop: 6,
   },
   estimateHint: {
     marginTop: 7,
@@ -451,25 +447,18 @@ const styles = StyleSheet.create({
     backgroundColor: recipeColors.orange,
   },
   featuredSection: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   featured: {
-    minHeight: 142,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    borderRadius: radius.lg,
-    backgroundColor: recipeColors.surfaceMuted,
+    minHeight: 220,
   },
   featuredImage: {
-    width: '48%',
-    minHeight: 142,
+    width: '100%',
+    aspectRatio: 1.82,
+    borderRadius: radius.lg,
   },
   featuredCopy: {
-    flex: 1,
-    minWidth: 0,
-    paddingHorizontal: 14,
-    paddingVertical: 15,
-    justifyContent: 'center',
+    paddingTop: 11,
   },
   featuredTitle: {
     color: recipeColors.ink,
@@ -479,24 +468,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   featuredMeta: {
+    marginTop: 4,
+    color: recipeColors.muted,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  featuredFacts: {
     marginTop: 6,
     color: recipeColors.muted,
     fontFamily,
     fontSize: 11,
-    lineHeight: 17,
-  },
-  featuredTags: {
-    marginTop: 10,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  featuredTag: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 10,
-    lineHeight: 15,
+    lineHeight: 16,
     fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
   recipeGrid: {
     flexDirection: 'row',

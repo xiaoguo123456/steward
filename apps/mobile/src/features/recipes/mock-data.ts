@@ -8,21 +8,6 @@ import type {
 
 const imageParams = '?auto=format&fit=crop&w=1000&q=82';
 
-export const recipeColors = {
-  background: '#FAFCFB',
-  surface: '#FFFFFF',
-  surfaceMuted: '#F1F6F3',
-  ink: '#17352B',
-  muted: '#61716B',
-  faint: '#8B9893',
-  line: '#E1E8E4',
-  orange: '#D56C28',
-  orangeSoft: '#FFF1E8',
-  sage: '#DCEDE2',
-  warningSoft: '#FFF6E5',
-  warning: '#A26112',
-} as const;
-
 export const weekDays: WeekDay[] = [
   { id: 'mon', weekday: '一', label: '周一', date: '17', fullDate: '8月17日', isToday: true },
   { id: 'tue', weekday: '二', label: '周二', date: '18', fullDate: '8月18日' },
@@ -383,7 +368,7 @@ export const recipes: Recipe[] = [
 ];
 
 export const categoryOptions: { id: RecipeCategory; label: string }[] = [
-  { id: 'recommended', label: '为你推荐' },
+  { id: 'recommended', label: '精选' },
   { id: 'quick', label: '快手菜' },
   { id: 'seasonal', label: '时令' },
   { id: 'fat-loss', label: '减脂' },

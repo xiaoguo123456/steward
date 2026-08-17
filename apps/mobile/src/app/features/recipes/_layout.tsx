@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { recipeColors } from '@/features/recipes/mock-data';
+import { recipeColors } from '@/features/recipes/theme';
 import { RecipePrototypeProvider } from '@/features/recipes/recipe-context';
 
 export default function RecipesLayout() {
