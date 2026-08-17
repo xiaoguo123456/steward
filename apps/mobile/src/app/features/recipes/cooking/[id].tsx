@@ -12,7 +12,7 @@ import {
 import { getRecipe } from '@/features/recipes/mock-data';
 import { recipeColors } from '@/features/recipes/theme';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
-import { useClientReady } from '@/features/recipes/use-client-ready';
+import { useClientReady } from '@/hooks/use-client-ready';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 function formatTimer(totalSeconds: number) {
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     backgroundColor: recipeColors.line,
   },
   progressBarActive: {
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   content: {
     paddingHorizontal: 16,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   resetButton: {
     width: 44,

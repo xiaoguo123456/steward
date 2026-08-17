@@ -22,6 +22,7 @@ import {
   isOutdoorWorkoutMode,
   type OutdoorWorkoutMode,
 } from '@/features/workouts/model';
+import { useClientReady } from '@/hooks/use-client-ready';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type ActiveStatus = 'active' | 'paused';
@@ -53,11 +54,14 @@ function OutdoorActiveWorkout({
   };
 }) {
   const router = useRouter();
-  const goal = Array.isArray(params.goal) ? params.goal[0] : params.goal;
-  const voice = Array.isArray(params.voice) ? params.voice[0] : params.voice;
+  const clientReady = useClientReady();
   const [status, setStatus] = useState<ActiveStatus>('active');
   const [elapsedSeconds, setElapsedSeconds] = useState(1938);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const goalParam = Array.isArray(params.goal) ? params.goal[0] : params.goal;
+  const voiceParam = Array.isArray(params.voice) ? params.voice[0] : params.voice;
+  const goal = clientReady ? goalParam : undefined;
+  const voice = clientReady ? voiceParam : undefined;
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
   const metrics = outdoorMetrics[mode];
 

@@ -12,7 +12,7 @@ import {
 import { getRecipe, weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
-import { useClientReady } from '@/features/recipes/use-client-ready';
+import { useClientReady } from '@/hooks/use-client-ready';
 import {
   ingredientGroupLabels,
   mealSlotOrder,
@@ -318,8 +318,8 @@ const styles = StyleSheet.create({
     borderColor: recipeColors.faint,
   },
   checkboxSelected: {
-    borderColor: colors.primaryStrong,
-    backgroundColor: colors.primaryStrong,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   itemCopy: {
     flex: 1,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   successTitle: {
     marginTop: 20,

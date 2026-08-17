@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: 3,
     borderRadius: radius.pill,
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   content: {
     paddingHorizontal: 16,
@@ -607,13 +607,13 @@ const styles = StyleSheet.create({
     borderColor: recipeColors.faint,
   },
   radioSelected: {
-    borderColor: colors.primaryStrong,
+    borderColor: colors.primary,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: radius.pill,
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   groupLabel: {
     marginTop: 22,

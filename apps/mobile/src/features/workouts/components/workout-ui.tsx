@@ -193,9 +193,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: workoutAccent.ink,
     fontFamily,
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '700',
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: '600',
   },
   sectionAction: {
     color: colors.primaryStrong,
@@ -207,8 +207,8 @@ const styles = StyleSheet.create({
   sectionMeta: {
     color: workoutAccent.muted,
     fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 18,
   },
   textActionPressed: {
     opacity: 0.55,

@@ -356,7 +356,7 @@ export function IconButton({
       ]}
     >
       <AppIcon
-        color={active ? recipeColors.orange : recipeColors.ink}
+        color={active ? colors.primaryStrong : recipeColors.ink}
         name={icon}
         size={21}
       />
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   tabIndicatorSelected: {
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   dateSelector: {
     minHeight: 70,
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dateItemSelected: {
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   dateWeekday: {
     color: recipeColors.muted,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   secondaryButton: {
     backgroundColor: recipeColors.surfaceMuted,
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: 16,
     lineHeight: 23,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   sectionAction: {
     color: colors.primaryStrong,
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconButtonActive: {
-    backgroundColor: recipeColors.orangeSoft,
+    backgroundColor: colors.primarySoft,
   },
   pressed: {
     opacity: 0.56,

@@ -22,7 +22,7 @@ import {
 import { getRecipe, weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
-import { useClientReady } from '@/features/recipes/use-client-ready';
+import { useClientReady } from '@/hooks/use-client-ready';
 import { mealSlotLabels, mealSlotOrder, type MealSlot } from '@/features/recipes/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     backgroundColor: recipeColors.surfaceMuted,
   },
   sheetDateSelected: {
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   sheetWeekday: {
     color: recipeColors.muted,

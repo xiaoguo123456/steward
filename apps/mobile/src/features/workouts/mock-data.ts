@@ -279,11 +279,12 @@ export const recentWorkouts: WorkoutHistoryItem[] = [
 ];
 
 export const workoutAccent = {
-  background: '#F4F7F5',
-  ink: '#101915',
-  muted: '#66736C',
-  hairline: '#DEE7E1',
-  coral: '#F26B5E',
+  // 运动场景不维护独立的“运动系”中性色，统一继承首页视觉 Token。
+  background: colors.background,
+  ink: colors.text,
+  muted: colors.textSecondary,
+  hairline: colors.border,
+  coral: colors.danger,
   coralSoft: '#FFF1EF',
   mapWater: '#DCEFFC',
   mapPark: '#DFF5E8',

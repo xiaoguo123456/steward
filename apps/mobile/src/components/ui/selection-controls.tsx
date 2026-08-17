@@ -4,7 +4,7 @@ import NativeSlider, {
 } from '@react-native-community/slider';
 import type { ComponentProps } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 import { colors } from '@/theme/tokens';
 
@@ -14,7 +14,15 @@ type AppSegmentedControlProps = Omit<
 >;
 
 export function AppSegmentedControl(props: AppSegmentedControlProps) {
-  return <SegmentedControl appearance="light" tintColor={colors.primary} {...props} />;
+  return (
+    <SegmentedControl
+      appearance="light"
+      // Expo UI 的 Web 回退在设置 tintColor 时会把所有选项文字都变成白色。
+      // Web 保留成熟的系统浅色外观，Android 继续使用品牌绿原生选中态。
+      tintColor={Platform.OS === 'web' ? undefined : colors.primary}
+      {...props}
+    />
+  );
 }
 
 type AppSliderProps = Omit<

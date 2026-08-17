@@ -30,7 +30,7 @@ import {
   weekDays,
 } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
-import { useClientReady } from '@/features/recipes/use-client-ready';
+import { useClientReady } from '@/hooks/use-client-ready';
 import {
   goalLabels,
   mealSlotOrder,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   categoryTextSelected: {
-    color: recipeColors.ink,
+    color: colors.primaryStrong,
     fontWeight: '700',
   },
   categoryLine: {
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   categoryLineSelected: {
-    backgroundColor: recipeColors.orange,
+    backgroundColor: colors.primary,
   },
   featuredSection: {
     marginBottom: 16,
