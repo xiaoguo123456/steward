@@ -27,3 +27,19 @@ body {
 * {
   box-sizing: border-box;
 }
+
+[role="button"]:focus:not(:focus-visible),
+[role="tab"]:focus:not(:focus-visible),
+[role="radio"]:focus:not(:focus-visible),
+[role="checkbox"]:focus:not(:focus-visible) {
+  outline: none;
+}
+
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="radio"]:focus-visible,
+[role="checkbox"]:focus-visible,
+input:focus-visible {
+  outline: 2px solid #047857;
+  outline-offset: 2px;
+}

@@ -224,6 +224,7 @@ flowchart TD
 - App Shell 在首页、计划、笔记、打卡和设置 Stack 上方挂载同一个 `AIAssistantFab`，点击后展示 `AIConversationSheet`。两者读取 Capture Questions Query，不复制问题正文到全局 Store；中央 `capture/new` 不读取待答数量，也不显示角标。Capture 编辑／确认页改用自身内联状态并隐藏悬浮入口。无 open question、processing 或 ready question 时不渲染入口。
 - 首页的 4×2 生活场景入口由 `today` 页面编排，场景页面归属 `features/[slug]` 二级路由，不增加第五个一级模块。运动使用静态优先的 `features/exercise/*` 嵌套路由承载首页、准备、进行中、总结和历史页面，其余轻量场景仍可使用 `features/[slug]`；静态路由只细化页面流程，不改变一级导航或领域所有权。运动、番茄钟与记账组合 Tracker / Record，食谱与购物组合 Note / TaskList / Task，重要日投影 Event 与日期字段，复盘读取 Review，“更多”只聚合二级导航。原型阶段可以使用本地状态验收交互；接入后端后，所有正式创建／更新必须通过生成的 API Client、既有领域服务和确认流程，场景页不得手写重复 DTO 或让 AI 直接写库。
 - `features/workouts` 当前只保存非权威的前端模式定义、模拟路线、训练动作与展示状态。户外计时、暂停、组数和休息计时仅用于原型交互，不构成跨端状态机；当前不安装定位、地图、计步器或后台任务原生依赖。正式运动会话、权限、离线恢复和 Record 投影需要单独完成跨端契约设计后再接入，本地 Mock 类型不得被直接提升为网络 Schema。
+- 食谱使用静态优先的 `features/recipes/*` 嵌套路由承载本周菜单、发现、问卷、菜谱详情、烹饪和购物确认，`features/recipes` 模块只保存非权威的前端菜谱模型、Fixture 和场景状态。本周菜单中的营养数值属于计划估算，只有用户确认进食记录后才能通过正式 Tracker / Record 契约形成实际摄入；两种口径不得复用同一状态字段。正式接入外部菜谱前必须新增只读内容契约并记录来源、作者、图片权利、授权范围和内容版本，不能把前端 `Recipe` Mock、个人 Note 或 Task 直接提升为公共菜谱 DTO。个人收藏或补充说明继续复用 Note，确认后的采购需求继续复用 TaskList / Task；AI 只返回推荐候选，菜单采用、加入某餐和生成购物清单均由确定性服务校验并经用户确认。
 - 导航层级变化只影响 App Shell 和路由归属，不合并业务边界。`features/notes`、`features/trackers`、`features/records` 以及对应后端模块和 Contracts 继续独立维护。
 - 四个一级路由各自保存滚动位置和查询缓存。打开 Capture、确认页或详情页时隐藏中央主操作，防止重复主操作和安全区遮挡。
 

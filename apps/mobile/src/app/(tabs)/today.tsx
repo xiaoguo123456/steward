@@ -38,7 +38,7 @@ const homeShortcuts: HomeShortcut[] = [
     icon: 'restaurant-outline',
     color: '#D56C28',
     background: '#FFF1E7',
-    href: { pathname: '/features/[slug]', params: { slug: 'recipes' } },
+    href: '/features/recipes',
   },
   {
     label: '番茄钟',

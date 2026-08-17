@@ -8,6 +8,7 @@
     "mobile:live": "pnpm --filter mobile live",
     "mobile:web": "pnpm --filter mobile web",
     "mobile:lint": "pnpm --filter mobile lint",
+    "mobile:preview": "pnpm --filter mobile preview:web",
     "mobile:typecheck": "pnpm --filter mobile typecheck",
     "check": "pnpm mobile:lint && pnpm mobile:typecheck"
   }

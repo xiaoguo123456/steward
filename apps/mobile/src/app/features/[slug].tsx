@@ -425,7 +425,7 @@ function ShoppingContent() {
       <View style={styles.actionBlock}>
         <PrimaryButton
           label="从食谱添加食材"
-          onPress={() => router.push({ pathname: '/features/[slug]', params: { slug: 'recipes' } })}
+          onPress={() => router.push('/features/recipes')}
         />
         <Text style={styles.actionHint}>也可以通过底部“新增”用语音或图片补充物品。</Text>
       </View>

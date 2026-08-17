@@ -43,6 +43,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "preview:web": "node scripts/serve-preview.mjs --host 0.0.0.0 --port 4174 --dir dist",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web"
   },
