@@ -94,7 +94,6 @@ function WeekHome() {
       />
 
       <NutritionStrip recipes={dayRecipes} />
-      <Text style={styles.estimateHint}>按当前份量估算，仅表示计划摄入</Text>
 
       <View style={styles.mealList}>
         {mealSlotOrder.map((meal) => {
@@ -334,8 +333,6 @@ const styles = StyleSheet.create({
     minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: recipeColors.line,
   },
   goalCopy: {
     flex: 1,
@@ -372,18 +369,9 @@ const styles = StyleSheet.create({
   dateBlock: {
     marginTop: 6,
   },
-  estimateHint: {
-    marginTop: 7,
-    color: recipeColors.faint,
-    fontFamily,
-    fontSize: 10,
-    lineHeight: 15,
-    textAlign: 'right',
-  },
   mealList: {
-    marginTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: recipeColors.line,
+    marginTop: 20,
+    gap: 22,
   },
   homeActions: {
     marginTop: 22,

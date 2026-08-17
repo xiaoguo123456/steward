@@ -194,31 +194,37 @@ export function NutritionStrip({
   const protein = recipes.reduce((total, recipe) => total + recipe.protein, 0);
   const fiber = recipes.reduce((total, recipe) => total + recipe.fiber, 0);
   const metrics = [
-    { label: '热量', value: `${calories}`, unit: '千卡' },
+    { label: '计划热量', value: `${calories}`, unit: '千卡' },
     { label: '蛋白质', value: `${protein}`, unit: '克' },
     { label: '膳食纤维', value: `${fiber}`, unit: '克' },
   ];
 
   return (
-    <View style={styles.nutritionStrip}>
+    <View
+      accessibilityLabel={`计划摄入，${metrics
+        .map((metric) => `${metric.label}${metric.value}${metric.unit}`)
+        .join('，')}`}
+      accessible
+      style={styles.nutritionStrip}
+    >
       {metrics.map((metric, index) => (
-        <View key={metric.label} style={styles.nutritionMetric}>
+        <View
+          key={metric.label}
+          style={[
+            styles.nutritionMetric,
+            index === 1 && styles.nutritionMetricCenter,
+            index === 2 && styles.nutritionMetricEnd,
+          ]}
+        >
           <Text style={styles.nutritionLabel}>{metric.label}</Text>
           <Text style={styles.nutritionValue}>
             {metric.value} <Text style={styles.nutritionUnit}>{metric.unit}</Text>
           </Text>
-          {index < metrics.length - 1 ? <View style={styles.nutritionDivider} /> : null}
         </View>
       ))}
     </View>
   );
 }
-
-const mealIcons: Record<MealSlot, ComponentProps<typeof AppIcon>['name']> = {
-  breakfast: 'sunny-outline',
-  lunch: 'restaurant-outline',
-  dinner: 'moon-outline',
-};
 
 export function MealRow({
   meal,
@@ -233,6 +239,23 @@ export function MealRow({
 }) {
   return (
     <View style={styles.mealRow}>
+      <View style={styles.mealHeader}>
+        <View style={styles.mealHeading}>
+          <Text accessibilityRole="header" style={styles.mealLabel}>
+            {mealSlotLabels[meal]}
+          </Text>
+          <Text style={styles.mealCalories}>{recipe.calories} 千卡</Text>
+        </View>
+        <Pressable
+          accessibilityLabel={`更换${mealSlotLabels[meal]}`}
+          accessibilityRole="button"
+          onPress={onSwap}
+          style={({ pressed }) => [styles.swapButton, pressed && styles.pressed]}
+        >
+          <AppIcon color={colors.primaryStrong} name="refresh" size={16} />
+          <Text style={styles.swapText}>换一道</Text>
+        </Pressable>
+      </View>
       <Pressable
         accessibilityLabel={`${mealSlotLabels[meal]}，${recipe.title}，查看菜谱`}
         accessibilityRole="button"
@@ -241,30 +264,13 @@ export function MealRow({
       >
         <RecipeImage recipe={recipe} style={styles.mealImage} />
         <View style={styles.mealCopy}>
-          <View style={styles.mealLabelRow}>
-            <AppIcon color={recipeColors.orange} name={mealIcons[meal]} size={15} />
-            <Text style={styles.mealLabel}>{mealSlotLabels[meal]}</Text>
-          </View>
           <Text numberOfLines={2} style={styles.mealTitle}>
             {recipe.title}
           </Text>
           <Text numberOfLines={1} style={styles.mealMeta}>
-            {recipe.timeMinutes} 分钟 · {recipe.calories} 千卡
-          </Text>
-          <Text numberOfLines={1} style={styles.mealReason}>
-            {recipe.recommendation}
+            {recipe.timeMinutes} 分钟 · {recipe.difficulty}
           </Text>
         </View>
-      </Pressable>
-      <Pressable
-        accessibilityLabel={`更换${mealSlotLabels[meal]}`}
-        accessibilityRole="button"
-        hitSlop={8}
-        onPress={onSwap}
-        style={({ pressed }) => [styles.swapButton, pressed && styles.pressed]}
-      >
-        <AppIcon color={colors.primaryStrong} name="refresh" size={15} />
-        <Text style={styles.swapText}>换一道</Text>
       </Pressable>
     </View>
   );
@@ -371,8 +377,6 @@ const styles = StyleSheet.create({
     height: 48,
     flexDirection: 'row',
     gap: 30,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: recipeColors.line,
   },
   tab: {
     minWidth: 58,
@@ -502,23 +506,29 @@ const styles = StyleSheet.create({
   },
   nutritionStrip: {
     minHeight: 74,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: recipeColors.line,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: recipeColors.line,
+    alignItems: 'center',
+    borderRadius: radius.md,
+    backgroundColor: recipeColors.surfaceMuted,
   },
   nutritionMetric: {
     flex: 1,
     minWidth: 0,
-    paddingHorizontal: 6,
+    alignItems: 'flex-start',
+  },
+  nutritionMetricCenter: {
+    alignItems: 'center',
+  },
+  nutritionMetricEnd: {
+    alignItems: 'flex-end',
   },
   nutritionLabel: {
     color: recipeColors.muted,
     fontFamily,
-    fontSize: 10,
-    lineHeight: 15,
+    fontSize: 11,
+    lineHeight: 16,
   },
   nutritionValue: {
     marginTop: 4,
@@ -535,51 +545,53 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: '500',
   },
-  nutritionDivider: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: StyleSheet.hairlineWidth,
-    height: '100%',
-    backgroundColor: recipeColors.line,
-  },
   mealRow: {
-    minHeight: 132,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: recipeColors.line,
+    gap: 8,
+  },
+  mealHeader: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  mealHeading: {
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  mealLabel: {
+    color: recipeColors.ink,
+    fontFamily,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  mealCalories: {
+    color: recipeColors.muted,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+    fontVariant: ['tabular-nums'],
   },
   mealMain: {
-    minHeight: 96,
+    minHeight: 76,
     flexDirection: 'row',
-    paddingRight: 2,
+    alignItems: 'center',
   },
   mealImage: {
-    width: 108,
-    height: 96,
+    width: 96,
+    height: 76,
     flexShrink: 0,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
   },
   mealCopy: {
     flex: 1,
     minWidth: 0,
-    paddingLeft: 13,
-    paddingRight: 2,
-  },
-  mealLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  mealLabel: {
-    color: recipeColors.muted,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '600',
+    paddingLeft: 12,
+    justifyContent: 'center',
   },
   mealTitle: {
-    marginTop: 4,
     color: recipeColors.ink,
     fontFamily,
     fontSize: 15,
@@ -587,26 +599,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   mealMeta: {
-    marginTop: 5,
+    marginTop: 6,
     color: recipeColors.muted,
     fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 18,
     fontVariant: ['tabular-nums'],
   },
-  mealReason: {
-    marginTop: 3,
-    color: recipeColors.muted,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
-  },
   swapButton: {
-    position: 'absolute',
-    right: 0,
-    bottom: 13,
-    minWidth: 72,
-    minHeight: 32,
+    minWidth: 76,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -615,8 +617,8 @@ const styles = StyleSheet.create({
   swapText: {
     color: colors.primaryStrong,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: '600',
   },
   recipeCard: {

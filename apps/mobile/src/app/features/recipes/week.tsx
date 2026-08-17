@@ -73,13 +73,9 @@ export default function WeekMenuScreen() {
           </InlineNotice>
         ) : savedMessage ? (
           <InlineNotice icon="checkmark-circle-outline">
-            新菜单已在本地预览中采用，正式版本会通过确认接口保存。
+            新菜单已在本次预览中采用。
           </InlineNotice>
-        ) : (
-          <InlineNotice icon="shield-checkmark-outline" tone="neutral">
-            当前菜单已采用。营养数值仍是计划估算，不代表实际摄入。
-          </InlineNotice>
-        )}
+        ) : null}
 
         <View style={styles.weekList}>
           {weekDays.map((day) => (

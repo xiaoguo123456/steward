@@ -146,7 +146,7 @@ export default function RecipeShoppingScreen() {
           </View>
           <Text accessibilityRole="header" style={styles.successTitle}>购物清单已准备好</Text>
           <Text style={styles.successCopy}>
-            已在本地预览中创建 {selectedCount} 项。正式接入后会保存为 TaskList / Task。
+            已准备好 {selectedCount} 项食材，可前往购物清单继续调整。
           </Text>
           <RecipePrimaryButton
             icon="cart-outline"
@@ -182,11 +182,7 @@ export default function RecipeShoppingScreen() {
           <InlineNotice icon="alert-circle-outline" tone="warning">
             当前菜单还没有确认采用。请先返回本周菜单确认，再创建购物清单。
           </InlineNotice>
-        ) : (
-          <InlineNotice icon="information-circle-outline" tone="neutral">
-            份量为菜谱演示估算，创建前可以继续核对和排除。
-          </InlineNotice>
-        )}
+        ) : null}
 
         <View style={styles.summaryRow}>
           <Text style={styles.summaryTitle}>{selectedCount} 项待购买</Text>

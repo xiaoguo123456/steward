@@ -143,12 +143,10 @@ export default function RecipeDetailScreen() {
               <Text style={styles.metaValue}>{recipe.timeMinutes}</Text>
               <Text style={styles.metaLabel}>分钟</Text>
             </View>
-            <View style={styles.metaDivider} />
             <View style={styles.metaItem}>
               <Text style={styles.metaValue}>{recipe.difficulty}</Text>
               <Text style={styles.metaLabel}>难度</Text>
             </View>
-            <View style={styles.metaDivider} />
             <View style={styles.metaItem}>
               <Text style={styles.metaValue}>{servings}</Text>
               <Text style={styles.metaLabel}>人份</Text>
@@ -174,7 +172,6 @@ export default function RecipeDetailScreen() {
                 </View>
               ))}
             </View>
-            <Text style={styles.estimateCopy}>营养值为演示估算，实际结果会随品牌、烹饪和份量变化。</Text>
           </View>
 
           <View style={styles.section}>
@@ -255,7 +252,6 @@ export default function RecipeDetailScreen() {
             <Text style={styles.sourceCopy}>
               {recipe.sourceLabel} · {recipe.imageCredit}
             </Text>
-            <Text style={styles.sourceCopy}>当前仅用于前端演示，正式内容需补充授权与版本信息。</Text>
           </View>
         </View>
       </ScrollView>
@@ -409,14 +405,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   metaRow: {
-    minHeight: 78,
-    marginVertical: 20,
+    minHeight: 68,
+    marginVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: recipeColors.line,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: recipeColors.line,
   },
   metaItem: {
     flex: 1,
@@ -437,22 +429,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 15,
   },
-  metaDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 32,
-    backgroundColor: recipeColors.line,
-  },
   section: {
     marginTop: 28,
   },
   nutritionRow: {
-    minHeight: 72,
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: recipeColors.line,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: recipeColors.line,
   },
   nutritionItem: {
     flex: 1,
@@ -473,13 +456,6 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: 9,
     lineHeight: 14,
-  },
-  estimateCopy: {
-    marginTop: 8,
-    color: recipeColors.faint,
-    fontFamily,
-    fontSize: 10,
-    lineHeight: 16,
   },
   ingredientsHeader: {
     minHeight: 52,

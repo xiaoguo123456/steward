@@ -97,13 +97,13 @@ function Field({
   );
 }
 
-function SectionIntro({ title, copy }: { title: string; copy: string }) {
+function SectionIntro({ title, copy }: { title: string; copy?: string }) {
   return (
     <View style={styles.sectionIntro}>
       <Text accessibilityRole="header" style={styles.stepTitle}>
         {title}
       </Text>
-      <Text style={styles.stepCopy}>{copy}</Text>
+      {copy ? <Text style={styles.stepCopy}>{copy}</Text> : null}
     </View>
   );
 }
@@ -117,7 +117,7 @@ function GoalStep({
 }) {
   return (
     <>
-      <SectionIntro copy="先确定菜单优化方向，之后可以随时更改。" title="你希望饮食更接近哪种状态？" />
+      <SectionIntro title="你希望饮食更接近哪种状态？" />
       <View style={styles.choiceList}>
         {goalOptions.map((option) => {
           const selected = draft.goal === option.id;
@@ -150,9 +150,6 @@ function GoalStep({
           );
         })}
       </View>
-      <InlineNotice icon="information-circle-outline" tone="neutral">
-        “健康控糖”仅用于一般健康饮食推荐，不提供疾病诊断或治疗方案。
-      </InlineNotice>
     </>
   );
 }
@@ -166,7 +163,7 @@ function BodyStep({
 }) {
   return (
     <>
-      <SectionIntro copy="这些数据只用于估算适合你的计划范围，可以稍后修改。" title="了解你的身体与活动情况" />
+      <SectionIntro copy="用于估算计划范围，保存后可修改。" title="了解你的身体与活动情况" />
 
       <Text style={styles.groupLabel}>性别</Text>
       <View style={styles.segment}>
@@ -349,7 +346,7 @@ function CookingStep({
 
   return (
     <>
-      <SectionIntro copy="让推荐更贴近日常条件，而不是只在图片里好看。" title="平时怎样做饭？" />
+      <SectionIntro title="平时怎样做饭？" />
 
       <Text style={styles.groupLabel}>通常为几个人准备</Text>
       <View style={styles.stepper}>
