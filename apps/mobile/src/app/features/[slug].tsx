@@ -408,10 +408,25 @@ function MoreContent() {
   );
 }
 
-function FeatureContent({ slug }: { slug: FeatureSlug }) {
+function FeatureContent({
+  slug,
+  importantDateCreateVisible,
+  onImportantDateCreateVisibleChange,
+}: {
+  slug: FeatureSlug;
+  importantDateCreateVisible: boolean;
+  onImportantDateCreateVisibleChange: (visible: boolean) => void;
+}) {
   if (slug === 'recipes') return <RecipesContent />;
   if (slug === 'ledger') return <LedgerContent />;
-  if (slug === 'important-dates') return <ImportantDatesContent />;
+  if (slug === 'important-dates') {
+    return (
+      <ImportantDatesContent
+        createVisible={importantDateCreateVisible}
+        onCreateVisibleChange={onImportantDateCreateVisibleChange}
+      />
+    );
+  }
   if (slug === 'shopping') return <ShoppingContent />;
   if (slug === 'review') return <ReviewContent />;
   return <MoreContent />;
@@ -422,10 +437,28 @@ export default function ShortcutFeatureScreen() {
   const rawSlug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
   const slug: FeatureSlug = rawSlug && isFeatureSlug(rawSlug) ? rawSlug : 'more';
   const meta = featureMeta[slug];
+  const [importantDateCreateVisible, setImportantDateCreateVisible] = useState(false);
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader title={meta.title} />
+      <NavHeader
+        right={
+          slug === 'important-dates' ? (
+            <Pressable
+              accessibilityLabel="新增重要日"
+              accessibilityRole="button"
+              onPress={() => setImportantDateCreateVisible(true)}
+              style={({ pressed }) => [
+                styles.headerAction,
+                pressed && styles.headerActionPressed,
+              ]}
+            >
+              <AppIcon color={colors.primaryStrong} name="add" size={24} />
+            </Pressable>
+          ) : null
+        }
+        title={meta.title}
+      />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -439,7 +472,11 @@ export default function ShortcutFeatureScreen() {
             <Text style={[styles.introText, { color: meta.color }]}>{meta.summary}</Text>
           </View>
         ) : null}
-        <FeatureContent slug={slug} />
+        <FeatureContent
+          importantDateCreateVisible={importantDateCreateVisible}
+          onImportantDateCreateVisibleChange={setImportantDateCreateVisible}
+          slug={slug}
+        />
       </ScrollView>
       <AiFab />
     </AppScreen>
@@ -450,6 +487,16 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingBottom: 96,
+  },
+  headerAction: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+  },
+  headerActionPressed: {
+    backgroundColor: colors.primarySoft,
   },
   intro: {
     minHeight: 76,

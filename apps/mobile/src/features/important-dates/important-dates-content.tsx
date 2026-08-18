@@ -195,20 +195,6 @@ function KindIcon({ kind, size = 20 }: { kind: ImportantDateKind; size?: number 
   );
 }
 
-function AddButton({ onPress }: { onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityLabel="新增重要日"
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-    >
-      <AppIcon color={colors.primaryStrong} name="add" size={18} />
-      <Text style={styles.addButtonText}>新增</Text>
-    </Pressable>
-  );
-}
-
 function ImportantDateRow({
   item,
   onPress,
@@ -614,10 +600,15 @@ function DetailSheet({
   );
 }
 
-export function ImportantDatesContent() {
+export function ImportantDatesContent({
+  createVisible,
+  onCreateVisibleChange,
+}: {
+  createVisible: boolean;
+  onCreateVisibleChange: (visible: boolean) => void;
+}) {
   const router = useRouter();
   const [items, setItems] = useState(initialImportantDates);
-  const [createVisible, setCreateVisible] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const sortedItems = useMemo(
@@ -634,14 +625,13 @@ export function ImportantDatesContent() {
 
   const saveItem = (item: ImportantDateItem) => {
     setItems((current) => [...current, item]);
-    setCreateVisible(false);
+    onCreateVisibleChange(false);
   };
 
   return (
     <>
       <View style={styles.sectionHeader}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>下一个重要日</Text>
-        <AddButton onPress={() => setCreateVisible(true)} />
+        <Text accessibilityRole="header" style={styles.sectionTitle}>即将到来</Text>
       </View>
 
       {nextItem ? (
@@ -695,8 +685,8 @@ export function ImportantDatesContent() {
       ) : null}
 
       <View style={styles.listHeader}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>之后</Text>
-        <Text style={styles.listCount}>{laterItems.length} 个</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>更多重要日</Text>
+        <Text style={styles.listCount}>{laterItems.length} 项</Text>
       </View>
       <View style={styles.dateList}>
         {laterItems.map((item) => (
@@ -709,7 +699,7 @@ export function ImportantDatesContent() {
       </View>
 
       <CreateSheet
-        onClose={() => setCreateVisible(false)}
+        onClose={() => onCreateVisibleChange(false)}
         onSave={saveItem}
         visible={createVisible}
       />
@@ -727,34 +717,15 @@ export function ImportantDatesContent() {
 
 const styles = StyleSheet.create({
   sectionHeader: {
-    minHeight: 58,
-    marginTop: 6,
+    minHeight: 48,
+    marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
   sectionTitle: {
     color: colors.text,
     fontFamily,
     ...typography.section,
-  },
-  addButton: {
-    minWidth: 78,
-    minHeight: 44,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-  },
-  addButtonText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '600',
   },
   pressed: {
     opacity: 0.7,
