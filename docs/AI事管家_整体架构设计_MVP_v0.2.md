@@ -221,7 +221,7 @@ flowchart TD
 - `calendar` 是从计划页右上角进入的独立二级路由，不是底部 Tab、模态弹窗或新的 Object Domain。它按日期范围聚合已确认 Task、Event、重要日期与 Project 日期节点，复用计划详情层的 Project scope、时区和实体详情路由；返回时保留计划页滚动与选择状态。
 - Project 管理页不调用直接创建接口；“告诉 AI 一个新目标”和 Project 详情的“新增内容”都打开 `capture/new`，分别携带 `origin=project_manager` 或可见的 `suggested_project_id` 上下文。上下文只影响候选建议，不授权客户端跳过确认或强制 AI 创建某种类型。
 - 账户与设置只由首页左上角头像进入独立 Stack，不占 Tab；Search、Notification 的深链可以直接打开任一正式实体，返回时回到原来源。
-- App Shell 在首页、计划、笔记、打卡和设置 Stack 上方挂载同一个 `AIAssistantFab`，点击后展示 `AIConversationSheet`。两者读取 Capture Questions Query，不复制问题正文到全局 Store；中央 `capture/new` 不读取待答数量，也不显示角标。Capture 编辑／确认页改用自身内联状态并隐藏悬浮入口。无 open question、processing 或 ready question 时不渲染入口。
+- App Shell 在首页、计划、笔记、打卡和设置 Stack 上方挂载同一个 `AIAssistantFab`，点击后展示 `AIConversationSheet`。两者读取 Capture Questions Query，不复制问题正文到全局 Store；中央 `capture/new` 不读取待答数量，也不显示角标。`AIAssistantFab` 的停靠侧与归一化纵向位置属于纯展示会话状态，由轻量 Store 跨页面共享，不进入 API、Capture Query 或业务状态机；Web 静态预览可以将同样的非业务值保存到本地偏好，原生端不因此新增存储依赖。拖动范围由页面布局计算并始终限制在安全区。Capture 编辑／确认页改用自身内联状态并隐藏悬浮入口。无 open question、processing 或 ready question 时不渲染入口。
 - 首页的 4×2 生活场景入口由 `today` 页面编排，场景页面归属 `features/[slug]` 二级路由，不增加第五个一级模块。运动使用静态优先的 `features/exercise/*` 嵌套路由承载首页、准备、进行中、总结和历史页面，其余轻量场景仍可使用 `features/[slug]`；静态路由只细化页面流程，不改变一级导航或领域所有权。运动、番茄钟与记账组合 Tracker / Record，食谱与购物组合 Note / TaskList / Task，重要日投影 Event 与日期字段，复盘读取 Review，“更多”只聚合二级导航。原型阶段可以使用本地状态验收交互；接入后端后，所有正式创建／更新必须通过生成的 API Client、既有领域服务和确认流程，场景页不得手写重复 DTO 或让 AI 直接写库。
 - `features/workouts` 当前只保存非权威的前端模式定义、模拟路线、训练动作与展示状态。户外计时、暂停、组数和休息计时仅用于原型交互，不构成跨端状态机；当前不安装定位、地图、计步器或后台任务原生依赖。正式运动会话、权限、离线恢复和 Record 投影需要单独完成跨端契约设计后再接入，本地 Mock 类型不得被直接提升为网络 Schema。
 - 食谱使用静态优先的 `features/recipes/*` 嵌套路由承载本周菜单、发现、问卷、菜谱详情、烹饪和购物确认，`features/recipes` 模块只保存非权威的前端菜谱模型、Fixture 和场景状态。本周菜单中的营养数值属于计划估算，只有用户确认进食记录后才能通过正式 Tracker / Record 契约形成实际摄入；两种口径不得复用同一状态字段。正式接入外部菜谱前必须新增只读内容契约并记录来源、作者、图片权利、授权范围和内容版本，不能把前端 `Recipe` Mock、个人 Note 或 Task 直接提升为公共菜谱 DTO。个人收藏或补充说明继续复用 Note，确认后的采购需求继续复用 TaskList / Task；AI 只返回推荐候选，菜单采用、加入某餐和生成购物清单均由确定性服务校验并经用户确认。
@@ -540,7 +540,7 @@ src/features/capture/
 - 写入成功后按契约返回的 `affected_resources` 精确失效缓存。
 - 乐观更新只用于可逆、确定的简单操作，例如 Task 完成；Capture 确认、删除 Project 等事务不乐观写入。
 - App 重新进入前台时刷新 Today、当前清单／笔记／数据查询和正在处理的 Capture；未确认 Capture 只刷新“最近输入”计数，不并入正式内容 Query Key。
-- 全局 `AIAssistantFab + AIConversationSheet` 使用服务端 `open questions` Query；中央 Capture 按钮不订阅该 Query。轻量 Store 只保存当前展开的 `question_id` 和面板开合，不保存问题正文、回答或 Candidate。回答成功后按响应中的 `affected_resources` 失效 open questions、对应 Capture 与 Operation，正式内容 Query 仍保持隔离。
+- 全局 `AIAssistantFab + AIConversationSheet` 使用服务端 `open questions` Query；中央 Capture 按钮不订阅该 Query。轻量 Store 只保存当前展开的 `question_id`、面板开合，以及不含业务数据的悬浮入口停靠侧与归一化纵向位置，不保存问题正文、回答或 Candidate。回答成功后按响应中的 `affected_resources` 失效 open questions、对应 Capture 与 Operation，正式内容 Query 仍保持隔离。
 
 ## 6.5 Capture 本地模型
 
@@ -2825,6 +2825,7 @@ ADR 必须记录背景、选择、备选方案、后果和替换条件，不重�
 - [ ] Tab 路由只包含 `today/lists/notes/data`，中央 Capture 无选中态，账户与设置从头像进入。
 - [ ] 计划详情列表与独立 Calendar 二级页复用 Project scope 与生成 Query；Calendar 渲染不在 App 自行推断日期归属。
 - [ ] 全局 `AIAssistantFab + AIConversationSheet` 只读取 Open Question Query，中央 Capture 按钮无 AI 角标；Capture 页面内联展示，问题正文不复制到全局 Store。
+- [ ] `AIAssistantFab` 拖动限制在安全区，松手贴边吸附，位置只作为展示会话状态跨页面共享。
 - [ ] 五种 Capture 本地状态互斥规则一致。
 - [ ] Feature 只使用 `packages/ui` 导出的品牌组件、Token 和语义图标，不直接导入 Tamagui／Expo UI／任何底层图标库或写裸色值。
 - [ ] 草稿、上传进度和 revision 可恢复。
