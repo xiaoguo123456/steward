@@ -30,26 +30,6 @@ export default function MeScreen() {
           <AppIcon color={colors.borderStrong} name="chevron-forward" size={18} />
         </Pressable>
 
-        <View style={styles.sectionHeading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>本周回顾</Text>
-          <Text style={styles.sectionMeta}>8月12日—8月18日</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.reviewRow, pressed && styles.pressed]}
-        >
-          <View style={styles.reviewMetric}>
-            <Text style={styles.reviewValue}>24</Text>
-            <Text style={styles.reviewLabel}>完成事项</Text>
-          </View>
-          <View style={styles.reviewDivider} />
-          <View style={styles.reviewCopy}>
-            <Text style={styles.reviewTitle}>工作日上午完成度更稳定</Text>
-            <Text style={styles.reviewMeta}>还有 3 项任务待安排</Text>
-          </View>
-          <Text style={styles.reviewAction}>查看</Text>
-        </Pressable>
-
         <Text accessibilityRole="header" style={styles.groupTitle}>偏好与提醒</Text>
         <FlatListGroup>
           <FlatListRow icon="options-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'habits' } })} title="使用习惯" />
@@ -116,75 +96,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily,
     ...typography.meta,
-  },
-  sectionHeading: {
-    minHeight: 48,
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.section,
-  },
-  sectionMeta: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  reviewRow: {
-    minHeight: 88,
-    paddingHorizontal: 14,
-    borderRadius: radius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSubtle,
-  },
-  reviewMetric: {
-    width: 54,
-  },
-  reviewValue: {
-    color: colors.text,
-    fontFamily,
-    ...typography.metric,
-    fontVariant: ['tabular-nums'],
-  },
-  reviewLabel: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.caption,
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  reviewDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 46,
-    marginHorizontal: 14,
-    backgroundColor: colors.border,
-  },
-  reviewCopy: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  reviewTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
-  reviewMeta: {
-    marginTop: 3,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  reviewAction: {
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
   },
   groupTitle: {
     marginTop: 24,

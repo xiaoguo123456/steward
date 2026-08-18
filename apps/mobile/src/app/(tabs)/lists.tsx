@@ -8,6 +8,7 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { PageHeader } from '@/components/ui/page-header';
+import { SectionTitle } from '@/components/ui/section-title';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import {
   completedTasks,
@@ -225,12 +226,11 @@ export default function ListsScreen() {
           <AppIcon color={colors.primaryStrong} name="chevron-forward" size={18} />
         </Pressable>
 
-        <View style={styles.sectionHeading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>清单</Text>
-          <View style={styles.sectionCountBadge}>
-            <Text style={styles.sectionCount}>{listDefinitions.length} 项</Text>
-          </View>
-        </View>
+        <SectionTitle
+          count={`${listDefinitions.length} 项`}
+          style={styles.listSectionTitle}
+          title="清单"
+        />
         <View style={styles.listRows}>
           {listDefinitions.map((item) => {
             const count = activePlanTasks.filter(
@@ -361,35 +361,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
-  sectionHeading: {
-    minHeight: 54,
+  listSectionTitle: {
     marginTop: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: '600',
-  },
-  sectionCountBadge: {
-    minWidth: 40,
-    height: 24,
-    paddingHorizontal: 8,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
-  },
-  sectionCount: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '700',
   },
   listRows: {
     borderTopWidth: StyleSheet.hairlineWidth,

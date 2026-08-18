@@ -6,16 +6,10 @@ import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
+import { SectionTitle } from '@/components/ui/section-title';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { dailyBrief, todayTasks } from '@/mocks/data';
 import { colors, fontFamily, radius } from '@/theme/tokens';
-
-type HomeSectionHeaderProps = {
-  title: string;
-  aside?: string;
-  count?: number;
-  onAsidePress?: () => void;
-};
 
 type HomeShortcut = {
   label: string;
@@ -84,35 +78,6 @@ const homeShortcuts: HomeShortcut[] = [
   },
 ];
 
-function HomeSectionHeader({ title, aside, count, onAsidePress }: HomeSectionHeaderProps) {
-  return (
-    <View style={[styles.sectionHeader, onAsidePress && styles.sectionHeaderWithAction]}>
-      <View style={styles.sectionHeading}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>
-          {title}
-        </Text>
-        {typeof count === 'number' ? (
-          <View style={styles.sectionCountBadge}>
-            <Text style={styles.sectionCount}>{count} 项</Text>
-          </View>
-        ) : null}
-      </View>
-      {onAsidePress && aside ? (
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={onAsidePress}
-          style={({ pressed }) => pressed && styles.textButtonPressed}
-        >
-          <Text style={styles.sectionAction}>{aside}</Text>
-        </Pressable>
-      ) : aside ? (
-        <Text style={styles.sectionMeta}>{aside}</Text>
-      ) : null}
-    </View>
-  );
-}
-
 export default function HomeScreen() {
   const router = useRouter();
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
@@ -174,7 +139,11 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <HomeSectionHeader count={openTasks.length} title="今天要做" />
+        <SectionTitle
+          count={`${openTasks.length} 项`}
+          style={styles.homeSectionTitle}
+          title="今天要做"
+        />
         {visibleTasks.map((task) => (
           <TaskRow
             key={task.id}
@@ -202,12 +171,10 @@ export default function HomeScreen() {
           </Pressable>
         ) : null}
 
-        <HomeSectionHeader
-          aside="查看日历"
-          onAsidePress={() => router.push('/calendar')}
-          title="今日提醒"
-        />
+        <SectionTitle style={styles.homeSectionTitle} title="今日提醒" />
         <Pressable
+          accessibilityHint="进入日历查看今天的完整安排"
+          accessibilityLabel="打开日历查看今日提醒"
           accessibilityRole="button"
           onPress={() => router.push('/calendar')}
           style={({ pressed }) => [styles.brief, pressed && styles.briefPressed]}
@@ -219,6 +186,9 @@ export default function HomeScreen() {
             <Text style={styles.briefTitle}>{dailyBrief.title}</Text>
             <Text style={styles.briefSummary}>{dailyBrief.summary}</Text>
             <Text style={styles.briefSource}>{dailyBrief.source}</Text>
+          </View>
+          <View style={styles.briefChevron}>
+            <AppIcon color={colors.textTertiary} name="chevron-forward" size={18} />
           </View>
         </Pressable>
       </ScrollView>
@@ -275,59 +245,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
-  sectionHeader: {
-    minHeight: 50,
+  homeSectionTitle: {
     marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionHeaderWithAction: {
-    paddingRight: 60,
-  },
-  sectionHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: '600',
-  },
-  sectionCountBadge: {
-    minWidth: 40,
-    height: 24,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-  },
-  sectionCount: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  sectionAction: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  sectionMeta: {
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  textButtonPressed: {
-    opacity: 0.58,
   },
   taskToggle: {
     minHeight: 44,
@@ -352,7 +271,7 @@ const styles = StyleSheet.create({
   brief: {
     minHeight: 116,
     paddingTop: 16,
-    paddingRight: 70,
+    paddingRight: 14,
     paddingBottom: 16,
     paddingLeft: 16,
     flexDirection: 'row',
@@ -374,6 +293,12 @@ const styles = StyleSheet.create({
   },
   briefCopy: {
     flex: 1,
+  },
+  briefChevron: {
+    width: 24,
+    alignSelf: 'stretch',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   briefTitle: {
     color: colors.text,

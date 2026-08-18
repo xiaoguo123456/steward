@@ -5,6 +5,7 @@ import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
+import { SectionTitle } from '@/components/ui/section-title';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type Tracker = {
@@ -88,12 +89,11 @@ export default function DataScreen() {
           title="打卡"
         />
 
-        <View style={styles.sectionHeading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>今日待打卡</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{pendingTrackers.length} 项</Text>
-          </View>
-        </View>
+        <SectionTitle
+          count={`${pendingTrackers.length} 项`}
+          style={styles.sectionTitleSpacing}
+          title="今日待打卡"
+        />
 
         {pendingTrackers.length > 0 ? (
           <View style={styles.pendingList}>
@@ -129,10 +129,11 @@ export default function DataScreen() {
           </View>
         )}
 
-        <View style={styles.sectionHeading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>我的打卡</Text>
-          <Text style={styles.sectionMeta}>{trackers.length} 个项目</Text>
-        </View>
+        <SectionTitle
+          count={`${trackers.length} 项`}
+          style={styles.sectionTitleSpacing}
+          title="我的打卡"
+        />
         <View style={styles.trackerList}>
           {trackers.map((tracker) => (
             <Pressable
@@ -182,41 +183,8 @@ const styles = StyleSheet.create({
   pressed: {
     backgroundColor: colors.primarySoft,
   },
-  sectionHeading: {
-    minHeight: 52,
+  sectionTitleSpacing: {
     marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: '600',
-  },
-  countBadge: {
-    minWidth: 40,
-    height: 24,
-    paddingHorizontal: 8,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
-  },
-  countText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '700',
-  },
-  sectionMeta: {
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
   },
   pendingList: {
     paddingHorizontal: 14,
