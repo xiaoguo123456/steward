@@ -12,6 +12,7 @@ import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
+import { ImportantDatesContent } from '@/features/important-dates/important-dates-content';
 import { LedgerContent } from '@/features/ledger/ledger-content';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -86,12 +87,6 @@ const recipes = [
   { id: 'pasta', title: '番茄牛肉意面', meta: '30 分钟 · 约 620 千卡' },
   { id: 'salad', title: '鸡胸肉藜麦沙拉', meta: '25 分钟 · 高蛋白' },
   { id: 'rice', title: '菌菇鸡肉焖饭', meta: '40 分钟 · 一锅完成' },
-];
-
-const importantDates = [
-  { id: 'mother', title: '妈妈生日', date: '6月24日', countdown: '还有 6 天' },
-  { id: 'anniversary', title: '纪念日', date: '7月12日', countdown: '还有 24 天' },
-  { id: 'passport', title: '护照到期', date: '2027年3月8日', countdown: '建议提前办理' },
 ];
 
 const initialShoppingItems: CheckItem[] = [
@@ -249,49 +244,6 @@ function RecipesContent() {
       ) : (
         <Text style={styles.emptyHint}>选择一道菜后，可以把缺少的食材加入购物清单。</Text>
       )}
-    </>
-  );
-}
-
-function ImportantDatesContent() {
-  const router = useRouter();
-  const [selectedId, setSelectedId] = useState(importantDates[0].id);
-  const selectedDate = importantDates.find((item) => item.id === selectedId) ?? importantDates[0];
-
-  return (
-    <>
-      <SectionTitle aside="最近 3 个" title="即将到来" />
-      <View style={styles.rows}>
-        {importantDates.map((item) => {
-          const selected = selectedId === item.id;
-          return (
-            <Pressable
-              accessibilityLabel={`${item.title}，${item.date}，${item.countdown}`}
-              accessibilityRole="button"
-              key={item.id}
-              onPress={() => setSelectedId(item.id)}
-              style={({ pressed }) => [
-                styles.importantRow,
-                selected && styles.importantRowSelected,
-                pressed && styles.rowPressed,
-              ]}
-            >
-              <View style={styles.rowCopy}>
-                <Text style={styles.rowTitle}>{item.title}</Text>
-                <Text style={styles.rowMeta}>{item.date}</Text>
-              </View>
-              <Text style={styles.countdown}>{item.countdown}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <View style={styles.selectionPanel}>
-        <Text style={styles.selectionTitle}>{selectedDate.title}</Text>
-        <Text style={styles.selectionCopy}>
-          {selectedDate.date} · 已开启提前 7 天和当天提醒
-        </Text>
-        <PrimaryButton label="在日历中查看" onPress={() => router.push('/calendar')} />
-      </View>
     </>
   );
 }
@@ -479,7 +431,7 @@ export default function ShortcutFeatureScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {slug !== 'review' && slug !== 'ledger' ? (
+        {slug !== 'review' && slug !== 'ledger' && slug !== 'important-dates' ? (
           <View style={[styles.intro, { backgroundColor: meta.soft }]}>
             <View style={[styles.introIcon, { backgroundColor: colors.background }]}>
               <AppIcon color={meta.color} name={meta.icon} size={23} />
@@ -679,25 +631,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'center',
-  },
-  importantRow: {
-    minHeight: 66,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  importantRowSelected: {
-    backgroundColor: '#FDF5F8',
-  },
-  countdown: {
-    marginLeft: 12,
-    color: '#A53E70',
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '600',
   },
   reviewMetrics: {
     height: 78,
