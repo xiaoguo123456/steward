@@ -16,6 +16,10 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: false,
+              // Expo Router 57 的原生栈在隐藏 Header 时仍会监听高度变化；
+              // Android 首次切页可能在组件挂载前收到回调。显式空 Header
+              // 会关闭这条无用监听，页面仍统一使用自己的 NavHeader。
+              header: () => null,
               contentStyle: { backgroundColor: colors.background },
               animation: 'slide_from_right',
             }}
@@ -29,6 +33,8 @@ export default function RootLayout() {
             <Stack.Screen name="calendar" />
             <Stack.Screen name="me" />
             <Stack.Screen name="features/[slug]" />
+            <Stack.Screen name="trips/index" />
+            <Stack.Screen name="trips/[id]" />
             <Stack.Screen name="focus" />
             <Stack.Screen name="settings/index" />
             <Stack.Screen name="settings/detail" />

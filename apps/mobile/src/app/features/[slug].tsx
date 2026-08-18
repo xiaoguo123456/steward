@@ -218,36 +218,12 @@ const moreTools: {
   href: Href;
 }[] = [
   {
-    title: '喝水打卡',
-    meta: '设置每日目标并查看连续记录',
-    icon: 'water-outline',
-    color: '#3978B8',
-    soft: '#EAF4FF',
-    href: '/data',
-  },
-  {
-    title: '睡眠记录',
-    meta: '记录时长和入睡感受',
-    icon: 'moon-outline',
-    color: '#6D5B95',
-    soft: '#F0EDF7',
-    href: '/data',
-  },
-  {
-    title: '阅读打卡',
-    meta: '记录阅读时长和当前书目',
-    icon: 'book-outline',
-    color: '#D56C28',
-    soft: '#FFF1E7',
-    href: '/data',
-  },
-  {
-    title: '家庭事务',
-    meta: '整理家务、采购和家庭提醒',
-    icon: 'home-outline',
-    color: colors.primaryStrong,
-    soft: colors.primarySoft,
-    href: '/lists',
+    title: '行程',
+    meta: '集中查看按天安排、预订信息和行前清单',
+    icon: 'airplane-outline',
+    color: '#187A75',
+    soft: '#E9F7F5',
+    href: '/trips',
   },
 ];
 
@@ -270,7 +246,6 @@ function MoreContent() {
           />
         ))}
       </View>
-      <Text style={styles.emptyHint}>后续可在这里调整首页入口，但系统不会自动打乱你熟悉的位置。</Text>
     </>
   );
 }
@@ -349,7 +324,8 @@ export default function ShortcutFeatureScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {slug !== 'review' &&
+        {slug !== 'more' &&
+        slug !== 'review' &&
         slug !== 'ledger' &&
         slug !== 'important-dates' &&
         slug !== 'shopping' ? (
