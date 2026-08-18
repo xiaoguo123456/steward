@@ -1,10 +1,13 @@
 import { Platform } from 'react-native';
 
 export const colors = {
-  primary: '#10B981',
+  // 主色会直接承载白色文字与图标，当前值通过 WCAG AA 小字号对比度。
+  primary: '#07865F',
   primaryStrong: '#047857',
   primarySoft: '#ECFBF3',
   primaryTrack: '#DDF6E9',
+  aiStart: '#47D68A',
+  aiEnd: '#07865F',
   background: '#FFFFFF',
   surfaceSubtle: '#F7F8F8',
   surface: '#F3F4F6',
@@ -14,12 +17,68 @@ export const colors = {
   textTertiary: '#9CA3AF',
   border: '#E5E7EB',
   borderStrong: '#D7DDD9',
-  danger: '#FF3158',
+  danger: '#D9485F',
+  dangerSoft: '#FFF0F2',
+  success: '#10B981',
   warning: '#F59E0B',
   blue: '#3B82F6',
   purple: '#8B5CF6',
   pink: '#EC4899',
   black: '#111827',
+} as const;
+
+export const typography = {
+  page: {
+    fontSize: 28,
+    lineHeight: 40,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  detail: {
+    fontSize: 22,
+    lineHeight: 32,
+    fontWeight: '600',
+  },
+  section: {
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: '600',
+  },
+  body: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '400',
+  },
+  bodyStrong: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  label: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  meta: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '400',
+  },
+  caption: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '500',
+  },
+  metric: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '600',
+  },
+  input: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '400',
+  },
 } as const;
 
 export const radius = {

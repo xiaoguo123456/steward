@@ -1,257 +1,267 @@
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
-import { colors, fontFamily, radius } from '@/theme/tokens';
+import { ModalSheet } from '@/components/ui/modal-sheet';
+import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type Message = {
   id: string;
   role: 'assistant' | 'user';
   text: string;
+  result?: boolean;
 };
 
 const initialMessages: Message[] = [
   {
-    id: 'hello',
+    id: 'question',
     role: 'assistant',
-    text: '你好呀，我是你的 AI 助手。可以帮你管理任务、安排日程、总结一天。',
-  },
-  { id: 'question', role: 'user', text: '帮我总结一下今天的任务吧' },
-  {
-    id: 'summary',
-    role: 'assistant',
-    text: '你今天共 5 项任务，已完成 3 项，继续保持！',
+    text: '这次输入里出现了两个时间。产品需求评审应该安排在哪一个？',
   },
 ];
+
+const quickReplies = ['周四 15:00', '周五上午', '稍后补充'];
 
 export default function AiConversationScreen() {
   const router = useRouter();
   const messageListRef = useRef<ScrollView>(null);
+  const messageCounterRef = useRef(0);
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
+  const [answered, setAnswered] = useState(false);
 
-  const close = () => {
-    Keyboard.dismiss();
-    router.back();
+  const scrollToLatest = () => {
+    requestAnimationFrame(() => messageListRef.current?.scrollToEnd({ animated: true }));
   };
 
-  const scrollToLatest = (animated = true) => {
-    requestAnimationFrame(() => {
-      messageListRef.current?.scrollToEnd({ animated });
-    });
-  };
-
-  const send = () => {
-    const content = input.trim();
-    if (!content) return;
-    const stamp = Date.now().toString();
+  const sendContent = (content: string) => {
+    const normalized = content.trim();
+    if (!normalized) return;
+    messageCounterRef.current += 1;
+    const messageId = messageCounterRef.current.toString();
+    const resultText = normalized === '稍后补充'
+      ? '好的，这个问题会保留。你可以关闭面板，之后再继续。'
+      : `已采用“${normalized}”。我重新整理了这次输入，请查看并确认。`;
     setMessages((current) => [
       ...current,
-      { id: `${stamp}-user`, role: 'user', text: content },
+      { id: `${messageId}-user`, role: 'user', text: normalized },
       {
-        id: `${stamp}-assistant`,
+        id: `${messageId}-assistant`,
         role: 'assistant',
-        text: '收到，我先记下了。后续接入服务端后会继续帮你整理和执行。',
+        text: resultText,
+        result: normalized !== '稍后补充',
       },
     ]);
+    setAnswered(true);
     setInput('');
+    scrollToLatest();
   };
 
   return (
-    <SafeAreaView edges={['top', 'right', 'bottom', 'left']} style={styles.overlay}>
-      <Pressable accessibilityLabel="关闭 AI 助手" onPress={close} style={styles.backdrop} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardArea}
+    <ModalSheet maxHeight="84%" onClose={() => router.back()}>
+      <View style={styles.header}>
+        <View style={styles.headerIcon}>
+          <AppIcon color={colors.primaryStrong} name="sparkles" size={19} />
+        </View>
+        <View style={styles.headerCopy}>
+          <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
+          <Text style={styles.headerStatus}>{answered ? '这次输入已更新' : '1 个问题待确认'}</Text>
+        </View>
+        <Pressable
+          accessibilityLabel="关闭 AI 管家"
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.closeButton, pressed && styles.iconPressed]}
+        >
+          <AppIcon name="close" size={23} />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        ref={messageListRef}
+        accessibilityLabel="与 AI 管家的对话"
+        accessibilityLiveRegion="polite"
+        contentContainerStyle={styles.messages}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={scrollToLatest}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.sheet}>
-          <View style={styles.sheetHeader}>
-            <View style={styles.headerCopy}>
-              <Text style={styles.headerTitle}>AI 管家</Text>
-              <Text style={styles.headerStatus}>随时可以继续</Text>
-            </View>
-            <Pressable
-              accessibilityLabel="关闭 AI 管家"
-              accessibilityRole="button"
-              onPress={close}
-              style={({ pressed }) => [styles.headerButton, pressed && styles.iconButtonPressed]}
-            >
-              <AppIcon name="close" size={24} />
-            </Pressable>
+        <View style={styles.sourceCard}>
+          <View style={styles.sourceTopLine}>
+            <AppIcon color={colors.textSecondary} name="document-text-outline" size={17} />
+            <Text style={styles.sourceLabel}>原始输入摘要</Text>
           </View>
-          <ScrollView
-            ref={messageListRef}
-            accessibilityLabel="与 AI 管家的对话"
-            accessibilityLiveRegion="polite"
-            contentContainerStyle={styles.messages}
-            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-            keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => scrollToLatest(false)}
-            showsVerticalScrollIndicator={false}
-            style={styles.messageList}
+          <Text numberOfLines={2} style={styles.sourceText}>
+            产品评审调整到本周，图片里有周四和周五两个时间。
+          </Text>
+        </View>
+
+        {messages.map((message) => (
+          <View
+            key={message.id}
+            style={[styles.messageRow, message.role === 'user' && styles.userRow]}
           >
-            {messages.map((message) => (
-              <View
-                key={message.id}
-                style={[
-                  styles.messageRow,
-                  message.role === 'user' ? styles.userRow : styles.assistantRow,
-                ]}
-              >
-                {message.role === 'assistant' ? (
-                  <View style={styles.aiAvatar}>
-                    <AppIcon color={colors.background} name="sparkles" size={13} />
-                  </View>
-                ) : null}
-                <View
-                  style={[
-                    styles.bubble,
-                    message.role === 'user' ? styles.userBubble : styles.assistantBubble,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.messageText,
-                      message.role === 'user' && styles.userMessageText,
-                    ]}
-                  >
-                    {message.text}
-                  </Text>
-                </View>
+            {message.role === 'assistant' ? (
+              <View style={styles.assistantMark}>
+                <AppIcon color={colors.background} name="sparkles" size={12} />
               </View>
-            ))}
-          </ScrollView>
-          <View style={styles.composer}>
-            <Pressable
-              accessibilityLabel="使用语音回答"
-              accessibilityRole="button"
-              hitSlop={2}
-              style={({ pressed }) => [styles.composerIconButton, pressed && styles.iconButtonPressed]}
-            >
-              <AppIcon color={colors.textSecondary} name="mic-outline" size={21} />
-            </Pressable>
-            <TextInput
-              accessibilityLabel="输入给 AI 管家的消息"
-              onChangeText={setInput}
-              onFocus={() => scrollToLatest(false)}
-              onSubmitEditing={send}
-              placeholder="输入消息…"
-              placeholderTextColor={colors.textSecondary}
-              returnKeyType="send"
-              style={styles.input}
-              value={input}
-            />
-            <Pressable
-              accessibilityLabel="发送消息"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !input.trim() }}
-              disabled={!input.trim()}
-              hitSlop={2}
-              onPress={send}
-              style={({ pressed }) => [
-                styles.sendButton,
-                !input.trim() && styles.sendButtonDisabled,
-                pressed && styles.sendButtonPressed,
+            ) : null}
+            <View
+              style={[
+                styles.bubble,
+                message.role === 'user' ? styles.userBubble : styles.assistantBubble,
               ]}
             >
-              <AppIcon
-                color={input.trim() ? colors.background : colors.textSecondary}
-                name="arrow-up"
-                size={19}
-              />
-            </Pressable>
+              <Text style={[styles.messageText, message.role === 'user' && styles.userText]}>
+                {message.text}
+              </Text>
+              {message.result ? (
+                <AppButton
+                  compact
+                  label="查看并确认"
+                  onPress={() =>
+                    router.replace({
+                      pathname: '/capture/confirm',
+                      params: { draft: '周四 15:00 产品需求评审' },
+                    })
+                  }
+                  style={styles.resultButton}
+                />
+              ) : null}
+            </View>
           </View>
+        ))}
+
+        {!answered ? (
+          <View style={styles.quickReplies}>
+            {quickReplies.map((reply) => (
+              <Pressable
+                accessibilityRole="button"
+                key={reply}
+                onPress={() => sendContent(reply)}
+                style={({ pressed }) => [styles.quickReply, pressed && styles.quickReplyPressed]}
+              >
+                <Text style={styles.quickReplyText}>{reply}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <View style={styles.composerWrap}>
+        <View style={styles.composer}>
+          <Pressable
+            accessibilityLabel="使用语音回答"
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.composerButton, pressed && styles.iconPressed]}
+          >
+            <AppIcon color={colors.textSecondary} name="mic-outline" size={21} />
+          </Pressable>
+          <TextInput
+            accessibilityLabel="输入给 AI 管家的消息"
+            onChangeText={setInput}
+            onSubmitEditing={() => sendContent(input)}
+            placeholder="输入回答…"
+            placeholderTextColor={colors.textTertiary}
+            returnKeyType="send"
+            style={styles.input}
+            value={input}
+          />
+          <Pressable
+            accessibilityLabel="发送回答"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !input.trim() }}
+            disabled={!input.trim()}
+            onPress={() => sendContent(input)}
+            style={({ pressed }) => [
+              styles.sendButton,
+              !input.trim() && styles.sendDisabled,
+              pressed && input.trim() && styles.sendPressed,
+            ]}
+          >
+            <AppIcon
+              color={input.trim() ? colors.background : colors.textSecondary}
+              name="arrow-up"
+              size={19}
+            />
+          </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </ModalSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(9, 25, 19, 0.14)',
-  },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  },
-  keyboardArea: {
-    flex: 1,
-    width: '100%',
-    paddingHorizontal: 15,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheet: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 370,
-    maxHeight: 500,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#C8F0DB',
-    borderRadius: 28,
-    backgroundColor: colors.background,
-  },
-  sheetHeader: {
-    minHeight: 60,
-    paddingLeft: 17,
-    paddingRight: 8,
+  header: {
+    minHeight: 66,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  headerIcon: {
+    width: 36,
+    height: 36,
+    marginRight: 10,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
   headerCopy: {
     flex: 1,
-    gap: 1,
   },
   headerTitle: {
     color: colors.text,
     fontFamily,
-    fontSize: 16,
-    lineHeight: 21,
-    fontWeight: '700',
+    ...typography.section,
   },
   headerStatus: {
+    marginTop: 1,
     color: colors.textSecondary,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 17,
+    ...typography.meta,
   },
-  headerButton: {
+  closeButton: {
     width: 44,
     height: 44,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  messageList: {
-    flex: 1,
+  iconPressed: {
+    backgroundColor: colors.surface,
   },
   messages: {
-    paddingHorizontal: 17,
+    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 20,
-    gap: 18,
+    paddingBottom: 22,
+    gap: 16,
+  },
+  sourceCard: {
+    padding: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  sourceTopLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  sourceLabel: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+    fontWeight: '600',
+  },
+  sourceText: {
+    marginTop: 7,
+    color: colors.text,
+    fontFamily,
+    ...typography.body,
   },
   messageRow: {
     width: '100%',
@@ -259,58 +269,81 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 9,
   },
-  assistantRow: {
-    justifyContent: 'flex-start',
-  },
   userRow: {
     justifyContent: 'flex-end',
   },
-  aiAvatar: {
+  assistantMark: {
     width: 28,
     height: 28,
-    marginTop: 1,
+    marginTop: 2,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primaryStrong,
   },
   bubble: {
-    maxWidth: '82%',
+    maxWidth: '84%',
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: radius.lg,
   },
   assistantBubble: {
-    borderWidth: 1,
-    borderColor: colors.border,
     borderTopLeftRadius: 7,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceSubtle,
   },
   userBubble: {
     borderTopRightRadius: 7,
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
   messageText: {
     color: colors.text,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 22,
+    ...typography.body,
   },
-  userMessageText: {
+  userText: {
     color: colors.background,
   },
+  resultButton: {
+    marginTop: 12,
+  },
+  quickReplies: {
+    marginLeft: 37,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickReply: {
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
+  quickReplyPressed: {
+    backgroundColor: colors.primaryTrack,
+  },
+  quickReplyText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.label,
+    fontWeight: '600',
+  },
+  composerWrap: {
+    padding: 12,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
   composer: {
-    minHeight: 52,
-    margin: 14,
-    marginTop: 0,
+    minHeight: 54,
     paddingHorizontal: 4,
+    borderRadius: radius.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    borderRadius: radius.pill,
     backgroundColor: colors.surface,
   },
-  composerIconButton: {
+  composerButton: {
     width: 44,
     height: 44,
     borderRadius: radius.pill,
@@ -324,24 +357,21 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     color: colors.text,
     fontFamily,
-    fontSize: 14,
+    ...typography.input,
   },
   sendButton: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
   },
-  sendButtonDisabled: {
+  sendDisabled: {
     backgroundColor: colors.border,
   },
-  sendButtonPressed: {
+  sendPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.96 }],
-  },
-  iconButtonPressed: {
-    backgroundColor: colors.border,
   },
 });

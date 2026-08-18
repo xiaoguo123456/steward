@@ -26,9 +26,9 @@ function CaptureTabButton() {
   return (
     <View style={styles.captureSlot}>
       <Pressable
-        accessibilityLabel="新建任务"
+        accessibilityLabel="新增并整理"
         accessibilityRole="button"
-        onPress={() => router.push('/tasks/new')}
+        onPress={() => router.push('/capture/new')}
         style={({ pressed }) => [styles.captureButton, pressed && styles.capturePressed]}
       >
         <AppIcon color={colors.background} name="add" size={31} />
@@ -125,8 +125,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="calendar" options={{ href: null }} />
-      <Tabs.Screen name="me" options={{ href: null }} />
     </Tabs>
   );
 }

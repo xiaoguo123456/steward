@@ -19,7 +19,7 @@ export function AiFab({ count = 0 }: AiFabProps) {
       onPress={() => router.push('/ai')}
       style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
     >
-      <LinearGradient colors={['#47D68A', colors.primary]} style={styles.gradient}>
+      <LinearGradient colors={[colors.aiStart, colors.aiEnd]} style={styles.gradient}>
         <AppIcon color={colors.background} name="sparkles" size={22} />
       </LinearGradient>
       {count > 0 ? (

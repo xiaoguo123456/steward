@@ -23,9 +23,22 @@ export default function RootLayout() {
           <Stack.Screen name="tasks/[id]" />
           <Stack.Screen name="tasks/new" />
           <Stack.Screen name="notes/[id]" />
+          <Stack.Screen name="calendar" />
+          <Stack.Screen name="me" />
           <Stack.Screen name="features/[slug]" />
           <Stack.Screen name="focus" />
           <Stack.Screen name="settings/index" />
+          <Stack.Screen name="settings/detail" />
+          <Stack.Screen
+            name="capture/new"
+            options={{
+              animation: 'fade',
+              presentation: 'transparentModal',
+              contentStyle: { backgroundColor: 'transparent' },
+            }}
+          />
+          <Stack.Screen name="capture/processing" />
+          <Stack.Screen name="capture/confirm" />
           <Stack.Screen
             name="ai"
             options={{

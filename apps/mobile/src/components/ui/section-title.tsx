@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontFamily } from '@/theme/tokens';
+import { colors, fontFamily, typography } from '@/theme/tokens';
 
 type SectionTitleProps = {
   title: string;
@@ -26,14 +26,11 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontFamily,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '600',
+    ...typography.section,
   },
   count: {
     color: colors.textTertiary,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
+    ...typography.meta,
   },
 });

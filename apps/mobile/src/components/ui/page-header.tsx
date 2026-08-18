@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontFamily } from '@/theme/tokens';
+import { colors, fontFamily, typography } from '@/theme/tokens';
 
 type PageHeaderProps = {
   title: string;
@@ -34,16 +34,12 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontFamily,
-    fontSize: 28,
-    lineHeight: 36,
-    fontWeight: '700',
-    letterSpacing: -0.4,
+    ...typography.page,
   },
   subtitle: {
     marginTop: 2,
     color: colors.textSecondary,
     fontFamily,
-    fontSize: 13,
-    lineHeight: 18,
+    ...typography.meta,
   },
 });

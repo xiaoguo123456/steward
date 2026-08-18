@@ -1,5 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import type { ComponentProps } from 'react';
+import { useSyncExternalStore, type ComponentProps } from 'react';
+import { Platform, View } from 'react-native';
 
 import { colors } from '@/theme/tokens';
 
@@ -11,7 +12,21 @@ type AppIconProps = {
   color?: string;
 };
 
+const unsubscribeHydration = () => {};
+const subscribeHydration = () => unsubscribeHydration;
+
+function useCanRenderIcon() {
+  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  return Platform.OS !== 'web' || hydrated;
+}
+
 export function AppIcon({ name, size = 22, color = '#1A1D1C' }: AppIconProps) {
+  const canRender = useCanRenderIcon();
+
+  if (!canRender) {
+    return <View accessible={false} style={{ height: size, width: size }} />;
+  }
+
   return <Ionicons accessible={false} color={color} name={name} size={size} />;
 }
 
@@ -40,14 +55,20 @@ export function SportModeIcon({
   size = 28,
   color = colors.primaryStrong,
 }: SportModeIconProps) {
+  const canRender = useCanRenderIcon();
   const spec = sportModeIconSpecs[mode];
+  const renderedSize = Math.round(size * spec.opticalScale);
+
+  if (!canRender) {
+    return <View accessible={false} style={{ height: renderedSize, width: renderedSize }} />;
+  }
 
   return (
     <MaterialCommunityIcons
       accessible={false}
       color={color}
       name={spec.name}
-      size={Math.round(size * spec.opticalScale)}
+      size={renderedSize}
     />
   );
 }

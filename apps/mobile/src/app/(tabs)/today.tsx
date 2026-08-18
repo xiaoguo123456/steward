@@ -148,7 +148,7 @@ export default function HomeScreen() {
               <AppIcon color={colors.background} name="person" size={20} />
             </Pressable>
           }
-          subtitle="6月18日 · 星期三"
+          subtitle="8月18日 · 星期二"
           title="首页"
         />
 

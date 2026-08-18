@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontFamily } from '@/theme/tokens';
+import { colors, fontFamily, typography } from '@/theme/tokens';
 import { AppIcon } from './icon';
 
 type NavHeaderProps = {
@@ -53,9 +53,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.text,
     fontFamily,
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '600',
+    ...typography.section,
     textAlign: 'center',
   },
 });

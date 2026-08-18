@@ -1,100 +1,60 @@
 import { useRouter } from 'expo-router';
-import type { ComponentProps } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 
+import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
-import { AppIcon } from '@/components/ui/icon';
-import { colors, fontFamily, radius } from '@/theme/tokens';
-
-type SettingItem = {
-  title: string;
-  icon: ComponentProps<typeof AppIcon>['name'];
-  color: string;
-  action?: () => void;
-};
+import { FlatListGroup, FlatListRow } from '@/components/ui/flat-list';
+import { NavHeader } from '@/components/ui/nav-header';
+import { colors, fontFamily, typography } from '@/theme/tokens';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const items: SettingItem[] = [
-    { title: '账户与安全', icon: 'shield-outline', color: colors.primary },
-    { title: '通知提醒', icon: 'notifications-outline', color: colors.warning },
-    { title: '外观主题', icon: 'moon-outline', color: colors.purple },
-    {
-      title: '专注设置',
-      icon: 'timer-outline',
-      color: colors.blue,
-      action: () => router.push('/focus'),
-    },
-    { title: '关于我们', icon: 'information-circle-outline', color: colors.textSecondary },
-    { title: '意见反馈', icon: 'chatbox-outline', color: colors.primary },
-  ];
 
   return (
     <AppScreen includeBottomInset>
+      <NavHeader title="设置" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>设置</Text>
-        </View>
-        <View style={styles.card}>
-          {items.map((item) => (
-            <Pressable
-              key={item.title}
-              onPress={item.action}
-              style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-            >
-              <AppIcon color={item.color} name={item.icon} size={20} />
-              <Text style={styles.rowTitle}>{item.title}</Text>
-              <AppIcon color="#C9CFCC" name="chevron-forward" size={18} />
-            </Pressable>
-          ))}
-        </View>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>日常使用</Text>
+        <FlatListGroup>
+          <FlatListRow icon="time-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'habits' } })} subtitle="工作日 09:00—18:00" title="使用习惯" />
+          <FlatListRow icon="sparkles-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'ai' } })} subtitle="5 项长期偏好" title="AI 设置与偏好" />
+          <FlatListRow icon="notifications-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'notifications' } })} showDivider={false} subtitle="事件前 10 分钟" title="通知设置" />
+        </FlatListGroup>
+
+        <Text accessibilityRole="header" style={styles.sectionTitle}>数据与账户</Text>
+        <FlatListGroup>
+          <FlatListRow icon="folder-open-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'data' } })} title="原始输入" />
+          <FlatListRow icon="trash-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'data' } })} subtitle="内容保留 30 天" title="最近删除" />
+          <FlatListRow icon="download-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'data' } })} title="导出个人数据" />
+          <FlatListRow icon="shield-checkmark-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'data' } })} title="隐私与数据" />
+          <FlatListRow icon="person-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'account' } })} showDivider={false} title="账号与安全" />
+        </FlatListGroup>
+
+        <Text style={styles.version}>清单 0.1.0 · Development Build</Text>
       </ScrollView>
+      <AiFab count={1} />
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    flexGrow: 1,
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 8,
+    paddingBottom: 92,
   },
-  titleRow: {
-    height: 64,
-    paddingHorizontal: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  title: {
+  sectionTitle: {
+    marginTop: 18,
+    marginBottom: 10,
     color: colors.text,
     fontFamily,
-    fontSize: 18,
-    lineHeight: 25,
-    fontWeight: '600',
+    ...typography.section,
   },
-  card: {
-    marginTop: 4,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  row: {
-    height: 50,
-    paddingHorizontal: 17,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  pressed: {
-    opacity: 0.55,
-  },
-  rowTitle: {
-    flex: 1,
-    color: colors.text,
+  version: {
+    marginTop: 28,
+    color: colors.textSecondary,
     fontFamily,
-    fontSize: 15,
-    lineHeight: 22,
+    ...typography.meta,
+    textAlign: 'center',
   },
 });

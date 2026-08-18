@@ -11,12 +11,9 @@ type Tracker = {
   id: string;
   name: string;
   icon: React.ComponentProps<typeof AppIcon>['name'];
-  color: string;
-  soft: string;
   latest: string;
   updated: string;
   trend: string;
-  bars: number[];
   dueToday?: boolean;
 };
 
@@ -25,55 +22,43 @@ const trackers: Tracker[] = [
     id: 'sleep',
     name: '睡眠',
     icon: 'moon-outline',
-    color: '#6D5B95',
-    soft: '#F0EDF7',
     latest: '7小时 20分',
     updated: '今天 07:45',
     trend: '近 7 天平均 7小时 08分',
-    bars: [18, 24, 20, 28, 22, 25, 27],
     dueToday: true,
   },
   {
     id: 'weight',
     name: '体重',
     icon: 'scale-outline',
-    color: colors.primaryStrong,
-    soft: colors.primarySoft,
     latest: '68.4 kg',
     updated: '昨天 08:10',
     trend: '较上周下降 0.3 kg',
-    bars: [27, 26, 25, 25, 24, 23, 22],
   },
   {
     id: 'water',
     name: '饮水',
     icon: 'water-outline',
-    color: '#3978B8',
-    soft: '#EAF4FF',
     latest: '1,800 ml',
     updated: '今天 16:20',
     trend: '今日目标完成 90%',
-    bars: [15, 21, 18, 25, 23, 27, 26],
     dueToday: true,
   },
   {
     id: 'reading',
     name: '阅读',
     icon: 'book-outline',
-    color: '#D56C28',
-    soft: '#FFF1E7',
     latest: '30 分钟',
     updated: '昨天 21:35',
     trend: '已连续打卡 6 天',
-    bars: [16, 21, 24, 18, 27, 25, 23],
     dueToday: true,
   },
 ];
 
 function TrackerIcon({ tracker }: { tracker: Tracker }) {
   return (
-    <View style={[styles.trackerIcon, { backgroundColor: tracker.soft }]}>
-      <AppIcon color={tracker.color} name={tracker.icon} size={20} />
+    <View style={styles.trackerIcon}>
+      <AppIcon color={colors.primaryStrong} name={tracker.icon} size={20} />
     </View>
   );
 }
@@ -162,23 +147,8 @@ export default function DataScreen() {
                   <Text style={styles.trackerName}>{tracker.name}</Text>
                   <Text style={styles.trackerValue}>{tracker.latest}</Text>
                 </View>
-                <View style={styles.trackerBottomLine}>
-                  <View>
-                    <Text style={styles.trackerTrend}>{tracker.trend}</Text>
-                    <Text style={styles.trackerUpdated}>{tracker.updated}</Text>
-                  </View>
-                  <View accessible={false} style={styles.sparkBars}>
-                    {tracker.bars.map((height, index) => (
-                      <View
-                        key={`${tracker.id}-${index}`}
-                        style={[
-                          styles.sparkBar,
-                          { height, backgroundColor: tracker.color },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </View>
+                <Text style={styles.trackerTrend}>{tracker.trend}</Text>
+                <Text style={styles.trackerUpdated}>{tracker.updated}</Text>
               </View>
               <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
             </Pressable>
@@ -267,6 +237,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
   },
   pendingCopy: {
     flex: 1,
@@ -340,7 +311,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   trackerRow: {
-    minHeight: 88,
+    minHeight: 84,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -372,13 +343,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '600',
   },
-  trackerBottomLine: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
   trackerTrend: {
+    marginTop: 4,
     color: colors.textSecondary,
     fontFamily,
     fontSize: 11,
@@ -390,16 +356,5 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: 10,
     lineHeight: 14,
-  },
-  sparkBars: {
-    height: 30,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 3,
-  },
-  sparkBar: {
-    width: 3,
-    borderRadius: radius.pill,
-    opacity: 0.65,
   },
 });

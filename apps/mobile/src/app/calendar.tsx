@@ -6,7 +6,7 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { nextAgenda } from '@/mocks/data';
-import { colors, fontFamily, radius } from '@/theme/tokens';
+import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type CalendarCell = {
   day: number;
@@ -52,12 +52,12 @@ const calendarCells: CalendarCell[] = [
   { day: 28 },
   { day: 29 },
   { day: 30 },
+  { day: 31 },
   { day: 1, muted: true },
   { day: 2, muted: true },
   { day: 3, muted: true },
   { day: 4, muted: true },
   { day: 5, muted: true },
-  { day: 6, muted: true },
 ];
 
 const agenda = [
@@ -94,7 +94,7 @@ export default function CalendarScreen() {
   const visibleCalendarCells = monthExpanded
     ? calendarCells
     : calendarCells.slice(selectedWeekStart, selectedWeekStart + 7);
-  const selectedDateTitle = selectedDay === 18 ? '今天 · 6月18日' : `6月${selectedDay}日`;
+  const selectedDateTitle = selectedDay === 18 ? '今天 · 8月18日' : `8月${selectedDay}日`;
 
   return (
     <AppScreen>
@@ -105,7 +105,7 @@ export default function CalendarScreen() {
             <Pressable accessibilityLabel="上个月" accessibilityRole="button" hitSlop={10}>
               <AppIcon name="chevron-back" size={21} />
             </Pressable>
-            <Text style={styles.monthTitle}>2024年6月</Text>
+            <Text style={styles.monthTitle}>2026年8月</Text>
             <Pressable accessibilityLabel="下个月" accessibilityRole="button" hitSlop={10}>
               <AppIcon name="chevron-forward" size={21} />
             </Pressable>
@@ -133,7 +133,7 @@ export default function CalendarScreen() {
             const selected = !cell.muted && cell.day === selectedDay;
             return (
               <Pressable
-                accessibilityLabel={`${cell.muted ? '相邻月份' : '6月'}${cell.day}日${cell.dot ? '，有安排' : ''}`}
+                accessibilityLabel={`${cell.muted ? '相邻月份' : '8月'}${cell.day}日${cell.dot ? '，有安排' : ''}`}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: Boolean(cell.muted), selected }}
                 disabled={cell.muted}
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 2,
-    paddingBottom: 112,
+    paddingBottom: 96,
   },
   monthHeader: {
     height: 56,
@@ -228,9 +228,7 @@ const styles = StyleSheet.create({
   monthTitle: {
     color: colors.text,
     fontFamily,
-    fontSize: 18,
-    lineHeight: 25,
-    fontWeight: '700',
+    ...typography.section,
   },
   todayButton: {
     height: 36,
@@ -271,7 +269,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   grid: {
-    marginTop: 8,
+    marginTop: 4,
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
@@ -316,7 +314,7 @@ const styles = StyleSheet.create({
   },
   calendarToggle: {
     minHeight: 44,
-    marginTop: 4,
+    marginTop: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -334,8 +332,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   agendaHeader: {
-    minHeight: 54,
-    marginTop: 14,
+    minHeight: 50,
+    marginTop: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -343,9 +341,7 @@ const styles = StyleSheet.create({
   agendaTitle: {
     color: colors.text,
     fontFamily,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: '600',
+    ...typography.section,
   },
   agendaCount: {
     color: colors.textSecondary,
