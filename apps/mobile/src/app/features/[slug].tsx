@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -13,6 +12,7 @@ import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
+import { LedgerContent } from '@/features/ledger/ledger-content';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type FeatureSlug =
@@ -253,105 +253,6 @@ function RecipesContent() {
   );
 }
 
-type LedgerEntry = {
-  id: string;
-  title: string;
-  amount: number;
-  type: 'expense' | 'income';
-};
-
-function LedgerContent() {
-  const [entryType, setEntryType] = useState<LedgerEntry['type']>('expense');
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
-  const [entries, setEntries] = useState<LedgerEntry[]>([
-    { id: 'coffee', title: '咖啡', amount: 28, type: 'expense' },
-    { id: 'transport', title: '交通', amount: 12, type: 'expense' },
-  ]);
-  const parsedAmount = Number(amount);
-  const canSave = Number.isFinite(parsedAmount) && parsedAmount > 0;
-  const expenseTotal = entries
-    .filter((entry) => entry.type === 'expense')
-    .reduce((total, entry) => total + entry.amount, 0);
-
-  const saveEntry = () => {
-    if (!canSave) return;
-    setEntries((current) => [
-      {
-        id: `${Date.now()}`,
-        title: note.trim() || (entryType === 'expense' ? '日常支出' : '收入'),
-        amount: parsedAmount,
-        type: entryType,
-      },
-      ...current,
-    ]);
-    setAmount('');
-    setNote('');
-  };
-
-  return (
-    <>
-      <SectionTitle aside={`今日支出 ¥${expenseTotal.toFixed(2)}`} title="记一笔" />
-      <View style={styles.ledgerForm}>
-        <View style={styles.segment}>
-          {(['expense', 'income'] as const).map((type) => {
-            const selected = entryType === type;
-            return (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected }}
-                key={type}
-                onPress={() => setEntryType(type)}
-                style={[styles.segmentItem, selected && styles.segmentItemSelected]}
-              >
-                <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>
-                  {type === 'expense' ? '支出' : '收入'}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <View style={styles.amountField}>
-          <Text style={styles.currency}>¥</Text>
-          <TextInput
-            accessibilityLabel="金额"
-            keyboardType="decimal-pad"
-            onChangeText={setAmount}
-            placeholder="0.00"
-            placeholderTextColor={colors.textTertiary}
-            style={styles.amountInput}
-            value={amount}
-          />
-        </View>
-        <TextInput
-          accessibilityLabel="备注"
-          onChangeText={setNote}
-          placeholder="备注，例如午餐或交通"
-          placeholderTextColor={colors.textTertiary}
-          style={styles.noteInput}
-          value={note}
-        />
-        <PrimaryButton disabled={!canSave} label="保存记录" onPress={saveEntry} />
-      </View>
-
-      <SectionTitle aside={`${entries.length} 笔`} title="今日明细" />
-      <View style={styles.rows}>
-        {entries.map((entry) => (
-          <View key={entry.id} style={styles.ledgerRow}>
-            <View style={styles.rowCopy}>
-              <Text style={styles.rowTitle}>{entry.title}</Text>
-              <Text style={styles.rowMeta}>{entry.type === 'expense' ? '支出' : '收入'} · 刚刚</Text>
-            </View>
-            <Text style={[styles.ledgerAmount, entry.type === 'income' && styles.incomeAmount]}>
-              {entry.type === 'expense' ? '-' : '+'}¥{entry.amount.toFixed(2)}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </>
-  );
-}
-
 function ImportantDatesContent() {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState(importantDates[0].id);
@@ -578,7 +479,7 @@ export default function ShortcutFeatureScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {slug !== 'review' ? (
+        {slug !== 'review' && slug !== 'ledger' ? (
           <View style={[styles.intro, { backgroundColor: meta.soft }]}>
             <View style={[styles.introIcon, { backgroundColor: colors.background }]}>
               <AppIcon color={meta.color} name={meta.icon} size={23} />
@@ -778,90 +679,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'center',
-  },
-  ledgerForm: {
-    padding: 14,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  segment: {
-    height: 38,
-    padding: 3,
-    flexDirection: 'row',
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-  },
-  segmentItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-  },
-  segmentItemSelected: {
-    backgroundColor: colors.background,
-  },
-  segmentText: {
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  segmentTextSelected: {
-    color: colors.text,
-    fontWeight: '600',
-  },
-  amountField: {
-    height: 70,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  currency: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 24,
-    lineHeight: 31,
-    fontWeight: '600',
-  },
-  amountInput: {
-    flex: 1,
-    height: 64,
-    paddingHorizontal: 10,
-    color: colors.text,
-    fontFamily,
-    fontSize: 31,
-    lineHeight: 39,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  noteInput: {
-    height: 46,
-    marginBottom: 12,
-    color: colors.text,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  ledgerRow: {
-    minHeight: 60,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  ledgerAmount: {
-    marginLeft: 12,
-    color: colors.text,
-    fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  incomeAmount: {
-    color: colors.primaryStrong,
   },
   importantRow: {
     minHeight: 66,
