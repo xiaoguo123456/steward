@@ -1,9 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fontFamily, radius, shadow } from '@/theme/tokens';
-import { AppIcon } from './icon';
+import { colors, fontFamily, radius } from '@/theme/tokens';
+import { AiAssistantAvatar } from './ai-assistant-avatar';
 
 type AiFabProps = {
   count?: number;
@@ -11,20 +10,24 @@ type AiFabProps = {
 
 export function AiFab({ count = 0 }: AiFabProps) {
   const router = useRouter();
+  const badgeText = count > 9 ? '9+' : count.toString();
+  const accessibilityLabel = count > 0
+    ? `打开 AI 管家，${count} 项待处理`
+    : '打开 AI 管家';
 
   return (
     <Pressable
-      accessibilityLabel="打开 AI 助手"
+      accessibilityHint="查看 AI 的待答问题和处理结果"
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
+      hitSlop={6}
       onPress={() => router.push('/ai')}
       style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
     >
-      <LinearGradient colors={[colors.aiStart, colors.aiEnd]} style={styles.gradient}>
-        <AppIcon color={colors.background} name="sparkles" size={22} />
-      </LinearGradient>
+      <AiAssistantAvatar size={58} />
       {count > 0 ? (
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{count}</Text>
+          <Text style={styles.badgeText}>{badgeText}</Text>
         </View>
       ) : null}
     </Pressable>
@@ -34,32 +37,25 @@ export function AiFab({ count = 0 }: AiFabProps) {
 const styles = StyleSheet.create({
   pressable: {
     position: 'absolute',
-    right: 20,
+    right: 16,
     bottom: 18,
-    width: 54,
-    height: 54,
-    borderRadius: radius.pill,
-    zIndex: 20,
-    ...shadow,
-  },
-  gradient: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.pill,
+    width: 58,
+    height: 58,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 20,
   },
   pressed: {
-    opacity: 0.84,
-    transform: [{ scale: 0.96 }],
+    opacity: 0.9,
+    transform: [{ scale: 0.94 }],
   },
   badge: {
     position: 'absolute',
-    top: -5,
-    right: -2,
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 4,
+    top: -3,
+    right: -4,
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 5,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
@@ -70,8 +66,8 @@ const styles = StyleSheet.create({
   badgeText: {
     color: colors.background,
     fontFamily,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10,
+    lineHeight: 13,
     fontWeight: '700',
   },
 });

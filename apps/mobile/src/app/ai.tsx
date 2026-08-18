@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { AiAssistantAvatar } from '@/components/ui/ai-assistant-avatar';
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
@@ -63,7 +64,7 @@ export default function AiConversationScreen() {
     <ModalSheet maxHeight="84%" onClose={() => router.back()}>
       <View style={styles.header}>
         <View style={styles.headerIcon}>
-          <AppIcon color={colors.primaryStrong} name="sparkles" size={19} />
+          <AiAssistantAvatar size={36} />
         </View>
         <View style={styles.headerCopy}>
           <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
@@ -105,7 +106,7 @@ export default function AiConversationScreen() {
           >
             {message.role === 'assistant' ? (
               <View style={styles.assistantMark}>
-                <AppIcon color={colors.background} name="sparkles" size={12} />
+                <AiAssistantAvatar size={30} />
               </View>
             ) : null}
             <View
@@ -203,13 +204,11 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerIcon: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     marginRight: 10,
-    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
   },
   headerCopy: {
     flex: 1,
@@ -273,13 +272,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   assistantMark: {
-    width: 28,
-    height: 28,
-    marginTop: 2,
-    borderRadius: radius.pill,
+    width: 30,
+    height: 30,
+    marginTop: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryStrong,
   },
   bubble: {
     maxWidth: '84%',

@@ -6,8 +6,6 @@ export const colors = {
   primaryStrong: '#047857',
   primarySoft: '#ECFBF3',
   primaryTrack: '#DDF6E9',
-  aiStart: '#47D68A',
-  aiEnd: '#07865F',
   background: '#FFFFFF',
   surfaceSubtle: '#F7F8F8',
   surface: '#F3F4F6',

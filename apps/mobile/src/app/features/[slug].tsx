@@ -578,12 +578,14 @@ export default function ShortcutFeatureScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.intro, { backgroundColor: meta.soft }]}>
-          <View style={[styles.introIcon, { backgroundColor: colors.background }]}>
-            <AppIcon color={meta.color} name={meta.icon} size={23} />
+        {slug !== 'review' ? (
+          <View style={[styles.intro, { backgroundColor: meta.soft }]}>
+            <View style={[styles.introIcon, { backgroundColor: colors.background }]}>
+              <AppIcon color={meta.color} name={meta.icon} size={23} />
+            </View>
+            <Text style={[styles.introText, { color: meta.color }]}>{meta.summary}</Text>
           </View>
-          <Text style={[styles.introText, { color: meta.color }]}>{meta.summary}</Text>
-        </View>
+        ) : null}
         <FeatureContent slug={slug} />
       </ScrollView>
       <AiFab />
