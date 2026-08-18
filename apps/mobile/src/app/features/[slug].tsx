@@ -14,6 +14,7 @@ import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { ImportantDatesContent } from '@/features/important-dates/important-dates-content';
 import { LedgerContent } from '@/features/ledger/ledger-content';
+import { ReviewContent } from '@/features/review/review-content';
 import { ShoppingContent } from '@/features/shopping/shopping-content';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -208,62 +209,6 @@ function RecipesContent() {
   );
 }
 
-function ReviewContent() {
-  const router = useRouter();
-
-  return (
-    <>
-      <SectionTitle aside="更新于 17:10" title="今日概览" />
-      <View style={styles.reviewMetrics}>
-        <View style={styles.reviewMetric}>
-          <Text style={styles.metricValue}>3/5</Text>
-          <Text style={styles.metricLabel}>任务完成</Text>
-        </View>
-        <View style={styles.reviewMetricDivider} />
-        <View style={styles.reviewMetric}>
-          <Text style={styles.metricValue}>2/3</Text>
-          <Text style={styles.metricLabel}>今日打卡</Text>
-        </View>
-        <View style={styles.reviewMetricDivider} />
-        <View style={styles.reviewMetric}>
-          <Text style={styles.metricValue}>4</Text>
-          <Text style={styles.metricLabel}>完成番茄</Text>
-        </View>
-      </View>
-
-      <SectionTitle title="建议关注" />
-      <View style={styles.reviewSuggestion}>
-        <View style={styles.suggestionIcon}>
-          <AppIcon color={colors.primaryStrong} name="sparkles" size={18} />
-        </View>
-        <View style={styles.rowCopy}>
-          <Text style={styles.rowTitle}>把“购买出差机票”安排到明天上午</Text>
-          <Text style={styles.rowMeta}>当前只是建议，确认后才会修改任务日期。</Text>
-        </View>
-      </View>
-
-      <View style={styles.linkRows}>
-        <LinkRow
-          color={colors.primaryStrong}
-          icon="checkbox-outline"
-          meta="查看未完成任务和明日安排"
-          onPress={() => router.push('/lists')}
-          soft={colors.primarySoft}
-          title="查看计划"
-        />
-        <LinkRow
-          color="#3978B8"
-          icon="checkmark-circle-outline"
-          meta="补齐今天尚未完成的记录"
-          onPress={() => router.push('/data')}
-          soft="#EAF4FF"
-          title="查看打卡"
-        />
-      </View>
-    </>
-  );
-}
-
 const moreTools: {
   title: string;
   meta: string;
@@ -423,7 +368,7 @@ export default function ShortcutFeatureScreen() {
           slug={slug}
         />
       </ScrollView>
-      <AiFab />
+      {slug !== 'review' ? <AiFab /> : null}
     </AppScreen>
   );
 }
@@ -587,54 +532,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 19,
     textAlign: 'center',
-  },
-  reviewMetrics: {
-    height: 78,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  reviewMetric: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  reviewMetricDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 30,
-    backgroundColor: colors.border,
-  },
-  metricValue: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-  },
-  metricLabel: {
-    marginTop: 3,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 10,
-    lineHeight: 14,
-  },
-  reviewSuggestion: {
-    minHeight: 82,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
-  },
-  suggestionIcon: {
-    width: 34,
-    height: 34,
-    marginRight: 11,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryTrack,
   },
   linkRows: {
     marginTop: 18,
