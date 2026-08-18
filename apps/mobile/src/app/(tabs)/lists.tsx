@@ -227,7 +227,9 @@ export default function ListsScreen() {
 
         <View style={styles.sectionHeading}>
           <Text accessibilityRole="header" style={styles.sectionTitle}>清单</Text>
-          <Text style={styles.sectionMeta}>{listDefinitions.length} 个</Text>
+          <View style={styles.sectionCountBadge}>
+            <Text style={styles.sectionCount}>{listDefinitions.length} 项</Text>
+          </View>
         </View>
         <View style={styles.listRows}>
           {listDefinitions.map((item) => {
@@ -373,11 +375,21 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     fontWeight: '600',
   },
-  sectionMeta: {
-    color: colors.textSecondary,
+  sectionCountBadge: {
+    minWidth: 40,
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
+  sectionCount: {
+    color: colors.primaryStrong,
     fontFamily,
     fontSize: 12,
     lineHeight: 18,
+    fontWeight: '700',
   },
   listRows: {
     borderTopWidth: StyleSheet.hairlineWidth,

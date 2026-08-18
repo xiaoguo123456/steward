@@ -7,7 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radius } from '@/theme/tokens';
 
@@ -23,9 +23,11 @@ export function ModalSheet({
   maxHeight = '88%',
   dimmed = true,
 }: ModalSheetProps) {
+  const insets = useSafeAreaInsets();
+
   return (
     <SafeAreaView
-      edges={['top', 'right', 'bottom', 'left']}
+      edges={['top', 'right', 'left']}
       style={[styles.overlay, dimmed && styles.dimmed]}
     >
       <Pressable accessibilityLabel="关闭面板" onPress={onClose} style={styles.backdrop} />
@@ -34,7 +36,7 @@ export function ModalSheet({
         pointerEvents="box-none"
         style={styles.keyboardArea}
       >
-        <View style={[styles.sheet, { maxHeight }]}>
+        <View style={[styles.sheet, { maxHeight, paddingBottom: insets.bottom }]}>
           <View style={styles.grabber} />
           {children}
         </View>
