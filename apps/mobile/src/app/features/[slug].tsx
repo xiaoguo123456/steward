@@ -14,6 +14,7 @@ import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { ImportantDatesContent } from '@/features/important-dates/important-dates-content';
 import { LedgerContent } from '@/features/ledger/ledger-content';
+import { ShoppingContent } from '@/features/shopping/shopping-content';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type FeatureSlug =
@@ -30,12 +31,6 @@ type FeatureMeta = {
   icon: React.ComponentProps<typeof AppIcon>['name'];
   color: string;
   soft: string;
-};
-
-type CheckItem = {
-  id: string;
-  title: string;
-  meta: string;
 };
 
 const featureMeta: Record<FeatureSlug, FeatureMeta> = {
@@ -89,13 +84,6 @@ const recipes = [
   { id: 'rice', title: '菌菇鸡肉焖饭', meta: '40 分钟 · 一锅完成' },
 ];
 
-const initialShoppingItems: CheckItem[] = [
-  { id: 'tomato', title: '番茄', meta: '4 个 · 来自番茄牛肉意面' },
-  { id: 'beef', title: '牛肉末', meta: '300 克 · 来自番茄牛肉意面' },
-  { id: 'milk', title: '牛奶', meta: '1 盒 · 手动添加' },
-  { id: 'coffee', title: '咖啡豆', meta: '1 袋 · 手动添加' },
-];
-
 function isFeatureSlug(value: string): value is FeatureSlug {
   return value in featureMeta;
 }
@@ -133,34 +121,6 @@ function PrimaryButton({
       ]}
     >
       <Text style={styles.primaryButtonText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function CheckRow({
-  item,
-  checked,
-  onToggle,
-}: {
-  item: CheckItem;
-  checked: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={`${checked ? '取消完成' : '完成'}${item.title}`}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      onPress={onToggle}
-      style={({ pressed }) => [styles.checkRow, pressed && styles.rowPressed]}
-    >
-      <View style={[styles.checkCircle, checked && styles.checkCircleDone]}>
-        {checked ? <AppIcon color={colors.background} name="checkmark" size={15} /> : null}
-      </View>
-      <View style={styles.rowCopy}>
-        <Text style={[styles.rowTitle, checked && styles.rowTitleDone]}>{item.title}</Text>
-        <Text style={styles.rowMeta}>{item.meta}</Text>
-      </View>
     </Pressable>
   );
 }
@@ -244,44 +204,6 @@ function RecipesContent() {
       ) : (
         <Text style={styles.emptyHint}>选择一道菜后，可以把缺少的食材加入购物清单。</Text>
       )}
-    </>
-  );
-}
-
-function ShoppingContent() {
-  const router = useRouter();
-  const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
-  const remainingCount = initialShoppingItems.length - doneIds.size;
-
-  const toggleItem = (itemId: string) => {
-    setDoneIds((current) => {
-      const next = new Set(current);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
-  };
-
-  return (
-    <>
-      <SectionTitle aside={`${remainingCount} 项待购买`} title="购物清单" />
-      <View style={styles.rows}>
-        {initialShoppingItems.map((item) => (
-          <CheckRow
-            checked={doneIds.has(item.id)}
-            item={item}
-            key={item.id}
-            onToggle={() => toggleItem(item.id)}
-          />
-        ))}
-      </View>
-      <View style={styles.actionBlock}>
-        <PrimaryButton
-          label="从食谱添加食材"
-          onPress={() => router.push('/features/recipes')}
-        />
-        <Text style={styles.actionHint}>也可以通过底部“新增”用语音或图片补充物品。</Text>
-      </View>
     </>
   );
 }
@@ -412,10 +334,14 @@ function FeatureContent({
   slug,
   importantDateCreateVisible,
   onImportantDateCreateVisibleChange,
+  shoppingCreateVisible,
+  onShoppingCreateVisibleChange,
 }: {
   slug: FeatureSlug;
   importantDateCreateVisible: boolean;
   onImportantDateCreateVisibleChange: (visible: boolean) => void;
+  shoppingCreateVisible: boolean;
+  onShoppingCreateVisibleChange: (visible: boolean) => void;
 }) {
   if (slug === 'recipes') return <RecipesContent />;
   if (slug === 'ledger') return <LedgerContent />;
@@ -427,7 +353,14 @@ function FeatureContent({
       />
     );
   }
-  if (slug === 'shopping') return <ShoppingContent />;
+  if (slug === 'shopping') {
+    return (
+      <ShoppingContent
+        createVisible={shoppingCreateVisible}
+        onCreateVisibleChange={onShoppingCreateVisibleChange}
+      />
+    );
+  }
   if (slug === 'review') return <ReviewContent />;
   return <MoreContent />;
 }
@@ -438,16 +371,23 @@ export default function ShortcutFeatureScreen() {
   const slug: FeatureSlug = rawSlug && isFeatureSlug(rawSlug) ? rawSlug : 'more';
   const meta = featureMeta[slug];
   const [importantDateCreateVisible, setImportantDateCreateVisible] = useState(false);
+  const [shoppingCreateVisible, setShoppingCreateVisible] = useState(false);
 
   return (
     <AppScreen includeBottomInset>
       <NavHeader
         right={
-          slug === 'important-dates' ? (
+          slug === 'important-dates' || slug === 'shopping' ? (
             <Pressable
-              accessibilityLabel="新增重要日"
+              accessibilityLabel={slug === 'important-dates' ? '新增重要日' : '新增商品'}
               accessibilityRole="button"
-              onPress={() => setImportantDateCreateVisible(true)}
+              onPress={() => {
+                if (slug === 'important-dates') {
+                  setImportantDateCreateVisible(true);
+                } else {
+                  setShoppingCreateVisible(true);
+                }
+              }}
               style={({ pressed }) => [
                 styles.headerAction,
                 pressed && styles.headerActionPressed,
@@ -464,7 +404,10 @@ export default function ShortcutFeatureScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {slug !== 'review' && slug !== 'ledger' && slug !== 'important-dates' ? (
+        {slug !== 'review' &&
+        slug !== 'ledger' &&
+        slug !== 'important-dates' &&
+        slug !== 'shopping' ? (
           <View style={[styles.intro, { backgroundColor: meta.soft }]}>
             <View style={[styles.introIcon, { backgroundColor: colors.background }]}>
               <AppIcon color={meta.color} name={meta.icon} size={23} />
@@ -475,6 +418,8 @@ export default function ShortcutFeatureScreen() {
         <FeatureContent
           importantDateCreateVisible={importantDateCreateVisible}
           onImportantDateCreateVisibleChange={setImportantDateCreateVisible}
+          onShoppingCreateVisibleChange={setShoppingCreateVisible}
+          shoppingCreateVisible={shoppingCreateVisible}
           slug={slug}
         />
       </ScrollView>
@@ -545,27 +490,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  checkRow: {
-    minHeight: 66,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  checkCircle: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.borderStrong,
-  },
-  checkCircleDone: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
   rowCopy: {
     flex: 1,
     minWidth: 0,
@@ -577,10 +501,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '500',
   },
-  rowTitleDone: {
-    color: colors.textTertiary,
-    textDecorationLine: 'line-through',
-  },
   rowMeta: {
     marginTop: 3,
     color: colors.textSecondary,
@@ -590,9 +510,6 @@ const styles = StyleSheet.create({
   },
   rowPressed: {
     opacity: 0.56,
-  },
-  actionBlock: {
-    marginTop: 20,
   },
   primaryButton: {
     minHeight: 48,
@@ -614,14 +531,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
-  },
-  actionHint: {
-    marginTop: 9,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 17,
-    textAlign: 'center',
   },
   choiceRow: {
     minHeight: 66,

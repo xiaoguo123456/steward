@@ -228,6 +228,7 @@ flowchart TD
 - 专注场景使用稳定路由 `focus`，`features/focus` 只保存非权威的前端计时模型、Today Task 展示引用、会话内想法和本地预览记录；路由根部 Provider 只用于原型期间跨页面保留状态，不承担正式持久化。计时、暂停、休息和完成流当前由客户端确定性状态驱动，不安装后台任务或通知依赖，也不构成跨端权威状态机。正式接入时，Task 完成与专注 Record 必须分别调用既有领域接口并保留用户确认；后台恢复、跨设备同步、Tracker Schema、Record 字段和时间语义需要先完成契约设计，本地 `FocusRecord` 不得直接提升为网络 DTO。
 - 记账场景仍由 `features/[slug]` 路由承载，`features/ledger` 只保存非权威的前端账单 Fixture、月度展示统计与图片识别交互状态。当前拍照／相册入口只模拟来源选择和识别候选，不申请真实媒体权限、不上传图片，也不构成 OCR 或账单导入实现。正式接入时，原始媒体先进入统一 Capture 媒体链路，OCR／AI 只生成可编辑候选；用户确认后由 Go Domain 执行金额、时间、单位、重复检测和 Record 投影。账单图片不得写入日志、埋点或普通测试快照，本地 `LedgerEntry` 不得直接提升为网络 DTO。
 - 重要日场景仍由 `features/[slug]` 路由承载，`features/important-dates` 只保存非权威的前端 Fixture、新增草稿、日期选择与展示排序状态。生日、纪念日、到期日和其他只属于前端交互预设，不创建新的 Object Domain；正式保存统一通过生成的 API Client 写入 `event_kind=important_date` 的全天 Event，并由 Go Domain 处理年度重复、2 月 29 日、当地 09:00 提醒与日历投影。当前原型不申请通知、联系人或系统日历权限，本地 `ImportantDateKind` 不得直接提升为网络字段。
+- 购物场景仍由 `features/[slug]` 路由承载，`features/shopping` 只保存非权威的前端商品 Fixture、新增／编辑草稿、品类展示和完成折叠状态。路由层统一提供右上角新增入口，场景组件复用同一底部面板处理新增与编辑；表单只提交名称、数量／规格和可选备注，不在客户端维护独立单位或权威品类。正式购物清单继续由 Lists 模块的 TaskList / Task 承载，品类由服务端确定性逻辑或经用户确认的 AI 候选返回并允许重新归类；本地关键词只模拟返回结果。当前 `ShoppingItem`、数量／规格、品类、备注和来源不是网络 DTO；需要持久化时必须先扩展 Contracts、生成代码和跨端测试，场景页不得绕过 Lists Command 直接写库。
 - 导航层级变化只影响 App Shell 和路由归属，不合并业务边界。`features/notes`、`features/trackers`、`features/records` 以及对应后端模块和 Contracts 继续独立维护。
 - 四个一级路由各自保存滚动位置和查询缓存。打开 Capture、确认页或详情页时隐藏中央主操作，防止重复主操作和安全区遮挡。
 
