@@ -186,6 +186,12 @@ pg_trgm + ILIKE 目前够用。判断该上的信号是**搜索失败率**——
 - 可点元素给 `accessibilityRole` 与中文 `accessibilityLabel`，触控高度不小于 44。
 - 新增路由后必须在 `src/app/_layout.tsx` 注册 `Stack.Screen`。
 - 网络访问一律通过 `@steward/api-client`，不手写 fetch、URL 或 DTO。
+  唯一例外是媒体直传：签名 URL 指向对象存储而不是自家 API，
+  见 `features/capture/use-media-upload.ts`。
+- 媒体上传用 `expo-file-system` 的 `File.upload`（从磁盘流式发送），
+  不用 `fetch` + `Blob`——后者会把整个文件读进内存，几张原图就能撑爆低端机。
+  Web 上没有这个 API，那条分支才退回 fetch。
+- 签名 URL **不能写进日志、错误信息或埋点**：上传失败时只报 HTTP 状态码。
 - ESLint 会拦住「在 effect 里同步 setState」：用派生值代替 `useEffect` + `setState`。
 
 ## 状态与缓存

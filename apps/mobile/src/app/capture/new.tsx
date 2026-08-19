@@ -1,4 +1,9 @@
-import { createCapture, errorMessage } from '@steward/api-client';
+import {
+  createCapture,
+  errorMessage,
+  type CreateCaptureRequest,
+} from '@steward/api-client';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -14,6 +19,9 @@ import {
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import { useImagePicker } from '@/features/capture/use-media-picker';
+import { useMediaUpload, type LocalMedia } from '@/features/capture/use-media-upload';
+import { useVoiceRecorder } from '@/features/capture/use-voice-recorder';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type InputMode = 'text' | 'voice';
@@ -23,23 +31,31 @@ export default function CaptureInputScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<InputMode>('text');
   const [text, setText] = useState('');
-  const [images, setImages] = useState<number[]>([]);
+  // 图片与录音是真实的本地文件，用户点发送时才上传。
+  const [images, setImages] = useState<LocalMedia[]>([]);
+  const [audio, setAudio] = useState<LocalMedia | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
-  const [recording, setRecording] = useState(false);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [showClosePrompt, setShowClosePrompt] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState<ReplaceTarget>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const hasContent = Boolean(text.trim() || images.length || audioDuration);
-  const canSend = hasContent && !recording;
+  const picker = useImagePicker();
+  const recorder = useVoiceRecorder();
+  const media = useMediaUpload();
+
+  const recording = recorder.recording;
+  const hasContent = Boolean(text.trim() || images.length || audio);
+  const canSend = hasContent && !recording && !submitting;
 
   const draftSummary = useMemo(() => {
     if (text.trim()) return text.trim();
     if (audioDuration) return `语音输入 ${audioDuration} 秒`;
     return `${images.length} 张图片`;
   }, [audioDuration, images.length, text]);
+
+  const failure = submitError ?? picker.error ?? recorder.error;
 
   const close = () => {
     Keyboard.dismiss();
@@ -50,14 +66,17 @@ export default function CaptureInputScreen() {
     router.back();
   };
 
-  const addImage = () => {
-    setImages((current) => [...current, current.length + 1].slice(0, 9));
+  const addImages = async (source: 'camera' | 'library') => {
     setShowMediaMenu(false);
+    setSubmitError(null);
+    const picked = await picker.pick(source);
+    // 上限 9 张：再多的话一次 Capture 要处理的内容已经超出「记一件事」了。
+    setImages((current) => [...current, ...picked].slice(0, 9));
   };
 
   const requestMode = (nextMode: InputMode) => {
     if (nextMode === mode) return;
-    if ((nextMode === 'voice' && text.trim()) || (nextMode === 'text' && audioDuration)) {
+    if ((nextMode === 'voice' && text.trim()) || (nextMode === 'text' && audio)) {
       setReplaceTarget(nextMode);
       return;
     }
@@ -67,15 +86,27 @@ export default function CaptureInputScreen() {
   const confirmModeReplacement = () => {
     if (!replaceTarget) return;
     if (replaceTarget === 'voice') setText('');
-    if (replaceTarget === 'text') setAudioDuration(null);
+    if (replaceTarget === 'text') {
+      setAudio(null);
+      setAudioDuration(null);
+    }
     setMode(replaceTarget);
     setReplaceTarget(null);
   };
 
-  const finishRecording = () => {
+  const startRecording = () => {
+    setSubmitError(null);
+    void recorder.start();
+  };
+
+  const finishRecording = async () => {
     if (!recording) return;
-    setRecording(false);
-    setAudioDuration(8);
+    // 先把时长记下来：stop 之后 state 会归零。
+    const seconds = Math.max(1, recorder.durationSeconds);
+    const file = await recorder.stop();
+    if (!file) return;
+    setAudio(file);
+    setAudioDuration(seconds);
   };
 
   const submit = async () => {
@@ -83,19 +114,23 @@ export default function CaptureInputScreen() {
     Keyboard.dismiss();
 
     const content = text.trim();
-    if (!content) {
-      // 后端尚未提供媒体上传通道，纯图片或纯语音无法提交。
-      // 这里明确告知，而不是假装已经保存。
-      setSubmitError('图片与语音上传还未接入，请先用文字描述这件事。');
-      return;
-    }
-
     setSubmitError(null);
     setSubmitting(true);
     try {
+      // 先把媒体传上去：Capture 只能引用已经确认上传的资产。
+      const files = [...images, ...(audio ? [audio] : [])];
+      const uploaded = await media.upload(files);
+
+      // parts 的顺序就是用户看到的顺序，服务端按 position 保留它。
+      const parts: CreateCaptureRequest['parts'] = [];
+      if (content) parts.push({ kind: 'text', text: content });
+      for (const item of uploaded) {
+        parts.push({ kind: item.kind, media_id: item.mediaId });
+      }
+
       const response = await createCapture({
         origin: 'home',
-        parts: [{ kind: 'text', text: content }],
+        parts,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       router.replace({
@@ -158,8 +193,8 @@ export default function CaptureInputScreen() {
             showsHorizontalScrollIndicator={false}
           >
             {images.map((image, index) => (
-              <View key={`${image}-${index}`} style={styles.imagePreview}>
-                <AppIcon color={colors.primaryStrong} name="image-outline" size={26} />
+              <View key={`${image.uri}-${index}`} style={styles.imagePreview}>
+                <Image contentFit="cover" source={{ uri: image.uri }} style={styles.imageThumb} />
                 <View style={styles.imageIndex}>
                   <Text style={styles.imageIndexText}>{index + 1}</Text>
                 </View>
@@ -186,7 +221,10 @@ export default function CaptureInputScreen() {
             </View>
             <Pressable
               accessibilityLabel="删除录音"
-              onPress={() => setAudioDuration(null)}
+              onPress={() => {
+                setAudio(null);
+                setAudioDuration(null);
+              }}
               style={({ pressed }) => [styles.smallIconButton, pressed && styles.iconPressed]}
             >
               <AppIcon color={colors.textSecondary} name="trash-outline" size={18} />
@@ -204,13 +242,23 @@ export default function CaptureInputScreen() {
 
       {showMediaMenu ? (
         <View style={styles.mediaMenu}>
-          <Pressable onPress={addImage} style={({ pressed }) => [styles.mediaAction, pressed && styles.mediaPressed]}>
+          <Pressable
+            accessibilityLabel="拍照"
+            accessibilityRole="button"
+            onPress={() => void addImages('camera')}
+            style={({ pressed }) => [styles.mediaAction, pressed && styles.mediaPressed]}
+          >
             <View style={styles.mediaIcon}>
               <AppIcon color={colors.primaryStrong} name="camera-outline" size={21} />
             </View>
             <Text style={styles.mediaLabel}>拍照</Text>
           </Pressable>
-          <Pressable onPress={addImage} style={({ pressed }) => [styles.mediaAction, pressed && styles.mediaPressed]}>
+          <Pressable
+            accessibilityLabel="从相册选择"
+            accessibilityRole="button"
+            onPress={() => void addImages('library')}
+            style={({ pressed }) => [styles.mediaAction, pressed && styles.mediaPressed]}
+          >
             <View style={styles.mediaIcon}>
               <AppIcon color={colors.primaryStrong} name="images-outline" size={21} />
             </View>
@@ -220,11 +268,16 @@ export default function CaptureInputScreen() {
       ) : null}
 
       {images.length || audioDuration ? (
-        <Text style={styles.mediaNotice}>图片或录音只用于整理这次输入</Text>
+        <Text style={styles.mediaNotice}>
+          图片或录音只用于整理这次输入；识别结果仍需你确认后才会保存
+        </Text>
       ) : null}
 
       <View style={styles.composerWrap}>
-        {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
+        {failure ? <Text style={styles.submitError}>{failure}</Text> : null}
+        {media.uploading ? (
+          <Text style={styles.uploadHint}>正在上传媒体…</Text>
+        ) : null}
         <View style={styles.composer}>
           <Pressable
             accessibilityLabel="添加图片"
@@ -249,12 +302,14 @@ export default function CaptureInputScreen() {
             <Pressable
               accessibilityLabel={recording ? '正在录音，松开完成' : '按住说话'}
               accessibilityRole="button"
-              onPressIn={() => setRecording(true)}
-              onPressOut={finishRecording}
+              onPressIn={startRecording}
+              onPressOut={() => void finishRecording()}
               style={({ pressed }) => [styles.voiceInput, pressed && styles.voicePressed]}
             >
               <Text style={[styles.voiceText, recording && styles.recordingText]}>
-                {recording ? '正在录音，松开完成' : '按住说话'}
+                {recording
+                  ? `正在录音 ${recorder.durationSeconds} 秒，松开完成`
+                  : '按住说话'}
               </Text>
             </Pressable>
           )}
@@ -436,6 +491,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primarySoft,
+  },
+  imageThumb: {
+    width: '100%',
+    height: '100%',
+    borderRadius: radius.md,
+  },
+  uploadHint: {
+    marginBottom: 8,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
   },
   imageIndex: {
     position: 'absolute',

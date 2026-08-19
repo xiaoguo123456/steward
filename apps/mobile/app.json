@@ -34,6 +34,19 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 72
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "录下你说的话，转成文字后帮你整理成任务或日程。录音只用于这次整理。"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "从相册选图，识别其中的文字帮你整理成任务、日程或账单。",
+          "cameraPermission": "拍下小票或屏幕截图，识别其中的文字帮你整理。"
+        }
       ]
     ],
     "experiments": {
