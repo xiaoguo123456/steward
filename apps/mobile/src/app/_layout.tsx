@@ -34,6 +34,8 @@ export default function RootLayout() {
             <Stack.Screen name="notes/[id]" />
             <Stack.Screen name="notes/new" />
             <Stack.Screen name="lists/projects" />
+            <Stack.Screen name="trackers/new" />
+            <Stack.Screen name="trackers/[id]" />
             <Stack.Screen name="projects/[id]" />
             <Stack.Screen name="calendar" />
             <Stack.Screen name="me" />

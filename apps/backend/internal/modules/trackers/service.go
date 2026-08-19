@@ -184,6 +184,20 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 			return apperr.New(apperr.CodeVersionConflict)
 		}
 
+		// 内置记录项的字段定义不接受修改。
+		//
+		// 写入这三个记录项的是 Capture 与 AI 编排里按 key 写死的代码
+		// （记账的 amount / direction / category 等）。字段被改掉之后
+		// EnsureBuiltin 不会把它修回来——它只在不存在时创建——
+		// 于是之后每一次自动记账都以 RECORD_VALUES_INVALID 失败，
+		// 而用户完全看不出这和他改过字段有什么关系。
+		//
+		// 改名、换颜色、归档都放行：那些不影响按 key 读写。
+		if current.BuiltinKey != nil && body.Fields != nil {
+			return apperr.Validation(apperr.Field("fields",
+				"内置打卡项的字段是固定的，改了它之前记下的数据就读不出来了。"))
+		}
+
 		var fieldsJSON []byte
 		if body.Fields != nil {
 			fieldsJSON, err = json.Marshal(*body.Fields)
@@ -238,6 +252,13 @@ func (s *Service) DeleteTracker(ctx context.Context, userID, trackerID string) (
 				return apperr.NotFound("记录项")
 			}
 			return apperr.Internal(err)
+		}
+		// 内置记录项不删。删了它连同全部历史记录一起消失，
+		// 而下一次自动记账又会把它重新建出来——用户看到的是
+		// 一个空壳回来了，数据却没回来。不想记就归档。
+		if current.BuiltinKey != nil {
+			return apperr.Validation(apperr.Field("tracker_id",
+				"内置打卡项不能删除。不想记了可以归档。"))
 		}
 		if err := q.SoftDeleteRecordsByTracker(ctx, trackerID); err != nil {
 			return apperr.Internal(err)

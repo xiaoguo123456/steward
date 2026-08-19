@@ -1,12 +1,10 @@
 import {
-  createRecord,
   errorMessage,
   useListRecords,
   useListTrackers,
   type Record as TrackerRecord,
   type Tracker,
 } from '@steward/api-client';
-import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -16,24 +14,24 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
 import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
-import { ModalSheet } from '@/components/ui/modal-sheet';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
+import { RecordSheet } from '@/features/trackers/record-sheet';
+import { TrackerManagerSheet } from '@/features/trackers/tracker-manager-sheet';
 import { formatRelativeTime } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 export default function DataScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [activeTracker, setActiveTracker] = useState<Tracker | null>(null);
+  const [managerOpen, setManagerOpen] = useState(false);
 
   const trackersQuery = useListTrackers({ status: 'active' });
   const recordsQuery = useListRecords({ limit: 20 });
@@ -61,7 +59,20 @@ export default function DataScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <PageHeader subtitle="记录你在意的数据" title="打卡" />
+        <PageHeader
+          action={
+            <Pressable
+              accessibilityLabel="管理打卡项"
+              accessibilityRole="button"
+              onPress={() => setManagerOpen(true)}
+              style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
+            >
+              <Text style={styles.headerActionText}>管理</Text>
+            </Pressable>
+          }
+          subtitle="记录你在意的数据"
+          title="打卡"
+        />
 
         {trackersQuery.isPending ? (
           <View style={styles.loading}>
@@ -79,8 +90,10 @@ export default function DataScreen() {
           <StatePanel
             actionLabel="记一件事"
             icon="stats-chart-outline"
-            message="还没有打卡项。说一句“今天体重 68 公斤”，AI 会帮你建立记录项。"
+            message="还没有打卡项。说一句“今天体重 68 公斤”，AI 会帮你建立记录项；也可以自己填。"
             onAction={() => router.push('/capture/new')}
+            onSecondary={() => router.push('/trackers/new')}
+            secondaryLabel="自己新建"
             title="还没有打卡项"
           />
         ) : (
@@ -125,10 +138,12 @@ export default function DataScreen() {
             />
             {trackers.map((tracker) => (
               <Pressable
-                accessibilityLabel={`记录${tracker.name}`}
+                accessibilityLabel={`查看${tracker.name}`}
                 accessibilityRole="button"
                 key={tracker.id}
-                onPress={() => setActiveTracker(tracker)}
+                onPress={() =>
+                  router.push({ pathname: '/trackers/[id]', params: { id: tracker.id } })
+                }
                 style={({ pressed }) => [styles.row, pressed && styles.pressed]}
               >
                 <View style={styles.trackerIcon}>
@@ -162,101 +177,18 @@ export default function DataScreen() {
       {activeTracker ? (
         <RecordSheet
           onClose={() => setActiveTracker(null)}
-          onSaved={async () => {
+          onSaved={() => {
             setActiveTracker(null);
-            await queryClient.invalidateQueries();
+            refetchAll();
           }}
           tracker={activeTracker}
         />
       ) : null}
 
+      <TrackerManagerSheet onClose={() => setManagerOpen(false)} visible={managerOpen} />
+
       <AiFab />
     </AppScreen>
-  );
-}
-
-/** 记录录入面板：按 Tracker 的字段定义动态生成表单。 */
-function RecordSheet({
-  tracker,
-  onClose,
-  onSaved,
-}: {
-  tracker: Tracker;
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-}) {
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const requiredFilled = tracker.fields
-    .filter((field) => field.required)
-    .every((field) => (values[field.key] ?? '').trim().length > 0);
-
-  const save = async () => {
-    if (!requiredFilled || saving) return;
-    setError(null);
-    setSaving(true);
-    try {
-      await createRecord({
-        tracker_id: tracker.id,
-        timestamp: new Date().toISOString(),
-        values: tracker.fields
-          .filter((field) => (values[field.key] ?? '').trim().length > 0)
-          .map((field) => {
-            const raw = values[field.key].trim();
-            // 数值字段只提交原始数值，单位换算由服务端负责。
-            return field.type === 'text'
-              ? { key: field.key, text_value: raw }
-              : { key: field.key, number_value: Number(raw) };
-          }),
-      });
-      await onSaved();
-    } catch (err) {
-      setError(errorMessage(err, '保存失败，请检查填写内容。'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <ModalSheet onClose={onClose}>
-      <Text style={styles.sheetTitle}>记录{tracker.name}</Text>
-      {tracker.fields.map((field) => (
-        <View key={field.key} style={styles.field}>
-          <Text style={styles.fieldLabel}>
-            {field.label}
-            {field.unit ? `（${field.unit}）` : ''}
-            {field.required ? ' *' : ''}
-          </Text>
-          <TextInput
-            accessibilityLabel={field.label}
-            keyboardType={field.type === 'text' ? 'default' : 'decimal-pad'}
-            onChangeText={(text) => setValues((current) => ({ ...current, [field.key]: text }))}
-            placeholder={field.type === 'text' ? '请输入内容' : '请输入数值'}
-            placeholderTextColor={colors.textTertiary}
-            style={styles.fieldInput}
-            value={values[field.key] ?? ''}
-          />
-        </View>
-      ))}
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ disabled: !requiredFilled || saving }}
-        disabled={!requiredFilled || saving}
-        onPress={() => void save()}
-        style={({ pressed }) => [
-          styles.saveButton,
-          (!requiredFilled || saving) && styles.saveDisabled,
-          pressed && styles.pressed,
-        ]}
-      >
-        <Text style={styles.saveText}>{saving ? '保存中…' : '保存记录'}</Text>
-      </Pressable>
-    </ModalSheet>
   );
 }
 
@@ -273,6 +205,17 @@ function isRecordedToday(tracker: Tracker): boolean {
 }
 
 const styles = StyleSheet.create({
+  headerAction: {
+    minHeight: 44,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+  },
+  headerActionText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.meta,
+    fontWeight: '600',
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 96,
