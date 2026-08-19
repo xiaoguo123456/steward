@@ -1,64 +1,91 @@
+import { errorMessage, useListNotes, type Note } from '@steward/api-client';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
-import { notes } from '@/mocks/data';
+import { formatRelativeTime } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
-const tags = ['全部', '工作', '学习', '生活', '灵感'];
+const ALL_TAGS = '全部';
 
-type NoteItem = (typeof notes)[number];
-
-function NoteCard({ note }: { note: NoteItem }) {
+function NoteCard({ note }: { note: Note }) {
   const router = useRouter();
-  const hasAttachment = note.id === 'requirements-meeting' || note.id === 'dali-trip';
+  const primaryTag = note.tags[0];
+  const time = formatRelativeTime(note.updated_at);
+  const hasAttachment = (note.attachments?.length ?? 0) > 0;
 
   return (
     <Pressable
-      accessibilityLabel={`${note.title}，${note.tag}，${note.time}`}
+      accessibilityLabel={`${note.title}，${primaryTag ?? '无标签'}，${time}`}
       accessibilityRole="button"
       onPress={() => router.push({ pathname: '/notes/[id]', params: { id: note.id } })}
       style={({ pressed }) => [styles.noteCard, pressed && styles.noteCardPressed]}
     >
       <View style={styles.cardTopLine}>
-        <View style={styles.noteTag}>
-          <Text style={styles.noteTagText}>{note.tag}</Text>
-        </View>
+        {primaryTag ? (
+          <View style={styles.noteTag}>
+            <Text style={styles.noteTagText}>{primaryTag}</Text>
+          </View>
+        ) : (
+          <View />
+        )}
         <View style={styles.noteMeta}>
           {hasAttachment ? (
             <AppIcon color={colors.textTertiary} name="image-outline" size={15} />
           ) : null}
-          <Text style={styles.noteTime}>{note.time}</Text>
+          <Text style={styles.noteTime}>{time}</Text>
         </View>
       </View>
       <Text numberOfLines={2} style={styles.noteTitle}>{note.title}</Text>
-      <Text numberOfLines={3} style={styles.noteSummary}>{note.summary}</Text>
+      <Text numberOfLines={3} style={styles.noteSummary}>{note.content}</Text>
     </Pressable>
   );
 }
 
 export default function NotesScreen() {
   const router = useRouter();
-  const [activeTag, setActiveTag] = useState('全部');
+  const [activeTag, setActiveTag] = useState(ALL_TAGS);
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const filteredNotes = useMemo(
-    () => notes.filter((note) => {
-      const tagMatches = activeTag === '全部' || note.tag === activeTag;
-      const queryMatches = !query.trim() || `${note.title}${note.summary}`.includes(query.trim());
-      return tagMatches && queryMatches;
-    }),
-    [activeTag, query],
-  );
+  // 筛选与搜索都交给服务端：客户端不再持有全量笔记，也就不会出现
+  // 「本地过滤结果」与「服务端事实」不一致的情况。
+  const notesQuery = useListNotes({
+    tag: activeTag === ALL_TAGS ? undefined : activeTag,
+    q: query.trim() || undefined,
+    limit: 50,
+  });
+
+  const notes = useMemo(() => notesQuery.data?.data ?? [], [notesQuery.data]);
+
+  // 标签栏从当前结果里归集。等契约提供标签聚合接口后改为服务端返回。
+  const tags = useMemo(() => {
+    const collected = new Set<string>();
+    for (const note of notes) {
+      for (const tag of note.tags) collected.add(tag);
+    }
+    return [ALL_TAGS, ...Array.from(collected)];
+  }, [notes]);
+
+  const hasFilters = activeTag !== ALL_TAGS || query.trim().length > 0;
 
   const clearFilters = () => {
-    setActiveTag('全部');
+    setActiveTag(ALL_TAGS);
     setQuery('');
   };
 
@@ -74,6 +101,12 @@ export default function NotesScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            onRefresh={() => void notesQuery.refetch()}
+            refreshing={notesQuery.isRefetching}
+          />
+        }
         showsVerticalScrollIndicator={false}
         style={styles.screen}
       >
@@ -143,22 +176,34 @@ export default function NotesScreen() {
           })}
         </ScrollView>
 
-        {filteredNotes.length ? (
+        {notesQuery.isPending ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : notesQuery.isError ? (
+          <StatePanel
+            actionLabel="重试"
+            icon="cloud-offline-outline"
+            message={errorMessage(notesQuery.error, '暂时无法加载笔记。')}
+            onAction={() => void notesQuery.refetch()}
+            title="加载失败"
+          />
+        ) : notes.length ? (
           <View style={styles.cardList}>
-            {filteredNotes.map((note) => <NoteCard key={note.id} note={note} />)}
+            {notes.map((note) => <NoteCard key={note.id} note={note} />)}
           </View>
         ) : (
           <StatePanel
-            actionLabel={notes.length ? '清除筛选' : '记一件事'}
+            actionLabel={hasFilters ? '清除筛选' : '记一件事'}
             icon="document-text-outline"
-            message={notes.length ? '换个标签或关键词再看看。' : '从底部新增记录想法和资料。'}
-            onAction={notes.length ? clearFilters : () => router.push('/capture/new')}
-            title={notes.length ? '没有符合条件的笔记' : '还没有笔记'}
+            message={hasFilters ? '换个标签或关键词再看看。' : '从底部新增记录想法和资料。'}
+            onAction={hasFilters ? clearFilters : () => router.push('/capture/new')}
+            title={hasFilters ? '没有符合条件的笔记' : '还没有笔记'}
           />
         )}
       </ScrollView>
 
-      <AiFab count={2} />
+      <AiFab />
     </AppScreen>
   );
 }
@@ -177,6 +222,10 @@ const cardShadow = Platform.select({
 });
 
 const styles = StyleSheet.create({
+  loading: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
   screen: {
     backgroundColor: '#F5F7F6',
   },

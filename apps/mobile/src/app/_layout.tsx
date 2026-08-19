@@ -5,6 +5,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ApiProvider } from '@/api/provider';
 import { FocusPrototypeProvider } from '@/features/focus/focus-context';
 import { colors } from '@/theme/tokens';
 
@@ -12,7 +13,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <FocusPrototypeProvider>
+        <ApiProvider>
+          <FocusPrototypeProvider>
           <Stack
             screenOptions={{
               headerShown: false,
@@ -57,7 +59,8 @@ export default function RootLayout() {
               }}
             />
           </Stack>
-        </FocusPrototypeProvider>
+          </FocusPrototypeProvider>
+        </ApiProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

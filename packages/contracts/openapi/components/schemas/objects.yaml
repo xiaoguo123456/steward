@@ -1,0 +1,821 @@
+# Task、TaskList、Event、Project、Note 与 Relation。
+# 状态机、时间语义与 Today 收录规则由服务端 Go Domain 实现，客户端只做非权威展示。
+
+TaskStatus:
+  type: string
+  enum: [todo, doing, done, cancelled]
+
+TaskPriority:
+  type: string
+  enum: [low, normal, high]
+
+TaskList:
+  type: object
+  additionalProperties: false
+  required: [id, name, position, is_default, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: tls_01J8Z3
+    name:
+      type: string
+    color:
+      type: string
+      nullable: true
+      description: 只能取自产品 Token 色板的语义名。
+      enum: [blue, green, orange, purple, pink, gray]
+    icon:
+      type: string
+      nullable: true
+      description: 只能取自产品语义图标集合。
+    position:
+      type: integer
+    is_default:
+      type: boolean
+      description: 每个用户恰好一个默认清单。
+    archived_at:
+      type: string
+      format: date-time
+      nullable: true
+    task_count:
+      type: integer
+      description: 未删除且未完成的 Task 数量，由服务端计算。
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    version:
+      type: integer
+
+CreateTaskListRequest:
+  type: object
+  additionalProperties: false
+  required: [name]
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 30
+    color:
+      type: string
+      enum: [blue, green, orange, purple, pink, gray]
+      nullable: true
+    icon:
+      type: string
+      nullable: true
+    position:
+      type: integer
+      nullable: true
+
+UpdateTaskListRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    只提交需要修改的字段；不传表示保持原值。
+    清空一个可空字段必须把字段名放进 clear 数组，
+    因为生成的 Go 类型无法区分“不传”与“传 null”。
+  properties:
+    clear:
+      type: array
+      description: 需要清空的可空字段。
+      items:
+        type: string
+        enum:
+          - color
+          - icon
+    name:
+      type: string
+      minLength: 1
+      maxLength: 30
+    color:
+      type: string
+      enum: [blue, green, orange, purple, pink, gray]
+      nullable: true
+    icon:
+      type: string
+      nullable: true
+    position:
+      type: integer
+    archived:
+      type: boolean
+      description: 归档只隐藏清单，不删除其中的 Task。
+
+DeleteTaskListRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    move_tasks_to_list_id:
+      type: string
+      nullable: true
+      description: 清单非空时必填，指定 Task 迁移到的目标清单。
+
+Task:
+  type: object
+  additionalProperties: false
+  required:
+    [id, type, title, status, priority, list_id, created_by, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: tsk_01J8Z3
+    type:
+      type: string
+      enum: [task]
+    title:
+      type: string
+    description:
+      type: string
+      nullable: true
+    status:
+      $ref: '#/TaskStatus'
+    priority:
+      $ref: '#/TaskPriority'
+    due_date:
+      type: string
+      format: date
+      nullable: true
+      description: 只有日期没有时刻的截止日；与 due_at 互斥。
+    due_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: 有明确日期与时刻的截止时间；与 due_date 互斥。
+    due_timezone:
+      type: string
+      nullable: true
+      description: 设置 due_date 或 due_at 时必填，保存截止语义所属时区。
+    scheduled_start_at:
+      type: string
+      format: date-time
+      nullable: true
+    scheduled_end_at:
+      type: string
+      format: date-time
+      nullable: true
+    scheduled_timezone:
+      type: string
+      nullable: true
+    estimated_minutes:
+      type: integer
+      nullable: true
+      minimum: 1
+    focus_date:
+      type: string
+      format: date
+      nullable: true
+      description: 用户明确指定在哪一天关注该任务。
+    list_id:
+      type: string
+    project_id:
+      type: string
+      nullable: true
+    reminders:
+      type: array
+      items:
+        $ref: './common.yaml#/Reminder'
+    completed_at:
+      type: string
+      format: date-time
+      nullable: true
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    deleted_at:
+      type: string
+      format: date-time
+      nullable: true
+    version:
+      type: integer
+
+CreateTaskRequest:
+  type: object
+  additionalProperties: false
+  required: [title]
+  properties:
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    description:
+      type: string
+      nullable: true
+    status:
+      $ref: '#/TaskStatus'
+    priority:
+      $ref: '#/TaskPriority'
+    due_date:
+      type: string
+      format: date
+      nullable: true
+    due_at:
+      type: string
+      format: date-time
+      nullable: true
+    due_timezone:
+      type: string
+      nullable: true
+    scheduled_start_at:
+      type: string
+      format: date-time
+      nullable: true
+    scheduled_end_at:
+      type: string
+      format: date-time
+      nullable: true
+    scheduled_timezone:
+      type: string
+      nullable: true
+    estimated_minutes:
+      type: integer
+      nullable: true
+    focus_date:
+      type: string
+      format: date
+      nullable: true
+    list_id:
+      type: string
+      nullable: true
+      description: 未指定时使用用户的默认清单。
+    project_id:
+      type: string
+      nullable: true
+    reminders:
+      type: array
+      items:
+        $ref: './common.yaml#/ReminderInput'
+
+UpdateTaskRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    只提交需要修改的字段；不传表示保持原值。
+    清空一个可空字段必须把字段名放进 clear 数组，
+    因为生成的 Go 类型无法区分“不传”与“传 null”。
+  properties:
+    clear:
+      type: array
+      description: 需要清空的可空字段。同一字段不得同时出现在 clear 与具体取值中。
+      items:
+        type: string
+        enum:
+          - description
+          - due_date
+          - due_at
+          - scheduled_start_at
+          - scheduled_end_at
+          - estimated_minutes
+          - focus_date
+          - project_id
+          - reminders
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    description:
+      type: string
+      nullable: true
+    status:
+      $ref: '#/TaskStatus'
+    priority:
+      $ref: '#/TaskPriority'
+    due_date:
+      type: string
+      format: date
+      nullable: true
+    due_at:
+      type: string
+      format: date-time
+      nullable: true
+    due_timezone:
+      type: string
+      nullable: true
+    scheduled_start_at:
+      type: string
+      format: date-time
+      nullable: true
+    scheduled_end_at:
+      type: string
+      format: date-time
+      nullable: true
+    scheduled_timezone:
+      type: string
+      nullable: true
+    estimated_minutes:
+      type: integer
+      nullable: true
+    focus_date:
+      type: string
+      format: date
+      nullable: true
+    list_id:
+      type: string
+    project_id:
+      type: string
+      nullable: true
+    reminders:
+      type: array
+      items:
+        $ref: './common.yaml#/ReminderInput'
+
+EventKind:
+  type: string
+  enum: [schedule, important_date]
+
+EventRecurrence:
+  type: string
+  description: MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。
+  enum: [none, yearly]
+
+Event:
+  type: object
+  additionalProperties: false
+  required:
+    [id, type, title, event_kind, all_day, timezone, recurrence, created_by, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: evt_01J8Z3
+    type:
+      type: string
+      enum: [event]
+    title:
+      type: string
+    event_kind:
+      $ref: '#/EventKind'
+    all_day:
+      type: boolean
+    start_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: all_day=false 时必填。
+    end_at:
+      type: string
+      format: date-time
+      nullable: true
+    start_date:
+      type: string
+      format: date
+      nullable: true
+      description: all_day=true 时必填。
+    end_date:
+      type: string
+      format: date
+      nullable: true
+      description: 包含该日；单日事件可为空。
+    timezone:
+      type: string
+    location:
+      type: string
+      nullable: true
+    participants:
+      type: array
+      items:
+        type: string
+    project_id:
+      type: string
+      nullable: true
+    note:
+      type: string
+      nullable: true
+    reminders:
+      type: array
+      items:
+        $ref: './common.yaml#/Reminder'
+    recurrence:
+      $ref: '#/EventRecurrence'
+    original_month_day:
+      type: string
+      nullable: true
+      description: |
+        yearly 重复时保留原始月日，格式 MM-DD。
+        2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。
+      example: "02-29"
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    deleted_at:
+      type: string
+      format: date-time
+      nullable: true
+    version:
+      type: integer
+
+CreateEventRequest:
+  type: object
+  additionalProperties: false
+  required: [title, all_day]
+  properties:
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    event_kind:
+      $ref: '#/EventKind'
+    all_day:
+      type: boolean
+    start_at:
+      type: string
+      format: date-time
+      nullable: true
+    end_at:
+      type: string
+      format: date-time
+      nullable: true
+    start_date:
+      type: string
+      format: date
+      nullable: true
+    end_date:
+      type: string
+      format: date
+      nullable: true
+    timezone:
+      type: string
+      nullable: true
+      description: 未指定时使用用户当前时区。
+    location:
+      type: string
+      nullable: true
+    participants:
+      type: array
+      items:
+        type: string
+    project_id:
+      type: string
+      nullable: true
+    note:
+      type: string
+      nullable: true
+    reminders:
+      type: array
+      items:
+        $ref: './common.yaml#/ReminderInput'
+    recurrence:
+      $ref: '#/EventRecurrence'
+
+UpdateEventRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    只提交需要修改的字段；不传表示保持原值。
+    清空一个可空字段必须把字段名放进 clear 数组，
+    因为生成的 Go 类型无法区分“不传”与“传 null”。
+  properties:
+    clear:
+      type: array
+      description: 需要清空的可空字段。
+      items:
+        type: string
+        enum:
+          - start_at
+          - end_at
+          - start_date
+          - end_date
+          - location
+          - participants
+          - project_id
+          - note
+          - reminders
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    event_kind:
+      $ref: '#/EventKind'
+    all_day:
+      type: boolean
+    start_at:
+      type: string
+      format: date-time
+      nullable: true
+    end_at:
+      type: string
+      format: date-time
+      nullable: true
+    start_date:
+      type: string
+      format: date
+      nullable: true
+    end_date:
+      type: string
+      format: date
+      nullable: true
+    timezone:
+      type: string
+    location:
+      type: string
+      nullable: true
+    participants:
+      type: array
+      items:
+        type: string
+    project_id:
+      type: string
+      nullable: true
+    note:
+      type: string
+      nullable: true
+    reminders:
+      type: array
+      items:
+        $ref: './common.yaml#/ReminderInput'
+    recurrence:
+      $ref: '#/EventRecurrence'
+
+ProjectStatus:
+  type: string
+  enum: [active, paused, completed, archived]
+
+Project:
+  type: object
+  additionalProperties: false
+  required: [id, type, title, status, created_by, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: prj_01J8Z3
+    type:
+      type: string
+      enum: [project]
+    title:
+      type: string
+    description:
+      type: string
+      nullable: true
+    status:
+      $ref: '#/ProjectStatus'
+    status_before_archived:
+      $ref: '#/ProjectStatus'
+    start_date:
+      type: string
+      format: date
+      nullable: true
+    target_date:
+      type: string
+      format: date
+      nullable: true
+    progress:
+      type: number
+      format: float
+      nullable: true
+      description: |
+        已完成 Task 数 ÷（全部 Task 数 - 已取消 Task 数），由服务端计算且只读。
+        没有有效 Task 时为 null，App 显示“暂无有效任务”而不是 0%。
+    task_total:
+      type: integer
+      description: 未取消且未删除的 Task 总数。
+    task_done:
+      type: integer
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    deleted_at:
+      type: string
+      format: date-time
+      nullable: true
+    version:
+      type: integer
+
+CreateProjectRequest:
+  type: object
+  additionalProperties: false
+  required: [title]
+  properties:
+    title:
+      type: string
+      minLength: 1
+      maxLength: 120
+    description:
+      type: string
+      nullable: true
+    start_date:
+      type: string
+      format: date
+      nullable: true
+    target_date:
+      type: string
+      format: date
+      nullable: true
+
+UpdateProjectRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    只提交需要修改的字段；不传表示保持原值。
+    清空一个可空字段必须把字段名放进 clear 数组，
+    因为生成的 Go 类型无法区分“不传”与“传 null”。
+  properties:
+    clear:
+      type: array
+      description: 需要清空的可空字段。
+      items:
+        type: string
+        enum:
+          - description
+          - start_date
+          - target_date
+    title:
+      type: string
+      minLength: 1
+      maxLength: 120
+    description:
+      type: string
+      nullable: true
+    status:
+      $ref: '#/ProjectStatus'
+    start_date:
+      type: string
+      format: date
+      nullable: true
+    target_date:
+      type: string
+      format: date
+      nullable: true
+    force:
+      type: boolean
+      description: |
+        标记完成时若仍有未完成 Task，默认返回 PROJECT_HAS_OPEN_TASKS。
+        用户在提示中确认继续后重发并置为 true。
+      default: false
+
+NoteAttachment:
+  type: object
+  additionalProperties: false
+  required: [id, kind, url]
+  properties:
+    id:
+      type: string
+    kind:
+      type: string
+      enum: [image]
+    url:
+      type: string
+      description: 有效期受限的私有访问地址，不可长期缓存。
+    width:
+      type: integer
+      nullable: true
+    height:
+      type: integer
+      nullable: true
+
+Note:
+  type: object
+  additionalProperties: false
+  required: [id, type, title, content, tags, created_by, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: nte_01J8Z3
+    type:
+      type: string
+      enum: [note]
+    title:
+      type: string
+    content:
+      type: string
+      description: MVP 保存为纯文本；富文本块结构在后续版本扩展。
+    attachments:
+      type: array
+      items:
+        $ref: '#/NoteAttachment'
+    tags:
+      type: array
+      items:
+        type: string
+    pinned_at:
+      type: string
+      format: date-time
+      nullable: true
+    project_id:
+      type: string
+      nullable: true
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    deleted_at:
+      type: string
+      format: date-time
+      nullable: true
+    version:
+      type: integer
+
+CreateNoteRequest:
+  type: object
+  additionalProperties: false
+  required: [content]
+  properties:
+    title:
+      type: string
+      nullable: true
+      description: 为空时由服务端从正文首行生成。
+    content:
+      type: string
+      minLength: 1
+    tags:
+      type: array
+      items:
+        type: string
+    project_id:
+      type: string
+      nullable: true
+
+UpdateNoteRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    只提交需要修改的字段；不传表示保持原值。
+    清空一个可空字段必须把字段名放进 clear 数组，
+    因为生成的 Go 类型无法区分“不传”与“传 null”。
+  properties:
+    clear:
+      type: array
+      description: 需要清空的可空字段。
+      items:
+        type: string
+        enum:
+          - project_id
+    title:
+      type: string
+    content:
+      type: string
+      minLength: 1
+    tags:
+      type: array
+      items:
+        type: string
+    pinned:
+      type: boolean
+    project_id:
+      type: string
+      nullable: true
+
+RelationKind:
+  type: string
+  enum: [requires, related_to]
+
+Relation:
+  type: object
+  additionalProperties: false
+  required: [id, kind, from_type, from_id, to_type, to_id, created_by, created_at]
+  properties:
+    id:
+      type: string
+      example: rel_01J8Z3
+    kind:
+      $ref: '#/RelationKind'
+    from_type:
+      $ref: './common.yaml#/ObjectType'
+    from_id:
+      type: string
+    to_type:
+      $ref: './common.yaml#/ObjectType'
+    to_id:
+      type: string
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time

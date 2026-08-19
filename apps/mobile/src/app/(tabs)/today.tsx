@@ -1,14 +1,16 @@
+import { errorMessage, useGetToday, type TodayTask } from '@steward/api-client';
 import { type Href, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionTitle } from '@/components/ui/section-title';
+import { StatePanel } from '@/components/ui/state-panel';
 import { TaskRow } from '@/features/tasks/components/task-row';
-import { dailyBrief, todayTasks } from '@/mocks/data';
+import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type HomeShortcut = {
@@ -78,31 +80,38 @@ const homeShortcuts: HomeShortcut[] = [
   },
 ];
 
+/** 分组标题：与服务端返回的顺序一一对应，客户端不重排。 */
+const groupLabels: Record<TodayTask['group'], string> = {
+  overdue: '已逾期',
+  due_today: '今天截止',
+  scheduled_today: '今天有安排',
+  manual: '加入今天',
+};
+
 export default function HomeScreen() {
   const router = useRouter();
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [tasksExpanded, setTasksExpanded] = useState(false);
+  const today = useGetToday();
+  const toggleDone = useToggleTaskDone();
 
-  const openTasks = useMemo(
-    () => todayTasks.filter((task) => !completedIds.has(task.id)),
-    [completedIds],
-  );
-  const toggleTask = (id: string) => {
-    setCompletedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const tasks = useMemo(() => today.data?.data.tasks ?? [], [today.data]);
+  const events = today.data?.data.events ?? [];
+  const counts = today.data?.data.counts;
 
-  const visibleTasks = tasksExpanded ? openTasks : openTasks.slice(0, 4);
-  const remainingTaskCount = Math.max(0, openTasks.length - visibleTasks.length);
+  // 首页默认只渲染前 4 项；展开只改变可见数量，不改变收录与排序。
+  const visibleTasks = tasksExpanded ? tasks : tasks.slice(0, 4);
+  const remainingTaskCount = Math.max(0, tasks.length - visibleTasks.length);
   const showTaskToggle = tasksExpanded || remainingTaskCount > 0;
 
   return (
     <AppScreen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl onRefresh={() => void today.refetch()} refreshing={today.isRefetching} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
         <PageHeader
           action={
             <Pressable
@@ -113,7 +122,7 @@ export default function HomeScreen() {
               <AppIcon color={colors.background} name="person" size={20} />
             </Pressable>
           }
-          subtitle="8月18日 · 星期二"
+          subtitle={formatToday(today.data?.data.date)}
           title="首页"
         />
 
@@ -140,36 +149,77 @@ export default function HomeScreen() {
         </View>
 
         <SectionTitle
-          count={`${openTasks.length} 项`}
+          count={counts ? `${counts.total} 项` : undefined}
           style={styles.homeSectionTitle}
           title="今天要做"
         />
-        {visibleTasks.map((task) => (
-          <TaskRow
-            key={task.id}
-            onOpen={() => router.push({ pathname: '/tasks/[id]', params: { id: task.id } })}
-            onToggle={() => toggleTask(task.id)}
-            task={task}
+
+        {today.isPending ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : today.isError ? (
+          <StatePanel
+            actionLabel="重试"
+            icon="cloud-offline-outline"
+            message={errorMessage(today.error, '暂时无法加载今天的安排。')}
+            onAction={() => void today.refetch()}
+            title="加载失败"
           />
-        ))}
-        {showTaskToggle ? (
-          <Pressable
-            accessibilityLabel={tasksExpanded ? '收起今日任务' : `展开剩余 ${remainingTaskCount} 项任务`}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: tasksExpanded }}
-            onPress={() => setTasksExpanded((current) => !current)}
-            style={({ pressed }) => [styles.taskToggle, pressed && styles.taskTogglePressed]}
-          >
-            <Text style={styles.taskToggleText}>
-              {tasksExpanded ? '收起' : `展开剩余 ${remainingTaskCount} 项`}
-            </Text>
-            <AppIcon
-              color={colors.primaryStrong}
-              name={tasksExpanded ? 'chevron-up' : 'chevron-down'}
-              size={16}
-            />
-          </Pressable>
-        ) : null}
+        ) : tasks.length === 0 ? (
+          <StatePanel
+            actionLabel="记一件事"
+            icon="sunny-outline"
+            message="今天还没有安排。想到什么就记下来，之后再整理。"
+            onAction={() => router.push('/capture/new')}
+            title="今天很清爽"
+          />
+        ) : (
+          <>
+            {visibleTasks.map((item, index) => (
+              <View key={item.task.id}>
+                {shouldShowGroupLabel(visibleTasks, index) ? (
+                  <Text style={styles.groupLabel}>{groupLabels[item.group]}</Text>
+                ) : null}
+                <TaskRow
+                  onOpen={() =>
+                    router.push({ pathname: '/tasks/[id]', params: { id: item.task.id } })
+                  }
+                  onToggle={() => toggleDone.mutate(item.task)}
+                  task={{
+                    id: item.task.id,
+                    title: item.task.title,
+                    list: item.list_name ?? '',
+                    time: formatTaskTime(item.task),
+                    color: listColor(item.list_color),
+                    priority: item.task.priority,
+                    completed: item.task.status === 'done',
+                  }}
+                />
+              </View>
+            ))}
+            {showTaskToggle ? (
+              <Pressable
+                accessibilityLabel={
+                  tasksExpanded ? '收起今日任务' : `展开剩余 ${remainingTaskCount} 项任务`
+                }
+                accessibilityRole="button"
+                accessibilityState={{ expanded: tasksExpanded }}
+                onPress={() => setTasksExpanded((current) => !current)}
+                style={({ pressed }) => [styles.taskToggle, pressed && styles.taskTogglePressed]}
+              >
+                <Text style={styles.taskToggleText}>
+                  {tasksExpanded ? '收起' : `展开剩余 ${remainingTaskCount} 项`}
+                </Text>
+                <AppIcon
+                  color={colors.primaryStrong}
+                  name={tasksExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                />
+              </Pressable>
+            ) : null}
+          </>
+        )}
 
         <SectionTitle style={styles.homeSectionTitle} title="今日提醒" />
         <Pressable
@@ -183,18 +233,77 @@ export default function HomeScreen() {
             <AppIcon color={colors.primaryStrong} name="sparkles" size={19} />
           </View>
           <View style={styles.briefCopy}>
-            <Text style={styles.briefTitle}>{dailyBrief.title}</Text>
-            <Text style={styles.briefSummary}>{dailyBrief.summary}</Text>
-            <Text style={styles.briefSource}>{dailyBrief.source}</Text>
+            <Text style={styles.briefTitle}>
+              {events.length > 0 ? `今天有 ${events.length} 个日程` : '今天没有日程安排'}
+            </Text>
+            <Text style={styles.briefSummary}>
+              {events.length > 0
+                ? events
+                    .slice(0, 2)
+                    .map((event) => event.title)
+                    .join('、')
+                : '点击查看日历，安排接下来的时间。'}
+            </Text>
+            {counts && counts.overdue > 0 ? (
+              <Text style={styles.briefSource}>还有 {counts.overdue} 项已逾期</Text>
+            ) : null}
           </View>
           <View style={styles.briefChevron}>
             <AppIcon color={colors.textTertiary} name="chevron-forward" size={18} />
           </View>
         </Pressable>
       </ScrollView>
-      <AiFab count={3} />
+      <AiFab />
     </AppScreen>
   );
+}
+
+/** 只在分组发生变化时显示一次分组标题。 */
+function shouldShowGroupLabel(items: TodayTask[], index: number): boolean {
+  if (index === 0) return true;
+  return items[index].group !== items[index - 1].group;
+}
+
+function formatToday(date: string | undefined): string {
+  const target = date ? new Date(`${date}T00:00:00`) : new Date();
+  const weekday = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][
+    target.getDay()
+  ];
+  return `${target.getMonth() + 1}月${target.getDate()}日 · ${weekday}`;
+}
+
+/** 任务的时间展示：只有日期时不显示虚构时刻。 */
+function formatTaskTime(task: TodayTask['task']): string {
+  if (task.due_at) {
+    const at = new Date(task.due_at);
+    return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+  }
+  if (task.scheduled_start_at) {
+    const at = new Date(task.scheduled_start_at);
+    return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+  }
+  if (task.due_date) {
+    return '当日截止';
+  }
+  return '无时间';
+}
+
+/** 把清单色板名映射成实际颜色。 */
+function listColor(name: string | null | undefined): string {
+  switch (name) {
+    case 'blue':
+      return colors.blue;
+    case 'green':
+      return colors.success;
+    case 'orange':
+      return colors.warning;
+    case 'purple':
+      return colors.purple;
+    case 'pink':
+      return colors.pink;
+    default:
+      return colors.textTertiary;
+  }
 }
 
 const styles = StyleSheet.create({
@@ -247,6 +356,19 @@ const styles = StyleSheet.create({
   },
   homeSectionTitle: {
     marginTop: 12,
+  },
+  loading: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  groupLabel: {
+    marginTop: 10,
+    marginBottom: 2,
+    color: colors.textTertiary,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   taskToggle: {
     minHeight: 44,

@@ -1,0 +1,74 @@
+# 异步 Operation 与 Activity 撤销。
+
+Operation:
+  get:
+    operationId: getOperation
+    summary: 读取异步任务状态
+    description: |
+      Operation 只返回结果引用，不内嵌完整实体正文，
+      以免幂等快照、日志与轮询响应复制用户正文。
+    tags: [system]
+    parameters:
+      - $ref: '../components/parameters.yaml#/OperationId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/common.yaml#/AsyncOperationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Activities:
+  get:
+    operationId: listActivityBatches
+    summary: 读取变更历史
+    tags: [system]
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 按创建时间倒序返回。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/ActivityBatchesResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+ActivityUndo:
+  post:
+    operationId: undoActivityBatch
+    summary: 撤销一个变更批次
+    description: |
+      目标在本批次之后再次变化时不可撤销，返回 VERSION_CONFLICT 并要求重新加载。
+    tags: [system]
+    parameters:
+      - $ref: '../components/parameters.yaml#/BatchId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 撤销成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/UndoResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+# /healthz 是运维探针，不属于产品 API 契约，因此不登记到 openapi.yaml 的 paths。
+# 它由 Go 路由直接提供，响应结构只用于运维，不生成客户端代码。

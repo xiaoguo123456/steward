@@ -1,389 +1,323 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { errorMessage, useGetCalendar, type CalendarDay } from '@steward/api-client';
+import { useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
-import { nextAgenda } from '@/mocks/data';
+import { SectionTitle } from '@/components/ui/section-title';
+import { StatePanel } from '@/components/ui/state-panel';
+import { formatClock, formatDateParam } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
-type CalendarCell = {
-  day: number;
-  muted?: boolean;
-  dot?: string;
-};
-
 const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-const calendarCells: CalendarCell[] = [
-  { day: 26, muted: true },
-  { day: 27, muted: true },
-  { day: 28, muted: true },
-  { day: 29, muted: true },
-  { day: 30, muted: true },
-  { day: 31, muted: true },
-  { day: 1 },
-  { day: 2 },
-  { day: 3 },
-  { day: 4 },
-  { day: 5 },
-  { day: 6 },
-  { day: 7 },
-  { day: 8 },
-  { day: 9 },
-  { day: 10 },
-  { day: 11, dot: colors.primary },
-  { day: 12, dot: colors.warning },
-  { day: 13 },
-  { day: 14 },
-  { day: 15 },
-  { day: 16 },
-  { day: 17, dot: colors.blue },
-  { day: 18 },
-  { day: 19, dot: colors.pink },
-  { day: 20 },
-  { day: 21 },
-  { day: 22 },
-  { day: 23 },
-  { day: 24 },
-  { day: 25 },
-  { day: 26 },
-  { day: 27 },
-  { day: 28 },
-  { day: 29 },
-  { day: 30 },
-  { day: 31 },
-  { day: 1, muted: true },
-  { day: 2, muted: true },
-  { day: 3, muted: true },
-  { day: 4, muted: true },
-  { day: 5, muted: true },
-];
-
-const agenda = [
-  {
-    title: nextAgenda.title,
-    time: `${nextAgenda.time} · ${nextAgenda.location}`,
-    icon: 'calendar-outline' as const,
-    color: colors.blue,
-    background: '#EAF2FF',
-  },
-  {
-    title: '健身 30 分钟',
-    time: '19:00 — 20:00 · 健康',
-    icon: 'barbell-outline' as const,
-    color: colors.primaryStrong,
-    background: colors.primarySoft,
-  },
-  {
-    title: '阅读《设计心理学》',
-    time: '21:00 — 21:30 · 学习',
-    icon: 'book-outline' as const,
-    color: colors.purple,
-    background: '#F2EEFF',
-  },
-];
 
 export default function CalendarScreen() {
-  const [selectedDay, setSelectedDay] = useState(18);
-  const [monthExpanded, setMonthExpanded] = useState(false);
-  const selectedDayIndex = calendarCells.findIndex(
-    (cell) => !cell.muted && cell.day === selectedDay,
-  );
-  const selectedWeekStart = Math.floor(Math.max(selectedDayIndex, 0) / 7) * 7;
-  const visibleCalendarCells = monthExpanded
-    ? calendarCells
-    : calendarCells.slice(selectedWeekStart, selectedWeekStart + 7);
-  const selectedDateTitle = selectedDay === 18 ? '今天 · 8月18日' : `8月${selectedDay}日`;
+  const router = useRouter();
+  const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => formatDateParam(new Date()));
+
+  // 一次拉取整月，覆盖前后补齐的空格日期。
+  const range = useMemo(() => monthRange(monthAnchor), [monthAnchor]);
+  const calendar = useGetCalendar({ from: range.from, to: range.to });
+
+  const daysByDate = useMemo(() => {
+    const map = new Map<string, CalendarDay>();
+    for (const day of calendar.data?.data.days ?? []) {
+      map.set(day.date, day);
+    }
+    return map;
+  }, [calendar.data]);
+
+  const cells = useMemo(() => buildCells(monthAnchor), [monthAnchor]);
+  const selected = daysByDate.get(selectedDate);
+  const todayKey = formatDateParam(new Date());
 
   return (
-    <AppScreen>
+    <AppScreen includeBottomInset>
       <NavHeader title="日历" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.monthHeader}>
-          <View style={styles.monthPicker}>
-            <Pressable accessibilityLabel="上个月" accessibilityRole="button" hitSlop={10}>
-              <AppIcon name="chevron-back" size={21} />
-            </Pressable>
-            <Text style={styles.monthTitle}>2026年8月</Text>
-            <Pressable accessibilityLabel="下个月" accessibilityRole="button" hitSlop={10}>
-              <AppIcon name="chevron-forward" size={21} />
-            </Pressable>
-          </View>
+        <View style={styles.monthBar}>
           <Pressable
+            accessibilityLabel="上个月"
             accessibilityRole="button"
-            onPress={() => setSelectedDay(18)}
-            style={({ pressed }) => [styles.todayButton, pressed && styles.pressed]}
+            hitSlop={10}
+            onPress={() => setMonthAnchor(addMonths(monthAnchor, -1))}
           >
-            <Text style={styles.todayText}>今天</Text>
+            <AppIcon color={colors.textSecondary} name="chevron-back" size={20} />
+          </Pressable>
+          <Text style={styles.monthLabel}>
+            {monthAnchor.getFullYear()} 年 {monthAnchor.getMonth() + 1} 月
+          </Text>
+          <Pressable
+            accessibilityLabel="下个月"
+            accessibilityRole="button"
+            hitSlop={10}
+            onPress={() => setMonthAnchor(addMonths(monthAnchor, 1))}
+          >
+            <AppIcon color={colors.textSecondary} name="chevron-forward" size={20} />
           </Pressable>
         </View>
 
         <View style={styles.weekRow}>
-          {weekDays.map((day, index) => (
-            <Text key={day} style={[styles.weekText, index === 0 && styles.sunday]}>
-              {day}
+          {weekDays.map((label) => (
+            <Text key={label} style={styles.weekLabel}>
+              {label}
             </Text>
           ))}
         </View>
-        <View style={styles.divider} />
 
-        <View style={styles.grid}>
-          {visibleCalendarCells.map((cell, index) => {
-            const selected = !cell.muted && cell.day === selectedDay;
-            return (
-              <Pressable
-                accessibilityLabel={`${cell.muted ? '相邻月份' : '8月'}${cell.day}日${cell.dot ? '，有安排' : ''}`}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: Boolean(cell.muted), selected }}
-                disabled={cell.muted}
-                key={`${cell.day}-${index}`}
-                onPress={() => setSelectedDay(cell.day)}
-                style={styles.cell}
-              >
-                <View style={[styles.dateCircle, selected && styles.dateCircleSelected]}>
-                  <Text
+        {calendar.isPending ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : calendar.isError ? (
+          <StatePanel
+            actionLabel="重试"
+            icon="cloud-offline-outline"
+            message={errorMessage(calendar.error, '暂时无法加载日历。')}
+            onAction={() => void calendar.refetch()}
+            title="加载失败"
+          />
+        ) : (
+          <View style={styles.grid}>
+            {cells.map((cell) => {
+              const day = daysByDate.get(cell.date);
+              const hasContent = (day?.events.length ?? 0) + (day?.tasks.length ?? 0) > 0;
+              const isSelected = cell.date === selectedDate;
+              const isToday = cell.date === todayKey;
+              return (
+                <Pressable
+                  accessibilityLabel={`${cell.date}${hasContent ? '，有安排' : ''}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  key={cell.date}
+                  onPress={() => setSelectedDate(cell.date)}
+                  style={styles.cell}
+                >
+                  <View
                     style={[
-                      styles.dateText,
-                      cell.muted && styles.dateMuted,
-                      selected && styles.dateSelected,
+                      styles.cellInner,
+                      isToday && styles.cellToday,
+                      isSelected && styles.cellSelected,
                     ]}
                   >
-                    {cell.day}
+                    <Text
+                      style={[
+                        styles.cellText,
+                        cell.muted && styles.cellTextMuted,
+                        isSelected && styles.cellTextSelected,
+                      ]}
+                    >
+                      {cell.day}
+                    </Text>
+                  </View>
+                  <View style={[styles.dot, hasContent && styles.dotActive]} />
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        <SectionTitle
+          count={
+            selected ? `${selected.events.length + selected.tasks.length} 项` : undefined
+          }
+          style={styles.sectionTitle}
+          title={`${Number(selectedDate.slice(5, 7))}月${Number(selectedDate.slice(8, 10))}日安排`}
+        />
+
+        {!selected || selected.events.length + selected.tasks.length === 0 ? (
+          <Text style={styles.empty}>这一天还没有安排。</Text>
+        ) : (
+          <>
+            {selected.events.map((event) => (
+              <View key={event.id} style={styles.agendaRow}>
+                <View style={[styles.agendaBar, { backgroundColor: colors.blue }]} />
+                <View style={styles.agendaCopy}>
+                  <Text style={styles.agendaTitle}>{event.title}</Text>
+                  <Text style={styles.agendaMeta}>
+                    {event.all_day
+                      ? '全天'
+                      : event.start_at
+                        ? formatClock(new Date(event.start_at))
+                        : ''}
+                    {event.location ? ` · ${event.location}` : ''}
                   </Text>
                 </View>
-                {cell.dot && !selected ? (
-                  <View style={[styles.dot, { backgroundColor: cell.dot }]} />
-                ) : (
-                  <View style={styles.dotPlaceholder} />
-                )}
+              </View>
+            ))}
+            {selected.tasks.map((task) => (
+              <Pressable
+                key={task.id}
+                onPress={() => router.push({ pathname: '/tasks/[id]', params: { id: task.id } })}
+                style={({ pressed }) => [styles.agendaRow, pressed && styles.pressed]}
+              >
+                <View style={[styles.agendaBar, { backgroundColor: colors.primary }]} />
+                <View style={styles.agendaCopy}>
+                  <Text style={styles.agendaTitle}>{task.title}</Text>
+                  <Text style={styles.agendaMeta}>
+                    {task.due_at ? `${formatClock(new Date(task.due_at))} 截止` : '当日截止'}
+                  </Text>
+                </View>
               </Pressable>
-            );
-          })}
-        </View>
-
-        <Pressable
-          accessibilityHint={
-            monthExpanded
-              ? '收起后仅显示当前选中日期所在的一周'
-              : '展开后显示完整月份'
-          }
-          accessibilityLabel={monthExpanded ? '收起月历' : '展开完整月历'}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: monthExpanded }}
-          onPress={() => setMonthExpanded((current) => !current)}
-          style={({ pressed }) => [styles.calendarToggle, pressed && styles.togglePressed]}
-        >
-          <Text style={styles.calendarToggleText}>
-            {monthExpanded ? '收起月历' : '展开月历'}
-          </Text>
-          <AppIcon
-            color={colors.textSecondary}
-            name={monthExpanded ? 'chevron-up' : 'chevron-down'}
-            size={15}
-          />
-        </Pressable>
-
-        <View style={styles.agendaHeader}>
-          <Text accessibilityRole="header" style={styles.agendaTitle}>{selectedDateTitle}</Text>
-          <Text style={styles.agendaCount}>{agenda.length} 项安排</Text>
-        </View>
-        <View style={styles.agendaList}>
-          {agenda.map((item) => (
-            <View key={item.title} style={styles.agendaRow}>
-              <View style={[styles.agendaIcon, { backgroundColor: item.background }]}>
-                <AppIcon color={item.color} name={item.icon} size={18} />
-              </View>
-              <View style={styles.agendaCopy}>
-                <Text style={styles.agendaItemTitle}>{item.title}</Text>
-                <Text style={styles.agendaMeta}>{item.time}</Text>
-              </View>
-              <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
-            </View>
-          ))}
-        </View>
+            ))}
+          </>
+        )}
       </ScrollView>
-      <AiFab count={2} />
+      <AiFab />
     </AppScreen>
   );
+}
+
+type Cell = { date: string; day: number; muted: boolean };
+
+/** 生成 6×7 的月视图格子，前后用相邻月份补齐。 */
+function buildCells(anchor: Date): Cell[] {
+  const first = startOfMonth(anchor);
+  const start = new Date(first);
+  start.setDate(first.getDate() - first.getDay());
+
+  const cells: Cell[] = [];
+  for (let i = 0; i < 42; i += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    cells.push({
+      date: formatDateParam(date),
+      day: date.getDate(),
+      muted: date.getMonth() !== anchor.getMonth(),
+    });
+  }
+  return cells;
+}
+
+function monthRange(anchor: Date): { from: string; to: string } {
+  const cells = buildCells(anchor);
+  return { from: cells[0].date, to: cells[cells.length - 1].date };
+}
+
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, delta: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + delta, 1);
 }
 
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
-    paddingTop: 2,
     paddingBottom: 96,
   },
-  monthHeader: {
-    height: 56,
+  monthBar: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  monthPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  monthTitle: {
+  monthLabel: {
     color: colors.text,
     fontFamily,
     ...typography.section,
   },
-  todayButton: {
-    height: 36,
-    paddingHorizontal: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-  },
-  pressed: {
-    opacity: 0.58,
-  },
-  todayText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '600',
-  },
   weekRow: {
-    height: 44,
     flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: 4,
   },
-  weekText: {
-    width: '14.2857%',
-    color: colors.textSecondary,
+  weekLabel: {
+    flex: 1,
+    color: colors.textTertiary,
     fontFamily,
     fontSize: 12,
-    lineHeight: 18,
     textAlign: 'center',
   },
-  sunday: {
-    color: colors.danger,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
+  loading: {
+    paddingVertical: 40,
+    alignItems: 'center',
   },
   grid: {
-    marginTop: 4,
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   cell: {
-    width: '14.2857%',
-    height: 47,
-    alignItems: 'center',
-  },
-  dateCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.pill,
+    width: `${100 / 7}%`,
+    height: 46,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dateCircleSelected: {
+  cellInner: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+  },
+  cellToday: {
+    backgroundColor: colors.primarySoft,
+  },
+  cellSelected: {
     backgroundColor: colors.primary,
   },
-  dateText: {
+  cellText: {
     color: colors.text,
     fontFamily,
     fontSize: 14,
-    lineHeight: 20,
   },
-  dateMuted: {
-    color: '#C9CECB',
+  cellTextMuted: {
+    color: colors.textTertiary,
   },
-  dateSelected: {
+  cellTextSelected: {
     color: colors.background,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   dot: {
-    width: 5,
-    height: 5,
-    marginTop: 1,
-    borderRadius: radius.pill,
+    width: 4,
+    height: 4,
+    marginTop: 2,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
   },
-  dotPlaceholder: {
-    width: 5,
-    height: 5,
-    marginTop: 1,
+  dotActive: {
+    backgroundColor: colors.primary,
   },
-  calendarToggle: {
-    minHeight: 44,
-    marginTop: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    borderRadius: radius.sm,
+  sectionTitle: {
+    marginTop: 8,
   },
-  togglePressed: {
-    backgroundColor: colors.surface,
-  },
-  calendarToggleText: {
+  empty: {
+    paddingVertical: 20,
     color: colors.textSecondary,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '500',
+    ...typography.body,
+    textAlign: 'center',
   },
-  agendaHeader: {
-    minHeight: 50,
-    marginTop: 2,
+  agendaRow: {
+    minHeight: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
+  },
+  pressed: {
+    opacity: 0.65,
+  },
+  agendaBar: {
+    width: 3,
+    height: 34,
+    borderRadius: 2,
+  },
+  agendaCopy: {
+    flex: 1,
   },
   agendaTitle: {
     color: colors.text,
     fontFamily,
-    ...typography.section,
-  },
-  agendaCount: {
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  agendaList: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  agendaRow: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  agendaIcon: {
-    width: 36,
-    height: 36,
-    marginRight: 12,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  agendaCopy: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  agendaItemTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: '500',
+    ...typography.bodyStrong,
   },
   agendaMeta: {
-    marginTop: 4,
+    marginTop: 2,
     color: colors.textSecondary,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 17,
+    ...typography.meta,
   },
 });

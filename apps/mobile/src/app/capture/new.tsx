@@ -1,3 +1,4 @@
+import { createCapture, errorMessage } from '@steward/api-client';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -28,6 +29,8 @@ export default function CaptureInputScreen() {
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [showClosePrompt, setShowClosePrompt] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState<ReplaceTarget>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const hasContent = Boolean(text.trim() || images.length || audioDuration);
   const canSend = hasContent && !recording;
@@ -75,17 +78,39 @@ export default function CaptureInputScreen() {
     setAudioDuration(8);
   };
 
-  const submit = () => {
-    if (!canSend) return;
+  const submit = async () => {
+    if (!canSend || submitting) return;
     Keyboard.dismiss();
-    router.replace({
-      pathname: '/capture/processing',
-      params: {
-        draft: draftSummary,
-        images: String(images.length),
-        audio: audioDuration ? String(audioDuration) : '',
-      },
-    });
+
+    const content = text.trim();
+    if (!content) {
+      // 后端尚未提供媒体上传通道，纯图片或纯语音无法提交。
+      // 这里明确告知，而不是假装已经保存。
+      setSubmitError('图片与语音上传还未接入，请先用文字描述这件事。');
+      return;
+    }
+
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const response = await createCapture({
+        origin: 'home',
+        parts: [{ kind: 'text', text: content }],
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      router.replace({
+        pathname: '/capture/processing',
+        params: {
+          captureId: response.data.resource_id ?? '',
+          operationId: response.data.operation_id,
+          draft: draftSummary,
+        },
+      });
+    } catch (error) {
+      setSubmitError(errorMessage(error, '提交失败，请稍后重试。'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -107,12 +132,7 @@ export default function CaptureInputScreen() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          router.replace({
-            pathname: '/capture/confirm',
-            params: { draft: '预约下周汽车保养' },
-          })
-        }
+        onPress={() => router.replace('/capture/new')}
         style={({ pressed }) => [styles.recentRow, pressed && styles.recentPressed]}
       >
         <View style={styles.recentIcon}>
@@ -204,6 +224,7 @@ export default function CaptureInputScreen() {
       ) : null}
 
       <View style={styles.composerWrap}>
+        {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
         <View style={styles.composer}>
           <Pressable
             accessibilityLabel="添加图片"
@@ -254,11 +275,11 @@ export default function CaptureInputScreen() {
             accessibilityLabel="发送并整理"
             accessibilityRole="button"
             accessibilityState={{ disabled: !canSend }}
-            disabled={!canSend}
-            onPress={submit}
+            disabled={!canSend || submitting}
+            onPress={() => void submit()}
             style={({ pressed }) => [
               styles.sendButton,
-              !canSend && styles.sendDisabled,
+              (!canSend || submitting) && styles.sendDisabled,
               pressed && canSend && styles.sendPressed,
             ]}
           >
@@ -306,6 +327,13 @@ export default function CaptureInputScreen() {
 }
 
 const styles = StyleSheet.create({
+  submitError: {
+    marginBottom: 8,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
   header: {
     minHeight: 64,
     paddingHorizontal: 20,

@@ -1,0 +1,280 @@
+# Tracker 是可复用的字段定义，Record 是某次实际记录。
+# Tracker 不是 Object，也不作为 Relation 端点；Record 属于 Object。
+
+TrackerFieldType:
+  type: string
+  description: MVP 支持的字段类型。
+  enum: [number, currency, percentage, duration, text]
+
+TrackerField:
+  type: object
+  additionalProperties: false
+  required: [key, label, type, required]
+  properties:
+    key:
+      type: string
+      description: 字段稳定标识，同一 Tracker 内唯一，仅允许小写字母、数字和下划线。
+      pattern: '^[a-z][a-z0-9_]{0,39}$'
+    label:
+      type: string
+      description: 用户可见字段名。
+    type:
+      $ref: '#/TrackerFieldType'
+    required:
+      type: boolean
+    unit:
+      type: string
+      nullable: true
+      description: |
+        可选单位，例如 kg、元、分钟。
+        单位换算由服务端确定性代码执行，客户端不得自行折算后写入。
+
+TrackerStatus:
+  type: string
+  enum: [active, archived]
+
+Tracker:
+  type: object
+  additionalProperties: false
+  required: [id, name, fields, status, created_by, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: trk_01J8Z3
+    name:
+      type: string
+    description:
+      type: string
+      nullable: true
+    fields:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/TrackerField'
+    status:
+      $ref: '#/TrackerStatus'
+    color:
+      type: string
+      nullable: true
+      enum: [blue, green, orange, purple, pink, gray]
+    icon:
+      type: string
+      nullable: true
+    record_count:
+      type: integer
+      description: 未删除的 Record 数量。
+    last_record_at:
+      type: string
+      format: date-time
+      nullable: true
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    deleted_at:
+      type: string
+      format: date-time
+      nullable: true
+    version:
+      type: integer
+
+CreateTrackerRequest:
+  type: object
+  additionalProperties: false
+  required: [name, fields]
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 40
+    description:
+      type: string
+      nullable: true
+    fields:
+      type: array
+      minItems: 1
+      maxItems: 20
+      items:
+        $ref: '#/TrackerField'
+    color:
+      type: string
+      nullable: true
+      enum: [blue, green, orange, purple, pink, gray]
+    icon:
+      type: string
+      nullable: true
+
+UpdateTrackerRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    只提交需要修改的字段；不传表示保持原值。
+    清空一个可空字段必须把字段名放进 clear 数组，
+    因为生成的 Go 类型无法区分“不传”与“传 null”。
+  properties:
+    clear:
+      type: array
+      description: 需要清空的可空字段。
+      items:
+        type: string
+        enum:
+          - description
+          - color
+          - icon
+    name:
+      type: string
+      minLength: 1
+      maxLength: 40
+    description:
+      type: string
+      nullable: true
+    fields:
+      type: array
+      minItems: 1
+      maxItems: 20
+      description: |
+        修改字段定义不会重写历史 Record；
+        删除字段后历史值保留但不再展示于录入表单。
+      items:
+        $ref: '#/TrackerField'
+    status:
+      $ref: '#/TrackerStatus'
+    color:
+      type: string
+      nullable: true
+      enum: [blue, green, orange, purple, pink, gray]
+    icon:
+      type: string
+      nullable: true
+
+RecordValue:
+  type: object
+  additionalProperties: false
+  required: [key]
+  properties:
+    key:
+      type: string
+    number_value:
+      type: number
+      format: double
+      nullable: true
+      description: |
+        number、currency、percentage 与 duration 使用此字段。
+        必须是双精度：单精度只有约 7 位有效数字，记账金额会在千元级别丢失精度。
+    text_value:
+      type: string
+      nullable: true
+      description: text 类型使用此字段。
+
+Record:
+  type: object
+  additionalProperties: false
+  required: [id, type, title, tracker_id, timestamp, values, created_by, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: rec_01J8Z3
+    type:
+      type: string
+      enum: [record]
+    title:
+      type: string
+      description: 由服务端根据日期与主要字段生成，例如“2026-08-12 · 体重 72.3 kg”。
+    tracker_id:
+      type: string
+    tracker_name:
+      type: string
+      description: 冗余展示字段，避免列表页额外请求。
+    timestamp:
+      type: string
+      format: date-time
+      description: 该数据实际发生时间。
+    values:
+      type: array
+      items:
+        $ref: '#/RecordValue'
+    note:
+      type: string
+      nullable: true
+    project_id:
+      type: string
+      nullable: true
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    deleted_at:
+      type: string
+      format: date-time
+      nullable: true
+    version:
+      type: integer
+
+CreateRecordRequest:
+  type: object
+  additionalProperties: false
+  required: [tracker_id, timestamp, values]
+  properties:
+    tracker_id:
+      type: string
+    timestamp:
+      type: string
+      format: date-time
+    values:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/RecordValue'
+    note:
+      type: string
+      nullable: true
+    project_id:
+      type: string
+      nullable: true
+
+UpdateRecordRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    只提交需要修改的字段；不传表示保持原值。
+    清空一个可空字段必须把字段名放进 clear 数组，
+    因为生成的 Go 类型无法区分“不传”与“传 null”。
+  properties:
+    clear:
+      type: array
+      description: 需要清空的可空字段。
+      items:
+        type: string
+        enum:
+          - note
+          - project_id
+    timestamp:
+      type: string
+      format: date-time
+    values:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/RecordValue'
+    note:
+      type: string
+      nullable: true
+    project_id:
+      type: string
+      nullable: true

@@ -4,48 +4,91 @@ AI事管家是一套统一管理任务、日程、项目、笔记和结构化记
 
 ## 当前阶段
 
-当前仓库已建立 Expo 移动端前端工程，并按照 Ardot“清单设计”完成第一版可运行 UI；当前使用本地 Mock 数据，便于优先验收视觉和交互。Go 后端、正式 API 契约与生成 Client 尚未开始实现。
+仓库已经打通「移动端 → 契约 → Go 后端 → PostgreSQL」的完整链路。对照 [后端与 AI 开发指南](./docs/后端与AI开发指南.md) 第 25 节的分阶段计划：
 
-移动端启动：
+| 阶段 | 状态 |
+|---|---|
+| 阶段 0 决策与骨架 | 已完成 |
+| 阶段 1 无 AI 的后端闭环 | 已完成 |
+| 阶段 2 AI Platform 基础 | Provider 中立接口与确定性 Fake 实现已完成，真实 Provider 未接入 |
+| 阶段 3 Capture 正式闭环 | 文字输入已完成；媒体上传、转写与 OCR 未接入 |
+| 阶段 4～8 | 未开始 |
+
+即使关闭全部 Provider，用户仍可以用表单管理正式内容；Today、状态转换、时间语义与重复检测都只有 Go 实现。
+
+## 本地启动
+
+需要 Go 1.26、Node 22、pnpm 10 与 PostgreSQL 16 以上。
 
 ```bash
+cp .env.example .env
+createdb steward_dev
+
 pnpm install
-pnpm mobile:web
+make migrate      # 建表、启用 RLS、创建应用角色、初始化 River 队列
+make seed         # 演示数据：用户 13800138000，验证码 123456
+
+STEWARD_EMBEDDED_WORKER=true make api    # API 与 Worker 单进程启动，便于本地开发
+pnpm mobile:web                          # 另开一个终端
 ```
+
+生产形态是两个进程：`make api` 与 `make worker` 分开跑。
+
+验证服务是否就绪：
+
+```bash
+curl -s localhost:8787/healthz
+```
+
+## 工程结构
+
+```text
+apps/mobile       Expo / React Native App
+apps/backend      Go HTTP API 与 Go River Worker
+packages/contracts    OpenAPI 契约、错误码与 Fixture（唯一网络事实来源）
+packages/api-client   由 OpenAPI 生成的 TypeScript Client、Query Hooks 与 Zod 校验器
+packages/ai-contracts AI 结构化输入输出的 JSON Schema
+docs              产品、设计、架构与后端 AI 指南
+```
+
+移动端与 Go 后端保留在同一个 Git 仓库中。TypeScript 使用 pnpm workspace，Go 使用根 `go.work` 与 `apps/backend/go.mod`。网络字段和错误码以 `packages/contracts/openapi` 为唯一来源，并生成 Go Server／DTO、TypeScript Client、Zod 校验器。
+
+## 代码生成
+
+契约与迁移是源码，生成产物禁止手工修改：
+
+```bash
+make generate          # 打包 OpenAPI → 生成 Go Server + sqlc + TS Client
+```
+
+| 源 | 产物 |
+|---|---|
+| `packages/contracts/openapi/**` | `packages/contracts/dist/openapi.bundle.yaml` |
+| bundle | `apps/backend/internal/gen/httpapi` |
+| bundle | `packages/api-client/src/generated` |
+| `apps/backend/db/migrations/**` | `apps/backend/internal/gen/dbgen` |
+
+## 质量检查
+
+```bash
+make check        # gofmt + go vet + eslint + go test + tsc
+```
+
+## 安全边界
+
+- 所有用户数据访问都在受行级安全约束的短事务内进行。API 与 Worker 使用非超级用户的 `steward_app` 角色连接，因为 `FORCE ROW LEVEL SECURITY` 约束不到超级用户。
+- AI 只产出候选，任何正式写入都必须经过用户确认后由 Go Domain 执行。
+- 未确认的 Capture 候选不会出现在首页、计划、笔记、数据与搜索中。
+- 验证码与 Refresh Token 只以哈希形式落库，不写入日志与埋点。
 
 ## 文档入口
 
 - [功能规格说明](./docs/功能规格说明.md)
 - [产品设计说明](./docs/产品设计说明.md)
 - [整体架构设计](./docs/整体架构设计.md)
+- [后端与 AI 开发指南](./docs/后端与AI开发指南.md)
+- [品牌与设计原则](./PRODUCT.md)
 - [原始 PRD](./AI事管家_PRD_v1.0.md)
-
-## 目标工程结构
-
-```text
-apps/mobile       Expo / React Native App
-apps/backend      Go HTTP API 与 Go River Worker（普通／维护 profile）
-packages          OpenAPI/JSON Schema 契约、生成的 TypeScript Client 和 UI
-docs              产品、设计、架构和 ADR
-infra             本地依赖、部署与可观测配置
-```
-
-工程初始化后，移动端与 Go 后端必须继续保留在同一个 Git 仓库中。TypeScript 使用 pnpm workspace，Go 使用根 `go.work` 与后端 `go.mod`；网络字段和错误码以 `packages/contracts/openapi` 为唯一来源，并生成 Go Server/DTO、TypeScript Client、Zod 校验器和 Mock。
-
-## `packages` 是什么
-
-`apps` 是会运行和部署的产品，`packages` 是 App、Go 后端和测试共同使用的“对齐层”。它不作为第三个服务部署，也不承载权威业务状态机。
-
-| 目录 | 职责 | 谁使用 |
-|---|---|---|
-| `packages/contracts` | OpenAPI、错误码、公共枚举、响应样例和跨语言规则测试向量 | 生成 Go HTTP 类型和 TypeScript Client；两端契约测试 |
-| `packages/api-client` | 由 OpenAPI 生成的 TypeScript 请求方法、Query Hooks、Zod 校验和 Mock | `apps/mobile` |
-| `packages/ai-contracts` | 服务端 AI 输入输出的 JSON Schema、版本和评估样例 | 生成并校验 Go 后端的 AI 类型；移动端不得导入 |
-| `packages/ui` | 设计 Token 与不访问业务数据的跨功能基础组件 | `apps/mobile` |
-| `packages/config` | TypeScript、Lint 和测试共享配置 | TypeScript 工作区 |
-| `packages/testkit` | Fixture、数据工厂和契约测试工具 | App、契约与集成测试 |
-
-最关键的边界是：Go 后端不会直接导入 TypeScript 包，而是从同一份 OpenAPI／JSON Schema 生成 Go 代码；前后端共享的是可校验契约，不是跨语言复制业务实现。
 
 ## 协作规范
 

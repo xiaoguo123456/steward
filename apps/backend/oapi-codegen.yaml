@@ -1,0 +1,17 @@
+# 由 packages/contracts/dist/openapi.bundle.yaml 生成 Go DTO、Chi Server 与 Strict Server。
+# 生成结果禁止手工修改；契约变化后运行 `make generate-backend` 重新生成。
+package: httpapi
+output: internal/gen/httpapi/httpapi.gen.go
+
+generate:
+  models: true
+  chi-server: true
+  strict-server: true
+  embedded-spec: true
+
+output-options:
+  # 保留契约中定义但暂未被 path 引用的类型，便于模块内部提前对齐。
+  skip-prune: false
+  # 生成的类型名直接来自 components.schemas 的键名，不再追加前缀。
+  skip-fmt: false
+  nullable-type: false

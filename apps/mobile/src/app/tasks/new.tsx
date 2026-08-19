@@ -1,36 +1,84 @@
+import {
+  createTask,
+  errorMessage,
+  useListTaskLists,
+  type CreateTaskRequest,
+  type TaskPriority,
+} from '@steward/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
-import { colors, fontFamily, radius } from '@/theme/tokens';
+import { formatDateParam } from '@/utils/format';
+import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
-type EditableRowProps = {
-  label: string;
-  value: string;
-  onPress?: () => void;
-};
+const priorities: { value: TaskPriority; label: string }[] = [
+  { value: 'low', label: '低' },
+  { value: 'normal', label: '普通' },
+  { value: 'high', label: '高' },
+];
 
-function EditableRow({ label, value, onPress }: EditableRowProps) {
-  return (
-    <Pressable disabled={!onPress} onPress={onPress} style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
-    </Pressable>
-  );
-}
+type DueChoice = 'none' | 'today' | 'tomorrow';
+
+const dueChoices: { value: DueChoice; label: string }[] = [
+  { value: 'none', label: '不设置' },
+  { value: 'today', label: '今天' },
+  { value: 'tomorrow', label: '明天' },
+];
 
 export default function NewTaskScreen() {
   const router = useRouter();
-  const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState('无');
-  const [list, setList] = useState('收集箱');
-  const [tag, setTag] = useState('无');
-  const [note, setNote] = useState('');
+  const queryClient = useQueryClient();
+  const listsQuery = useListTaskLists();
 
-  const cycle = (current: string, values: string[], setter: (value: string) => void) => {
-    const index = values.indexOf(current);
-    setter(values[(index + 1) % values.length]);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState<TaskPriority>('normal');
+  const [due, setDue] = useState<DueChoice>('none');
+  const [pickedListId, setPickedListId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const lists = useMemo(() => listsQuery.data?.data ?? [], [listsQuery.data]);
+
+  // 默认落在用户的默认清单上，与确认页的行为保持一致。
+  // 这里用派生值而不是 effect + setState，避免多一轮渲染。
+  const defaultListId = lists.find((list) => list.is_default)?.id ?? lists[0]?.id ?? null;
+  const listId = pickedListId ?? defaultListId;
+
+  const canSave = title.trim().length > 0 && !saving;
+
+  const save = async () => {
+    if (!canSave) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const body: CreateTaskRequest = {
+        title: title.trim(),
+        priority,
+        list_id: listId ?? undefined,
+      };
+      if (description.trim()) {
+        body.description = description.trim();
+      }
+      if (due !== 'none') {
+        const date = new Date();
+        if (due === 'tomorrow') date.setDate(date.getDate() + 1);
+        // 只给日期不给时刻：服务端会把它保存为「某日截止」，不会补成 23:59。
+        body.due_date = formatDateParam(date);
+        body.due_timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      }
+
+      await createTask(body);
+      await queryClient.invalidateQueries();
+      router.back();
+    } catch (err) {
+      setError(errorMessage(err, '保存失败，请稍后重试。'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -41,149 +89,197 @@ export default function NewTaskScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Pressable hitSlop={10} onPress={() => router.back()} style={styles.headerSide}>
+          <Pressable accessibilityRole="button" hitSlop={10} onPress={() => router.back()}>
             <Text style={styles.cancel}>取消</Text>
           </Pressable>
           <Text style={styles.headerTitle}>新建任务</Text>
           <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSave }}
+            disabled={!canSave}
             hitSlop={10}
-            onPress={() => router.replace('/today')}
-            style={[styles.headerSide, styles.headerRight]}
+            onPress={() => void save()}
           >
-            <Text style={styles.save}>保存</Text>
+            <Text style={[styles.save, !canSave && styles.saveDisabled]}>
+              {saving ? '保存中' : '保存'}
+            </Text>
           </Pressable>
         </View>
 
         <TextInput
-          multiline
+          accessibilityLabel="任务标题"
+          autoFocus
           onChangeText={setTitle}
-          placeholder="准备做点什么？"
-          placeholderTextColor="#C7CCC9"
+          placeholder="要做什么？"
+          placeholderTextColor={colors.textTertiary}
           style={styles.titleInput}
           value={title}
         />
 
-        <View style={styles.card}>
-          <EditableRow label="日期时间" value="今天 10:00" />
-          <EditableRow
-            label="优先级"
-            onPress={() => cycle(priority, ['无', '高', '中', '低'], setPriority)}
-            value={priority}
-          />
-          <EditableRow
-            label="所属清单"
-            onPress={() => cycle(list, ['收集箱', '工作', '购物清单'], setList)}
-            value={list}
-          />
-          <EditableRow
-            label="标签"
-            onPress={() => cycle(tag, ['无', '工作', '重要', '灵感'], setTag)}
-            value={tag}
-          />
-          <View style={styles.noteRow}>
-            <Text style={styles.rowLabel}>备注</Text>
-            <TextInput
-              multiline
-              onChangeText={setNote}
-              placeholder="无"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.noteInput}
-              value={note}
+        <TextInput
+          accessibilityLabel="备注"
+          multiline
+          onChangeText={setDescription}
+          placeholder="补充说明（可选）"
+          placeholderTextColor={colors.textTertiary}
+          style={styles.noteInput}
+          value={description}
+        />
+
+        <Text style={styles.groupLabel}>优先级</Text>
+        <View style={styles.chipRow}>
+          {priorities.map((item) => (
+            <Chip
+              key={item.value}
+              label={item.label}
+              onPress={() => setPriority(item.value)}
+              selected={priority === item.value}
             />
-          </View>
+          ))}
         </View>
+
+        <Text style={styles.groupLabel}>截止</Text>
+        <View style={styles.chipRow}>
+          {dueChoices.map((item) => (
+            <Chip
+              key={item.value}
+              label={item.label}
+              onPress={() => setDue(item.value)}
+              selected={due === item.value}
+            />
+          ))}
+        </View>
+
+        {lists.length > 0 ? (
+          <>
+            <Text style={styles.groupLabel}>清单</Text>
+            <View style={styles.chipRow}>
+              {lists.map((list) => (
+                <Chip
+                  key={list.id}
+                  label={list.name}
+                  onPress={() => setPickedListId(list.id)}
+                  selected={listId === list.id}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
     </AppScreen>
   );
 }
 
+function Chip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.chip,
+        selected && styles.chipSelected,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   content: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 26,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
   },
   header: {
-    height: 64,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  headerSide: {
-    width: 64,
-    height: 44,
-    justifyContent: 'center',
-  },
-  headerRight: {
-    alignItems: 'flex-end',
-  },
-  cancel: {
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 15,
   },
   headerTitle: {
     color: colors.text,
     fontFamily,
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.section,
+  },
+  cancel: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.body,
   },
   save: {
     color: colors.primary,
     fontFamily,
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodyStrong,
+  },
+  saveDisabled: {
+    color: colors.textTertiary,
   },
   titleInput: {
-    minHeight: 68,
-    paddingTop: 6,
-    paddingBottom: 14,
+    minHeight: 52,
+    marginTop: 8,
     color: colors.text,
     fontFamily,
-    fontSize: 23,
-    lineHeight: 31,
-    fontWeight: '500',
-  },
-  card: {
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-  },
-  row: {
-    minHeight: 51,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  rowLabel: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  rowValue: {
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  noteRow: {
-    minHeight: 62,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingTop: 15,
+    ...typography.detail,
   },
   noteInput: {
-    width: '65%',
-    minHeight: 42,
-    padding: 0,
+    minHeight: 80,
+    marginTop: 4,
+    paddingTop: 8,
+    color: colors.text,
+    fontFamily,
+    ...typography.body,
+    textAlignVertical: 'top',
+  },
+  groupLabel: {
+    marginTop: 20,
+    marginBottom: 8,
     color: colors.textSecondary,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'right',
+    ...typography.label,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    minHeight: 40,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  chipSelected: {
+    backgroundColor: colors.primary,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  chipText: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.label,
+  },
+  chipTextSelected: {
+    color: colors.background,
+  },
+  error: {
+    marginTop: 16,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
   },
 });

@@ -1,7 +1,22 @@
+import {
+  errorMessage,
+  useGetToday,
+  useListTaskLists,
+  useListTasks,
+  type Task,
+  type TaskList,
+} from '@steward/api-client';
 import { useRouter } from 'expo-router';
-import type { ComponentProps } from 'react';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
@@ -9,442 +24,332 @@ import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionTitle } from '@/components/ui/section-title';
+import { StatePanel } from '@/components/ui/state-panel';
 import { TaskRow } from '@/features/tasks/components/task-row';
-import {
-  completedTasks,
-  todayTasks,
-  tomorrowTasks,
-  unscheduledTasks,
-  type TaskItem,
-} from '@/mocks/data';
+import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
+import { formatDateParam } from '@/utils/format';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type ScopeKey = 'today' | 'tomorrow' | 'completed' | 'unscheduled';
 
-type ActiveView =
-  | { type: 'scope'; key: ScopeKey }
-  | { type: 'list'; name: string }
-  | null;
+type ActiveView = { type: 'scope'; key: ScopeKey } | { type: 'list'; list: TaskList } | null;
 
-type ListDefinition = {
-  name: string;
-  icon: ComponentProps<typeof AppIcon>['name'];
-  iconColor: string;
-  iconBackground: string;
+const scopeTitles: Record<ScopeKey, string> = {
+  today: '今天',
+  tomorrow: '明天',
+  completed: '已完成',
+  unscheduled: '待安排',
 };
 
-const timeShortcuts: { key: Exclude<ScopeKey, 'unscheduled'>; label: string }[] = [
-  { key: 'today', label: '今天' },
-  { key: 'tomorrow', label: '明天' },
-  { key: 'completed', label: '已完成' },
-];
-
-const listDefinitions: ListDefinition[] = [
-  {
-    name: '收集箱',
-    icon: 'file-tray-outline',
-    iconColor: colors.primaryStrong,
-    iconBackground: colors.primarySoft,
-  },
-  {
-    name: '工作',
-    icon: 'briefcase-outline',
-    iconColor: colors.blue,
-    iconBackground: '#EAF2FF',
-  },
-  {
-    name: '生活',
-    icon: 'home-outline',
-    iconColor: colors.warning,
-    iconBackground: '#FFF5DE',
-  },
-  {
-    name: '购物清单',
-    icon: 'cart-outline',
-    iconColor: colors.purple,
-    iconBackground: '#F2EEFF',
-  },
-];
-
-const activePlanTasks = [...todayTasks, ...tomorrowTasks, ...unscheduledTasks];
-const allPlanTasks = [...activePlanTasks, ...completedTasks];
-
-function getScopeTitle(key: ScopeKey) {
-  if (key === 'today') return '今天';
-  if (key === 'tomorrow') return '明天';
-  if (key === 'completed') return '已完成';
-  return '待安排';
-}
-
-function getEmptyCopy(key: ScopeKey) {
-  if (key === 'today') return '今天暂时没有需要处理的任务';
-  if (key === 'tomorrow') return '明天还没有安排任务';
-  if (key === 'completed') return '完成任务后会显示在这里';
-  return '所有任务都已经安排好了';
-}
+const scopeEmptyCopy: Record<ScopeKey, string> = {
+  today: '今天暂时没有需要处理的任务',
+  tomorrow: '明天还没有安排任务',
+  completed: '完成任务后会显示在这里',
+  unscheduled: '所有任务都已经安排好了',
+};
 
 export default function ListsScreen() {
   const router = useRouter();
   const [activeView, setActiveView] = useState<ActiveView>(null);
-  const [completedIds, setCompletedIds] = useState<Set<string>>(
-    () => new Set(completedTasks.map((task) => task.id)),
-  );
+  const toggleDone = useToggleTaskDone();
 
-  const toggleTask = (taskId: string) => {
-    setCompletedIds((current) => {
-      const next = new Set(current);
-      if (next.has(taskId)) next.delete(taskId);
-      else next.add(taskId);
-      return next;
-    });
+  const tomorrow = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    return formatDateParam(date);
+  }, []);
+
+  // 各入口的数量都来自服务端：客户端不自行推导收录条件。
+  const today = useGetToday();
+  const tomorrowTasks = useListTasks({ day: tomorrow, limit: 100 });
+  const completedTasks = useListTasks({ status: ['done'], limit: 100 });
+  const unscheduledTasks = useListTasks({ unscheduled: true, limit: 100 });
+  const taskLists = useListTaskLists();
+
+  const counts = {
+    today: today.data?.data.counts.total ?? 0,
+    tomorrow: tomorrowTasks.data?.data.length ?? 0,
+    completed: completedTasks.data?.data.length ?? 0,
+    unscheduled: unscheduledTasks.data?.data.length ?? 0,
   };
 
-  const shortcutCounts: Record<Exclude<ScopeKey, 'unscheduled'>, number> = {
-    today: todayTasks.filter((task) => !completedIds.has(task.id)).length,
-    tomorrow: tomorrowTasks.filter((task) => !completedIds.has(task.id)).length,
-    completed: completedIds.size,
+  const loading =
+    today.isPending ||
+    tomorrowTasks.isPending ||
+    completedTasks.isPending ||
+    unscheduledTasks.isPending ||
+    taskLists.isPending;
+
+  const failed =
+    today.isError || tomorrowTasks.isError || completedTasks.isError || taskLists.isError;
+
+  const refetchAll = () => {
+    void today.refetch();
+    void tomorrowTasks.refetch();
+    void completedTasks.refetch();
+    void unscheduledTasks.refetch();
+    void taskLists.refetch();
   };
-  const unscheduledCount = unscheduledTasks.filter(
-    (task) => !completedIds.has(task.id),
-  ).length;
 
-  const detail = useMemo(() => {
-    if (!activeView) return null;
-
-    if (activeView.type === 'list') {
-      const tasks = activePlanTasks.filter((task) => task.list === activeView.name);
-      return {
-        title: activeView.name,
-        subtitle: `${tasks.filter((task) => !completedIds.has(task.id)).length} 项待处理`,
-        emptyCopy: '这里还没有任务',
-        tasks,
-      };
-    }
-
-    const { key } = activeView;
-    const tasks: TaskItem[] =
-      key === 'today'
-        ? todayTasks
-        : key === 'tomorrow'
-          ? tomorrowTasks
-          : key === 'unscheduled'
-            ? unscheduledTasks
-            : allPlanTasks.filter((task) => completedIds.has(task.id));
-    const pendingCount = tasks.filter((task) => !completedIds.has(task.id)).length;
-
-    return {
-      title: getScopeTitle(key),
-      subtitle: key === 'completed' ? `${tasks.length} 项记录` : `${pendingCount} 项待处理`,
-      emptyCopy: getEmptyCopy(key),
-      tasks,
-    };
-  }, [activeView, completedIds]);
-
-  if (activeView && detail) {
+  if (activeView) {
     return (
-      <AppScreen>
-        <NavHeader onBack={() => setActiveView(null)} title={detail.title} />
-        <ScrollView contentContainerStyle={styles.detailContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.detailSummary}>
-            <Text style={styles.detailSummaryText}>{detail.subtitle}</Text>
-          </View>
-          {detail.tasks.length > 0 ? (
-            detail.tasks.map((task) => (
-              <TaskRow
-                completed={completedIds.has(task.id)}
-                key={task.id}
-                onOpen={() =>
-                  router.push({ pathname: '/tasks/[id]', params: { id: task.id } })
-                }
-                onToggle={() => toggleTask(task.id)}
-                task={task}
-              />
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <AppIcon color={colors.primaryStrong} name="checkmark" size={21} />
-              </View>
-              <Text style={styles.emptyTitle}>{detail.emptyCopy}</Text>
-              <Text style={styles.emptyCopy}>可以通过底部“新增”随时补充任务</Text>
-            </View>
-          )}
-        </ScrollView>
-        <AiFab count={1} />
-      </AppScreen>
+      <DetailView
+        onBack={() => setActiveView(null)}
+        onToggle={(task) => toggleDone.mutate(task)}
+        tasks={detailTasks(activeView, {
+          today: today.data?.data.tasks.map((item) => item.task) ?? [],
+          tomorrow: tomorrowTasks.data?.data ?? [],
+          completed: completedTasks.data?.data ?? [],
+          unscheduled: unscheduledTasks.data?.data ?? [],
+        })}
+        view={activeView}
+      />
     );
   }
 
   return (
     <AppScreen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl onRefresh={refetchAll} refreshing={today.isRefetching} />}
+        showsVerticalScrollIndicator={false}
+      >
         <PageHeader
           action={
             <Pressable
               accessibilityLabel="打开日历"
               accessibilityRole="button"
               onPress={() => router.push('/calendar')}
-              style={({ pressed }) => [styles.calendarButton, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
             >
-              <AppIcon color={colors.primaryStrong} name="calendar-outline" size={22} />
+              <AppIcon color={colors.text} name="calendar-outline" size={22} />
             </Pressable>
           }
-          subtitle="安排未来，整理所有任务"
+          subtitle="安排接下来的时间"
           title="计划"
         />
 
-        <View accessibilityLabel="按时间查看任务" style={styles.timeShortcuts}>
-          {timeShortcuts.map((shortcut, index) => (
-            <View key={shortcut.key} style={styles.timeShortcutSlot}>
-              {index > 0 ? <View style={styles.timeShortcutDivider} /> : null}
-              <Pressable
-                accessibilityLabel={`${shortcut.label}，${shortcutCounts[shortcut.key]} 项`}
-                accessibilityRole="button"
-                onPress={() => setActiveView({ type: 'scope', key: shortcut.key })}
-                style={({ pressed }) => [styles.timeShortcut, pressed && styles.shortcutPressed]}
-              >
-                <Text style={styles.timeShortcutLabel}>{shortcut.label}</Text>
-                <Text style={styles.timeShortcutCount}>{shortcutCounts[shortcut.key]}</Text>
-              </Pressable>
+        {failed ? (
+          <StatePanel
+            actionLabel="重试"
+            icon="cloud-offline-outline"
+            message={errorMessage(today.error ?? tomorrowTasks.error, '暂时无法加载计划。')}
+            onAction={refetchAll}
+            title="加载失败"
+          />
+        ) : loading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : (
+          <>
+            <View style={styles.shortcutRow}>
+              {(['today', 'tomorrow', 'completed'] as const).map((key) => (
+                <Pressable
+                  accessibilityLabel={`查看${scopeTitles[key]}，${counts[key]} 项`}
+                  accessibilityRole="button"
+                  key={key}
+                  onPress={() => setActiveView({ type: 'scope', key })}
+                  style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}
+                >
+                  <Text style={styles.shortcutCount}>{counts[key]}</Text>
+                  <Text style={styles.shortcutLabel}>{scopeTitles[key]}</Text>
+                </Pressable>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <Pressable
-          accessibilityLabel={`${unscheduledCount} 项待安排，补充日期和时间`}
-          accessibilityRole="button"
-          onPress={() => setActiveView({ type: 'scope', key: 'unscheduled' })}
-          style={({ pressed }) => [styles.unscheduledRow, pressed && styles.unscheduledPressed]}
-        >
-          <View style={styles.unscheduledIcon}>
-            <AppIcon color={colors.primaryStrong} name="time-outline" size={20} />
-          </View>
-          <View style={styles.unscheduledCopy}>
-            <Text style={styles.unscheduledTitle}>{unscheduledCount} 项待安排</Text>
-            <Text style={styles.unscheduledMeta}>补充日期，让任务在合适的时候出现</Text>
-          </View>
-          <AppIcon color={colors.primaryStrong} name="chevron-forward" size={18} />
-        </Pressable>
+            <SectionTitle
+              count={`${counts.unscheduled} 项`}
+              style={styles.sectionTitle}
+              title="待安排"
+            />
+            <Pressable
+              accessibilityLabel={`查看待安排，${counts.unscheduled} 项`}
+              accessibilityRole="button"
+              onPress={() => setActiveView({ type: 'scope', key: 'unscheduled' })}
+              style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+            >
+              <View style={[styles.rowIcon, { backgroundColor: colors.surface }]}>
+                <AppIcon color={colors.textSecondary} name="albums-outline" size={19} />
+              </View>
+              <Text style={styles.rowTitle}>没有日期的任务</Text>
+              <Text style={styles.rowCount}>{counts.unscheduled}</Text>
+              <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
+            </Pressable>
 
-        <SectionTitle
-          count={`${listDefinitions.length} 项`}
-          style={styles.listSectionTitle}
-          title="清单"
-        />
-        <View style={styles.listRows}>
-          {listDefinitions.map((item) => {
-            const count = activePlanTasks.filter(
-              (task) => task.list === item.name && !completedIds.has(task.id),
-            ).length;
-
-            return (
-              <Pressable
-                accessibilityLabel={`${item.name}，${count} 项待处理`}
-                accessibilityRole="button"
-                key={item.name}
-                onPress={() => setActiveView({ type: 'list', name: item.name })}
-                style={({ pressed }) => [styles.listRow, pressed && styles.pressed]}
-              >
-                <View style={[styles.listIcon, { backgroundColor: item.iconBackground }]}>
-                  <AppIcon color={item.iconColor} name={item.icon} size={19} />
-                </View>
-                <Text style={styles.listTitle}>{item.name}</Text>
-                <Text style={styles.listCount}>{count}</Text>
-                <AppIcon color={colors.borderStrong} name="chevron-forward" size={18} />
-              </Pressable>
-            );
-          })}
-        </View>
+            <SectionTitle
+              count={`${taskLists.data?.data.length ?? 0} 个`}
+              style={styles.sectionTitle}
+              title="清单"
+            />
+            <View style={styles.rows}>
+              {(taskLists.data?.data ?? []).map((list) => (
+                <Pressable
+                  accessibilityLabel={`查看清单 ${list.name}`}
+                  accessibilityRole="button"
+                  key={list.id}
+                  onPress={() => setActiveView({ type: 'list', list })}
+                  style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+                >
+                  <View style={[styles.rowIcon, { backgroundColor: colors.primarySoft }]}>
+                    <AppIcon color={colors.primaryStrong} name="list-outline" size={19} />
+                  </View>
+                  <Text style={styles.rowTitle}>{list.name}</Text>
+                  <Text style={styles.rowCount}>{list.task_count ?? 0}</Text>
+                  <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
-      <AiFab count={1} />
+      <AiFab />
     </AppScreen>
   );
+}
+
+/** 详情视图：展示某个入口或清单下的任务。 */
+function DetailView({
+  view,
+  tasks,
+  onBack,
+  onToggle,
+}: {
+  view: NonNullable<ActiveView>;
+  tasks: Task[];
+  onBack: () => void;
+  onToggle: (task: Task) => void;
+}) {
+  const router = useRouter();
+  const title = view.type === 'list' ? view.list.name : scopeTitles[view.key];
+  const emptyCopy = view.type === 'list' ? '这里还没有任务' : scopeEmptyCopy[view.key];
+
+  return (
+    <AppScreen includeBottomInset>
+      <NavHeader onBack={onBack} title={title} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {tasks.length === 0 ? (
+          <StatePanel icon="checkmark-done-outline" message={emptyCopy} title="暂无内容" />
+        ) : (
+          tasks.map((task) => (
+            <TaskRow
+              key={task.id}
+              onOpen={() => router.push({ pathname: '/tasks/[id]', params: { id: task.id } })}
+              onToggle={() => onToggle(task)}
+              task={{
+                id: task.id,
+                title: task.title,
+                list: '',
+                time: task.due_date ?? '无时间',
+                color: colors.textTertiary,
+                priority: task.priority,
+                completed: task.status === 'done',
+              }}
+            />
+          ))
+        )}
+      </ScrollView>
+    </AppScreen>
+  );
+}
+
+/** 按当前视图挑选要展示的任务。清单视图在已加载的任务中按 list_id 过滤。 */
+function detailTasks(
+  view: NonNullable<ActiveView>,
+  pools: { today: Task[]; tomorrow: Task[]; completed: Task[]; unscheduled: Task[] },
+): Task[] {
+  if (view.type === 'scope') {
+    return pools[view.key];
+  }
+  const merged = [...pools.today, ...pools.tomorrow, ...pools.unscheduled];
+  const seen = new Set<string>();
+  return merged.filter((task) => {
+    if (task.list_id !== view.list.id || seen.has(task.id)) return false;
+    seen.add(task.id);
+    return true;
+  });
 }
 
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 112,
+    paddingBottom: 96,
   },
-  calendarButton: {
+  headerAction: {
     width: 44,
     height: 44,
-    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
+    borderRadius: radius.pill,
   },
   pressed: {
-    opacity: 0.58,
+    opacity: 0.6,
   },
-  timeShortcuts: {
-    height: 62,
+  loading: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  shortcutRow: {
     marginTop: 8,
     flexDirection: 'row',
-    overflow: 'hidden',
+    gap: 10,
+  },
+  shortcut: {
+    flex: 1,
+    minHeight: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceSubtle,
   },
-  timeShortcutSlot: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timeShortcutDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 26,
-    backgroundColor: colors.border,
-  },
-  timeShortcut: {
-    flex: 1,
-    height: 62,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-  },
-  shortcutPressed: {
-    backgroundColor: colors.surface,
-  },
-  timeShortcutLabel: {
+  shortcutCount: {
     color: colors.text,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '500',
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '700',
   },
-  timeShortcutCount: {
-    minWidth: 18,
-    color: colors.primaryStrong,
+  shortcutLabel: {
+    marginTop: 2,
+    color: colors.textSecondary,
     fontFamily,
     fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '700',
-    textAlign: 'center',
+    lineHeight: 18,
   },
-  unscheduledRow: {
-    minHeight: 74,
-    marginTop: 16,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
+  sectionTitle: {
+    marginTop: 10,
   },
-  unscheduledPressed: {
-    backgroundColor: colors.primaryTrack,
-  },
-  unscheduledIcon: {
-    width: 38,
-    height: 38,
-    marginRight: 12,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryTrack,
-  },
-  unscheduledCopy: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  unscheduledTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: '600',
-  },
-  unscheduledMeta: {
-    marginTop: 3,
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  listSectionTitle: {
-    marginTop: 20,
-  },
-  listRows: {
+  rows: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  listRow: {
-    minHeight: 66,
+  row: {
+    minHeight: 60,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  listIcon: {
-    width: 34,
-    height: 34,
-    marginRight: 12,
+  rowIcon: {
+    width: 36,
+    height: 36,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  listTitle: {
+  rowTitle: {
     flex: 1,
-    color: colors.text,
-    fontFamily,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: '500',
-  },
-  listCount: {
-    minWidth: 24,
-    marginRight: 8,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-    textAlign: 'right',
-  },
-  detailContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 112,
-  },
-  detailSummary: {
-    minHeight: 44,
-    justifyContent: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  detailSummaryText: {
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  emptyState: {
-    minHeight: 260,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  emptyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
-  },
-  emptyTitle: {
-    marginTop: 14,
     color: colors.text,
     fontFamily,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '500',
   },
-  emptyCopy: {
-    marginTop: 5,
-    color: colors.textSecondary,
+  rowCount: {
+    color: colors.textTertiary,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 19,
   },
 });

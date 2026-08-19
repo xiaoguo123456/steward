@@ -1,0 +1,4808 @@
+openapi: 3.0.3
+info:
+  title: AI事管家 API
+  version: 1.0.0
+  description: |
+    AI事管家的唯一网络契约来源。前后端不得在任一侧手写 DTO、URL、枚举或错误码。
+
+    约定：
+    - 所有成功响应统一为 `{data, meta}`，集合额外带 `page`。
+    - 所有错误响应统一为 `{error, meta}`，App 只依赖 `error.code` 分支。
+    - 写请求必须携带 `Idempotency-Key`；并发编辑应携带 `If-Match`。
+    - 异步处理返回 `202` 与 `operation_id`，客户端通过 Operation 轮询。
+    - 私有内容默认 `Cache-Control: private, no-store`。
+servers:
+  - url: http://localhost:8787
+    description: 本地开发
+  - url: https://api.example.com
+    description: 生产占位；正式域名待运维确认
+security:
+  - bearerAuth: []
+tags:
+  - name: auth
+    x-displayName: 账户与登录
+  - name: users
+    x-displayName: 用户资料与偏好
+  - name: lists
+    x-displayName: 清单
+  - name: tasks
+    x-displayName: 任务
+  - name: events
+    x-displayName: 日程与重要日
+  - name: projects
+    x-displayName: 项目
+  - name: notes
+    x-displayName: 笔记
+  - name: trackers
+    x-displayName: 记录与数据
+  - name: captures
+    x-displayName: 统一输入
+  - name: views
+    x-displayName: 聚合视图
+  - name: system
+    x-displayName: 系统
+paths:
+  /v1/auth/phone-code:
+    post:
+      operationId: requestPhoneCode
+      summary: 发送登录验证码
+      tags:
+        - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneCodeRequest'
+      responses:
+        '200':
+          description: 验证码已发送。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneCodeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/auth/login:
+    post:
+      operationId: login
+      summary: 手机号验证码登录
+      tags:
+        - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功。首次登录同时完成用户初始化并创建默认清单。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: 用 Refresh Token 换取新的 Access Token
+      tags:
+        - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: 刷新成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      summary: 注销当前 Refresh Token
+      tags:
+        - auth
+      responses:
+        '200':
+          description: 已注销。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me:
+    get:
+      operationId: getCurrentUser
+      summary: 读取当前用户资料
+      tags:
+        - users
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateCurrentUser
+      summary: 修改当前用户资料
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/preferences:
+    get:
+      operationId: getUserPreferences
+      summary: 读取显式偏好设置
+      tags:
+        - users
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateUserPreferences
+      summary: 修改显式偏好设置
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserPreferencesRequest'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/ai-settings:
+    get:
+      operationId: getAiSettings
+      summary: 读取 AI 开关
+      tags:
+        - users
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSettingsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateAiSettings
+      summary: 修改 AI 开关
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAiSettingsRequest'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/task-lists:
+    get:
+      operationId: listTaskLists
+      summary: 读取当前用户的全部清单
+      tags:
+        - lists
+      parameters:
+        - name: include_archived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: 按 position 升序返回。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createTaskList
+      summary: 新建清单
+      tags:
+        - lists
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskListRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/task-lists/{list_id}:
+    patch:
+      operationId: updateTaskList
+      summary: 修改清单
+      tags:
+        - lists
+      parameters:
+        - $ref: '#/components/parameters/TaskListId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskListRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteTaskList
+      summary: 删除清单
+      description: |
+        清单非空时必须提供 move_tasks_to_list_id，否则返回 TASK_LIST_NOT_EMPTY。
+        默认清单在没有替代默认清单时不可删除。
+      tags:
+        - lists
+      parameters:
+        - $ref: '#/components/parameters/TaskListId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteTaskListRequest'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/tasks:
+    get:
+      operationId: listTasks
+      summary: 按条件查询 Task
+      tags:
+        - tasks
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          required: false
+          description: 不传时默认返回 todo 与 doing。
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/TaskStatus'
+          style: form
+          explode: false
+        - name: list_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: due_before
+          in: query
+          required: false
+          description: 以用户时区解释的当地日期上界，含当日。
+          schema:
+            type: string
+            format: date
+        - name: scheduled_on
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: day
+          in: query
+          required: false
+          description: |
+            该当地日期需要关注的 Task，收录规则与 Today 完全一致：
+            当日截止、当日有计划时间、已逾期，或被明确加入当天。
+            用于“明天”等按天视图，避免客户端自行推导收录条件。
+          schema:
+            type: string
+            format: date
+        - name: unscheduled
+          in: query
+          required: false
+          description: 为 true 时只返回 todo 且没有任何截止、计划与 focus_date 的 Task。
+          schema:
+            type: boolean
+        - name: q
+          in: query
+          required: false
+          description: 标题关键词。
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TasksResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createTask
+      summary: 新建 Task
+      tags:
+        - tasks
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/tasks/{task_id}:
+    get:
+      operationId: getTask
+      summary: 读取 Task 详情
+      tags:
+        - tasks
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateTask
+      summary: 修改 Task
+      tags:
+        - tasks
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteTask
+      summary: 删除 Task
+      description: 软删除。删除不属于状态转换。
+      tags:
+        - tasks
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/events:
+    get:
+      operationId: listEvents
+      summary: 按时间范围查询 Event
+      tags:
+        - events
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: from
+          in: query
+          required: false
+          description: 当地日期下界，含当日。
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: event_kind
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/EventKind'
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功。yearly 重复的重要日已按查询范围投影为具体日期。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createEvent
+      summary: 新建 Event
+      tags:
+        - events
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/events/{event_id}:
+    get:
+      operationId: getEvent
+      summary: 读取 Event 详情
+      tags:
+        - events
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateEvent
+      summary: 修改 Event
+      tags:
+        - events
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEventRequest'
+      responses:
+        '200':
+          description: 修改成功。相对提醒跟随新的开始时间重新计算。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteEvent
+      summary: 删除 Event
+      tags:
+        - events
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/projects:
+    get:
+      operationId: listProjects
+      summary: 查询 Project
+      tags:
+        - projects
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          required: false
+          description: 不传时默认排除 archived。
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ProjectStatus'
+          style: form
+          explode: false
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createProject
+      summary: 新建 Project
+      tags:
+        - projects
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/projects/{project_id}:
+    get:
+      operationId: getProject
+      summary: 读取 Project 详情
+      tags:
+        - projects
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateProject
+      summary: 修改 Project
+      tags:
+        - projects
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteProject
+      summary: 删除 Project
+      tags:
+        - projects
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。关联对象的 project_id 被清空，对象本身保留。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/notes:
+    get:
+      operationId: listNotes
+      summary: 查询 Note
+      tags:
+        - notes
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          description: 标题与正文关键词。
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 按置顶优先、更新时间倒序返回。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createNote
+      summary: 新建 Note
+      tags:
+        - notes
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNoteRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/notes/{note_id}:
+    get:
+      operationId: getNote
+      summary: 读取 Note 详情
+      tags:
+        - notes
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateNote
+      summary: 修改 Note
+      tags:
+        - notes
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNoteRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteNote
+      summary: 删除 Note
+      tags:
+        - notes
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/trackers:
+    get:
+      operationId: listTrackers
+      summary: 读取全部 Tracker
+      tags:
+        - trackers
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/TrackerStatus'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createTracker
+      summary: 新建 Tracker
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrackerRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/trackers/{tracker_id}:
+    get:
+      operationId: getTracker
+      summary: 读取 Tracker 详情
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/TrackerId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateTracker
+      summary: 修改 Tracker
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/TrackerId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTrackerRequest'
+      responses:
+        '200':
+          description: 修改成功。历史 Record 不被重写。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteTracker
+      summary: 删除 Tracker
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/TrackerId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。所属 Record 一并软删除。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/records:
+    get:
+      operationId: listRecords
+      summary: 查询 Record
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: tracker_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 按 timestamp 倒序返回。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createRecord
+      summary: 新建 Record
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRecordRequest'
+      responses:
+        '201':
+          description: 创建成功。title 由服务端生成。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/records/{record_id}:
+    get:
+      operationId: getRecord
+      summary: 读取 Record 详情
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/RecordId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateRecord
+      summary: 修改 Record
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/RecordId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecordRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteRecord
+      summary: 删除 Record
+      tags:
+        - trackers
+      parameters:
+        - $ref: '#/components/parameters/RecordId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/captures:
+    post:
+      operationId: createCapture
+      summary: 提交一次 Capture 输入
+      description: |
+        同步创建 Capture 并返回 202 与 operation_id，解析在 Worker 中异步执行。
+        客户端通过 Operation 轮询处理进度，成功后读取 Capture 获取候选。
+      tags:
+        - captures
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCaptureRequest'
+      responses:
+        '202':
+          description: 已受理，解析任务已入队。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/captures/{capture_id}:
+    get:
+      operationId: getCapture
+      summary: 读取 Capture 状态与候选
+      tags:
+        - captures
+      parameters:
+        - $ref: '#/components/parameters/CaptureId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: discardCapture
+      summary: 放弃本次 Capture
+      tags:
+        - captures
+      parameters:
+        - $ref: '#/components/parameters/CaptureId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 已放弃。未确认候选不会进入任何正式列表。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/captures/{capture_id}/confirm:
+    post:
+      operationId: confirmCapture
+      summary: 确认并保存本次 Capture 的候选项
+      description: |
+        一次确认中的 Tracker、Object 创建、已有实体更新与 Relation 变更以事务方式保存，
+        任一操作失败时整体回滚。重复提交同一 Idempotency-Key 不会创建重复实体。
+      tags:
+        - captures
+      parameters:
+        - $ref: '#/components/parameters/CaptureId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmCaptureRequest'
+      responses:
+        '200':
+          description: 保存成功，返回本次影响的资源与撤销入口。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmCaptureResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/capture-questions:
+    get:
+      operationId: listCaptureQuestions
+      summary: 读取全局待答问题
+      description: 全局 AI 待答入口的权威数据源。App 按 ID 读取，不复制问题正文到全局状态。
+      tags:
+        - captures
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - open
+              - answered
+              - superseded
+              - expired
+            default: open
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureQuestionsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/capture-questions/{question_id}/answer:
+    post:
+      operationId: answerCaptureQuestion
+      summary: 回答一个待答问题
+      description: 由 Captures 创建新 revision 并返回 Operation，通用 Assistant 不直接修改旧候选。
+      tags:
+        - captures
+      parameters:
+        - $ref: '#/components/parameters/QuestionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerCaptureQuestionRequest'
+      responses:
+        '202':
+          description: 已受理，新的解析任务已入队。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/today:
+    get:
+      operationId: getToday
+      summary: 读取今天的任务与日程
+      description: |
+        收录与排序完全由服务端确定性代码计算，客户端不得重排。
+        展开只改变客户端可见数量，不改变收录、排序或字段。
+      tags:
+        - views
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodayViewResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/calendar:
+    get:
+      operationId: getCalendar
+      summary: 按日期范围读取日历
+      tags:
+        - views
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          description: 与 from 的跨度不得超过 100 天。
+          schema:
+            type: string
+            format: date
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarViewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/reviews/weekly:
+    get:
+      operationId: getWeeklyReview
+      summary: 读取某一周的复盘
+      description: |
+        确定性指标始终可用。AI 叙述与建议在 Provider 不可用时为空，
+        页面仍然展示指标与来源。
+      tags:
+        - views
+      parameters:
+        - name: week_of
+          in: query
+          required: false
+          description: 该周内任意一天的当地日期。不传时为本周。
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyReviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/search:
+    get:
+      operationId: search
+      summary: 跨实体关键词检索
+      description: 只返回已确认的正式内容，处理中或待确认的 Capture 不会出现。
+      tags:
+        - views
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: types
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ObjectType'
+          style: form
+          explode: false
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/operations/{operation_id}:
+    get:
+      operationId: getOperation
+      summary: 读取异步任务状态
+      description: |
+        Operation 只返回结果引用，不内嵌完整实体正文，
+        以免幂等快照、日志与轮询响应复制用户正文。
+      tags:
+        - system
+      parameters:
+        - $ref: '#/components/parameters/OperationId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncOperationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/activities:
+    get:
+      operationId: listActivityBatches
+      summary: 读取变更历史
+      tags:
+        - system
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 按创建时间倒序返回。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityBatchesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/activities/{batch_id}/undo:
+    post:
+      operationId: undoActivityBatch
+      summary: 撤销一个变更批次
+      description: |
+        目标在本批次之后再次变化时不可撤销，返回 VERSION_CONFLICT 并要求重新加载。
+      tags:
+        - system
+      parameters:
+        - $ref: '#/components/parameters/BatchId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 撤销成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UndoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 登录后获得的 Access Token。过期时使用 Refresh Token 换取新的。
+  schemas:
+    PhoneCodeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - phone
+      properties:
+        phone:
+          type: string
+          description: 中国大陆手机号，11 位数字。
+          pattern: ^1[3-9][0-9]{9}$
+          example: '13800138000'
+        purpose:
+          type: string
+          description: 验证码用途，用于区分登录与换绑等场景的限流口径。
+          enum:
+            - login
+          default: login
+    ResponseMeta:
+      type: object
+      additionalProperties: false
+      required:
+        - request_id
+      properties:
+        request_id:
+          type: string
+          description: 服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。
+          example: req_01J8Z3
+      description: 所有成功响应共有的元信息。
+    PhoneCodeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - expires_in_seconds
+            - resend_after_seconds
+          properties:
+            expires_in_seconds:
+              type: integer
+              description: 验证码有效期。
+            resend_after_seconds:
+              type: integer
+              description: 允许再次发送前需要等待的秒数。
+            dev_code:
+              type: string
+              nullable: true
+              description: 仅在开发环境返回的固定验证码，生产环境恒为 null。
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ErrorCode:
+      type: string
+      description: |
+        稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。
+        新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。
+      enum:
+        - VALIDATION_FAILED
+        - UNAUTHENTICATED
+        - PERMISSION_DENIED
+        - RESOURCE_NOT_FOUND
+        - VERSION_CONFLICT
+        - IDEMPOTENCY_KEY_REQUIRED
+        - IDEMPOTENCY_KEY_REUSED
+        - RATE_LIMITED
+        - INTERNAL_ERROR
+        - PHONE_INVALID
+        - VERIFICATION_CODE_INVALID
+        - VERIFICATION_CODE_EXPIRED
+        - REFRESH_TOKEN_INVALID
+        - TASK_LIST_NAME_DUPLICATED
+        - TASK_LIST_NOT_EMPTY
+        - TASK_LIST_DEFAULT_REQUIRED
+        - TASK_STATUS_TRANSITION_INVALID
+        - EVENT_TIME_RANGE_INVALID
+        - EVENT_RECURRENCE_NOT_ALLOWED
+        - TRACKER_SCHEMA_INVALID
+        - RECORD_VALUES_INVALID
+        - PROJECT_HAS_OPEN_TASKS
+        - OBJECT_ALREADY_DELETED
+        - CAPTURE_NOT_READY
+        - CAPTURE_ALREADY_CONFIRMED
+        - CAPTURE_REVISION_STALE
+        - CAPTURE_QUESTION_RESOLVED
+        - AI_PROVIDER_UNAVAILABLE
+        - AI_PROVIDER_RATE_LIMITED
+        - AI_SCHEMA_INVALID
+        - AI_SOURCE_INVALID
+        - AI_BUDGET_EXCEEDED
+        - AI_TURN_CANCELLED
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          description: 出错字段的路径，例如 scheduled_end_at。
+        message:
+          type: string
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - retryable
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+          description: 面向用户的默认中文文案。App 可以覆盖为更贴合场景的文案。
+        retryable:
+          type: boolean
+          description: 是否可以用相同参数安全重试。
+        reload_target:
+          type: boolean
+          description: App 是否需要重新加载目标资源后再重试。
+          default: false
+        details:
+          type: array
+          description: 字段级校验明细，仅在 VALIDATION_FAILED 等场景出现。
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+        - meta
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - phone
+        - code
+      properties:
+        phone:
+          type: string
+          pattern: ^1[3-9][0-9]{9}$
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+        timezone:
+          type: string
+          description: 客户端当前 IANA 时区，用于首次初始化默认值。
+          example: Asia/Shanghai
+    TokenPair:
+      type: object
+      additionalProperties: false
+      required:
+        - access_token
+        - refresh_token
+        - access_expires_at
+        - refresh_expires_at
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        access_expires_at:
+          type: string
+          format: date-time
+        refresh_expires_at:
+          type: string
+          format: date-time
+    User:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - phone
+        - display_name
+        - timezone
+        - initialized
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          example: usr_01J8Z3
+        phone:
+          type: string
+          description: 已脱敏的手机号，中间四位为星号。
+          example: 138****8000
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+          description: 用户时区，所有日期语义换算的基准。
+          example: Asia/Shanghai
+        initialized:
+          type: boolean
+          description: 是否已完成首次初始化流程。
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - tokens
+            - user
+            - is_new_user
+          properties:
+            tokens:
+              $ref: '#/components/schemas/TokenPair'
+            user:
+              $ref: '#/components/schemas/User'
+            is_new_user:
+              type: boolean
+              description: 为 true 时 App 进入初始化流程。
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+    RefreshResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/TokenPair'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    EmptyResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - meta
+      properties:
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UserResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        avatar_url:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+    UserPreferences:
+      type: object
+      additionalProperties: false
+      required:
+        - week_start
+        - work_day_start
+        - work_day_end
+        - default_reminder_local_time
+        - updated_at
+      properties:
+        week_start:
+          type: string
+          description: 周视图起始日。
+          enum:
+            - monday
+            - sunday
+        work_day_start:
+          type: string
+          description: 工作时间开始，格式 HH:MM，用于安排建议与日历高亮。
+          example: '09:00'
+        work_day_end:
+          type: string
+          example: '18:00'
+        default_reminder_local_time:
+          type: string
+          description: 全天 Event 与 due_date 提醒的默认当地触发时间。
+          example: '09:00'
+        updated_at:
+          type: string
+          format: date-time
+    UserPreferencesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/UserPreferences'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateUserPreferencesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        week_start:
+          type: string
+          enum:
+            - monday
+            - sunday
+        work_day_start:
+          type: string
+        work_day_end:
+          type: string
+        default_reminder_local_time:
+          type: string
+    AiSettings:
+      type: object
+      additionalProperties: false
+      required:
+        - capture_parse_enabled
+        - suggestion_enabled
+        - memory_learning_enabled
+        - updated_at
+      properties:
+        capture_parse_enabled:
+          type: boolean
+          description: 关闭后 Capture 只保存原始输入，不调用 AI 解析。
+        suggestion_enabled:
+          type: boolean
+          description: 关闭后不生成任何 AI 建议。
+        memory_learning_enabled:
+          type: boolean
+          description: 关闭后不再生成新的长期记忆建议。
+        updated_at:
+          type: string
+          format: date-time
+    AiSettingsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/AiSettings'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateAiSettingsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        capture_parse_enabled:
+          type: boolean
+        suggestion_enabled:
+          type: boolean
+        memory_learning_enabled:
+          type: boolean
+    TaskList:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - position
+        - is_default
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: tls_01J8Z3
+        name:
+          type: string
+        color:
+          type: string
+          nullable: true
+          description: 只能取自产品 Token 色板的语义名。
+          enum:
+            - blue
+            - green
+            - orange
+            - purple
+            - pink
+            - gray
+        icon:
+          type: string
+          nullable: true
+          description: 只能取自产品语义图标集合。
+        position:
+          type: integer
+        is_default:
+          type: boolean
+          description: 每个用户恰好一个默认清单。
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+        task_count:
+          type: integer
+          description: 未删除且未完成的 Task 数量，由服务端计算。
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    TaskListsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskList'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateTaskListRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        color:
+          type: string
+          enum:
+            - blue
+            - green
+            - orange
+            - purple
+            - pink
+            - gray
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        position:
+          type: integer
+          nullable: true
+    TaskListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/TaskList'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DeleteTaskListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        move_tasks_to_list_id:
+          type: string
+          nullable: true
+          description: 清单非空时必填，指定 Task 迁移到的目标清单。
+    AffectedResource:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - id
+      properties:
+        type:
+          type: string
+          description: 受影响资源类型，App 据此精确失效缓存。
+          enum:
+            - task
+            - event
+            - project
+            - note
+            - record
+            - tracker
+            - task_list
+            - capture
+            - today
+            - calendar
+            - activity
+        id:
+          type: string
+          nullable: true
+          description: 为空表示该类型的集合查询整体失效。
+    MutationResponse:
+      type: object
+      additionalProperties: false
+      description: 删除等不返回实体的写操作响应，携带需要失效的资源列表。
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - affected_resources
+          properties:
+            affected_resources:
+              type: array
+              items:
+                $ref: '#/components/schemas/AffectedResource'
+            activity_batch_id:
+              type: string
+              nullable: true
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateTaskListRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        只提交需要修改的字段；不传表示保持原值。
+        清空一个可空字段必须把字段名放进 clear 数组，
+        因为生成的 Go 类型无法区分“不传”与“传 null”。
+      properties:
+        clear:
+          type: array
+          description: 需要清空的可空字段。
+          items:
+            type: string
+            enum:
+              - color
+              - icon
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        color:
+          type: string
+          enum:
+            - blue
+            - green
+            - orange
+            - purple
+            - pink
+            - gray
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        position:
+          type: integer
+        archived:
+          type: boolean
+          description: 归档只隐藏清单，不删除其中的 Task。
+    TaskStatus:
+      type: string
+      enum:
+        - todo
+        - doing
+        - done
+        - cancelled
+    TaskPriority:
+      type: string
+      enum:
+        - low
+        - normal
+        - high
+    Reminder:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          description: |
+            relative 表示相对开始时间的偏移，仅用于定时 Event 与带 due_at 的 Task；
+            absolute_local 表示明确的当地触发时间，全天 Event 与 due_date 必须使用它。
+          enum:
+            - relative
+            - absolute_local
+        offset_minutes:
+          type: integer
+          nullable: true
+          description: kind=relative 时必填，表示开始前的分钟数。
+        local_time:
+          type: string
+          nullable: true
+          description: kind=absolute_local 时必填，格式 HH:MM。
+          example: '09:00'
+        days_before:
+          type: integer
+          nullable: true
+          description: kind=absolute_local 时提前的天数，0 表示当天。
+    CreatedBy:
+      type: string
+      description: 实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。
+      enum:
+        - user
+        - ai
+        - system
+    ProvenanceAction:
+      type: string
+      enum:
+        - created_from
+        - derived_from
+        - updated_from
+    ProvenanceRef:
+      type: object
+      additionalProperties: false
+      required:
+        - source_type
+        - source_id
+        - action
+      properties:
+        source_type:
+          type: string
+          enum:
+            - capture
+            - object
+            - ai_action
+        source_id:
+          type: string
+        source_revision:
+          type: integer
+          nullable: true
+          description: Capture 来源的 revision 序号。
+        part_refs:
+          type: array
+          description: Capture 中的文字片段、音频时间段或图片区域引用。
+          items:
+            type: string
+        action:
+          $ref: '#/components/schemas/ProvenanceAction'
+        source_deleted:
+          type: boolean
+          default: false
+          description: 来源已删除时为 true，此时不再保留原始内容。
+    Task:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - title
+        - status
+        - priority
+        - list_id
+        - created_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: tsk_01J8Z3
+        type:
+          type: string
+          enum:
+            - task
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          description: 只有日期没有时刻的截止日；与 due_at 互斥。
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 有明确日期与时刻的截止时间；与 due_date 互斥。
+        due_timezone:
+          type: string
+          nullable: true
+          description: 设置 due_date 或 due_at 时必填，保存截止语义所属时区。
+        scheduled_start_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_timezone:
+          type: string
+          nullable: true
+        estimated_minutes:
+          type: integer
+          nullable: true
+          minimum: 1
+        focus_date:
+          type: string
+          format: date
+          nullable: true
+          description: 用户明确指定在哪一天关注该任务。
+        list_id:
+          type: string
+        project_id:
+          type: string
+          nullable: true
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reminder'
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        provenance_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+    PageInfo:
+      type: object
+      additionalProperties: false
+      required:
+        - has_more
+      properties:
+        has_more:
+          type: boolean
+          description: 是否还有下一页。
+        next_cursor:
+          type: string
+          nullable: true
+          description: 不透明游标。App 不得解析其内容。
+    TasksResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ReminderInput:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+      properties:
+        kind:
+          type: string
+          enum:
+            - relative
+            - absolute_local
+        offset_minutes:
+          type: integer
+          nullable: true
+        local_time:
+          type: string
+          nullable: true
+          example: '09:00'
+        days_before:
+          type: integer
+          nullable: true
+    CreateTaskRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+        due_timezone:
+          type: string
+          nullable: true
+        scheduled_start_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_timezone:
+          type: string
+          nullable: true
+        estimated_minutes:
+          type: integer
+          nullable: true
+        focus_date:
+          type: string
+          format: date
+          nullable: true
+        list_id:
+          type: string
+          nullable: true
+          description: 未指定时使用用户的默认清单。
+        project_id:
+          type: string
+          nullable: true
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReminderInput'
+    TaskResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Task'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateTaskRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        只提交需要修改的字段；不传表示保持原值。
+        清空一个可空字段必须把字段名放进 clear 数组，
+        因为生成的 Go 类型无法区分“不传”与“传 null”。
+      properties:
+        clear:
+          type: array
+          description: 需要清空的可空字段。同一字段不得同时出现在 clear 与具体取值中。
+          items:
+            type: string
+            enum:
+              - description
+              - due_date
+              - due_at
+              - scheduled_start_at
+              - scheduled_end_at
+              - estimated_minutes
+              - focus_date
+              - project_id
+              - reminders
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+        due_timezone:
+          type: string
+          nullable: true
+        scheduled_start_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_timezone:
+          type: string
+          nullable: true
+        estimated_minutes:
+          type: integer
+          nullable: true
+        focus_date:
+          type: string
+          format: date
+          nullable: true
+        list_id:
+          type: string
+        project_id:
+          type: string
+          nullable: true
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReminderInput'
+    EventKind:
+      type: string
+      enum:
+        - schedule
+        - important_date
+    EventRecurrence:
+      type: string
+      description: MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。
+      enum:
+        - none
+        - yearly
+    Event:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - title
+        - event_kind
+        - all_day
+        - timezone
+        - recurrence
+        - created_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: evt_01J8Z3
+        type:
+          type: string
+          enum:
+            - event
+        title:
+          type: string
+        event_kind:
+          $ref: '#/components/schemas/EventKind'
+        all_day:
+          type: boolean
+        start_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: all_day=false 时必填。
+        end_at:
+          type: string
+          format: date-time
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+          description: all_day=true 时必填。
+        end_date:
+          type: string
+          format: date
+          nullable: true
+          description: 包含该日；单日事件可为空。
+        timezone:
+          type: string
+        location:
+          type: string
+          nullable: true
+        participants:
+          type: array
+          items:
+            type: string
+        project_id:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reminder'
+        recurrence:
+          $ref: '#/components/schemas/EventRecurrence'
+        original_month_day:
+          type: string
+          nullable: true
+          description: |
+            yearly 重复时保留原始月日，格式 MM-DD。
+            2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。
+          example: 02-29
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        provenance_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+    EventsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateEventRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - all_day
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        event_kind:
+          $ref: '#/components/schemas/EventKind'
+        all_day:
+          type: boolean
+        start_at:
+          type: string
+          format: date-time
+          nullable: true
+        end_at:
+          type: string
+          format: date-time
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+          description: 未指定时使用用户当前时区。
+        location:
+          type: string
+          nullable: true
+        participants:
+          type: array
+          items:
+            type: string
+        project_id:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReminderInput'
+        recurrence:
+          $ref: '#/components/schemas/EventRecurrence'
+    EventResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Event'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateEventRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        只提交需要修改的字段；不传表示保持原值。
+        清空一个可空字段必须把字段名放进 clear 数组，
+        因为生成的 Go 类型无法区分“不传”与“传 null”。
+      properties:
+        clear:
+          type: array
+          description: 需要清空的可空字段。
+          items:
+            type: string
+            enum:
+              - start_at
+              - end_at
+              - start_date
+              - end_date
+              - location
+              - participants
+              - project_id
+              - note
+              - reminders
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        event_kind:
+          $ref: '#/components/schemas/EventKind'
+        all_day:
+          type: boolean
+        start_at:
+          type: string
+          format: date-time
+          nullable: true
+        end_at:
+          type: string
+          format: date-time
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        timezone:
+          type: string
+        location:
+          type: string
+          nullable: true
+        participants:
+          type: array
+          items:
+            type: string
+        project_id:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReminderInput'
+        recurrence:
+          $ref: '#/components/schemas/EventRecurrence'
+    ProjectStatus:
+      type: string
+      enum:
+        - active
+        - paused
+        - completed
+        - archived
+    Project:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - title
+        - status
+        - created_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: prj_01J8Z3
+        type:
+          type: string
+          enum:
+            - project
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        status_before_archived:
+          $ref: '#/components/schemas/ProjectStatus'
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        target_date:
+          type: string
+          format: date
+          nullable: true
+        progress:
+          type: number
+          format: float
+          nullable: true
+          description: |
+            已完成 Task 数 ÷（全部 Task 数 - 已取消 Task 数），由服务端计算且只读。
+            没有有效 Task 时为 null，App 显示“暂无有效任务”而不是 0%。
+        task_total:
+          type: integer
+          description: 未取消且未删除的 Task 总数。
+        task_done:
+          type: integer
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        provenance_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+    ProjectsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateProjectRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        target_date:
+          type: string
+          format: date
+          nullable: true
+    ProjectResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Project'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateProjectRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        只提交需要修改的字段；不传表示保持原值。
+        清空一个可空字段必须把字段名放进 clear 数组，
+        因为生成的 Go 类型无法区分“不传”与“传 null”。
+      properties:
+        clear:
+          type: array
+          description: 需要清空的可空字段。
+          items:
+            type: string
+            enum:
+              - description
+              - start_date
+              - target_date
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        target_date:
+          type: string
+          format: date
+          nullable: true
+        force:
+          type: boolean
+          description: |
+            标记完成时若仍有未完成 Task，默认返回 PROJECT_HAS_OPEN_TASKS。
+            用户在提示中确认继续后重发并置为 true。
+          default: false
+    NoteAttachment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - url
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum:
+            - image
+        url:
+          type: string
+          description: 有效期受限的私有访问地址，不可长期缓存。
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+    Note:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - title
+        - content
+        - tags
+        - created_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: nte_01J8Z3
+        type:
+          type: string
+          enum:
+            - note
+        title:
+          type: string
+        content:
+          type: string
+          description: MVP 保存为纯文本；富文本块结构在后续版本扩展。
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteAttachment'
+        tags:
+          type: array
+          items:
+            type: string
+        pinned_at:
+          type: string
+          format: date-time
+          nullable: true
+        project_id:
+          type: string
+          nullable: true
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        provenance_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+    NotesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateNoteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - content
+      properties:
+        title:
+          type: string
+          nullable: true
+          description: 为空时由服务端从正文首行生成。
+        content:
+          type: string
+          minLength: 1
+        tags:
+          type: array
+          items:
+            type: string
+        project_id:
+          type: string
+          nullable: true
+    NoteResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Note'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateNoteRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        只提交需要修改的字段；不传表示保持原值。
+        清空一个可空字段必须把字段名放进 clear 数组，
+        因为生成的 Go 类型无法区分“不传”与“传 null”。
+      properties:
+        clear:
+          type: array
+          description: 需要清空的可空字段。
+          items:
+            type: string
+            enum:
+              - project_id
+        title:
+          type: string
+        content:
+          type: string
+          minLength: 1
+        tags:
+          type: array
+          items:
+            type: string
+        pinned:
+          type: boolean
+        project_id:
+          type: string
+          nullable: true
+    TrackerStatus:
+      type: string
+      enum:
+        - active
+        - archived
+    TrackerFieldType:
+      type: string
+      description: MVP 支持的字段类型。
+      enum:
+        - number
+        - currency
+        - percentage
+        - duration
+        - text
+    TrackerField:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - type
+        - required
+      properties:
+        key:
+          type: string
+          description: 字段稳定标识，同一 Tracker 内唯一，仅允许小写字母、数字和下划线。
+          pattern: ^[a-z][a-z0-9_]{0,39}$
+        label:
+          type: string
+          description: 用户可见字段名。
+        type:
+          $ref: '#/components/schemas/TrackerFieldType'
+        required:
+          type: boolean
+        unit:
+          type: string
+          nullable: true
+          description: |
+            可选单位，例如 kg、元、分钟。
+            单位换算由服务端确定性代码执行，客户端不得自行折算后写入。
+    Tracker:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - fields
+        - status
+        - created_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: trk_01J8Z3
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TrackerField'
+        status:
+          $ref: '#/components/schemas/TrackerStatus'
+        color:
+          type: string
+          nullable: true
+          enum:
+            - blue
+            - green
+            - orange
+            - purple
+            - pink
+            - gray
+        icon:
+          type: string
+          nullable: true
+        record_count:
+          type: integer
+          description: 未删除的 Record 数量。
+        last_record_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        provenance_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+    TrackersResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tracker'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateTrackerRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - fields
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        description:
+          type: string
+          nullable: true
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/TrackerField'
+        color:
+          type: string
+          nullable: true
+          enum:
+            - blue
+            - green
+            - orange
+            - purple
+            - pink
+            - gray
+        icon:
+          type: string
+          nullable: true
+    TrackerResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Tracker'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateTrackerRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        只提交需要修改的字段；不传表示保持原值。
+        清空一个可空字段必须把字段名放进 clear 数组，
+        因为生成的 Go 类型无法区分“不传”与“传 null”。
+      properties:
+        clear:
+          type: array
+          description: 需要清空的可空字段。
+          items:
+            type: string
+            enum:
+              - description
+              - color
+              - icon
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        description:
+          type: string
+          nullable: true
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: |
+            修改字段定义不会重写历史 Record；
+            删除字段后历史值保留但不再展示于录入表单。
+          items:
+            $ref: '#/components/schemas/TrackerField'
+        status:
+          $ref: '#/components/schemas/TrackerStatus'
+        color:
+          type: string
+          nullable: true
+          enum:
+            - blue
+            - green
+            - orange
+            - purple
+            - pink
+            - gray
+        icon:
+          type: string
+          nullable: true
+    RecordValue:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+      properties:
+        key:
+          type: string
+        number_value:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            number、currency、percentage 与 duration 使用此字段。
+            必须是双精度：单精度只有约 7 位有效数字，记账金额会在千元级别丢失精度。
+        text_value:
+          type: string
+          nullable: true
+          description: text 类型使用此字段。
+    Record:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - title
+        - tracker_id
+        - timestamp
+        - values
+        - created_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: rec_01J8Z3
+        type:
+          type: string
+          enum:
+            - record
+        title:
+          type: string
+          description: 由服务端根据日期与主要字段生成，例如“2026-08-12 · 体重 72.3 kg”。
+        tracker_id:
+          type: string
+        tracker_name:
+          type: string
+          description: 冗余展示字段，避免列表页额外请求。
+        timestamp:
+          type: string
+          format: date-time
+          description: 该数据实际发生时间。
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordValue'
+        note:
+          type: string
+          nullable: true
+        project_id:
+          type: string
+          nullable: true
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        provenance_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+    RecordsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Record'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateRecordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - tracker_id
+        - timestamp
+        - values
+      properties:
+        tracker_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        values:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RecordValue'
+        note:
+          type: string
+          nullable: true
+        project_id:
+          type: string
+          nullable: true
+    RecordResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Record'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateRecordRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        只提交需要修改的字段；不传表示保持原值。
+        清空一个可空字段必须把字段名放进 clear 数组，
+        因为生成的 Go 类型无法区分“不传”与“传 null”。
+      properties:
+        clear:
+          type: array
+          description: 需要清空的可空字段。
+          items:
+            type: string
+            enum:
+              - note
+              - project_id
+        timestamp:
+          type: string
+          format: date-time
+        values:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RecordValue'
+        note:
+          type: string
+          nullable: true
+        project_id:
+          type: string
+          nullable: true
+    CaptureOrigin:
+      type: string
+      description: Capture 入口来源，只影响候选建议，不授权跳过确认。
+      enum:
+        - home
+        - list
+        - note
+        - project_manager
+        - assistant
+        - tracker
+    CapturePartKind:
+      type: string
+      enum:
+        - text
+        - audio
+        - image
+    CreateCaptureRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - parts
+      properties:
+        origin:
+          $ref: '#/components/schemas/CaptureOrigin'
+        parts:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - kind
+            properties:
+              kind:
+                $ref: '#/components/schemas/CapturePartKind'
+              text:
+                type: string
+                nullable: true
+                description: kind=text 时必填。
+              media_id:
+                type: string
+                nullable: true
+                description: kind=audio 或 image 时必填，指向已完成上传的媒体对象。
+        suggested_project_id:
+          type: string
+          nullable: true
+          description: 入口上下文提示，只影响候选建议，不授权跳过确认。
+        timezone:
+          type: string
+          nullable: true
+          description: 客户端时区，用于解析相对时间表达。
+    AcceptedResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - operation_id
+          properties:
+            operation_id:
+              type: string
+            resource_id:
+              type: string
+              nullable: true
+              description: 已经创建的目标资源 ID，例如 Capture ID。
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CaptureStatus:
+      type: string
+      description: Capture 主状态，转换规则由服务端 Domain 强制。
+      enum:
+        - draft
+        - submitting
+        - preprocessing
+        - parsing
+        - awaiting_instruction
+        - needs_confirmation
+        - confirmed
+        - partially_failed
+        - failed
+        - discarded
+        - expired
+    CapturePartStatus:
+      type: string
+      description: 单个输入项状态，支持单项重试并区分系统失败与用户明确忽略。
+      enum:
+        - pending
+        - processing
+        - succeeded
+        - failed
+        - ignored
+    CapturePart:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - status
+        - position
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/CapturePartKind'
+        status:
+          $ref: '#/components/schemas/CapturePartStatus'
+        position:
+          type: integer
+          description: 提交顺序，图片按此编号显示为“图片 1、图片 2”。
+        text:
+          type: string
+          nullable: true
+          description: kind=text 时为用户输入原文；kind=audio 时为转写结果；kind=image 时为 OCR 摘要。
+        media_url:
+          type: string
+          nullable: true
+          description: 有效期受限的私有访问地址。
+        duration_ms:
+          type: integer
+          nullable: true
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+    CaptureCandidateType:
+      type: string
+      enum:
+        - task
+        - event
+        - project
+        - note
+        - tracker
+        - record
+    CaptureCandidateAction:
+      type: string
+      enum:
+        - create
+        - update
+    CaptureTaskDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+        due_timezone:
+          type: string
+          nullable: true
+        scheduled_start_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_end_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_timezone:
+          type: string
+          nullable: true
+        estimated_minutes:
+          type: integer
+          nullable: true
+        list_id:
+          type: string
+          nullable: true
+          description: 未指定时确认页预选用户默认清单。
+        project_ref:
+          type: string
+          nullable: true
+          description: 已有 Project ID，或本次候选 Project 的 candidate_id。
+    CaptureEventDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - all_day
+      properties:
+        title:
+          type: string
+        event_kind:
+          $ref: '#/components/schemas/EventKind'
+        all_day:
+          type: boolean
+        start_at:
+          type: string
+          format: date-time
+          nullable: true
+        end_at:
+          type: string
+          format: date-time
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        participants:
+          type: array
+          items:
+            type: string
+        note:
+          type: string
+          nullable: true
+        recurrence:
+          $ref: '#/components/schemas/EventRecurrence'
+        project_ref:
+          type: string
+          nullable: true
+    CaptureProjectDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        target_date:
+          type: string
+          format: date
+          nullable: true
+    CaptureNoteDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - content
+      properties:
+        title:
+          type: string
+          nullable: true
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        project_ref:
+          type: string
+          nullable: true
+    CaptureTrackerDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - fields
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TrackerField'
+    CaptureRecordDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - timestamp
+        - values
+      properties:
+        tracker_ref:
+          type: string
+          nullable: true
+          description: 已有 Tracker ID，或本次候选 Tracker 的 candidate_id。
+        timestamp:
+          type: string
+          format: date-time
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordValue'
+        note:
+          type: string
+          nullable: true
+    CaptureDraftPayload:
+      type: object
+      additionalProperties: false
+      description: |
+        候选内容的判别联合快照。只有与 candidate_type 对应的那一个字段非空。
+        确认请求复用同一结构提交用户编辑后的值。
+      properties:
+        task:
+          $ref: '#/components/schemas/CaptureTaskDraft'
+        event:
+          $ref: '#/components/schemas/CaptureEventDraft'
+        project:
+          $ref: '#/components/schemas/CaptureProjectDraft'
+        note:
+          $ref: '#/components/schemas/CaptureNoteDraft'
+        tracker:
+          $ref: '#/components/schemas/CaptureTrackerDraft'
+        record:
+          $ref: '#/components/schemas/CaptureRecordDraft'
+    CaptureSourceRef:
+      type: object
+      additionalProperties: false
+      required:
+        - part_id
+      properties:
+        part_id:
+          type: string
+        text_start:
+          type: integer
+          nullable: true
+        text_end:
+          type: integer
+          nullable: true
+        audio_start_ms:
+          type: integer
+          nullable: true
+        audio_end_ms:
+          type: integer
+          nullable: true
+        image_region:
+          type: string
+          nullable: true
+          description: 归一化区域，格式 "x,y,w,h"，取值 0 到 1。
+    CaptureFieldConfidence:
+      type: object
+      additionalProperties: false
+      required:
+        - field
+        - level
+      properties:
+        field:
+          type: string
+        level:
+          type: string
+          description: |
+            high 表示用户明确表达；medium 表示可从输入合理推断；low 表示需要用户确认。
+            置信度只用于排序与是否追问，不能用于跳过用户确认。
+          enum:
+            - high
+            - medium
+            - low
+        source_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureSourceRef'
+    CaptureCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - candidate_type
+        - action
+        - selected
+        - payload
+      properties:
+        id:
+          type: string
+          example: cnd_01J8Z3
+        candidate_type:
+          $ref: '#/components/schemas/CaptureCandidateType'
+        action:
+          $ref: '#/components/schemas/CaptureCandidateAction'
+        target_id:
+          type: string
+          nullable: true
+          description: action=update 时指向已有实体。
+        target_expected_version:
+          type: integer
+          nullable: true
+        selected:
+          type: boolean
+          description: 服务端给出的默认勾选状态，用户可以修改。
+        payload:
+          $ref: '#/components/schemas/CaptureDraftPayload'
+        field_confidences:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureFieldConfidence'
+        source_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureSourceRef'
+        missing_fields:
+          type: array
+          description: 未解决的必填字段。非空时不允许保存该候选项。
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        duplicate_of:
+          type: string
+          nullable: true
+          description: 服务端确定性重复检测命中的已有实体 ID。
+    RelationKind:
+      type: string
+      enum:
+        - requires
+        - related_to
+    CaptureRelationCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - from_ref
+        - to_ref
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/RelationKind'
+        from_ref:
+          type: string
+          description: 已有实体 ID 或本次候选的 candidate_id。
+        to_ref:
+          type: string
+    CaptureQuestion:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - capture_id
+        - question
+        - blocking
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          example: cq_01J8Z3
+        capture_id:
+          type: string
+        question:
+          type: string
+          description: 面向用户的中文追问，说明为什么需要这项信息。
+        blocking:
+          type: boolean
+          description: 为 true 时 Capture 处于 awaiting_instruction，解析被阻塞。
+        status:
+          type: string
+          enum:
+            - open
+            - answered
+            - superseded
+            - expired
+        quick_answers:
+          type: array
+          description: 可直接点击的快捷回答，仍需生成新 revision 重新解析。
+          items:
+            type: string
+        capture_summary:
+          type: string
+          description: 用于全局待答入口列表展示的一句话摘要。
+        created_at:
+          type: string
+          format: date-time
+        answered_at:
+          type: string
+          format: date-time
+          nullable: true
+    CaptureConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - field
+        - options
+      properties:
+        id:
+          type: string
+        field:
+          type: string
+          description: 发生冲突的语义字段，例如 date、amount、title。
+        description:
+          type: string
+        options:
+          type: array
+          minItems: 2
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - value
+              - source_refs
+            properties:
+              value:
+                type: string
+              source_refs:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CaptureSourceRef'
+    Capture:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - status
+        - revision
+        - origin
+        - parts
+        - candidates
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          example: cap_01J8Z3
+        status:
+          $ref: '#/components/schemas/CaptureStatus'
+        revision:
+          type: integer
+          description: 当前最新 revision。只允许确认最新 revision。
+        origin:
+          $ref: '#/components/schemas/CaptureOrigin'
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapturePart'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureCandidate'
+        relation_candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureRelationCandidate'
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureQuestion'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureConflict'
+        instruction_note:
+          type: string
+          nullable: true
+          description: 用户在文字或语音中给出的限制条件，例如“只处理第一张”。
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+        created_objects:
+          type: array
+          description: 确认后本次实际创建或更新的实体引用。
+          items:
+            $ref: '#/components/schemas/AffectedResource'
+        activity_batch_id:
+          type: string
+          nullable: true
+          description: 确认成功后生成的 Activity 批次，用于即时撤销。
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+    CaptureResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Capture'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ConfirmCaptureItem:
+      type: object
+      additionalProperties: false
+      description: |
+        用户勾选保存的一个候选项。payload 为用户编辑后的值，
+        缺省表示采用服务端候选的原值；服务端始终重新校验，不信任客户端提交的结果。
+      required:
+        - candidate_id
+      properties:
+        candidate_id:
+          type: string
+        payload:
+          $ref: '#/components/schemas/CaptureDraftPayload'
+        list_id:
+          type: string
+          nullable: true
+          description: Task 候选在确认页选择的目标清单。
+    ConfirmCaptureRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+        - items
+      properties:
+        revision:
+          type: integer
+          description: 必须等于当前最新 revision，否则返回 CAPTURE_REVISION_STALE。
+        items:
+          type: array
+          minItems: 1
+          description: 用户勾选并确认保存的候选项。未列出的候选视为放弃。
+          items:
+            $ref: '#/components/schemas/ConfirmCaptureItem'
+    ConfirmCaptureResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - capture
+            - affected_resources
+          properties:
+            capture:
+              $ref: '#/components/schemas/Capture'
+            affected_resources:
+              type: array
+              items:
+                $ref: '#/components/schemas/AffectedResource'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CaptureQuestionsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaptureQuestion'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    AnswerCaptureQuestionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - answer
+      properties:
+        answer:
+          type: string
+          minLength: 1
+          description: 用户补充的文字说明。服务端据此创建新 revision 重新解析。
+    TodayGroup:
+      type: string
+      description: |
+        Today 分组顺序固定为已逾期、今天截止、今天有计划时间、手动加入今天。
+        一个 Task 同时符合多个分组时只进入顺序最靠前的分组。
+      enum:
+        - overdue
+        - due_today
+        - scheduled_today
+        - manual
+    TodayTask:
+      type: object
+      additionalProperties: false
+      required:
+        - task
+        - group
+      properties:
+        task:
+          $ref: '#/components/schemas/Task'
+        group:
+          $ref: '#/components/schemas/TodayGroup'
+        list_name:
+          type: string
+          description: 所属清单名称，避免列表页额外请求。
+        list_color:
+          type: string
+          nullable: true
+    TodayCounts:
+      type: object
+      additionalProperties: false
+      required:
+        - total
+        - overdue
+        - due_today
+        - scheduled_today
+        - manual
+      properties:
+        total:
+          type: integer
+        overdue:
+          type: integer
+        due_today:
+          type: integer
+        scheduled_today:
+          type: integer
+        manual:
+          type: integer
+    TodayView:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - timezone
+        - tasks
+        - events
+        - counts
+      properties:
+        date:
+          type: string
+          format: date
+          description: 以用户时区计算的今天。
+        timezone:
+          type: string
+        tasks:
+          type: array
+          description: 已按分组与组内规则排好序，客户端不得重排。
+          items:
+            $ref: '#/components/schemas/TodayTask'
+        events:
+          type: array
+          description: 今天的 Event，按开始时间排序，全天事件排在最前。
+          items:
+            $ref: '#/components/schemas/Event'
+        counts:
+          $ref: '#/components/schemas/TodayCounts'
+    TodayViewResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/TodayView'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CalendarDay:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - events
+        - tasks
+      properties:
+        date:
+          type: string
+          format: date
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        tasks:
+          type: array
+          description: 当天截止或有计划时间的 Task。
+          items:
+            $ref: '#/components/schemas/Task'
+    CalendarView:
+      type: object
+      additionalProperties: false
+      required:
+        - from
+        - to
+        - timezone
+        - days
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        timezone:
+          type: string
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarDay'
+    CalendarViewResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/CalendarView'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ReviewMetric:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - label
+        - value
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        value:
+          type: number
+          format: double
+        unit:
+          type: string
+          nullable: true
+        delta_vs_previous:
+          type: number
+          format: double
+          nullable: true
+          description: 与上一周期的差值，由 SQL 确定性计算。
+    ReviewSource:
+      type: object
+      additionalProperties: false
+      required:
+        - resource_type
+        - resource_id
+        - title
+      properties:
+        resource_type:
+          type: string
+        resource_id:
+          type: string
+        title:
+          type: string
+    ReviewSuggestion:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - text
+        - source_refs
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        source_refs:
+          type: array
+          description: 无来源的结论必须被拒绝，不允许出现空来源建议。
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ReviewSource'
+    WeeklyReview:
+      type: object
+      additionalProperties: false
+      required:
+        - period_start
+        - period_end
+        - timezone
+        - metrics
+        - sources
+        - generated_by
+      properties:
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        timezone:
+          type: string
+        metrics:
+          type: array
+          description: 确定性指标。Provider 不可用时该字段仍然可用。
+          items:
+            $ref: '#/components/schemas/ReviewMetric'
+        narrative:
+          type: string
+          nullable: true
+          description: AI 生成的叙述文案。Provider 不可用时为 null，页面仍展示指标。
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewSuggestion'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewSource'
+        generated_by:
+          $ref: '#/components/schemas/CreatedBy'
+        generated_at:
+          type: string
+          format: date-time
+          nullable: true
+    WeeklyReviewResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/WeeklyReview'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ObjectType:
+      type: string
+      enum:
+        - task
+        - event
+        - project
+        - note
+        - record
+    SearchHit:
+      type: object
+      additionalProperties: false
+      required:
+        - resource_type
+        - resource_id
+        - title
+        - score
+      properties:
+        resource_type:
+          $ref: '#/components/schemas/ObjectType'
+        resource_id:
+          type: string
+        title:
+          type: string
+        snippet:
+          type: string
+          nullable: true
+          description: 命中片段，已按数据最小化裁剪。
+        score:
+          type: number
+          format: float
+        updated_at:
+          type: string
+          format: date-time
+    SearchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchHit'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    OperationStatus:
+      type: string
+      enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+        - cancelled
+    AsyncOperation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - status
+        - kind
+        - created_at
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          description: 异步任务类型，例如 capture.parse。
+        status:
+          $ref: '#/components/schemas/OperationStatus'
+        progress:
+          type: integer
+          nullable: true
+          description: 0 到 100 的粗粒度进度，仅用于展示。
+        result_ref:
+          type: object
+          nullable: true
+          description: |
+            指向结果资源的最小引用，不内嵌完整实体正文。
+            例如 {"type":"capture","capture_id":"cap_...","revision":1}。
+          additionalProperties: true
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+    AsyncOperationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/AsyncOperation'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ActivityAction:
+      type: string
+      enum:
+        - created
+        - updated
+        - deleted
+        - restored
+        - completed
+        - reopened
+    ActivityEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - action
+        - resource_type
+        - resource_id
+        - created_at
+      properties:
+        id:
+          type: string
+        action:
+          $ref: '#/components/schemas/ActivityAction'
+        resource_type:
+          type: string
+        resource_id:
+          type: string
+        title:
+          type: string
+          description: 变更时的实体标题快照，用于列表展示。
+        summary:
+          type: string
+          description: 面向用户的一句话变更说明。
+        created_at:
+          type: string
+          format: date-time
+    ActivityBatch:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - source
+        - entries
+        - undoable
+        - created_at
+      properties:
+        id:
+          type: string
+          example: ab_01J8Z3
+        source:
+          type: string
+          description: 触发本批次的来源。
+          enum:
+            - user_form
+            - capture_confirm
+            - assistant_proposal
+            - system
+        source_id:
+          type: string
+          nullable: true
+          description: 例如触发本批次的 Capture ID。
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityEntry'
+        undoable:
+          type: boolean
+          description: 是否仍可撤销。超过撤销窗口或目标已再次变化时为 false。
+        undone_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    ActivityBatchesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityBatch'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UndoResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - batch
+            - affected_resources
+          properties:
+            batch:
+              $ref: '#/components/schemas/ActivityBatch'
+            affected_resources:
+              type: array
+              items:
+                $ref: '#/components/schemas/AffectedResource'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+  responses:
+    BadRequest:
+      description: 请求参数或业务前置条件不满足。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TooManyRequests:
+      description: 触发限流。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: 服务端内部错误。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: 未认证或 Access Token 已过期。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: 版本冲突、状态冲突或幂等键重用。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: 资源不存在，或不属于当前用户。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        写请求幂等键，由客户端生成并在重试时保持不变。
+        缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    TaskListId:
+      name: list_id
+      in: path
+      required: true
+      schema:
+        type: string
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: |
+        目标资源的 version。提供后与服务端当前版本不一致时返回 VERSION_CONFLICT。
+        并发编辑场景应始终携带。
+      schema:
+        type: string
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: 上一页返回的不透明游标。App 不得解析其内容。
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: 单页条数。
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+    EventId:
+      name: event_id
+      in: path
+      required: true
+      schema:
+        type: string
+    ProjectId:
+      name: project_id
+      in: path
+      required: true
+      schema:
+        type: string
+    NoteId:
+      name: note_id
+      in: path
+      required: true
+      schema:
+        type: string
+    TrackerId:
+      name: tracker_id
+      in: path
+      required: true
+      schema:
+        type: string
+    RecordId:
+      name: record_id
+      in: path
+      required: true
+      schema:
+        type: string
+    CaptureId:
+      name: capture_id
+      in: path
+      required: true
+      schema:
+        type: string
+    QuestionId:
+      name: question_id
+      in: path
+      required: true
+      schema:
+        type: string
+    OperationId:
+      name: operation_id
+      in: path
+      required: true
+      schema:
+        type: string
+    BatchId:
+      name: batch_id
+      in: path
+      required: true
+      schema:
+        type: string

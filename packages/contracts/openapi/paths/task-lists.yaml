@@ -1,0 +1,117 @@
+# TaskList 是 Task 的轻量分类，不承担 Project 的目标与进度能力。
+
+Collection:
+  get:
+    operationId: listTaskLists
+    summary: 读取当前用户的全部清单
+    tags: [lists]
+    parameters:
+      - name: include_archived
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+    responses:
+      '200':
+        description: 按 position 升序返回。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/TaskListsResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createTaskList
+    summary: 新建清单
+    tags: [lists]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/CreateTaskListRequest'
+    responses:
+      '201':
+        description: 创建成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/TaskListResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Item:
+  patch:
+    operationId: updateTaskList
+    summary: 修改清单
+    tags: [lists]
+    parameters:
+      - $ref: '../components/parameters.yaml#/TaskListId'
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/UpdateTaskListRequest'
+    responses:
+      '200':
+        description: 修改成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/TaskListResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deleteTaskList
+    summary: 删除清单
+    description: |
+      清单非空时必须提供 move_tasks_to_list_id，否则返回 TASK_LIST_NOT_EMPTY。
+      默认清单在没有替代默认清单时不可删除。
+    tags: [lists]
+    parameters:
+      - $ref: '../components/parameters.yaml#/TaskListId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/DeleteTaskListRequest'
+    responses:
+      '200':
+        description: 删除成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

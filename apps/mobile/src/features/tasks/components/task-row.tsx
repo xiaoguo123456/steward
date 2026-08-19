@@ -13,7 +13,7 @@ type TaskRowProps = {
 
 const flagColors = {
   high: colors.danger,
-  medium: colors.warning,
+  normal: colors.warning,
   low: colors.textTertiary,
 } as const;
 

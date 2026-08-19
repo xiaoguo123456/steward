@@ -1,85 +1,101 @@
+import { errorMessage, useGetOperation } from '@steward/api-client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
-const stages = ['输入已接收', '内容已读取', '正在理解时间与事项', '整理完成'];
-
+/**
+ * 处理进度页。
+ *
+ * 服务端返回 202 与 operation_id 后，这里轮询 Operation 直到完成。
+ * 进度是真实的服务端状态，不是本地定时器编出来的动画。
+ */
 export default function CaptureProcessingScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ draft?: string; images?: string; audio?: string }>();
-  const [activeStage, setActiveStage] = useState(0);
-  const draft = typeof params.draft === 'string' ? params.draft : '这次输入';
+  const params = useLocalSearchParams<{
+    captureId?: string;
+    operationId?: string;
+    draft?: string;
+  }>();
+
+  const operationId = params.operationId ?? '';
+  const captureId = params.captureId ?? '';
+
+  const operation = useGetOperation(operationId, {
+    query: {
+      enabled: Boolean(operationId),
+      // 解析通常在一秒内完成；完成后立即停止轮询。
+      refetchInterval: (query) => {
+        const status = query.state.data?.data.status;
+        return status === 'succeeded' || status === 'failed' || status === 'cancelled'
+          ? false
+          : 800;
+      },
+    },
+  });
+
+  const status = operation.data?.data.status;
 
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setActiveStage(1), 500),
-      setTimeout(() => setActiveStage(2), 1100),
-      setTimeout(() => setActiveStage(3), 1900),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, []);
+    if (status === 'succeeded' && captureId) {
+      router.replace({ pathname: '/capture/confirm', params: { captureId } });
+    }
+  }, [status, captureId, router]);
+
+  const failed = status === 'failed' || operation.isError;
 
   return (
     <AppScreen includeBottomInset>
       <NavHeader title="正在整理" />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroIcon}>
-          <AppIcon color={colors.primaryStrong} name="sparkles" size={26} />
+      <View style={styles.content}>
+        <View style={styles.iconWrap}>
+          {failed ? (
+            <AppIcon color={colors.danger} name="alert-circle-outline" size={34} />
+          ) : (
+            <ActivityIndicator color={colors.primary} size="large" />
+          )}
         </View>
-        <Text accessibilityRole="header" style={styles.title}>
-          {activeStage === stages.length - 1 ? '已经整理好了' : '正在理解这次输入'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {activeStage === stages.length - 1
-            ? '请查看识别结果，确认后才会保存。'
-            : '可以先去处理其他事情，完成后会保留在最近输入中。'}
+
+        <Text style={styles.title}>{failed ? '这次没能整理成功' : 'AI 正在理解你的输入'}</Text>
+        <Text style={styles.copy}>
+          {failed
+            ? errorMessage(
+                operation.data?.data.error ?? operation.error,
+                '你仍然可以返回修改输入，或直接手动填写。',
+              )
+            : '整理完成后会展示可编辑的结果，确认后才会保存。'}
         </Text>
 
-        <View style={styles.sourcePanel}>
-          <Text style={styles.sourceLabel}>你的输入</Text>
-          <Text numberOfLines={3} style={styles.sourceText}>{draft}</Text>
-          <View style={styles.sourceMeta}>
-            {Number(params.images) > 0 ? (
-              <Text style={styles.metaText}>{params.images} 张图片</Text>
-            ) : null}
-            {params.audio ? <Text style={styles.metaText}>语音 {params.audio} 秒</Text> : null}
+        {params.draft ? (
+          <View style={styles.draftBox}>
+            <Text numberOfLines={3} style={styles.draftText}>
+              {params.draft}
+            </Text>
           </View>
-        </View>
+        ) : null}
 
-        <View style={styles.stageList}>
-          {stages.map((stage, index) => {
-            const complete = index <= activeStage;
-            const current = index === activeStage && activeStage < stages.length - 1;
-            return (
-              <View key={stage} style={styles.stageRow}>
-                <View style={[styles.stageIcon, complete && styles.stageIconComplete]}>
-                  <AppIcon
-                    color={complete ? colors.background : colors.textTertiary}
-                    name={current ? 'ellipsis-horizontal' : complete ? 'checkmark' : 'remove'}
-                    size={17}
-                  />
-                </View>
-                <Text style={[styles.stageText, complete && styles.stageTextActive]}>{stage}</Text>
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <AppButton
-          disabled={activeStage < stages.length - 1}
-          label={activeStage < stages.length - 1 ? '正在整理…' : '查看整理结果'}
-          onPress={() =>
-            router.replace({ pathname: '/capture/confirm', params: { draft } })
-          }
-        />
+        {failed ? (
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace('/capture/new')}
+              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.primaryButtonText}>重新输入</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace('/today')}
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.secondaryButtonText}>稍后再说</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
     </AppScreen>
   );
@@ -87,17 +103,17 @@ export default function CaptureProcessingScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 34,
-    paddingBottom: 24,
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 48,
     alignItems: 'center',
   },
-  heroIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: radius.lg,
+  iconWrap: {
+    width: 72,
+    height: 72,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,
   },
   title: {
@@ -107,77 +123,58 @@ const styles = StyleSheet.create({
     ...typography.detail,
     textAlign: 'center',
   },
-  subtitle: {
-    maxWidth: 320,
-    marginTop: 7,
+  copy: {
+    maxWidth: 300,
+    marginTop: 10,
     color: colors.textSecondary,
     fontFamily,
-    ...typography.meta,
+    ...typography.body,
     textAlign: 'center',
   },
-  sourcePanel: {
+  draftBox: {
     width: '100%',
-    marginTop: 32,
-    padding: 16,
+    marginTop: 24,
+    padding: 14,
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceSubtle,
   },
-  sourceLabel: {
+  draftText: {
     color: colors.textSecondary,
     fontFamily,
     ...typography.meta,
   },
-  sourceText: {
-    marginTop: 6,
-    color: colors.text,
-    fontFamily,
-    ...typography.bodyStrong,
-  },
-  sourceMeta: {
-    marginTop: 8,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  metaText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.meta,
-  },
-  stageList: {
+  actions: {
     width: '100%',
-    marginTop: 24,
+    marginTop: 28,
+    gap: 10,
   },
-  stageRow: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stageIcon: {
-    width: 30,
-    height: 30,
-    marginRight: 12,
-    borderRadius: radius.pill,
+  primaryButton: {
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  stageIconComplete: {
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
   },
-  stageText: {
-    color: colors.textTertiary,
+  primaryButtonText: {
+    color: colors.background,
     fontFamily,
-    ...typography.body,
+    fontSize: 15,
+    fontWeight: '600',
   },
-  stageTextActive: {
-    color: colors.text,
+  secondaryButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
   },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
+  secondaryButtonText: {
+    color: colors.textSecondary,
+    fontFamily,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

@@ -1,0 +1,179 @@
+# Task CRUD。状态转换、截止语义与 Today 收录由服务端 Domain 决定。
+
+Collection:
+  get:
+    operationId: listTasks
+    summary: 按条件查询 Task
+    tags: [tasks]
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+      - name: status
+        in: query
+        required: false
+        description: 不传时默认返回 todo 与 doing。
+        schema:
+          type: array
+          items:
+            $ref: '../components/schemas/objects.yaml#/TaskStatus'
+        style: form
+        explode: false
+      - name: list_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: project_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: due_before
+        in: query
+        required: false
+        description: 以用户时区解释的当地日期上界，含当日。
+        schema:
+          type: string
+          format: date
+      - name: scheduled_on
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: day
+        in: query
+        required: false
+        description: |
+          该当地日期需要关注的 Task，收录规则与 Today 完全一致：
+          当日截止、当日有计划时间、已逾期，或被明确加入当天。
+          用于“明天”等按天视图，避免客户端自行推导收录条件。
+        schema:
+          type: string
+          format: date
+      - name: unscheduled
+        in: query
+        required: false
+        description: 为 true 时只返回 todo 且没有任何截止、计划与 focus_date 的 Task。
+        schema:
+          type: boolean
+      - name: q
+        in: query
+        required: false
+        description: 标题关键词。
+        schema:
+          type: string
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/TasksResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createTask
+    summary: 新建 Task
+    tags: [tasks]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/CreateTaskRequest'
+    responses:
+      '201':
+        description: 创建成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/TaskResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Item:
+  get:
+    operationId: getTask
+    summary: 读取 Task 详情
+    tags: [tasks]
+    parameters:
+      - $ref: '../components/parameters.yaml#/TaskId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/TaskResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  patch:
+    operationId: updateTask
+    summary: 修改 Task
+    tags: [tasks]
+    parameters:
+      - $ref: '../components/parameters.yaml#/TaskId'
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/UpdateTaskRequest'
+    responses:
+      '200':
+        description: 修改成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/TaskResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deleteTask
+    summary: 删除 Task
+    description: 软删除。删除不属于状态转换。
+    tags: [tasks]
+    parameters:
+      - $ref: '../components/parameters.yaml#/TaskId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 删除成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

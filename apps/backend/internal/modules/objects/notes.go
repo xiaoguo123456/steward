@@ -1,0 +1,250 @@
+package objects
+
+import (
+	"context"
+	"strings"
+	"time"
+
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
+)
+
+// NoteFilter 是 Note 列表查询条件。
+type NoteFilter struct {
+	Tag        *string
+	ProjectID  *string
+	Query      *string
+	CursorTime *time.Time
+	CursorID   *string
+	Limit      int32
+}
+
+// ListNotes 查询 Note。
+func (s *Service) ListNotes(ctx context.Context, userID string, f NoteFilter) ([]dbgen.Note, error) {
+	var out []dbgen.Note
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		rows, err := q.ListNotes(ctx, dbgen.ListNotesParams{
+			Tag:             f.Tag,
+			ProjectID:       f.ProjectID,
+			Query:           f.Query,
+			CursorUpdatedAt: f.CursorTime,
+			CursorID:        f.CursorID,
+			RowLimit:        f.Limit,
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		out = rows
+		return nil
+	})
+	return out, err
+}
+
+// GetNote 读取单个 Note。
+func (s *Service) GetNote(ctx context.Context, userID, noteID string) (dbgen.Note, error) {
+	var out dbgen.Note
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		row, err := q.GetNote(ctx, noteID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return apperr.NotFound("笔记")
+			}
+			return apperr.Internal(err)
+		}
+		out = row
+		return nil
+	})
+	return out, err
+}
+
+// ListNoteTags 返回当前用户使用过的全部标签。
+func (s *Service) ListNoteTags(ctx context.Context, userID string) ([]string, error) {
+	var out []string
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		tags, err := q.ListNoteTags(ctx)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		out = tags
+		return nil
+	})
+	return out, err
+}
+
+// CreateNote 新建 Note。
+func (s *Service) CreateNote(ctx context.Context, userID string, body httpapi.CreateNoteRequest) (dbgen.Note, error) {
+	content := strings.TrimSpace(body.Content)
+	if content == "" {
+		return dbgen.Note{}, apperr.Validation(apperr.Field("content", "笔记内容不能为空。"))
+	}
+
+	var out dbgen.Note
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if body.ProjectId != nil {
+			if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
+				return err
+			}
+		}
+		created, err := q.CreateNote(ctx, dbgen.CreateNoteParams{
+			ID:             idgen.New(idgen.PrefixNote),
+			UserID:         userID,
+			Title:          deriveNoteTitle(body.Title, content),
+			Content:        content,
+			Attachments:    emptyJSONArray,
+			Tags:           normalizeTags(body.Tags),
+			ProjectID:      body.ProjectId,
+			CreatedBy:      "user",
+			ProvenanceRefs: emptyJSONArray,
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		if _, err := s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,
+			[]activity.EntryInput{{
+				Action:       "created",
+				ResourceType: "note",
+				ResourceID:   created.ID,
+				Title:        created.Title,
+				Summary:      "创建了笔记",
+			}}); err != nil {
+			return err
+		}
+		out = created
+		return nil
+	})
+	return out, err
+}
+
+// NoteUpdate 是 Note 的修改意图。
+type NoteUpdate struct {
+	Body            httpapi.UpdateNoteRequest
+	ExpectedVersion *int32
+}
+
+// UpdateNote 修改 Note。
+func (s *Service) UpdateNote(ctx context.Context, userID, noteID string, in NoteUpdate) (dbgen.Note, error) {
+	var out dbgen.Note
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		current, err := q.GetNote(ctx, noteID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return apperr.NotFound("笔记")
+			}
+			return apperr.Internal(err)
+		}
+		if in.ExpectedVersion != nil && *in.ExpectedVersion != current.Version {
+			return apperr.New(apperr.CodeVersionConflict)
+		}
+
+		body := in.Body
+		if body.ProjectId != nil {
+			if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
+				return err
+			}
+		}
+
+		var content *string
+		if body.Content != nil {
+			trimmed := strings.TrimSpace(*body.Content)
+			if trimmed == "" {
+				return apperr.Validation(apperr.Field("content", "笔记内容不能为空。"))
+			}
+			content = &trimmed
+		}
+
+		var tags []string
+		if body.Tags != nil {
+			tags = normalizeTags(body.Tags)
+		}
+
+		clearProject := false
+		if body.Clear != nil {
+			for _, item := range *body.Clear {
+				if item == httpapi.UpdateNoteRequestClearProjectId {
+					clearProject = true
+				}
+			}
+		}
+
+		updated, err := q.UpdateNote(ctx, dbgen.UpdateNoteParams{
+			ID:             noteID,
+			Title:          trimmedOrNil(body.Title),
+			Content:        content,
+			Tags:           tags,
+			Pinned:         body.Pinned,
+			ProjectID:      body.ProjectId,
+			ClearProjectID: clearProject,
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+
+		if _, err := s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,
+			[]activity.EntryInput{{
+				Action:       "updated",
+				ResourceType: "note",
+				ResourceID:   updated.ID,
+				Title:        updated.Title,
+				Summary:      "修改了笔记",
+				BeforeState:  map[string]any{"title": current.Title, "content": current.Content},
+				AfterState:   map[string]any{"title": updated.Title, "content": updated.Content},
+			}}); err != nil {
+			return err
+		}
+		out = updated
+		return nil
+	})
+	return out, err
+}
+
+// DeleteNote 软删除 Note。
+func (s *Service) DeleteNote(ctx context.Context, userID, noteID string) (string, error) {
+	var batchID string
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		current, err := q.GetNote(ctx, noteID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return apperr.NotFound("笔记")
+			}
+			return apperr.Internal(err)
+		}
+		if _, err := q.SoftDeleteNote(ctx, noteID); err != nil {
+			return apperr.Internal(err)
+		}
+		batchID, err = s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,
+			[]activity.EntryInput{{
+				Action:       "deleted",
+				ResourceType: "note",
+				ResourceID:   noteID,
+				Title:        current.Title,
+				Summary:      "删除了笔记",
+			}})
+		return err
+	})
+	return batchID, err
+}
+
+// normalizeTags 去重并去空白。同一 Note 内标签不重复。
+func normalizeTags(tags *[]string) []string {
+	if tags == nil {
+		return []string{}
+	}
+	seen := make(map[string]struct{}, len(*tags))
+	out := make([]string, 0, len(*tags))
+	for _, tag := range *tags {
+		t := strings.TrimSpace(tag)
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+	}
+	return out
+}

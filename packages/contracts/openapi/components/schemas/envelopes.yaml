@@ -1,0 +1,187 @@
+# 各实体的成功响应信封。所有成功响应统一为 {data, meta}，列表额外带 page。
+# 命名规则：单数=单个实体，复数=集合。TaskList 是清单实体，Tasks 才是 Task 集合。
+
+TaskResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './objects.yaml#/Task'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+TasksResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './objects.yaml#/Task'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+TaskListResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './objects.yaml#/TaskList'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+TaskListsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './objects.yaml#/TaskList'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+EventResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './objects.yaml#/Event'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+EventsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './objects.yaml#/Event'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+ProjectResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './objects.yaml#/Project'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+ProjectsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './objects.yaml#/Project'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+NoteResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './objects.yaml#/Note'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+NotesResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './objects.yaml#/Note'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+TrackerResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './trackers.yaml#/Tracker'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+TrackersResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './trackers.yaml#/Tracker'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+RecordResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './trackers.yaml#/Record'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+RecordsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './trackers.yaml#/Record'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+MutationResponse:
+  type: object
+  additionalProperties: false
+  description: 删除等不返回实体的写操作响应，携带需要失效的资源列表。
+  required: [data, meta]
+  properties:
+    data:
+      type: object
+      additionalProperties: false
+      required: [affected_resources]
+      properties:
+        affected_resources:
+          type: array
+          items:
+            $ref: './common.yaml#/AffectedResource'
+        activity_batch_id:
+          type: string
+          nullable: true
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

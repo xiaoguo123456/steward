@@ -1,0 +1,144 @@
+# Event CRUD。定时与全天字段互斥，重要日的年度重复由服务端投影。
+
+Collection:
+  get:
+    operationId: listEvents
+    summary: 按时间范围查询 Event
+    tags: [events]
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+      - name: from
+        in: query
+        required: false
+        description: 当地日期下界，含当日。
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: event_kind
+        in: query
+        required: false
+        schema:
+          $ref: '../components/schemas/objects.yaml#/EventKind'
+      - name: project_id
+        in: query
+        required: false
+        schema:
+          type: string
+    responses:
+      '200':
+        description: 成功。yearly 重复的重要日已按查询范围投影为具体日期。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/EventsResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createEvent
+    summary: 新建 Event
+    tags: [events]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/CreateEventRequest'
+    responses:
+      '201':
+        description: 创建成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/EventResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Item:
+  get:
+    operationId: getEvent
+    summary: 读取 Event 详情
+    tags: [events]
+    parameters:
+      - $ref: '../components/parameters.yaml#/EventId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/EventResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  patch:
+    operationId: updateEvent
+    summary: 修改 Event
+    tags: [events]
+    parameters:
+      - $ref: '../components/parameters.yaml#/EventId'
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/UpdateEventRequest'
+    responses:
+      '200':
+        description: 修改成功。相对提醒跟随新的开始时间重新计算。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/EventResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deleteEvent
+    summary: 删除 Event
+    tags: [events]
+    parameters:
+      - $ref: '../components/parameters.yaml#/EventId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 删除成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

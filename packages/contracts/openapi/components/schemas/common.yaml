@@ -1,0 +1,286 @@
+# 跨模块公共结构：响应信封、错误、分页与来源引用。
+
+ResponseMeta:
+  type: object
+  additionalProperties: false
+  required: [request_id]
+  properties:
+    request_id:
+      type: string
+      description: 服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。
+      example: req_01J8Z3
+  description: 所有成功响应共有的元信息。
+
+ErrorCode:
+  type: string
+  description: |
+    稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。
+    新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。
+  enum:
+    # 通用
+    - VALIDATION_FAILED
+    - UNAUTHENTICATED
+    - PERMISSION_DENIED
+    - RESOURCE_NOT_FOUND
+    - VERSION_CONFLICT
+    - IDEMPOTENCY_KEY_REQUIRED
+    - IDEMPOTENCY_KEY_REUSED
+    - RATE_LIMITED
+    - INTERNAL_ERROR
+    # 账户
+    - PHONE_INVALID
+    - VERIFICATION_CODE_INVALID
+    - VERIFICATION_CODE_EXPIRED
+    - REFRESH_TOKEN_INVALID
+    # 领域
+    - TASK_LIST_NAME_DUPLICATED
+    - TASK_LIST_NOT_EMPTY
+    - TASK_LIST_DEFAULT_REQUIRED
+    - TASK_STATUS_TRANSITION_INVALID
+    - EVENT_TIME_RANGE_INVALID
+    - EVENT_RECURRENCE_NOT_ALLOWED
+    - TRACKER_SCHEMA_INVALID
+    - RECORD_VALUES_INVALID
+    - PROJECT_HAS_OPEN_TASKS
+    - OBJECT_ALREADY_DELETED
+    # Capture 与 AI
+    - CAPTURE_NOT_READY
+    - CAPTURE_ALREADY_CONFIRMED
+    - CAPTURE_REVISION_STALE
+    - CAPTURE_QUESTION_RESOLVED
+    - AI_PROVIDER_UNAVAILABLE
+    - AI_PROVIDER_RATE_LIMITED
+    - AI_SCHEMA_INVALID
+    - AI_SOURCE_INVALID
+    - AI_BUDGET_EXCEEDED
+    - AI_TURN_CANCELLED
+
+ErrorBody:
+  type: object
+  additionalProperties: false
+  required: [code, message, retryable]
+  properties:
+    code:
+      $ref: '#/ErrorCode'
+    message:
+      type: string
+      description: 面向用户的默认中文文案。App 可以覆盖为更贴合场景的文案。
+    retryable:
+      type: boolean
+      description: 是否可以用相同参数安全重试。
+    reload_target:
+      type: boolean
+      description: App 是否需要重新加载目标资源后再重试。
+      default: false
+    details:
+      type: array
+      description: 字段级校验明细，仅在 VALIDATION_FAILED 等场景出现。
+      items:
+        $ref: '#/ErrorDetail'
+
+ErrorDetail:
+  type: object
+  additionalProperties: false
+  required: [field, message]
+  properties:
+    field:
+      type: string
+      description: 出错字段的路径，例如 scheduled_end_at。
+    message:
+      type: string
+
+ErrorResponse:
+  type: object
+  additionalProperties: false
+  required: [error, meta]
+  properties:
+    error:
+      $ref: '#/ErrorBody'
+    meta:
+      $ref: '#/ResponseMeta'
+
+PageInfo:
+  type: object
+  additionalProperties: false
+  required: [has_more]
+  properties:
+    has_more:
+      type: boolean
+      description: 是否还有下一页。
+    next_cursor:
+      type: string
+      nullable: true
+      description: 不透明游标。App 不得解析其内容。
+
+CreatedBy:
+  type: string
+  description: 实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。
+  enum: [user, ai, system]
+
+ObjectType:
+  type: string
+  enum: [task, event, project, note, record]
+
+ProvenanceAction:
+  type: string
+  enum: [created_from, derived_from, updated_from]
+
+ProvenanceRef:
+  type: object
+  additionalProperties: false
+  required: [source_type, source_id, action]
+  properties:
+    source_type:
+      type: string
+      enum: [capture, object, ai_action]
+    source_id:
+      type: string
+    source_revision:
+      type: integer
+      nullable: true
+      description: Capture 来源的 revision 序号。
+    part_refs:
+      type: array
+      description: Capture 中的文字片段、音频时间段或图片区域引用。
+      items:
+        type: string
+    action:
+      $ref: '#/ProvenanceAction'
+    source_deleted:
+      type: boolean
+      default: false
+      description: 来源已删除时为 true，此时不再保留原始内容。
+
+Reminder:
+  type: object
+  additionalProperties: false
+  required: [id, kind]
+  properties:
+    id:
+      type: string
+    kind:
+      type: string
+      description: |
+        relative 表示相对开始时间的偏移，仅用于定时 Event 与带 due_at 的 Task；
+        absolute_local 表示明确的当地触发时间，全天 Event 与 due_date 必须使用它。
+      enum: [relative, absolute_local]
+    offset_minutes:
+      type: integer
+      nullable: true
+      description: kind=relative 时必填，表示开始前的分钟数。
+    local_time:
+      type: string
+      nullable: true
+      description: kind=absolute_local 时必填，格式 HH:MM。
+      example: "09:00"
+    days_before:
+      type: integer
+      nullable: true
+      description: kind=absolute_local 时提前的天数，0 表示当天。
+
+ReminderInput:
+  type: object
+  additionalProperties: false
+  required: [kind]
+  properties:
+    kind:
+      type: string
+      enum: [relative, absolute_local]
+    offset_minutes:
+      type: integer
+      nullable: true
+    local_time:
+      type: string
+      nullable: true
+      example: "09:00"
+    days_before:
+      type: integer
+      nullable: true
+
+AffectedResource:
+  type: object
+  additionalProperties: false
+  required: [type, id]
+  properties:
+    type:
+      type: string
+      description: 受影响资源类型，App 据此精确失效缓存。
+      enum: [task, event, project, note, record, tracker, task_list, capture, today, calendar, activity]
+    id:
+      type: string
+      nullable: true
+      description: 为空表示该类型的集合查询整体失效。
+
+OperationStatus:
+  type: string
+  enum: [queued, running, succeeded, failed, cancelled]
+
+AsyncOperation:
+  type: object
+  additionalProperties: false
+  required: [id, status, kind, created_at]
+  properties:
+    id:
+      type: string
+    kind:
+      type: string
+      description: 异步任务类型，例如 capture.parse。
+    status:
+      $ref: '#/OperationStatus'
+    progress:
+      type: integer
+      nullable: true
+      description: 0 到 100 的粗粒度进度，仅用于展示。
+    result_ref:
+      type: object
+      nullable: true
+      description: |
+        指向结果资源的最小引用，不内嵌完整实体正文。
+        例如 {"type":"capture","capture_id":"cap_...","revision":1}。
+      additionalProperties: true
+    error:
+      $ref: '#/ErrorBody'
+    created_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time
+      nullable: true
+
+AsyncOperationResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/AsyncOperation'
+    meta:
+      $ref: '#/ResponseMeta'
+
+AcceptedResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: object
+      additionalProperties: false
+      required: [operation_id]
+      properties:
+        operation_id:
+          type: string
+        resource_id:
+          type: string
+          nullable: true
+          description: 已经创建的目标资源 ID，例如 Capture ID。
+    meta:
+      $ref: '#/ResponseMeta'
+
+EmptyResponse:
+  type: object
+  additionalProperties: false
+  required: [meta]
+  properties:
+    meta:
+      $ref: '#/ResponseMeta'

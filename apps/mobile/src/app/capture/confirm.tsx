@@ -1,54 +1,108 @@
+import {
+  confirmCapture,
+  errorMessage,
+  useGetCapture,
+  type CaptureCandidate,
+  type ConfirmCaptureItem,
+} from '@steward/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
+import { SectionTitle } from '@/components/ui/section-title';
+import { StatePanel } from '@/components/ui/state-panel';
+import { formatMonthDay } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+
+/** 候选类型的展示信息。 */
+const typeMeta: Record<
+  CaptureCandidate['candidate_type'],
+  { label: string; icon: React.ComponentProps<typeof AppIcon>['name']; color: string; soft: string }
+> = {
+  task: { label: '任务', icon: 'checkmark-circle-outline', color: colors.primaryStrong, soft: colors.primarySoft },
+  event: { label: '日程', icon: 'calendar-outline', color: '#3978B8', soft: '#EAF4FF' },
+  note: { label: '笔记', icon: 'document-text-outline', color: '#7657C8', soft: '#F2EEFF' },
+  project: { label: '项目', icon: 'flag-outline', color: '#187A75', soft: '#E9F7F5' },
+  tracker: { label: '记录项', icon: 'stats-chart-outline', color: '#D56C28', soft: '#FFF1E7' },
+  record: { label: '记录', icon: 'analytics-outline', color: '#C04C81', soft: '#FDEEF5' },
+};
 
 export default function CaptureConfirmScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ draft?: string }>();
-  const draft = typeof params.draft === 'string' ? params.draft : '准备产品需求评审';
-  const [title, setTitle] = useState(draft.slice(0, 40));
-  const [selected, setSelected] = useState(true);
-  const [saved, setSaved] = useState(false);
-  const [undone, setUndone] = useState(false);
+  const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ captureId?: string }>();
+  const captureId = params.captureId ?? '';
 
-  if (saved) {
+  const capture = useGetCapture(captureId, { query: { enabled: Boolean(captureId) } });
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const data = capture.data?.data;
+  const candidates = useMemo(() => data?.candidates ?? [], [data]);
+
+  // 服务端给出默认勾选状态；用户取消的项记在 excluded 里。
+  const isSelected = (candidate: CaptureCandidate) =>
+    candidate.selected && !excluded.has(candidate.id);
+
+  const selectedCandidates = candidates.filter(isSelected);
+  const blockedCount = candidates.filter((c) => (c.missing_fields?.length ?? 0) > 0).length;
+
+  const toggle = (candidate: CaptureCandidate) => {
+    setExcluded((current) => {
+      const next = new Set(current);
+      if (next.has(candidate.id)) next.delete(candidate.id);
+      else next.add(candidate.id);
+      return next;
+    });
+  };
+
+  const save = async () => {
+    if (!data || selectedCandidates.length === 0 || saving) return;
+    setSaveError(null);
+    setSaving(true);
+    try {
+      const items: ConfirmCaptureItem[] = selectedCandidates.map((candidate) => ({
+        candidate_id: candidate.id,
+      }));
+      await confirmCapture(captureId, { revision: data.revision, items });
+      // 保存成功后让全部服务端事实失效，Today 与各列表会拉到新内容。
+      await queryClient.invalidateQueries();
+      router.replace('/today');
+    } catch (error) {
+      setSaveError(errorMessage(error, '保存失败，请稍后重试。'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (capture.isPending) {
     return (
       <AppScreen includeBottomInset>
-        <View style={styles.successPage}>
-          <View style={[styles.successIcon, undone && styles.undoIcon]}>
-            <AppIcon
-              color={undone ? colors.textSecondary : colors.primaryStrong}
-              name={undone ? 'arrow-undo-outline' : 'checkmark'}
-              size={30}
-            />
-          </View>
-          <Text accessibilityRole="header" style={styles.successTitle}>
-            {undone ? '本次保存已撤销' : '已保存 1 项'}
-          </Text>
-          <Text style={styles.successCopy}>
-            {undone ? '原始输入仍保留在最近输入中。' : '任务已经进入收集箱，可以继续安排时间。'}
-          </Text>
-          {!undone ? (
-            <View style={styles.savedItem}>
-              <View style={styles.savedType}>
-                <AppIcon color={colors.primaryStrong} name="checkmark-circle-outline" size={20} />
-              </View>
-              <View style={styles.savedCopy}>
-                <Text numberOfLines={2} style={styles.savedTitle}>{title}</Text>
-                <Text style={styles.savedMeta}>任务 · 收集箱</Text>
-              </View>
-            </View>
-          ) : null}
-          <View style={styles.successActions}>
-            <AppButton label="返回首页" onPress={() => router.replace('/(tabs)/today')} />
-            {!undone ? <AppButton label="撤销保存" onPress={() => setUndone(true)} variant="text" /> : null}
-          </View>
+        <NavHeader title="确认整理结果" />
+        <View style={styles.loading}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </AppScreen>
+    );
+  }
+
+  if (capture.isError || !data) {
+    return (
+      <AppScreen includeBottomInset>
+        <NavHeader title="确认整理结果" />
+        <View style={styles.content}>
+          <StatePanel
+            actionLabel="重试"
+            icon="cloud-offline-outline"
+            message={errorMessage(capture.error, '暂时无法加载整理结果。')}
+            onAction={() => void capture.refetch()}
+            title="加载失败"
+          />
         </View>
       </AppScreen>
     );
@@ -58,389 +112,288 @@ export default function CaptureConfirmScreen() {
     <AppScreen includeBottomInset>
       <NavHeader title="确认整理结果" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.summaryRow}>
-          <View>
-            <Text accessibilityRole="header" style={styles.pageTitle}>识别到 1 项任务</Text>
-            <Text style={styles.pageSubtitle}>检查一下，确认后才会保存</Text>
+        {data.instruction_note ? (
+          <View style={styles.instruction}>
+            <AppIcon color={colors.warning} name="information-circle-outline" size={18} />
+            <Text style={styles.instructionText}>你要求：{data.instruction_note}</Text>
           </View>
-          <View style={styles.readyBadge}>
-            <AppIcon color={colors.primaryStrong} name="checkmark" size={14} />
-            <Text style={styles.readyText}>可保存</Text>
-          </View>
-        </View>
+        ) : null}
 
-        <View style={styles.candidateGroup}>
-          <View style={styles.candidateHeader}>
-            <Pressable
-              accessibilityLabel={selected ? '取消选择任务' : '选择任务'}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: selected }}
-              onPress={() => setSelected((current) => !current)}
-              style={[styles.checkbox, selected && styles.checkboxSelected]}
-            >
-              {selected ? <AppIcon color={colors.background} name="checkmark" size={16} /> : null}
-            </Pressable>
-            <View style={styles.typeIcon}>
-              <AppIcon color={colors.primaryStrong} name="checkmark-circle-outline" size={19} />
-            </View>
-            <View style={styles.headerCopy}>
-              <Text style={styles.typeLabel}>任务</Text>
-              <Text style={styles.sourceLabel}>来自你的输入</Text>
-            </View>
+        {(data.conflicts?.length ?? 0) > 0 ? (
+          <View style={styles.conflictBox}>
+            <Text style={styles.conflictTitle}>需要你确认</Text>
+            {data.conflicts?.map((conflict) => (
+              <Text key={conflict.id} style={styles.conflictText}>
+                {conflict.description ?? `${conflict.field} 存在多个取值`}：
+                {conflict.options.map((option) => option.value).join(' / ')}
+              </Text>
+            ))}
           </View>
+        ) : null}
 
-          <View style={styles.titleEditor}>
-            <Text style={styles.fieldLabel}>标题</Text>
-            <TextInput
-              accessibilityLabel="任务标题"
-              multiline
-              onChangeText={setTitle}
-              style={styles.titleInput}
-              value={title}
-            />
-          </View>
+        <SectionTitle count={`${candidates.length} 项`} title="整理结果" />
 
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldName}>日期时间</Text>
-            <View style={styles.fieldValueRow}>
-              <View style={styles.suggestionBadge}>
-                <Text style={styles.suggestionText}>AI 建议</Text>
-              </View>
-              <Text style={styles.fieldValue}>明天 15:00</Text>
-              <AppIcon color={colors.borderStrong} name="chevron-forward" size={16} />
-            </View>
-          </View>
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldName}>所属清单</Text>
-            <View style={styles.fieldValueRow}>
-              <Text style={styles.fieldValue}>收集箱</Text>
-              <AppIcon color={colors.borderStrong} name="chevron-forward" size={16} />
-            </View>
-          </View>
-          <View style={[styles.fieldRow, styles.lastFieldRow]}>
-            <Text style={styles.fieldName}>优先级</Text>
-            <View style={styles.fieldValueRow}>
-              <Text style={styles.fieldValue}>无</Text>
-              <AppIcon color={colors.borderStrong} name="chevron-forward" size={16} />
-            </View>
-          </View>
-        </View>
+        {candidates.length === 0 ? (
+          <StatePanel
+            actionLabel="重新输入"
+            icon="sparkles-outline"
+            message="这次没有识别出可以保存的内容，换个说法再试试。"
+            onAction={() => router.replace('/capture/new')}
+            title="没有候选结果"
+          />
+        ) : (
+          candidates.map((candidate) => {
+            const meta = typeMeta[candidate.candidate_type];
+            const selected = isSelected(candidate);
+            const missing = candidate.missing_fields ?? [];
+            return (
+              <Pressable
+                accessibilityLabel={`${selected ? '取消选择' : '选择'}${meta.label}`}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: selected }}
+                key={candidate.id}
+                onPress={() => toggle(candidate)}
+                style={({ pressed }) => [
+                  styles.card,
+                  selected && styles.cardSelected,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={styles.cardHead}>
+                  <View style={[styles.typeChip, { backgroundColor: meta.soft }]}>
+                    <AppIcon color={meta.color} name={meta.icon} size={14} />
+                    <Text style={[styles.typeChipText, { color: meta.color }]}>{meta.label}</Text>
+                  </View>
+                  <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+                    {selected ? (
+                      <AppIcon color={colors.background} name="checkmark" size={14} />
+                    ) : null}
+                  </View>
+                </View>
 
-        <Pressable style={({ pressed }) => [styles.sourceRow, pressed && styles.sourcePressed]}>
-          <View style={styles.sourceIcon}>
-            <AppIcon color={colors.textSecondary} name="document-text-outline" size={18} />
-          </View>
-          <View style={styles.sourceCopy}>
-            <Text style={styles.sourceTitle}>查看原始输入</Text>
-            <Text numberOfLines={1} style={styles.sourcePreview}>{draft}</Text>
-          </View>
-          <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
-        </Pressable>
+                <Text style={styles.cardTitle}>{candidateTitle(candidate)}</Text>
+                {candidateDetail(candidate) ? (
+                  <Text style={styles.cardDetail}>{candidateDetail(candidate)}</Text>
+                ) : null}
+
+                {missing.length > 0 ? (
+                  <Text style={styles.missing}>还需补全：{missing.join('、')}</Text>
+                ) : null}
+                {(candidate.warnings?.length ?? 0) > 0 ? (
+                  <Text style={styles.warning}>{candidate.warnings?.join('；')}</Text>
+                ) : null}
+              </Pressable>
+            );
+          })
+        )}
+
+        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <View style={styles.footerCopy}>
-          <Text style={styles.footerTitle}>{selected ? '已选择 1 项' : '尚未选择'}</Text>
-          <Text style={styles.footerMeta}>{selected ? '没有待解决问题' : '选择至少一项后保存'}</Text>
+      {candidates.length > 0 ? (
+        <View style={styles.footer}>
+          {blockedCount > 0 ? (
+            <Text style={styles.footerHint}>有 {blockedCount} 项缺少必填信息，暂时不能保存。</Text>
+          ) : null}
+          <Pressable
+            accessibilityLabel={`保存 ${selectedCandidates.length} 项`}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: selectedCandidates.length === 0 || saving }}
+            disabled={selectedCandidates.length === 0 || saving}
+            onPress={() => void save()}
+            style={({ pressed }) => [
+              styles.saveButton,
+              (selectedCandidates.length === 0 || saving) && styles.saveDisabled,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.saveText}>
+              {saving ? '保存中…' : `保存 ${selectedCandidates.length} 项`}
+            </Text>
+          </Pressable>
         </View>
-        <AppButton
-          compact
-          disabled={!selected || !title.trim()}
-          label="保存 1 项"
-          onPress={() => setSaved(true)}
-          style={styles.saveButton}
-        />
-      </View>
+      ) : null}
     </AppScreen>
   );
+}
+
+/** 从判别联合快照里取出标题。 */
+function candidateTitle(candidate: CaptureCandidate): string {
+  const p = candidate.payload;
+  return (
+    p.task?.title ??
+    p.event?.title ??
+    p.project?.title ??
+    p.tracker?.name ??
+    p.note?.title ??
+    p.note?.content ??
+    '未命名内容'
+  );
+}
+
+/** 生成一行时间或内容摘要。 */
+function candidateDetail(candidate: CaptureCandidate): string {
+  const p = candidate.payload;
+  if (p.task) {
+    if (p.task.due_at) return `截止 ${new Date(p.task.due_at).toLocaleString('zh-CN')}`;
+    if (p.task.due_date) return `${formatMonthDay(p.task.due_date)}截止`;
+    return '没有截止时间';
+  }
+  if (p.event) {
+    if (p.event.start_at) return new Date(p.event.start_at).toLocaleString('zh-CN');
+    if (p.event.start_date) return `${formatMonthDay(p.event.start_date)} · 全天`;
+    return '';
+  }
+  if (p.note) return p.note.content;
+  if (p.record) return `${p.record.values.length} 个字段`;
+  return '';
 }
 
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
-    paddingTop: 16,
     paddingBottom: 24,
   },
-  summaryRow: {
-    minHeight: 72,
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instruction: {
+    marginTop: 12,
+    padding: 12,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: radius.md,
+    backgroundColor: '#FFF7E8',
   },
-  pageTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.detail,
-  },
-  pageSubtitle: {
-    marginTop: 3,
-    color: colors.textSecondary,
+  instructionText: {
+    flex: 1,
+    color: '#8A5A00',
     fontFamily,
     ...typography.meta,
   },
-  readyBadge: {
-    minHeight: 28,
-    paddingHorizontal: 9,
-    borderRadius: radius.pill,
+  conflictBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.dangerSoft,
+  },
+  conflictTitle: {
+    color: colors.danger,
+    fontFamily,
+    ...typography.bodyStrong,
+  },
+  conflictText: {
+    marginTop: 4,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
+  },
+  card: {
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  cardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  pressed: {
+    opacity: 0.75,
+  },
+  cardHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  typeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.primarySoft,
+    borderRadius: radius.pill,
   },
-  readyText: {
-    color: colors.primaryStrong,
+  typeChipText: {
     fontFamily,
-    ...typography.meta,
+    fontSize: 12,
     fontWeight: '600',
   },
-  candidateGroup: {
-    overflow: 'hidden',
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  candidateHeader: {
-    minHeight: 66,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
   checkbox: {
-    width: 24,
-    height: 24,
-    marginRight: 11,
-    borderWidth: 1.5,
-    borderColor: colors.borderStrong,
-    borderRadius: 7,
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
   },
   checkboxSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
   },
-  typeIcon: {
-    width: 36,
-    height: 36,
-    marginRight: 10,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  typeLabel: {
+  cardTitle: {
+    marginTop: 8,
     color: colors.text,
     fontFamily,
     ...typography.bodyStrong,
   },
-  sourceLabel: {
-    marginTop: 1,
+  cardDetail: {
+    marginTop: 4,
     color: colors.textSecondary,
     fontFamily,
     ...typography.meta,
   },
-  titleEditor: {
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  fieldLabel: {
-    color: colors.textSecondary,
+  missing: {
+    marginTop: 6,
+    color: colors.danger,
     fontFamily,
     ...typography.meta,
   },
-  titleInput: {
-    minHeight: 50,
-    paddingVertical: 6,
-    color: colors.text,
-    fontFamily,
-    ...typography.input,
-    fontWeight: '600',
-  },
-  fieldRow: {
-    minHeight: 56,
-    marginLeft: 14,
-    paddingRight: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  lastFieldRow: {
-    borderBottomWidth: 0,
-  },
-  fieldName: {
-    color: colors.text,
-    fontFamily,
-    ...typography.body,
-  },
-  fieldValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  fieldValue: {
-    color: colors.textSecondary,
+  warning: {
+    marginTop: 6,
+    color: colors.warning,
     fontFamily,
     ...typography.meta,
   },
-  suggestionBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-  },
-  suggestionText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.caption,
-  },
-  sourceRow: {
-    minHeight: 72,
-    marginTop: 20,
-    paddingHorizontal: 14,
-    borderRadius: radius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  sourcePressed: {
-    backgroundColor: colors.surfaceSubtle,
-  },
-  sourceIcon: {
-    width: 36,
-    height: 36,
-    marginRight: 11,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  sourceCopy: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  sourceTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
-  sourcePreview: {
-    marginTop: 2,
-    color: colors.textSecondary,
+  error: {
+    marginTop: 12,
+    color: colors.danger,
     fontFamily,
     ...typography.meta,
   },
   footer: {
-    minHeight: 76,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    backgroundColor: colors.background,
   },
-  footerCopy: {
-    flex: 1,
-  },
-  footerTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
-  footerMeta: {
-    marginTop: 1,
+  footerHint: {
+    marginBottom: 8,
     color: colors.textSecondary,
     fontFamily,
     ...typography.meta,
   },
   saveButton: {
-    minWidth: 124,
-  },
-  successPage: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 104,
-    alignItems: 'center',
-  },
-  successIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.xl,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
   },
-  undoIcon: {
-    backgroundColor: colors.surface,
+  saveDisabled: {
+    backgroundColor: colors.borderStrong,
   },
-  successTitle: {
-    marginTop: 22,
-    color: colors.text,
+  saveText: {
+    color: colors.background,
     fontFamily,
-    ...typography.detail,
-  },
-  successCopy: {
-    maxWidth: 300,
-    marginTop: 7,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-    textAlign: 'center',
-  },
-  savedItem: {
-    width: '100%',
-    minHeight: 74,
-    marginTop: 28,
-    paddingHorizontal: 14,
-    borderRadius: radius.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSubtle,
-  },
-  savedType: {
-    width: 38,
-    height: 38,
-    marginRight: 12,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  savedCopy: {
-    flex: 1,
-  },
-  savedTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.bodyStrong,
-  },
-  savedMeta: {
-    marginTop: 2,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  successActions: {
-    width: '100%',
-    marginTop: 'auto',
-    paddingBottom: 12,
-    gap: 4,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

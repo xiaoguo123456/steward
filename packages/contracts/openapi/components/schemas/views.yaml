@@ -1,0 +1,344 @@
+# 聚合读模型：Today、日历、Activity、复盘与搜索。
+# 这些视图的收录、排序与指标全部由服务端确定性代码计算。
+
+TodayGroup:
+  type: string
+  description: |
+    Today 分组顺序固定为已逾期、今天截止、今天有计划时间、手动加入今天。
+    一个 Task 同时符合多个分组时只进入顺序最靠前的分组。
+  enum: [overdue, due_today, scheduled_today, manual]
+
+TodayTask:
+  type: object
+  additionalProperties: false
+  required: [task, group]
+  properties:
+    task:
+      $ref: './objects.yaml#/Task'
+    group:
+      $ref: '#/TodayGroup'
+    list_name:
+      type: string
+      description: 所属清单名称，避免列表页额外请求。
+    list_color:
+      type: string
+      nullable: true
+
+TodayCounts:
+  type: object
+  additionalProperties: false
+  required: [total, overdue, due_today, scheduled_today, manual]
+  properties:
+    total:
+      type: integer
+    overdue:
+      type: integer
+    due_today:
+      type: integer
+    scheduled_today:
+      type: integer
+    manual:
+      type: integer
+
+TodayView:
+  type: object
+  additionalProperties: false
+  required: [date, timezone, tasks, events, counts]
+  properties:
+    date:
+      type: string
+      format: date
+      description: 以用户时区计算的今天。
+    timezone:
+      type: string
+    tasks:
+      type: array
+      description: 已按分组与组内规则排好序，客户端不得重排。
+      items:
+        $ref: '#/TodayTask'
+    events:
+      type: array
+      description: 今天的 Event，按开始时间排序，全天事件排在最前。
+      items:
+        $ref: './objects.yaml#/Event'
+    counts:
+      $ref: '#/TodayCounts'
+
+TodayViewResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/TodayView'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+CalendarDay:
+  type: object
+  additionalProperties: false
+  required: [date, events, tasks]
+  properties:
+    date:
+      type: string
+      format: date
+    events:
+      type: array
+      items:
+        $ref: './objects.yaml#/Event'
+    tasks:
+      type: array
+      description: 当天截止或有计划时间的 Task。
+      items:
+        $ref: './objects.yaml#/Task'
+
+CalendarView:
+  type: object
+  additionalProperties: false
+  required: [from, to, timezone, days]
+  properties:
+    from:
+      type: string
+      format: date
+    to:
+      type: string
+      format: date
+    timezone:
+      type: string
+    days:
+      type: array
+      items:
+        $ref: '#/CalendarDay'
+
+CalendarViewResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/CalendarView'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+ActivityAction:
+  type: string
+  enum: [created, updated, deleted, restored, completed, reopened]
+
+ActivityEntry:
+  type: object
+  additionalProperties: false
+  required: [id, action, resource_type, resource_id, created_at]
+  properties:
+    id:
+      type: string
+    action:
+      $ref: '#/ActivityAction'
+    resource_type:
+      type: string
+    resource_id:
+      type: string
+    title:
+      type: string
+      description: 变更时的实体标题快照，用于列表展示。
+    summary:
+      type: string
+      description: 面向用户的一句话变更说明。
+    created_at:
+      type: string
+      format: date-time
+
+ActivityBatch:
+  type: object
+  additionalProperties: false
+  required: [id, source, entries, undoable, created_at]
+  properties:
+    id:
+      type: string
+      example: ab_01J8Z3
+    source:
+      type: string
+      description: 触发本批次的来源。
+      enum: [user_form, capture_confirm, assistant_proposal, system]
+    source_id:
+      type: string
+      nullable: true
+      description: 例如触发本批次的 Capture ID。
+    entries:
+      type: array
+      items:
+        $ref: '#/ActivityEntry'
+    undoable:
+      type: boolean
+      description: 是否仍可撤销。超过撤销窗口或目标已再次变化时为 false。
+    undone_at:
+      type: string
+      format: date-time
+      nullable: true
+    created_at:
+      type: string
+      format: date-time
+
+ActivityBatchesResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/ActivityBatch'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+UndoResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: object
+      additionalProperties: false
+      required: [batch, affected_resources]
+      properties:
+        batch:
+          $ref: '#/ActivityBatch'
+        affected_resources:
+          type: array
+          items:
+            $ref: './common.yaml#/AffectedResource'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+ReviewMetric:
+  type: object
+  additionalProperties: false
+  required: [key, label, value]
+  properties:
+    key:
+      type: string
+    label:
+      type: string
+    value:
+      type: number
+      format: double
+    unit:
+      type: string
+      nullable: true
+    delta_vs_previous:
+      type: number
+      format: double
+      nullable: true
+      description: 与上一周期的差值，由 SQL 确定性计算。
+
+ReviewSource:
+  type: object
+  additionalProperties: false
+  required: [resource_type, resource_id, title]
+  properties:
+    resource_type:
+      type: string
+    resource_id:
+      type: string
+    title:
+      type: string
+
+ReviewSuggestion:
+  type: object
+  additionalProperties: false
+  required: [id, text, source_refs]
+  properties:
+    id:
+      type: string
+    text:
+      type: string
+    source_refs:
+      type: array
+      description: 无来源的结论必须被拒绝，不允许出现空来源建议。
+      minItems: 1
+      items:
+        $ref: '#/ReviewSource'
+
+WeeklyReview:
+  type: object
+  additionalProperties: false
+  required: [period_start, period_end, timezone, metrics, sources, generated_by]
+  properties:
+    period_start:
+      type: string
+      format: date
+    period_end:
+      type: string
+      format: date
+    timezone:
+      type: string
+    metrics:
+      type: array
+      description: 确定性指标。Provider 不可用时该字段仍然可用。
+      items:
+        $ref: '#/ReviewMetric'
+    narrative:
+      type: string
+      nullable: true
+      description: AI 生成的叙述文案。Provider 不可用时为 null，页面仍展示指标。
+    suggestions:
+      type: array
+      items:
+        $ref: '#/ReviewSuggestion'
+    sources:
+      type: array
+      items:
+        $ref: '#/ReviewSource'
+    generated_by:
+      $ref: './common.yaml#/CreatedBy'
+    generated_at:
+      type: string
+      format: date-time
+      nullable: true
+
+WeeklyReviewResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/WeeklyReview'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+SearchHit:
+  type: object
+  additionalProperties: false
+  required: [resource_type, resource_id, title, score]
+  properties:
+    resource_type:
+      $ref: './common.yaml#/ObjectType'
+    resource_id:
+      type: string
+    title:
+      type: string
+    snippet:
+      type: string
+      nullable: true
+      description: 命中片段，已按数据最小化裁剪。
+    score:
+      type: number
+      format: float
+    updated_at:
+      type: string
+      format: date-time
+
+SearchResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/SearchHit'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

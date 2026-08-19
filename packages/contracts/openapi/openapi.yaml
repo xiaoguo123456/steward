@@ -1,0 +1,133 @@
+openapi: 3.0.3
+
+info:
+  title: AI事管家 API
+  version: 1.0.0
+  description: |
+    AI事管家的唯一网络契约来源。前后端不得在任一侧手写 DTO、URL、枚举或错误码。
+
+    约定：
+    - 所有成功响应统一为 `{data, meta}`，集合额外带 `page`。
+    - 所有错误响应统一为 `{error, meta}`，App 只依赖 `error.code` 分支。
+    - 写请求必须携带 `Idempotency-Key`；并发编辑应携带 `If-Match`。
+    - 异步处理返回 `202` 与 `operation_id`，客户端通过 Operation 轮询。
+    - 私有内容默认 `Cache-Control: private, no-store`。
+
+servers:
+  - url: http://localhost:8787
+    description: 本地开发
+  - url: https://api.example.com
+    description: 生产占位；正式域名待运维确认
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+    x-displayName: 账户与登录
+  - name: users
+    x-displayName: 用户资料与偏好
+  - name: lists
+    x-displayName: 清单
+  - name: tasks
+    x-displayName: 任务
+  - name: events
+    x-displayName: 日程与重要日
+  - name: projects
+    x-displayName: 项目
+  - name: notes
+    x-displayName: 笔记
+  - name: trackers
+    x-displayName: 记录与数据
+  - name: captures
+    x-displayName: 统一输入
+  - name: views
+    x-displayName: 聚合视图
+  - name: system
+    x-displayName: 系统
+
+paths:
+  /v1/auth/phone-code:
+    $ref: './paths/auth.yaml#/PhoneCode'
+  /v1/auth/login:
+    $ref: './paths/auth.yaml#/Login'
+  /v1/auth/refresh:
+    $ref: './paths/auth.yaml#/Refresh'
+  /v1/auth/logout:
+    $ref: './paths/auth.yaml#/Logout'
+
+  /v1/me:
+    $ref: './paths/users.yaml#/Me'
+  /v1/me/preferences:
+    $ref: './paths/users.yaml#/Preferences'
+  /v1/me/ai-settings:
+    $ref: './paths/users.yaml#/AiSettings'
+
+  /v1/task-lists:
+    $ref: './paths/task-lists.yaml#/Collection'
+  /v1/task-lists/{list_id}:
+    $ref: './paths/task-lists.yaml#/Item'
+
+  /v1/tasks:
+    $ref: './paths/tasks.yaml#/Collection'
+  /v1/tasks/{task_id}:
+    $ref: './paths/tasks.yaml#/Item'
+
+  /v1/events:
+    $ref: './paths/events.yaml#/Collection'
+  /v1/events/{event_id}:
+    $ref: './paths/events.yaml#/Item'
+
+  /v1/projects:
+    $ref: './paths/projects.yaml#/Collection'
+  /v1/projects/{project_id}:
+    $ref: './paths/projects.yaml#/Item'
+
+  /v1/notes:
+    $ref: './paths/notes.yaml#/Collection'
+  /v1/notes/{note_id}:
+    $ref: './paths/notes.yaml#/Item'
+
+  /v1/trackers:
+    $ref: './paths/trackers.yaml#/Collection'
+  /v1/trackers/{tracker_id}:
+    $ref: './paths/trackers.yaml#/Item'
+  /v1/records:
+    $ref: './paths/trackers.yaml#/RecordCollection'
+  /v1/records/{record_id}:
+    $ref: './paths/trackers.yaml#/RecordItem'
+
+  /v1/captures:
+    $ref: './paths/captures.yaml#/Collection'
+  /v1/captures/{capture_id}:
+    $ref: './paths/captures.yaml#/Item'
+  /v1/captures/{capture_id}/confirm:
+    $ref: './paths/captures.yaml#/Confirm'
+  /v1/capture-questions:
+    $ref: './paths/captures.yaml#/Questions'
+  /v1/capture-questions/{question_id}/answer:
+    $ref: './paths/captures.yaml#/QuestionAnswer'
+
+  /v1/today:
+    $ref: './paths/views.yaml#/Today'
+  /v1/calendar:
+    $ref: './paths/views.yaml#/Calendar'
+  /v1/reviews/weekly:
+    $ref: './paths/views.yaml#/WeeklyReview'
+  /v1/search:
+    $ref: './paths/views.yaml#/Search'
+
+  /v1/operations/{operation_id}:
+    $ref: './paths/system.yaml#/Operation'
+  /v1/activities:
+    $ref: './paths/system.yaml#/Activities'
+  /v1/activities/{batch_id}/undo:
+    $ref: './paths/system.yaml#/ActivityUndo'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 登录后获得的 Access Token。过期时使用 Refresh Token 换取新的。

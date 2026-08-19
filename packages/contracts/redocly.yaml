@@ -1,0 +1,23 @@
+# Redocly 校验与打包配置。
+# 生成器只读取 lint、bundle 通过后的 dist/openapi.bundle.yaml，不分别解析拆分源文件。
+extends:
+  - recommended
+
+rules:
+  # 契约内部统一使用中文描述，不强制英文摘要格式。
+  operation-summary: error
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-4xx-response: error
+  no-unused-components: error
+  # 拆分文件之间的 $ref 是有意设计，不作为告警。
+  no-invalid-media-type-examples: off
+  security-defined: off
+  # 开发期 servers 指向 localhost 是正确的；生产域名待运维确认后再补。
+  no-server-example.com: off
+  # 标签描述与联系人信息对内部契约无意义。
+  info-contact: off
+  info-license: off
+  tag-description: off
+  operation-description: off
+  no-ambiguous-paths: error

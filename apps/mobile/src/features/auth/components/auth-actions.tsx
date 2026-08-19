@@ -5,14 +5,21 @@ import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type PrimaryButtonProps = PropsWithChildren<{
   onPress: () => void;
+  disabled?: boolean;
 }>;
 
-export function PrimaryButton({ children, onPress }: PrimaryButtonProps) {
+export function PrimaryButton({ children, onPress, disabled = false }: PrimaryButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.button,
+        disabled && styles.disabled,
+        pressed && !disabled && styles.pressed,
+      ]}
     >
       <Text style={styles.text}>{children}</Text>
     </Pressable>
@@ -29,6 +36,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.86,
+  },
+  disabled: {
+    backgroundColor: colors.borderStrong,
   },
   text: {
     color: colors.background,

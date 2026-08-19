@@ -1,0 +1,600 @@
+# 统一 Capture：多模态输入、AI 解析候选、追问与确认写入。
+# Capture、Candidate 与处理状态属于临时输入域，不属于用户正式内容。
+# 只有 confirmed 事务写入的实体才能被 Today、计划、笔记、数据与搜索读取。
+
+CaptureStatus:
+  type: string
+  description: Capture 主状态，转换规则由服务端 Domain 强制。
+  enum:
+    - draft
+    - submitting
+    - preprocessing
+    - parsing
+    - awaiting_instruction
+    - needs_confirmation
+    - confirmed
+    - partially_failed
+    - failed
+    - discarded
+    - expired
+
+CapturePartKind:
+  type: string
+  enum: [text, audio, image]
+
+CapturePartStatus:
+  type: string
+  description: 单个输入项状态，支持单项重试并区分系统失败与用户明确忽略。
+  enum: [pending, processing, succeeded, failed, ignored]
+
+CapturePart:
+  type: object
+  additionalProperties: false
+  required: [id, kind, status, position]
+  properties:
+    id:
+      type: string
+    kind:
+      $ref: '#/CapturePartKind'
+    status:
+      $ref: '#/CapturePartStatus'
+    position:
+      type: integer
+      description: 提交顺序，图片按此编号显示为“图片 1、图片 2”。
+    text:
+      type: string
+      nullable: true
+      description: kind=text 时为用户输入原文；kind=audio 时为转写结果；kind=image 时为 OCR 摘要。
+    media_url:
+      type: string
+      nullable: true
+      description: 有效期受限的私有访问地址。
+    duration_ms:
+      type: integer
+      nullable: true
+    error:
+      $ref: './common.yaml#/ErrorBody'
+
+CaptureSourceRef:
+  type: object
+  additionalProperties: false
+  required: [part_id]
+  properties:
+    part_id:
+      type: string
+    text_start:
+      type: integer
+      nullable: true
+    text_end:
+      type: integer
+      nullable: true
+    audio_start_ms:
+      type: integer
+      nullable: true
+    audio_end_ms:
+      type: integer
+      nullable: true
+    image_region:
+      type: string
+      nullable: true
+      description: 归一化区域，格式 "x,y,w,h"，取值 0 到 1。
+
+CaptureFieldConfidence:
+  type: object
+  additionalProperties: false
+  required: [field, level]
+  properties:
+    field:
+      type: string
+    level:
+      type: string
+      description: |
+        high 表示用户明确表达；medium 表示可从输入合理推断；low 表示需要用户确认。
+        置信度只用于排序与是否追问，不能用于跳过用户确认。
+      enum: [high, medium, low]
+    source_refs:
+      type: array
+      items:
+        $ref: '#/CaptureSourceRef'
+
+CaptureTaskDraft:
+  type: object
+  additionalProperties: false
+  required: [title]
+  properties:
+    title:
+      type: string
+    description:
+      type: string
+      nullable: true
+    priority:
+      $ref: './objects.yaml#/TaskPriority'
+    due_date:
+      type: string
+      format: date
+      nullable: true
+    due_at:
+      type: string
+      format: date-time
+      nullable: true
+    due_timezone:
+      type: string
+      nullable: true
+    scheduled_start_at:
+      type: string
+      format: date-time
+      nullable: true
+    scheduled_end_at:
+      type: string
+      format: date-time
+      nullable: true
+    scheduled_timezone:
+      type: string
+      nullable: true
+    estimated_minutes:
+      type: integer
+      nullable: true
+    list_id:
+      type: string
+      nullable: true
+      description: 未指定时确认页预选用户默认清单。
+    project_ref:
+      type: string
+      nullable: true
+      description: 已有 Project ID，或本次候选 Project 的 candidate_id。
+
+CaptureEventDraft:
+  type: object
+  additionalProperties: false
+  required: [title, all_day]
+  properties:
+    title:
+      type: string
+    event_kind:
+      $ref: './objects.yaml#/EventKind'
+    all_day:
+      type: boolean
+    start_at:
+      type: string
+      format: date-time
+      nullable: true
+    end_at:
+      type: string
+      format: date-time
+      nullable: true
+    start_date:
+      type: string
+      format: date
+      nullable: true
+    end_date:
+      type: string
+      format: date
+      nullable: true
+    timezone:
+      type: string
+      nullable: true
+    location:
+      type: string
+      nullable: true
+    participants:
+      type: array
+      items:
+        type: string
+    note:
+      type: string
+      nullable: true
+    recurrence:
+      $ref: './objects.yaml#/EventRecurrence'
+    project_ref:
+      type: string
+      nullable: true
+
+CaptureProjectDraft:
+  type: object
+  additionalProperties: false
+  required: [title]
+  properties:
+    title:
+      type: string
+    description:
+      type: string
+      nullable: true
+    start_date:
+      type: string
+      format: date
+      nullable: true
+    target_date:
+      type: string
+      format: date
+      nullable: true
+
+CaptureNoteDraft:
+  type: object
+  additionalProperties: false
+  required: [content]
+  properties:
+    title:
+      type: string
+      nullable: true
+    content:
+      type: string
+    tags:
+      type: array
+      items:
+        type: string
+    project_ref:
+      type: string
+      nullable: true
+
+CaptureTrackerDraft:
+  type: object
+  additionalProperties: false
+  required: [name, fields]
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+      nullable: true
+    fields:
+      type: array
+      minItems: 1
+      items:
+        $ref: './trackers.yaml#/TrackerField'
+
+CaptureRecordDraft:
+  type: object
+  additionalProperties: false
+  required: [timestamp, values]
+  properties:
+    tracker_ref:
+      type: string
+      nullable: true
+      description: 已有 Tracker ID，或本次候选 Tracker 的 candidate_id。
+    timestamp:
+      type: string
+      format: date-time
+    values:
+      type: array
+      items:
+        $ref: './trackers.yaml#/RecordValue'
+    note:
+      type: string
+      nullable: true
+
+CaptureDraftPayload:
+  type: object
+  additionalProperties: false
+  description: |
+    候选内容的判别联合快照。只有与 candidate_type 对应的那一个字段非空。
+    确认请求复用同一结构提交用户编辑后的值。
+  properties:
+    task:
+      $ref: '#/CaptureTaskDraft'
+    event:
+      $ref: '#/CaptureEventDraft'
+    project:
+      $ref: '#/CaptureProjectDraft'
+    note:
+      $ref: '#/CaptureNoteDraft'
+    tracker:
+      $ref: '#/CaptureTrackerDraft'
+    record:
+      $ref: '#/CaptureRecordDraft'
+
+CaptureCandidateType:
+  type: string
+  enum: [task, event, project, note, tracker, record]
+
+CaptureCandidateAction:
+  type: string
+  enum: [create, update]
+
+CaptureCandidate:
+  type: object
+  additionalProperties: false
+  required: [id, candidate_type, action, selected, payload]
+  properties:
+    id:
+      type: string
+      example: cnd_01J8Z3
+    candidate_type:
+      $ref: '#/CaptureCandidateType'
+    action:
+      $ref: '#/CaptureCandidateAction'
+    target_id:
+      type: string
+      nullable: true
+      description: action=update 时指向已有实体。
+    target_expected_version:
+      type: integer
+      nullable: true
+    selected:
+      type: boolean
+      description: 服务端给出的默认勾选状态，用户可以修改。
+    payload:
+      $ref: '#/CaptureDraftPayload'
+    field_confidences:
+      type: array
+      items:
+        $ref: '#/CaptureFieldConfidence'
+    source_refs:
+      type: array
+      items:
+        $ref: '#/CaptureSourceRef'
+    missing_fields:
+      type: array
+      description: 未解决的必填字段。非空时不允许保存该候选项。
+      items:
+        type: string
+    warnings:
+      type: array
+      items:
+        type: string
+    duplicate_of:
+      type: string
+      nullable: true
+      description: 服务端确定性重复检测命中的已有实体 ID。
+
+CaptureRelationCandidate:
+  type: object
+  additionalProperties: false
+  required: [id, kind, from_ref, to_ref]
+  properties:
+    id:
+      type: string
+    kind:
+      $ref: './objects.yaml#/RelationKind'
+    from_ref:
+      type: string
+      description: 已有实体 ID 或本次候选的 candidate_id。
+    to_ref:
+      type: string
+
+CaptureQuestion:
+  type: object
+  additionalProperties: false
+  required: [id, capture_id, question, blocking, status, created_at]
+  properties:
+    id:
+      type: string
+      example: cq_01J8Z3
+    capture_id:
+      type: string
+    question:
+      type: string
+      description: 面向用户的中文追问，说明为什么需要这项信息。
+    blocking:
+      type: boolean
+      description: 为 true 时 Capture 处于 awaiting_instruction，解析被阻塞。
+    status:
+      type: string
+      enum: [open, answered, superseded, expired]
+    quick_answers:
+      type: array
+      description: 可直接点击的快捷回答，仍需生成新 revision 重新解析。
+      items:
+        type: string
+    capture_summary:
+      type: string
+      description: 用于全局待答入口列表展示的一句话摘要。
+    created_at:
+      type: string
+      format: date-time
+    answered_at:
+      type: string
+      format: date-time
+      nullable: true
+
+CaptureConflict:
+  type: object
+  additionalProperties: false
+  required: [id, field, options]
+  properties:
+    id:
+      type: string
+    field:
+      type: string
+      description: 发生冲突的语义字段，例如 date、amount、title。
+    description:
+      type: string
+    options:
+      type: array
+      minItems: 2
+      items:
+        type: object
+        additionalProperties: false
+        required: [value, source_refs]
+        properties:
+          value:
+            type: string
+          source_refs:
+            type: array
+            items:
+              $ref: '#/CaptureSourceRef'
+
+CaptureOrigin:
+  type: string
+  description: Capture 入口来源，只影响候选建议，不授权跳过确认。
+  enum: [home, list, note, project_manager, assistant, tracker]
+
+Capture:
+  type: object
+  additionalProperties: false
+  required: [id, status, revision, origin, parts, candidates, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      example: cap_01J8Z3
+    status:
+      $ref: '#/CaptureStatus'
+    revision:
+      type: integer
+      description: 当前最新 revision。只允许确认最新 revision。
+    origin:
+      $ref: '#/CaptureOrigin'
+    parts:
+      type: array
+      items:
+        $ref: '#/CapturePart'
+    candidates:
+      type: array
+      items:
+        $ref: '#/CaptureCandidate'
+    relation_candidates:
+      type: array
+      items:
+        $ref: '#/CaptureRelationCandidate'
+    questions:
+      type: array
+      items:
+        $ref: '#/CaptureQuestion'
+    conflicts:
+      type: array
+      items:
+        $ref: '#/CaptureConflict'
+    instruction_note:
+      type: string
+      nullable: true
+      description: 用户在文字或语音中给出的限制条件，例如“只处理第一张”。
+    error:
+      $ref: './common.yaml#/ErrorBody'
+    created_objects:
+      type: array
+      description: 确认后本次实际创建或更新的实体引用。
+      items:
+        $ref: './common.yaml#/AffectedResource'
+    activity_batch_id:
+      type: string
+      nullable: true
+      description: 确认成功后生成的 Activity 批次，用于即时撤销。
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    confirmed_at:
+      type: string
+      format: date-time
+      nullable: true
+
+CreateCaptureRequest:
+  type: object
+  additionalProperties: false
+  required: [parts]
+  properties:
+    origin:
+      $ref: '#/CaptureOrigin'
+    parts:
+      type: array
+      minItems: 1
+      maxItems: 10
+      items:
+        type: object
+        additionalProperties: false
+        required: [kind]
+        properties:
+          kind:
+            $ref: '#/CapturePartKind'
+          text:
+            type: string
+            nullable: true
+            description: kind=text 时必填。
+          media_id:
+            type: string
+            nullable: true
+            description: kind=audio 或 image 时必填，指向已完成上传的媒体对象。
+    suggested_project_id:
+      type: string
+      nullable: true
+      description: 入口上下文提示，只影响候选建议，不授权跳过确认。
+    timezone:
+      type: string
+      nullable: true
+      description: 客户端时区，用于解析相对时间表达。
+
+ConfirmCaptureItem:
+  type: object
+  additionalProperties: false
+  description: |
+    用户勾选保存的一个候选项。payload 为用户编辑后的值，
+    缺省表示采用服务端候选的原值；服务端始终重新校验，不信任客户端提交的结果。
+  required: [candidate_id]
+  properties:
+    candidate_id:
+      type: string
+    payload:
+      $ref: '#/CaptureDraftPayload'
+    list_id:
+      type: string
+      nullable: true
+      description: Task 候选在确认页选择的目标清单。
+
+ConfirmCaptureRequest:
+  type: object
+  additionalProperties: false
+  required: [revision, items]
+  properties:
+    revision:
+      type: integer
+      description: 必须等于当前最新 revision，否则返回 CAPTURE_REVISION_STALE。
+    items:
+      type: array
+      minItems: 1
+      description: 用户勾选并确认保存的候选项。未列出的候选视为放弃。
+      items:
+        $ref: '#/ConfirmCaptureItem'
+
+AnswerCaptureQuestionRequest:
+  type: object
+  additionalProperties: false
+  required: [answer]
+  properties:
+    answer:
+      type: string
+      minLength: 1
+      description: 用户补充的文字说明。服务端据此创建新 revision 重新解析。
+
+CaptureResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/Capture'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+CaptureQuestionsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/CaptureQuestion'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+ConfirmCaptureResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: object
+      additionalProperties: false
+      required: [capture, affected_resources]
+      properties:
+        capture:
+          $ref: '#/Capture'
+        affected_resources:
+          type: array
+          items:
+            $ref: './common.yaml#/AffectedResource'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

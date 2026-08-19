@@ -1,0 +1,96 @@
+# F-01 账户与登录。MVP 采用手机号加验证码。
+
+PhoneCode:
+  post:
+    operationId: requestPhoneCode
+    summary: 发送登录验证码
+    tags: [auth]
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/account.yaml#/PhoneCodeRequest'
+    responses:
+      '200':
+        description: 验证码已发送。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account.yaml#/PhoneCodeResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Login:
+  post:
+    operationId: login
+    summary: 手机号验证码登录
+    tags: [auth]
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/account.yaml#/LoginRequest'
+    responses:
+      '200':
+        description: 登录成功。首次登录同时完成用户初始化并创建默认清单。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account.yaml#/LoginResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Refresh:
+  post:
+    operationId: refreshToken
+    summary: 用 Refresh Token 换取新的 Access Token
+    tags: [auth]
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/account.yaml#/RefreshRequest'
+    responses:
+      '200':
+        description: 刷新成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account.yaml#/RefreshResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Logout:
+  post:
+    operationId: logout
+    summary: 注销当前 Refresh Token
+    tags: [auth]
+    responses:
+      '200':
+        description: 已注销。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/common.yaml#/EmptyResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

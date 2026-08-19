@@ -4,7 +4,8 @@ export type TaskItem = {
   list: string;
   time: string;
   color: string;
-  priority?: 'high' | 'medium' | 'low';
+  // 与契约 TaskPriority 保持一致：normal 是默认优先级。
+  priority?: 'high' | 'normal' | 'low';
   completed?: boolean;
 };
 
@@ -23,7 +24,7 @@ export const todayTasks: TaskItem[] = [
     list: '工作',
     time: '11:30',
     color: '#3B82F6',
-    priority: 'medium',
+    priority: 'normal',
   },
   {
     id: 'workout',
@@ -31,7 +32,7 @@ export const todayTasks: TaskItem[] = [
     list: '健康',
     time: '19:00',
     color: '#10B981',
-    priority: 'medium',
+    priority: 'normal',
   },
   {
     id: 'flight',
@@ -65,7 +66,7 @@ export const tomorrowTasks: TaskItem[] = [
     list: '生活',
     time: '18:00',
     color: '#F59E0B',
-    priority: 'medium',
+    priority: 'normal',
   },
 ];
 
@@ -76,7 +77,7 @@ export const unscheduledTasks: TaskItem[] = [
     list: '工作',
     time: '未安排',
     color: '#3B82F6',
-    priority: 'medium',
+    priority: 'normal',
   },
   {
     id: 'car-service',

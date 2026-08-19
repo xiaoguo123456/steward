@@ -1,0 +1,50 @@
+# 复用的错误响应。所有错误响应共用同一 ErrorResponse 结构与稳定错误码。
+
+BadRequest:
+  description: 请求参数或业务前置条件不满足。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas/common.yaml#/ErrorResponse'
+
+Unauthorized:
+  description: 未认证或 Access Token 已过期。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas/common.yaml#/ErrorResponse'
+
+Forbidden:
+  description: 已认证但无权访问该资源。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas/common.yaml#/ErrorResponse'
+
+NotFound:
+  description: 资源不存在，或不属于当前用户。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas/common.yaml#/ErrorResponse'
+
+Conflict:
+  description: 版本冲突、状态冲突或幂等键重用。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas/common.yaml#/ErrorResponse'
+
+TooManyRequests:
+  description: 触发限流。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas/common.yaml#/ErrorResponse'
+
+InternalError:
+  description: 服务端内部错误。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas/common.yaml#/ErrorResponse'

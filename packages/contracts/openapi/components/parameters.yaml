@@ -1,0 +1,119 @@
+# 复用的 Query、Header 与 Path 参数。
+
+Cursor:
+  name: cursor
+  in: query
+  required: false
+  description: 上一页返回的不透明游标。App 不得解析其内容。
+  schema:
+    type: string
+
+Limit:
+  name: limit
+  in: query
+  required: false
+  description: 单页条数。
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 20
+
+IdempotencyKey:
+  name: Idempotency-Key
+  in: header
+  required: true
+  description: |
+    写请求幂等键，由客户端生成并在重试时保持不变。
+    缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+  schema:
+    type: string
+    minLength: 8
+    maxLength: 128
+
+IfMatch:
+  name: If-Match
+  in: header
+  required: false
+  description: |
+    目标资源的 version。提供后与服务端当前版本不一致时返回 VERSION_CONFLICT。
+    并发编辑场景应始终携带。
+  schema:
+    type: string
+
+TaskId:
+  name: task_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+TaskListId:
+  name: list_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+EventId:
+  name: event_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+ProjectId:
+  name: project_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+NoteId:
+  name: note_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+TrackerId:
+  name: tracker_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+RecordId:
+  name: record_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+CaptureId:
+  name: capture_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+QuestionId:
+  name: question_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+OperationId:
+  name: operation_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+BatchId:
+  name: batch_id
+  in: path
+  required: true
+  schema:
+    type: string

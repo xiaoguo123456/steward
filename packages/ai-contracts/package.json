@@ -1,0 +1,7 @@
+{
+  "name": "@steward/ai-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "服务端 AI 结构化输入输出的 JSON Schema、Prompt 与 Eval 数据集；移动端不得导入",
+  "scripts": {}
+}

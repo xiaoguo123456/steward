@@ -1,0 +1,127 @@
+# 聚合读模型入口：Today、日历、周复盘与搜索。
+
+Today:
+  get:
+    operationId: getToday
+    summary: 读取今天的任务与日程
+    description: |
+      收录与排序完全由服务端确定性代码计算，客户端不得重排。
+      展开只改变客户端可见数量，不改变收录、排序或字段。
+    tags: [views]
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/TodayViewResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Calendar:
+  get:
+    operationId: getCalendar
+    summary: 按日期范围读取日历
+    tags: [views]
+    parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: true
+        description: 与 from 的跨度不得超过 100 天。
+        schema:
+          type: string
+          format: date
+      - name: project_id
+        in: query
+        required: false
+        schema:
+          type: string
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/CalendarViewResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+WeeklyReview:
+  get:
+    operationId: getWeeklyReview
+    summary: 读取某一周的复盘
+    description: |
+      确定性指标始终可用。AI 叙述与建议在 Provider 不可用时为空，
+      页面仍然展示指标与来源。
+    tags: [views]
+    parameters:
+      - name: week_of
+        in: query
+        required: false
+        description: 该周内任意一天的当地日期。不传时为本周。
+        schema:
+          type: string
+          format: date
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/WeeklyReviewResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Search:
+  get:
+    operationId: search
+    summary: 跨实体关键词检索
+    description: 只返回已确认的正式内容，处理中或待确认的 Capture 不会出现。
+    tags: [views]
+    parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: types
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            $ref: '../components/schemas/common.yaml#/ObjectType'
+        style: form
+        explode: false
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/SearchResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

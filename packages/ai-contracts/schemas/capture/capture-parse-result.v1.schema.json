@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steward.local/ai-contracts/capture/capture-parse-result.v1.schema.json",
+  "title": "Capture 解析结果 v1",
+  "description": "一次 Capture 结构化解析的完整输出契约。Provider 返回的原始 JSON 必须先通过本 Schema，再经过 Domain 校验与用户确认，才可能写入正式内容。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidates"],
+  "properties": {
+    "candidates": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "questions": {
+      "type": "array",
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/question" }
+    },
+    "conflicts": {
+      "type": "array",
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/conflict" }
+    },
+    "instruction_note": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "用户在输入中给出的限制条件，例如“只处理第一张”。必须在确认页醒目展示，不能被静默忽略。"
+    }
+  },
+  "$defs": {
+    "sourceSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["part_id"],
+      "properties": {
+        "part_id": { "type": "string" },
+        "text_start": { "type": "integer", "minimum": 0 },
+        "text_end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "level"],
+      "properties": {
+        "field": { "type": "string" },
+        "level": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "只用于排序与是否追问，永远不能用来跳过用户确认。"
+        },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/sourceSpan" } }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "action", "title"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["task", "event", "project", "note", "tracker", "record"]
+        },
+        "action": { "type": "string", "enum": ["create", "update"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "content": { "type": "string", "maxLength": 5000 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "priority": { "type": "string", "enum": ["low", "normal", "high"] },
+        "due_date": {
+          "type": "string",
+          "format": "date",
+          "description": "只有日期没有时刻的截止日；不得擅自补成当天 23:59。"
+        },
+        "due_at": { "type": "string", "format": "date-time" },
+        "all_day": { "type": "boolean" },
+        "start_at": { "type": "string", "format": "date-time" },
+        "start_date": { "type": "string", "format": "date" },
+        "event_kind": { "type": "string", "enum": ["schedule", "important_date"] },
+        "location": { "type": "string", "maxLength": 200 },
+        "tags": { "type": "array", "maxItems": 10, "items": { "type": "string" } },
+        "tracker_id": { "type": "string" },
+        "record_values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key"],
+            "properties": {
+              "key": { "type": "string" },
+              "number": { "type": "number" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "confidences": { "type": "array", "items": { "$ref": "#/$defs/confidence" } },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/sourceSpan" } },
+        "missing": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "blocking"],
+      "properties": {
+        "question": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "blocking": {
+          "type": "boolean",
+          "description": "为 true 时 Capture 进入 awaiting_instruction，解析被阻塞。"
+        },
+        "quick_answers": { "type": "array", "maxItems": 4, "items": { "type": "string" } },
+        "summary": { "type": "string", "maxLength": 60 }
+      }
+    },
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "options"],
+      "properties": {
+        "field": { "type": "string" },
+        "description": { "type": "string", "maxLength": 200 },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value"],
+            "properties": {
+              "value": { "type": "string" },
+              "sources": { "type": "array", "items": { "$ref": "#/$defs/sourceSpan" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

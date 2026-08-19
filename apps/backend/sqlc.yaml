@@ -1,0 +1,47 @@
+# 由 db/migrations 推导 schema，由 db/queries 生成类型安全的查询代码。
+# 生成结果位于 internal/gen/dbgen，禁止手工修改。
+version: "2"
+sql:
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries
+    gen:
+      go:
+        package: dbgen
+        out: internal/gen/dbgen
+        sql_package: pgx/v5
+        emit_json_tags: false
+        emit_prepared_queries: false
+        emit_interface: true
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        overrides:
+          # jsonb 统一以原始字节交给模块自行编解码，
+          # 避免在生成层固化某个业务结构。
+          - db_type: "jsonb"
+            go_type:
+              type: "byte"
+              slice: true
+          - db_type: "jsonb"
+            nullable: true
+            go_type:
+              type: "byte"
+              slice: true
+          # 时间统一用标准库类型，可空列用指针，避免业务层到处包装 pgtype。
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true
+          - db_type: "date"
+            go_type: "time.Time"
+          - db_type: "date"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true
+          # 成本是估算值，不参与结算，用 float64 足够且便于聚合。
+          - column: "ai_actions.estimated_cost"
+            go_type: "float64"
