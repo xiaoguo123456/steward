@@ -1,0 +1,84 @@
+# 菜谱只读内容。没有创建与修改接口：它由平台提供，不是用户数据。
+
+Collection:
+  get:
+    operationId: listRecipes
+    summary: 查询菜谱
+    description: |
+      按关键词、分类与用餐时段筛选。过敏原过滤是确定性硬条件，
+      排序不得覆盖它：exclude_allergens 命中的菜谱一律不返回。
+    tags: [recipes]
+    parameters:
+      - name: q
+        in: query
+        required: false
+        description: 按菜名或食材搜索。
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        schema:
+          $ref: '../components/schemas/recipes.yaml#/RecipeCategory'
+      - name: meal_slot
+        in: query
+        required: false
+        schema:
+          $ref: '../components/schemas/recipes.yaml#/RecipeMealSlot'
+      - name: exclude_allergens
+        in: query
+        required: false
+        description: |
+          排除含有这些过敏原的菜谱。这是硬过滤，不是排序权重。
+        schema:
+          type: array
+          items:
+            type: string
+        style: form
+        explode: false
+      - name: max_minutes
+        in: query
+        required: false
+        description: 只要这个时间内能做完的。
+        schema:
+          type: integer
+          minimum: 1
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/RecipesResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Item:
+  get:
+    operationId: getRecipe
+    summary: 读取菜谱详情
+    tags: [recipes]
+    parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/RecipeResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

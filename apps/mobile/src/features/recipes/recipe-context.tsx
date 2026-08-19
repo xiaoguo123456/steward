@@ -5,16 +5,22 @@ import {
   useState,
 } from 'react';
 
-import { defaultProfile, initialWeekPlan, recipes, weekDays } from './mock-data';
+import { defaultProfile, initialWeekPlan, weekDays } from './mock-data';
+import { useRecipeContent } from './use-recipe-content';
 import {
   mealSlotOrder,
   type MealSlot,
+  type Recipe,
   type RecipeProfile,
   type WeekDayId,
   type WeekPlan,
 } from './model';
 
 type RecipePrototypeValue = {
+  /** 菜谱内容来自服务端，是只读的平台内容。 */
+  recipes: Recipe[];
+  recipesLoading: boolean;
+  getRecipe: (recipeId: string) => Recipe | undefined;
   profile: RecipeProfile;
   setProfile: (profile: RecipeProfile) => void;
   selectedDayId: WeekDayId;
@@ -34,7 +40,7 @@ type RecipePrototypeValue = {
 
 const RecipePrototypeContext = createContext<RecipePrototypeValue | null>(null);
 
-function nextRecipeId(currentId: string, meal: MealSlot, offset = 1) {
+function nextRecipeId(recipes: Recipe[], currentId: string, meal: MealSlot, offset = 1) {
   const candidates = recipes.filter((recipe) => recipe.mealSlots.includes(meal));
   const currentIndex = Math.max(
     0,
@@ -44,6 +50,9 @@ function nextRecipeId(currentId: string, meal: MealSlot, offset = 1) {
 }
 
 export function RecipePrototypeProvider({ children }: PropsWithChildren) {
+  // 菜谱内容只读；本周菜单、收藏与问卷仍然是本地原型状态，
+  // 它们的正式契约还没设计（见 README）。
+  const content = useRecipeContent();
   const [profile, setProfile] = useState(defaultProfile);
   const [selectedDayId, setSelectedDayId] = useState<WeekDayId>(
     weekDays.find((day) => day.isToday)?.id ?? 'mon',
@@ -72,7 +81,7 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
         ...current,
         [dayId]: {
           ...current[dayId],
-          [meal]: nextRecipeId(current[dayId][meal], meal),
+          [meal]: nextRecipeId(content.recipes, current[dayId][meal], meal),
         },
       };
     });
@@ -85,7 +94,7 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
       weekDays.forEach((day, dayIndex) => {
         const dayPlan = { ...current[day.id] };
         mealSlotOrder.forEach((meal, mealIndex) => {
-          dayPlan[meal] = nextRecipeId(dayPlan[meal], meal, dayIndex + mealIndex + 1);
+          dayPlan[meal] = nextRecipeId(content.recipes, dayPlan[meal], meal, dayIndex + mealIndex + 1);
         });
         next[day.id] = dayPlan;
       });
@@ -114,6 +123,9 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
   };
 
   const value: RecipePrototypeValue = {
+    recipes: content.recipes,
+    recipesLoading: content.loading,
+    getRecipe: content.getRecipe,
     profile,
     setProfile,
     selectedDayId,

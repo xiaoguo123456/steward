@@ -25,8 +25,6 @@ import {
 } from '@/features/recipes/components/recipe-ui';
 import {
   categoryOptions,
-  getRecipe,
-  recipes,
   weekDays,
 } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
@@ -53,6 +51,7 @@ function WeekHome() {
     plan,
     hasPendingPlan,
     swapRecipe,
+    getRecipe,
   } = useRecipePrototype();
   const selectedDay = weekDays.find((day) => day.id === selectedDayId) ?? weekDays[0];
   const dayRecipes = mealSlotOrder
@@ -138,7 +137,7 @@ function WeekHome() {
 
 function DiscoverHome() {
   const router = useRouter();
-  const { profile } = useRecipePrototype();
+  const { profile, recipes } = useRecipePrototype();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<RecipeCategory>('recommended');
   const normalizedSearch = search.trim().toLowerCase();
@@ -159,9 +158,10 @@ function DiscoverHome() {
         .toLowerCase();
       return matchesCategory && (!normalizedSearch || haystack.includes(normalizedSearch));
     });
-  }, [category, normalizedSearch, profile.goal]);
+  }, [category, normalizedSearch, profile.goal, recipes]);
 
-  const featured = getRecipe('tomato-beef') ?? recipes[0];
+  // 头图取当前筛选下的第一条：内容来自服务端，不该在客户端写死某个 ID。
+  const featured = visibleRecipes[0] ?? recipes[0];
 
   return (
     <>

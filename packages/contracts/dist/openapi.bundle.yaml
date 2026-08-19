@@ -43,6 +43,8 @@ tags:
     x-displayName: AI 助手
   - name: memory
     x-displayName: 长期记忆
+  - name: recipes
+    x-displayName: 菜谱内容
   - name: views
     x-displayName: 聚合视图
   - name: system
@@ -2148,6 +2150,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProjectItineraryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/recipes:
+    get:
+      operationId: listRecipes
+      summary: 查询菜谱
+      description: |
+        按关键词、分类与用餐时段筛选。过敏原过滤是确定性硬条件，
+        排序不得覆盖它：exclude_allergens 命中的菜谱一律不返回。
+      tags:
+        - recipes
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: 按菜名或食材搜索。
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/RecipeCategory'
+        - name: meal_slot
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/RecipeMealSlot'
+        - name: exclude_allergens
+          in: query
+          required: false
+          description: |
+            排除含有这些过敏原的菜谱。这是硬过滤，不是排序权重。
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+        - name: max_minutes
+          in: query
+          required: false
+          description: 只要这个时间内能做完的。
+          schema:
+            type: integer
+            minimum: 1
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/recipes/{recipe_id}:
+    get:
+      operationId: getRecipe
+      summary: 读取菜谱详情
+      tags:
+        - recipes
+      parameters:
+        - name: recipe_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -6068,6 +6153,235 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/ProjectItinerary'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    RecipeCategory:
+      type: string
+      enum:
+        - recommended
+        - quick
+        - seasonal
+        - fat_loss
+        - muscle_gain
+        - steady_sugar
+    RecipeMealSlot:
+      type: string
+      enum:
+        - breakfast
+        - lunch
+        - dinner
+    RecipeDifficulty:
+      type: string
+      enum:
+        - easy
+        - medium
+        - hard
+    RecipeNutrition:
+      type: object
+      additionalProperties: false
+      required:
+        - calories
+        - protein_g
+        - carbs_g
+        - fiber_g
+      description: |
+        每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。
+      properties:
+        calories:
+          type: number
+          format: double
+        protein_g:
+          type: number
+          format: double
+        carbs_g:
+          type: number
+          format: double
+        fiber_g:
+          type: number
+          format: double
+    RecipeGoal:
+      type: string
+      description: |
+        steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，
+        不提供疾病诊断、治疗承诺或用药建议。
+      enum:
+        - balanced
+        - fat_loss
+        - muscle_gain
+        - steady_sugar
+    RecipeIngredientGroup:
+      type: string
+      description: 与购物清单的品类分开：这里是做菜时的分组，不是超市货架。
+      enum:
+        - produce
+        - protein
+        - staple
+        - seasoning
+    RecipeIngredient:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - amount
+        - group
+      properties:
+        name:
+          type: string
+        amount:
+          type: string
+          description: 自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。
+        group:
+          $ref: '#/components/schemas/RecipeIngredientGroup'
+    RecipeStep:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - description
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        timer_minutes:
+          type: integer
+          nullable: true
+          description: 这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。
+    RecipeSource:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - license
+        - content_version
+      description: |
+        内容来源与授权。字段不全的菜谱不允许进库：
+        不知道来源和授权范围，就等于不知道自己有没有权利展示它。
+      properties:
+        name:
+          type: string
+          description: 内容提供方。
+        author:
+          type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+          description: 原始出处。
+        license:
+          type: string
+          description: 授权范围，例如 CC-BY-4.0、平台自有内容。
+        license_url:
+          type: string
+          nullable: true
+        image_credit:
+          type: string
+          nullable: true
+          description: 图片的权利说明。没有明确权利的图片不下发 image_url。
+        content_version:
+          type: string
+          description: 内容版本。来源更新时递增，客户端据此判断缓存是否过期。
+    Recipe:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - servings
+        - duration_minutes
+        - difficulty
+        - nutrition
+        - meal_slots
+        - categories
+        - goals
+        - tags
+        - allergens
+        - ingredients
+        - steps
+        - source
+      properties:
+        id:
+          type: string
+          example: rcp_01J8Z3
+        title:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        image_url:
+          type: string
+          nullable: true
+          description: |
+            没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。
+        servings:
+          type: integer
+          minimum: 1
+        duration_minutes:
+          type: integer
+          minimum: 1
+        difficulty:
+          $ref: '#/components/schemas/RecipeDifficulty'
+        nutrition:
+          $ref: '#/components/schemas/RecipeNutrition'
+        meal_slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeMealSlot'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeCategory'
+        goals:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeGoal'
+        tags:
+          type: array
+          items:
+            type: string
+        allergens:
+          type: array
+          description: |
+            过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。
+          items:
+            type: string
+        ingredients:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RecipeIngredient'
+        steps:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RecipeStep'
+        source:
+          $ref: '#/components/schemas/RecipeSource'
+    RecipesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recipe'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    RecipeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Recipe'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     ImportantDateEntry:

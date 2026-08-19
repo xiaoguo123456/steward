@@ -1,0 +1,200 @@
+# 菜谱是只读内容，不是用户数据。
+#
+# 它由平台提供、所有用户共享，因此不受行级安全约束，也没有创建与修改接口。
+# 用户自己的东西是「本周菜单」（Note/Task）和「实际摄入」（Record），
+# 那些仍然走各自的领域接口。
+#
+# 任何一条正式菜谱进库之前，来源、作者、授权范围与版本必须齐全：
+# 没有这些字段就等于不知道自己有没有权利展示它。
+
+RecipeDifficulty:
+  type: string
+  enum: [easy, medium, hard]
+
+RecipeMealSlot:
+  type: string
+  enum: [breakfast, lunch, dinner]
+
+RecipeGoal:
+  type: string
+  description: |
+    steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，
+    不提供疾病诊断、治疗承诺或用药建议。
+  enum: [balanced, fat_loss, muscle_gain, steady_sugar]
+
+RecipeCategory:
+  type: string
+  enum: [recommended, quick, seasonal, fat_loss, muscle_gain, steady_sugar]
+
+RecipeIngredientGroup:
+  type: string
+  description: 与购物清单的品类分开：这里是做菜时的分组，不是超市货架。
+  enum: [produce, protein, staple, seasoning]
+
+RecipeIngredient:
+  type: object
+  additionalProperties: false
+  required: [name, amount, group]
+  properties:
+    name:
+      type: string
+    amount:
+      type: string
+      description: 自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。
+    group:
+      $ref: '#/RecipeIngredientGroup'
+
+RecipeStep:
+  type: object
+  additionalProperties: false
+  required: [title, description]
+  properties:
+    title:
+      type: string
+    description:
+      type: string
+    timer_minutes:
+      type: integer
+      nullable: true
+      description: 这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。
+
+RecipeNutrition:
+  type: object
+  additionalProperties: false
+  required: [calories, protein_g, carbs_g, fiber_g]
+  description: |
+    每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。
+  properties:
+    calories:
+      type: number
+      format: double
+    protein_g:
+      type: number
+      format: double
+    carbs_g:
+      type: number
+      format: double
+    fiber_g:
+      type: number
+      format: double
+
+RecipeSource:
+  type: object
+  additionalProperties: false
+  required: [name, license, content_version]
+  description: |
+    内容来源与授权。字段不全的菜谱不允许进库：
+    不知道来源和授权范围，就等于不知道自己有没有权利展示它。
+  properties:
+    name:
+      type: string
+      description: 内容提供方。
+    author:
+      type: string
+      nullable: true
+    url:
+      type: string
+      nullable: true
+      description: 原始出处。
+    license:
+      type: string
+      description: 授权范围，例如 CC-BY-4.0、平台自有内容。
+    license_url:
+      type: string
+      nullable: true
+    image_credit:
+      type: string
+      nullable: true
+      description: 图片的权利说明。没有明确权利的图片不下发 image_url。
+    content_version:
+      type: string
+      description: 内容版本。来源更新时递增，客户端据此判断缓存是否过期。
+
+Recipe:
+  type: object
+  additionalProperties: false
+  required:
+    [id, title, servings, duration_minutes, difficulty, nutrition,
+     meal_slots, categories, goals, tags, allergens, ingredients, steps, source]
+  properties:
+    id:
+      type: string
+      example: rcp_01J8Z3
+    title:
+      type: string
+    summary:
+      type: string
+      nullable: true
+    image_url:
+      type: string
+      nullable: true
+      description: |
+        没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。
+    servings:
+      type: integer
+      minimum: 1
+    duration_minutes:
+      type: integer
+      minimum: 1
+    difficulty:
+      $ref: '#/RecipeDifficulty'
+    nutrition:
+      $ref: '#/RecipeNutrition'
+    meal_slots:
+      type: array
+      items:
+        $ref: '#/RecipeMealSlot'
+    categories:
+      type: array
+      items:
+        $ref: '#/RecipeCategory'
+    goals:
+      type: array
+      items:
+        $ref: '#/RecipeGoal'
+    tags:
+      type: array
+      items:
+        type: string
+    allergens:
+      type: array
+      description: |
+        过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。
+      items:
+        type: string
+    ingredients:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/RecipeIngredient'
+    steps:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/RecipeStep'
+    source:
+      $ref: '#/RecipeSource'
+
+RecipeResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/Recipe'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+RecipesResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/Recipe'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

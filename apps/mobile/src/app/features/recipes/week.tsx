@@ -10,7 +10,7 @@ import {
   RecipeImage,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { getRecipe, weekDays } from '@/features/recipes/mock-data';
+import { weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
 import { mealSlotLabels, mealSlotOrder } from '@/features/recipes/model';
@@ -26,6 +26,7 @@ export default function WeekMenuScreen() {
     confirmPlan,
     discardPlan,
     setSelectedDayId,
+    getRecipe,
   } = useRecipePrototype();
   const [savedMessage, setSavedMessage] = useState(false);
 

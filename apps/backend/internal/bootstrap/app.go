@@ -19,6 +19,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/media"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memory"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/recipes"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/users"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/views"
@@ -52,6 +53,7 @@ type Server struct {
 	*activity.ActivityAPI
 	*assistant.AssistantAPI
 	*memory.MemoryAPI
+	*recipes.RecipeAPI
 }
 
 var _ httpapi.StrictServerInterface = (*Server)(nil)
@@ -111,6 +113,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
+	recipesSvc := recipes.New(db)
 	mediaSvc := media.New(db, store)
 
 	// Capture 需要队列才能入队，而队列的 Worker 又需要 Capture 服务。
@@ -177,6 +180,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 			ActivityAPI:  activity.NewActivityAPI(activitySvc, objectsSvc, trackersSvc),
 			AssistantAPI: assistant.NewAssistantAPI(assistantSvc, proposalSvc),
 			MemoryAPI:    memory.NewMemoryAPI(memorySvc),
+			RecipeAPI:    recipes.NewRecipeAPI(recipesSvc),
 		},
 		Jobs:         runtime,
 		Parser:       parser,

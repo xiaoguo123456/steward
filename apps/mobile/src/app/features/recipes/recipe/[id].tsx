@@ -19,7 +19,7 @@ import {
   RecipePrimaryButton,
   RecipeSectionTitle,
 } from '@/features/recipes/components/recipe-ui';
-import { getRecipe, weekDays } from '@/features/recipes/mock-data';
+import { weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
 import { useClientReady } from '@/hooks/use-client-ready';
@@ -52,7 +52,6 @@ export default function RecipeDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const recipeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const clientReady = useClientReady();
-  const recipe = clientReady && recipeId ? getRecipe(recipeId) : undefined;
   const {
     favoriteIds,
     toggleFavorite,
@@ -60,7 +59,9 @@ export default function RecipeDetailScreen() {
     selectedDayId,
     setSelectedDayId,
     setRecipeForMeal,
+    getRecipe,
   } = useRecipePrototype();
+  const recipe = clientReady && recipeId ? getRecipe(recipeId) : undefined;
   const [servings, setServings] = useState(recipe?.servings ?? 1);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickedMeal, setPickedMeal] = useState<MealSlot>('dinner');

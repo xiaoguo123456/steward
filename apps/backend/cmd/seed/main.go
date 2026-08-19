@@ -55,6 +55,11 @@ func run() error {
 	}
 	log.Printf("演示用户：%s（手机号 %s，验证码 %s）", userID, demoPhone, orDefault(cfg.DevSMSCode, "见短信"))
 
+	// 菜谱是平台内容，不属于这个演示用户，但也在这里一起写入。
+	if err := seedRecipeContent(ctx, db, userID); err != nil {
+		return err
+	}
+
 	return db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		if err := resetUserData(ctx, userID, db); err != nil {
 			return err
@@ -144,6 +149,7 @@ func seedAll(ctx context.Context, q *dbgen.Queries, userID string) error {
 		row, err := q.CreateTaskList(ctx, dbgen.CreateTaskListParams{
 			ID: idgen.New(idgen.PrefixTaskList), UserID: userID,
 			Name: spec.name, Color: &color, Position: int32(i), IsDefault: spec.isDefault,
+			ListKind: "tasks",
 		})
 		if err != nil {
 			return fmt.Errorf("创建清单 %s 失败：%w", spec.name, err)
@@ -161,6 +167,7 @@ func seedAll(ctx context.Context, q *dbgen.Queries, userID string) error {
 		Status:      "active",
 		StartDate:   &today.Date,
 		TargetDate:  &targetDate,
+		ProjectKind: "general",
 		CreatedBy:   "user", ProvenanceRefs: emptyArray,
 	}); err != nil {
 		return fmt.Errorf("创建项目失败：%w", err)

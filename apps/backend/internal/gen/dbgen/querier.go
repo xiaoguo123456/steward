@@ -31,6 +31,7 @@ type Querier interface {
 	CountOpenCaptureQuestions(ctx context.Context) (int32, error)
 	CountOverdueTasks(ctx context.Context, arg CountOverdueTasksParams) (int32, error)
 	CountPendingProposals(ctx context.Context) (int32, error)
+	CountRecipes(ctx context.Context) (int32, error)
 	CountRecordsBetween(ctx context.Context, arg CountRecordsBetweenParams) (int32, error)
 	CountTaskLists(ctx context.Context) (int32, error)
 	CountTasksByProject(ctx context.Context, projectID *string) (CountTasksByProjectRow, error)
@@ -108,6 +109,7 @@ type Querier interface {
 	GetProcessedJob(ctx context.Context, idempotencyKey string) (ProcessedJob, error)
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProposal(ctx context.Context, id string) (ActionProposal, error)
+	GetRecipe(ctx context.Context, id string) (Recipe, error)
 	GetRecord(ctx context.Context, id string) (GetRecordRow, error)
 	GetReviewSnapshot(ctx context.Context, arg GetReviewSnapshotParams) (ReviewSnapshot, error)
 	GetTask(ctx context.Context, id string) (Task, error)
@@ -153,6 +155,8 @@ type Querier interface {
 	ListProposalsForTurn(ctx context.Context, turnID *string) ([]ActionProposal, error)
 	// Context Builder 用：按序取最近若干轮原始消息。
 	ListRecentMessages(ctx context.Context, arg ListRecentMessagesParams) ([]AssistantMessage, error)
+	// 菜谱只读查询。它是平台内容，没有写接口。
+	ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Recipe, error)
 	ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error)
 	ListRelearnBlocks(ctx context.Context, rowLimit int32) ([]MemoryRelearnBlock, error)
 	ListTaskLists(ctx context.Context, includeArchived bool) ([]ListTaskListsRow, error)
@@ -252,6 +256,8 @@ type Querier interface {
 	UpdateTurnDraft(ctx context.Context, arg UpdateTurnDraftParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) (UserPreference, error)
+	// 只给 seed 用：菜谱由平台提供，没有面向用户的写接口。
+	UpsertRecipe(ctx context.Context, arg UpsertRecipeParams) error
 	// Review 快照。确定性指标始终可用，AI 叙述是可选增强。
 	UpsertReviewSnapshot(ctx context.Context, arg UpsertReviewSnapshotParams) (ReviewSnapshot, error)
 }

@@ -9,7 +9,6 @@ import {
   RecipeImage,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { getRecipe } from '@/features/recipes/mock-data';
 import { recipeColors } from '@/features/recipes/theme';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { useClientReady } from '@/hooks/use-client-ready';
@@ -79,8 +78,8 @@ export default function CookingModeScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const recipeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const clientReady = useClientReady();
+  const { markCooked, getRecipe } = useRecipePrototype();
   const recipe = clientReady && recipeId ? getRecipe(recipeId) : undefined;
-  const { markCooked } = useRecipePrototype();
   const [stepIndex, setStepIndex] = useState(0);
 
   const step = recipe?.steps[stepIndex];

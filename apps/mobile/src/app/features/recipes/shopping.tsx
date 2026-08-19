@@ -9,7 +9,7 @@ import {
   InlineNotice,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { getRecipe, weekDays } from '@/features/recipes/mock-data';
+import { weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
 import { useClientReady } from '@/hooks/use-client-ready';
@@ -17,6 +17,7 @@ import {
   ingredientGroupLabels,
   mealSlotOrder,
   type IngredientGroup,
+  type Recipe,
   type ShoppingItem,
 } from '@/features/recipes/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
@@ -73,7 +74,10 @@ function mergeAmounts(amountCounts: Map<string, number>) {
     .join(' + ');
 }
 
-function buildShoppingItems(recipeIds: string[]): ShoppingItem[] {
+function buildShoppingItems(
+  recipeIds: string[],
+  getRecipe: (recipeId: string) => Recipe | undefined,
+): ShoppingItem[] {
   const items = new Map<
     string,
     ShoppingItem & { amountCounts: Map<string, number> }
@@ -115,7 +119,7 @@ export default function RecipeShoppingScreen() {
   const params = useLocalSearchParams<{ scope?: string }>();
   const clientReady = useClientReady();
   const scope = clientReady && params.scope === 'week' ? 'week' : 'day';
-  const { plan, selectedDayId, hasPendingPlan } = useRecipePrototype();
+  const { plan, selectedDayId, hasPendingPlan, getRecipe } = useRecipePrototype();
   const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set(['seasoning-低盐生抽']));
   const [created, setCreated] = useState(false);
 
@@ -124,7 +128,10 @@ export default function RecipeShoppingScreen() {
     return dayIds.flatMap((dayId) => mealSlotOrder.map((meal) => plan[dayId][meal]));
   }, [plan, scope, selectedDayId]);
 
-  const items = useMemo(() => buildShoppingItems(recipeIds), [recipeIds]);
+  const items = useMemo(
+    () => buildShoppingItems(recipeIds, getRecipe),
+    [getRecipe, recipeIds],
+  );
   const selectedCount = items.length - ownedIds.size;
 
   const toggleOwned = (itemId: string) => {

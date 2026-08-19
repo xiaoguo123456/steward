@@ -47,6 +47,8 @@ tags:
     x-displayName: AI 助手
   - name: memory
     x-displayName: 长期记忆
+  - name: recipes
+    x-displayName: 菜谱内容
   - name: views
     x-displayName: 聚合视图
   - name: system
@@ -157,6 +159,10 @@ paths:
     $ref: './paths/views.yaml#/Calendar'
   /v1/projects/{project_id}/itinerary:
     $ref: './paths/views.yaml#/ProjectItinerary'
+  /v1/recipes:
+    $ref: './paths/recipes.yaml#/Collection'
+  /v1/recipes/{recipe_id}:
+    $ref: './paths/recipes.yaml#/Item'
   /v1/important-dates:
     $ref: './paths/views.yaml#/ImportantDates'
   /v1/reviews/weekly:
