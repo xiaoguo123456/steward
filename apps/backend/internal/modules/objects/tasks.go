@@ -180,8 +180,12 @@ func (s *Service) CreateTask(ctx context.Context, userID string, body httpapi.Cr
 			ProjectID:         body.ProjectId,
 			Reminders:         remindersJSON,
 			CompletedAt:       completedAt,
-			CreatedBy:         "user",
-			ProvenanceRefs:    emptyJSONArray,
+			QuantityText:      trimmedOrNil(body.QuantityText),
+			// 品类由服务端算，不接受客户端指定：同一件东西在两台设备上
+			// 必须归到同一类。
+			ShoppingCategory: shoppingCategoryFor(ctx, q, listID, title),
+			CreatedBy:        "user",
+			ProvenanceRefs:   emptyJSONArray,
 		})
 		if err != nil {
 			return apperr.Internal(err)
@@ -366,8 +370,13 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 		ClearProjectID:        clear.ProjectID,
 		Reminders:             remindersJSON,
 		ClearReminders:        clear.Reminders,
-		SetCompletedAt:        setCompletedAt,
-		CompletedAt:           completedAt,
+		QuantityText:          trimmedOrNil(body.QuantityText),
+		ClearQuantityText:     clear.QuantityText,
+		// 改了名字就重新分类：用户把「牛奶」改成「咖啡豆」之后，
+		// 它不该还留在蛋奶那一组。
+		ShoppingCategory: reclassifyOnTitleChange(current, body.Title),
+		SetCompletedAt:   setCompletedAt,
+		CompletedAt:      completedAt,
 	})
 	if err != nil {
 		return fail(apperr.Internal(err))
@@ -452,6 +461,7 @@ type taskClearFlags struct {
 	FocusDate        bool
 	ProjectID        bool
 	Reminders        bool
+	QuantityText     bool
 }
 
 func taskClearFlagsOf(clear *[]httpapi.UpdateTaskRequestClear) taskClearFlags {
@@ -479,6 +489,8 @@ func taskClearFlagsOf(clear *[]httpapi.UpdateTaskRequestClear) taskClearFlags {
 			f.ProjectID = true
 		case httpapi.UpdateTaskRequestClearReminders:
 			f.Reminders = true
+		case httpapi.UpdateTaskRequestClearQuantityText:
+			f.QuantityText = true
 		}
 	}
 	return f
@@ -517,4 +529,36 @@ func priorityOrNil(p *httpapi.TaskPriority) *string {
 	}
 	v := string(*p)
 	return &v
+}
+
+// shoppingCategoryFor 只在购物清单里返回品类。
+//
+// 普通任务不需要品类；给它塞一个只会让「其他」这一组出现在
+// 完全不相干的地方。
+func shoppingCategoryFor(ctx context.Context, q *dbgen.Queries,
+	listID, title string) *string {
+
+	list, err := q.GetTaskList(ctx, listID)
+	if err != nil || list.ListKind != "shopping" {
+		return nil
+	}
+	category := string(ClassifyShoppingItem(title))
+	return &category
+}
+
+// reclassifyOnTitleChange 在标题变化时重新分类。
+//
+// 返回 nil 表示不改动已有值：SQL 里用的是 coalesce，
+// 因此不能用它来清空，只能用来覆盖。
+func reclassifyOnTitleChange(current dbgen.Task, title *string) *string {
+
+	if title == nil || strings.TrimSpace(*title) == "" {
+		return nil
+	}
+	if current.ShoppingCategory == nil {
+		// 本来就不是购物条目，改名不该给它凭空加一个品类。
+		return nil
+	}
+	category := string(ClassifyShoppingItem(strings.TrimSpace(*title)))
+	return &category
 }

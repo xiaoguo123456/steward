@@ -22,6 +22,8 @@ import * as zod from 'zod';
  * @summary 读取今天的任务与日程
  */
 
+export const getTodayResponseDataTasksItemTaskQuantityTextMax = 40;
+
 export const getTodayResponseDataTasksItemTaskProvenanceRefsItemSourceDeletedDefault = false;
 export const getTodayResponseDataEventsItemProvenanceRefsItemSourceDeletedDefault = false;
 
@@ -44,6 +46,8 @@ export const GetTodayResponse = zod.object({
   "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
   "scheduled_timezone": zod.string().nullish(),
   "estimated_minutes": zod.number().int().min(1).nullish(),
+  "quantity_text": zod.string().max(getTodayResponseDataTasksItemTaskQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
   "focus_date": zod.string().date().nullish().describe('用户明确指定在哪一天关注该任务。'),
   "list_id": zod.string(),
   "project_id": zod.string().nullish(),
@@ -135,6 +139,8 @@ export const GetCalendarQueryParams = zod.object({
 })
 
 export const getCalendarResponseDataDaysItemEventsItemProvenanceRefsItemSourceDeletedDefault = false;
+export const getCalendarResponseDataDaysItemTasksItemQuantityTextMax = 40;
+
 export const getCalendarResponseDataDaysItemTasksItemProvenanceRefsItemSourceDeletedDefault = false;
 
 export const GetCalendarResponse = zod.object({
@@ -197,6 +203,8 @@ export const GetCalendarResponse = zod.object({
   "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
   "scheduled_timezone": zod.string().nullish(),
   "estimated_minutes": zod.number().int().min(1).nullish(),
+  "quantity_text": zod.string().max(getCalendarResponseDataDaysItemTasksItemQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
   "focus_date": zod.string().date().nullish().describe('用户明确指定在哪一天关注该任务。'),
   "list_id": zod.string(),
   "project_id": zod.string().nullish(),

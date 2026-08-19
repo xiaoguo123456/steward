@@ -35,12 +35,13 @@ func (q *Queries) CountTasksInList(ctx context.Context, listID string) (int32, e
 }
 
 const createTaskList = `-- name: CreateTaskList :one
-INSERT INTO task_lists (id, user_id, name, color, icon, position, is_default)
+INSERT INTO task_lists (id, user_id, name, color, icon, position, is_default, list_kind)
 VALUES (
     $1, $2, $3,
-    $4, $5, $6, $7
+    $4, $5, $6, $7,
+    $8
 )
-RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind
 `
 
 type CreateTaskListParams struct {
@@ -51,6 +52,7 @@ type CreateTaskListParams struct {
 	Icon      *string
 	Position  int32
 	IsDefault bool
+	ListKind  string
 }
 
 func (q *Queries) CreateTaskList(ctx context.Context, arg CreateTaskListParams) (TaskList, error) {
@@ -62,6 +64,7 @@ func (q *Queries) CreateTaskList(ctx context.Context, arg CreateTaskListParams) 
 		arg.Icon,
 		arg.Position,
 		arg.IsDefault,
+		arg.ListKind,
 	)
 	var i TaskList
 	err := row.Scan(
@@ -77,12 +80,13 @@ func (q *Queries) CreateTaskList(ctx context.Context, arg CreateTaskListParams) 
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ListKind,
 	)
 	return i, err
 }
 
 const getDefaultTaskList = `-- name: GetDefaultTaskList :one
-SELECT id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version FROM task_lists
+SELECT id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind FROM task_lists
 WHERE is_default AND deleted_at IS NULL
 LIMIT 1
 `
@@ -103,12 +107,13 @@ func (q *Queries) GetDefaultTaskList(ctx context.Context) (TaskList, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ListKind,
 	)
 	return i, err
 }
 
 const getTaskList = `-- name: GetTaskList :one
-SELECT tl.id, tl.user_id, tl.name, tl.color, tl.icon, tl.position, tl.is_default, tl.archived_at, tl.created_at, tl.updated_at, tl.deleted_at, tl.version,
+SELECT tl.id, tl.user_id, tl.name, tl.color, tl.icon, tl.position, tl.is_default, tl.archived_at, tl.created_at, tl.updated_at, tl.deleted_at, tl.version, tl.list_kind,
        (SELECT count(*) FROM tasks t
         WHERE t.list_id = tl.id
           AND t.deleted_at IS NULL
@@ -130,6 +135,7 @@ type GetTaskListRow struct {
 	UpdatedAt  time.Time
 	DeletedAt  *time.Time
 	Version    int32
+	ListKind   string
 	TaskCount  int32
 }
 
@@ -149,13 +155,14 @@ func (q *Queries) GetTaskList(ctx context.Context, id string) (GetTaskListRow, e
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ListKind,
 		&i.TaskCount,
 	)
 	return i, err
 }
 
 const listTaskLists = `-- name: ListTaskLists :many
-SELECT tl.id, tl.user_id, tl.name, tl.color, tl.icon, tl.position, tl.is_default, tl.archived_at, tl.created_at, tl.updated_at, tl.deleted_at, tl.version,
+SELECT tl.id, tl.user_id, tl.name, tl.color, tl.icon, tl.position, tl.is_default, tl.archived_at, tl.created_at, tl.updated_at, tl.deleted_at, tl.version, tl.list_kind,
        (SELECT count(*) FROM tasks t
         WHERE t.list_id = tl.id
           AND t.deleted_at IS NULL
@@ -179,6 +186,7 @@ type ListTaskListsRow struct {
 	UpdatedAt  time.Time
 	DeletedAt  *time.Time
 	Version    int32
+	ListKind   string
 	TaskCount  int32
 }
 
@@ -204,6 +212,7 @@ func (q *Queries) ListTaskLists(ctx context.Context, includeArchived bool) ([]Li
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.ListKind,
 			&i.TaskCount,
 		); err != nil {
 			return nil, err
@@ -234,7 +243,7 @@ func (q *Queries) MoveTasksToList(ctx context.Context, arg MoveTasksToListParams
 const softDeleteTaskList = `-- name: SoftDeleteTaskList :one
 UPDATE task_lists SET deleted_at = now(), updated_at = now(), version = version + 1
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind
 `
 
 func (q *Queries) SoftDeleteTaskList(ctx context.Context, id string) (TaskList, error) {
@@ -253,6 +262,7 @@ func (q *Queries) SoftDeleteTaskList(ctx context.Context, id string) (TaskList, 
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ListKind,
 	)
 	return i, err
 }
@@ -271,7 +281,7 @@ UPDATE task_lists SET
     updated_at  = now(),
     version     = version + 1
 WHERE id = $8 AND deleted_at IS NULL
-RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind
 `
 
 type UpdateTaskListParams struct {
@@ -310,6 +320,7 @@ func (q *Queries) UpdateTaskList(ctx context.Context, arg UpdateTaskListParams) 
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ListKind,
 	)
 	return i, err
 }

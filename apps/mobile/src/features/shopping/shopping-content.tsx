@@ -1,4 +1,12 @@
 import { useRouter } from 'expo-router';
+
+import type { ShoppingCategory } from '@steward/api-client';
+
+import {
+  useShoppingList,
+  type ShoppingDraft,
+  type ShoppingListItem,
+} from '@/features/shopping/use-shopping-list';
 import { useMemo, useState } from 'react';
 import {
   Modal,
@@ -15,23 +23,12 @@ import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
-type ShoppingCategory = 'produce' | 'protein' | 'staple' | 'beverage' | 'other';
-type ShoppingSource = 'recipe' | 'manual';
-
-type ShoppingItem = {
-  id: string;
-  title: string;
-  quantity: string;
-  category: ShoppingCategory;
-  source: ShoppingSource;
-  sourceTitle?: string;
-  note?: string;
-};
-
-type ShoppingItemDraft = Pick<
-  ShoppingItem,
-  'title' | 'quantity' | 'note'
->;
+/**
+ * 展示模型来自数据层。品类是服务端算好的结果，
+ * 客户端不再维护关键词表——同一件东西在两台设备上必须归到同一类。
+ */
+type ShoppingItem = ShoppingListItem;
+type ShoppingItemDraft = ShoppingDraft;
 
 type CategorySpec = {
   id: ShoppingCategory;
@@ -45,56 +42,6 @@ const categorySpecs: CategorySpec[] = [
   { id: 'beverage', label: '饮品冲调' },
   { id: 'other', label: '其他' },
 ];
-
-const initialItems: ShoppingItem[] = [
-  {
-    id: 'tomato',
-    title: '番茄',
-    quantity: '4 个',
-    category: 'produce',
-    source: 'recipe',
-    sourceTitle: '番茄牛肉意面',
-  },
-  {
-    id: 'beef',
-    title: '牛肉末',
-    quantity: '300 克',
-    category: 'protein',
-    source: 'recipe',
-    sourceTitle: '番茄牛肉意面',
-  },
-  {
-    id: 'milk',
-    title: '牛奶',
-    quantity: '1 盒',
-    category: 'protein',
-    source: 'manual',
-  },
-  {
-    id: 'coffee',
-    title: '咖啡豆',
-    quantity: '1 袋',
-    category: 'beverage',
-    source: 'manual',
-  },
-];
-
-const categoryKeywords: Record<ShoppingCategory, string[]> = {
-  produce: ['番茄', '西红柿', '苹果', '香蕉', '青菜', '蔬菜', '水果', '土豆', '洋葱'],
-  protein: ['牛肉', '猪肉', '鸡肉', '鱼', '虾', '鸡蛋', '牛奶', '酸奶', '奶酪'],
-  staple: ['大米', '面条', '面包', '燕麦', '食用油', '盐', '酱油', '糖'],
-  beverage: ['咖啡', '茶', '矿泉水', '果汁', '饮料'],
-  other: [],
-};
-
-function inferCategory(title: string): ShoppingCategory {
-  const match = categorySpecs.find(
-    (category) =>
-      category.id !== 'other' &&
-      categoryKeywords[category.id].some((keyword) => title.includes(keyword)),
-  );
-  return match?.id ?? 'other';
-}
 
 function ShoppingItemRow({
   item,
@@ -136,7 +83,7 @@ function ShoppingItemRow({
             {meta}
           </Text>
         </View>
-        {item.source === 'recipe' ? (
+        {item.sourceTitle ? (
           <View style={styles.recipeTag}>
             <Text style={styles.recipeTagText}>食谱</Text>
           </View>
@@ -300,18 +247,20 @@ export function ShoppingContent({
   onCreateVisibleChange: (visible: boolean) => void;
 }) {
   const router = useRouter();
-  const [items, setItems] = useState(initialItems);
-  const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [completedExpanded, setCompletedExpanded] = useState(true);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const shopping = useShoppingList();
+  const items = shopping.items;
 
   const remainingItems = useMemo(
-    () => items.filter((item) => !doneIds.has(item.id)),
-    [doneIds, items],
+    () => items.filter((item) => !item.done),
+    [items],
   );
   const completedItems = useMemo(
-    () => items.filter((item) => doneIds.has(item.id)),
-    [doneIds, items],
+    () => items.filter((item) => item.done),
+    [items],
   );
   const groupedItems = useMemo(
     () =>
@@ -331,16 +280,11 @@ export function ShoppingContent({
   const progressWidth = `${Math.round(progress * 100)}%` as `${number}%`;
 
   const toggleItem = (itemId: string) => {
-    if (!doneIds.has(itemId)) setCompletedExpanded(true);
-    setDoneIds((current) => {
-      const next = new Set(current);
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
-      }
-      return next;
-    });
+    const item = items.find((entry) => entry.id === itemId);
+    if (!item) return;
+    if (!item.done) setCompletedExpanded(true);
+    setFailure(null);
+    shopping.toggle(item);
   };
 
   const closeSheet = () => {
@@ -349,24 +293,12 @@ export function ShoppingContent({
   };
 
   const saveItem = (draft: ShoppingItemDraft) => {
+    setFailure(null);
+    // 品类由服务端算，这里不传：同一件东西在两台设备上必须归到同一类。
     if (editingItem) {
-      setItems((current) =>
-        current.map((item) =>
-          item.id === editingItem.id
-            ? { ...item, ...draft, category: inferCategory(draft.title) }
-            : item,
-        ),
-      );
+      shopping.update(editingItem, draft);
     } else {
-      setItems((current) => [
-        ...current,
-        {
-          id: `shopping-${Date.now()}`,
-          ...draft,
-          category: inferCategory(draft.title),
-          source: 'manual',
-        },
-      ]);
+      shopping.create(draft);
     }
     closeSheet();
   };
@@ -392,6 +324,8 @@ export function ShoppingContent({
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: progressWidth }]} />
       </View>
+
+      {failure ? <Text style={styles.failureText}>{failure}</Text> : null}
 
       {groupedItems.length > 0 ? (
         <View style={styles.groups}>
@@ -462,6 +396,12 @@ export function ShoppingContent({
 const styles = StyleSheet.create({
   pressed: {
     opacity: 0.65,
+  },
+  failureText: {
+    marginTop: 12,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
   },
   listStatus: {
     minHeight: 72,

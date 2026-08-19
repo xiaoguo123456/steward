@@ -24,6 +24,8 @@ func MapTask(row dbgen.Task) httpapi.Task {
 		ScheduledEndAt:    row.ScheduledEndAt,
 		ScheduledTimezone: row.ScheduledTimezone,
 		EstimatedMinutes:  intPtr(row.EstimatedMinutes),
+		QuantityText:      row.QuantityText,
+		ShoppingCategory:  shoppingCategoryPtr(row.ShoppingCategory),
 		FocusDate:         dateOrNil(row.FocusDate),
 		ListId:            row.ListID,
 		ProjectId:         row.ProjectID,
@@ -172,4 +174,13 @@ func importantDateKindPtr(raw *string) *httpapi.ImportantDateKind {
 	}
 	kind := httpapi.ImportantDateKind(*raw)
 	return &kind
+}
+
+// shoppingCategoryPtr 把存储值映射成契约枚举指针。
+func shoppingCategoryPtr(raw *string) *httpapi.ShoppingCategory {
+	if raw == nil || *raw == "" {
+		return nil
+	}
+	category := httpapi.ShoppingCategory(*raw)
+	return &category
 }

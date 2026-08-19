@@ -49,6 +49,9 @@ func (h *ListAPI) CreateTaskList(ctx context.Context, req httpapi.CreateTaskList
 		color := string(*req.Body.Color)
 		in.Color = &color
 	}
+	if req.Body.ListKind != nil {
+		in.ListKind = string(*req.Body.ListKind)
+	}
 
 	created, err := h.svc.Create(ctx, userID, in)
 	if err != nil {
@@ -133,6 +136,7 @@ func mapListRow(row dbgen.ListTaskListsRow) httpapi.TaskList {
 		Color:      colorOf(row.Color),
 		Icon:       row.Icon,
 		Position:   int(row.Position),
+		ListKind:   listKindPtr(row.ListKind),
 		IsDefault:  row.IsDefault,
 		ArchivedAt: row.ArchivedAt,
 		TaskCount:  &count,
@@ -150,6 +154,7 @@ func mapGetRow(row dbgen.GetTaskListRow) httpapi.TaskList {
 		Color:      colorOf(row.Color),
 		Icon:       row.Icon,
 		Position:   int(row.Position),
+		ListKind:   listKindPtr(row.ListKind),
 		IsDefault:  row.IsDefault,
 		ArchivedAt: row.ArchivedAt,
 		TaskCount:  &count,
@@ -166,6 +171,7 @@ func mapTaskList(row dbgen.TaskList, taskCount *int) httpapi.TaskList {
 		Color:      colorOf(row.Color),
 		Icon:       row.Icon,
 		Position:   int(row.Position),
+		ListKind:   listKindPtr(row.ListKind),
 		IsDefault:  row.IsDefault,
 		ArchivedAt: row.ArchivedAt,
 		TaskCount:  taskCount,
@@ -181,4 +187,10 @@ func colorOf(raw *string) *httpapi.TaskListColor {
 	}
 	c := httpapi.TaskListColor(*raw)
 	return &c
+}
+
+// listKindPtr 把存储值映射成契约枚举指针。
+func listKindPtr(raw string) *httpapi.TaskListKind {
+	kind := httpapi.TaskListKind(raw)
+	return &kind
 }

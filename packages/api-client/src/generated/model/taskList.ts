@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { TaskListColor } from './taskListColor';
+import type { TaskListKind } from './taskListKind';
 
 export interface TaskList {
   id: string;
@@ -29,6 +30,7 @@ export interface TaskList {
      */
   icon?: string | null;
   position: number;
+  list_kind?: TaskListKind;
   /** 每个用户恰好一个默认清单。 */
   is_default: boolean;
   /** @nullable */

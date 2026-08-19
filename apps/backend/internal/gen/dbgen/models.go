@@ -497,6 +497,8 @@ type Task struct {
 	UpdatedAt         time.Time
 	DeletedAt         *time.Time
 	Version           int32
+	QuantityText      *string
+	ShoppingCategory  *string
 }
 
 type TaskList struct {
@@ -512,6 +514,7 @@ type TaskList struct {
 	UpdatedAt  time.Time
 	DeletedAt  *time.Time
 	Version    int32
+	ListKind   string
 }
 
 type Tracker struct {

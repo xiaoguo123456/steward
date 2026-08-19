@@ -27,4 +27,5 @@ export const UpdateTaskRequestClearItem = {
   focus_date: 'focus_date',
   project_id: 'project_id',
   reminders: 'reminders',
+  quantity_text: 'quantity_text',
 } as const;

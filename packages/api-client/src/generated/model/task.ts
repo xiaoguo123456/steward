@@ -16,6 +16,7 @@
 import type { CreatedBy } from './createdBy';
 import type { ProvenanceRef } from './provenanceRef';
 import type { Reminder } from './reminder';
+import type { ShoppingCategory } from './shoppingCategory';
 import type { TaskPriority } from './taskPriority';
 import type { TaskStatus } from './taskStatus';
 import type { TaskType } from './taskType';
@@ -54,6 +55,14 @@ export interface Task {
      * @nullable
      */
   estimated_minutes?: number | null;
+  /**
+     * 数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：
+     * 用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。
+     * @maxLength 40
+     * @nullable
+     */
+  quantity_text?: string | null;
+  shopping_category?: ShoppingCategory;
   /**
      * 用户明确指定在哪一天关注该任务。
      * @nullable

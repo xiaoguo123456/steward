@@ -13,20 +13,16 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { CreateTaskListRequestColor } from './createTaskListRequestColor';
-import type { TaskListKind } from './taskListKind';
 
-export interface CreateTaskListRequest {
-  /**
-     * @minLength 1
-     * @maxLength 30
-     */
-  name: string;
-  /** @nullable */
-  color?: CreateTaskListRequestColor;
-  /** @nullable */
-  icon?: string | null;
-  /** @nullable */
-  position?: number | null;
-  list_kind?: TaskListKind;
-}
+/**
+ * 清单用途。shopping 的清单在移动端用购物界面展示，
+ * 并启用数量／规格与服务端品类分组；它不是新的领域类型，
+ * 底下仍然是同一套 TaskList 与 Task。
+ */
+export type TaskListKind = typeof TaskListKind[keyof typeof TaskListKind];
+
+
+export const TaskListKind = {
+  tasks: 'tasks',
+  shopping: 'shopping',
+} as const;

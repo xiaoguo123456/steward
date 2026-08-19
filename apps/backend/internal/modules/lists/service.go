@@ -51,6 +51,7 @@ func (s *Service) EnsureDefaultList(ctx context.Context, q *dbgen.Queries, userI
 		Name:      DefaultListName,
 		Position:  0,
 		IsDefault: true,
+		ListKind:  "tasks",
 	})
 	if err != nil {
 		return dbgen.TaskList{}, apperr.Internal(err)
@@ -128,6 +129,7 @@ func (s *Service) Create(ctx context.Context, userID string, in CreateInput) (db
 			Icon:      in.Icon,
 			Position:  position,
 			IsDefault: false,
+			ListKind:  listKindOr(in.ListKind),
 		})
 		if err != nil {
 			if isUniqueViolation(err) {
@@ -254,6 +256,9 @@ type CreateInput struct {
 	Color    *string
 	Icon     *string
 	Position *int
+	// ListKind 决定移动端用哪套界面展示这个清单。
+	// 它不是新的领域类型，底下仍然是同一套 TaskList 与 Task。
+	ListKind string
 }
 
 // UpdateInput 是修改清单的输入。
@@ -287,4 +292,12 @@ func isUniqueViolation(err error) bool {
 		return pgErr.Code == "23505"
 	}
 	return false
+}
+
+// listKindOr 把清单用途收敛到已知取值，未知一律当普通任务清单。
+func listKindOr(kind string) string {
+	if kind == "shopping" {
+		return "shopping"
+	}
+	return "tasks"
 }

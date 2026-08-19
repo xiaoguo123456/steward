@@ -32,6 +32,7 @@ export const ListTaskListsResponse = zod.object({
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish().describe('只能取自产品 Token 色板的语义名。'),
   "icon": zod.string().nullish().describe('只能取自产品语义图标集合。'),
   "position": zod.number().int(),
+  "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n'),
   "is_default": zod.boolean().describe('每个用户恰好一个默认清单。'),
   "archived_at": zod.string().datetime({"offset":true}).nullish(),
   "task_count": zod.number().int().optional().describe('未删除且未完成的 Task 数量，由服务端计算。'),
@@ -64,7 +65,8 @@ export const CreateTaskListBody = zod.object({
   "name": zod.string().min(1).max(createTaskListBodyNameMax),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),
-  "position": zod.number().int().nullish()
+  "position": zod.number().int().nullish(),
+  "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n')
 })
 
 export const CreateTaskListResponse = zod.object({
@@ -74,6 +76,7 @@ export const CreateTaskListResponse = zod.object({
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish().describe('只能取自产品 Token 色板的语义名。'),
   "icon": zod.string().nullish().describe('只能取自产品语义图标集合。'),
   "position": zod.number().int(),
+  "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n'),
   "is_default": zod.boolean().describe('每个用户恰好一个默认清单。'),
   "archived_at": zod.string().datetime({"offset":true}).nullish(),
   "task_count": zod.number().int().optional().describe('未删除且未完成的 Task 数量，由服务端计算。'),
@@ -117,6 +120,7 @@ export const UpdateTaskListResponse = zod.object({
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish().describe('只能取自产品 Token 色板的语义名。'),
   "icon": zod.string().nullish().describe('只能取自产品语义图标集合。'),
   "position": zod.number().int(),
+  "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n'),
   "is_default": zod.boolean().describe('每个用户恰好一个默认清单。'),
   "archived_at": zod.string().datetime({"offset":true}).nullish(),
   "task_count": zod.number().int().optional().describe('未删除且未完成的 Task 数量，由服务端计算。'),

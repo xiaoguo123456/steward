@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { ReminderInput } from './reminderInput';
+import type { ShoppingCategory } from './shoppingCategory';
 import type { TaskPriority } from './taskPriority';
 import type { TaskStatus } from './taskStatus';
 import type { UpdateTaskRequestClearItem } from './updateTaskRequestClearItem';
@@ -49,6 +50,14 @@ export interface UpdateTaskRequest {
   scheduled_timezone?: string | null;
   /** @nullable */
   estimated_minutes?: number | null;
+  /**
+     * 数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：
+     * 用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。
+     * @maxLength 40
+     * @nullable
+     */
+  quantity_text?: string | null;
+  shopping_category?: ShoppingCategory;
   /** @nullable */
   focus_date?: string | null;
   list_id?: string;

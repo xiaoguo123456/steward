@@ -24,10 +24,11 @@ WHERE is_default AND deleted_at IS NULL
 LIMIT 1;
 
 -- name: CreateTaskList :one
-INSERT INTO task_lists (id, user_id, name, color, icon, position, is_default)
+INSERT INTO task_lists (id, user_id, name, color, icon, position, is_default, list_kind)
 VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name),
-    sqlc.narg(color), sqlc.narg(icon), sqlc.arg(position), sqlc.arg(is_default)
+    sqlc.narg(color), sqlc.narg(icon), sqlc.arg(position), sqlc.arg(is_default),
+    sqlc.arg(list_kind)
 )
 RETURNING *;
 

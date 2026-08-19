@@ -9,6 +9,14 @@ TaskPriority:
   type: string
   enum: [low, normal, high]
 
+TaskListKind:
+  type: string
+  description: |
+    清单用途。shopping 的清单在移动端用购物界面展示，
+    并启用数量／规格与服务端品类分组；它不是新的领域类型，
+    底下仍然是同一套 TaskList 与 Task。
+  enum: [tasks, shopping]
+
 TaskList:
   type: object
   additionalProperties: false
@@ -30,6 +38,8 @@ TaskList:
       description: 只能取自产品语义图标集合。
     position:
       type: integer
+    list_kind:
+      $ref: '#/TaskListKind'
     is_default:
       type: boolean
       description: 每个用户恰好一个默认清单。
@@ -68,6 +78,8 @@ CreateTaskListRequest:
     position:
       type: integer
       nullable: true
+    list_kind:
+      $ref: '#/TaskListKind'
 
 UpdateTaskListRequest:
   type: object
@@ -161,6 +173,15 @@ Task:
       type: integer
       nullable: true
       minimum: 1
+    quantity_text:
+      type: string
+      nullable: true
+      maxLength: 40
+      description: |
+        数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：
+        用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。
+    shopping_category:
+      $ref: '#/ShoppingCategory'
     focus_date:
       type: string
       format: date
@@ -239,6 +260,15 @@ CreateTaskRequest:
     estimated_minutes:
       type: integer
       nullable: true
+    quantity_text:
+      type: string
+      nullable: true
+      maxLength: 40
+      description: |
+        数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：
+        用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。
+    shopping_category:
+      $ref: '#/ShoppingCategory'
     focus_date:
       type: string
       format: date
@@ -278,6 +308,7 @@ UpdateTaskRequest:
           - focus_date
           - project_id
           - reminders
+          - quantity_text
     title:
       type: string
       minLength: 1
@@ -314,6 +345,15 @@ UpdateTaskRequest:
     estimated_minutes:
       type: integer
       nullable: true
+    quantity_text:
+      type: string
+      nullable: true
+      maxLength: 40
+      description: |
+        数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：
+        用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。
+    shopping_category:
+      $ref: '#/ShoppingCategory'
     focus_date:
       type: string
       format: date
@@ -327,6 +367,13 @@ UpdateTaskRequest:
       type: array
       items:
         $ref: './common.yaml#/ReminderInput'
+
+ShoppingCategory:
+  type: string
+  description: |
+    购物清单的品类。由服务端确定性分类，客户端不维护这套规则，
+    分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。
+  enum: [produce, protein, staple, beverage, other]
 
 EventKind:
   type: string

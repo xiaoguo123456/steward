@@ -38,6 +38,8 @@ export const ListTasksQueryParams = zod.object({
 })
 
 
+export const listTasksResponseDataItemQuantityTextMax = 40;
+
 export const listTasksResponseDataItemProvenanceRefsItemSourceDeletedDefault = false;
 
 export const ListTasksResponse = zod.object({
@@ -55,6 +57,8 @@ export const ListTasksResponse = zod.object({
   "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
   "scheduled_timezone": zod.string().nullish(),
   "estimated_minutes": zod.number().int().min(1).nullish(),
+  "quantity_text": zod.string().max(listTasksResponseDataItemQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
   "focus_date": zod.string().date().nullish().describe('用户明确指定在哪一天关注该任务。'),
   "list_id": zod.string(),
   "project_id": zod.string().nullish(),
@@ -103,6 +107,8 @@ export const CreateTaskHeader = zod.object({
 
 export const createTaskBodyTitleMax = 200;
 
+export const createTaskBodyQuantityTextMax = 40;
+
 
 
 export const CreateTaskBody = zod.object({
@@ -117,6 +123,8 @@ export const CreateTaskBody = zod.object({
   "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
   "scheduled_timezone": zod.string().nullish(),
   "estimated_minutes": zod.number().int().nullish(),
+  "quantity_text": zod.string().max(createTaskBodyQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
   "focus_date": zod.string().date().nullish(),
   "list_id": zod.string().nullish().describe('未指定时使用用户的默认清单。'),
   "project_id": zod.string().nullish(),
@@ -128,6 +136,8 @@ export const CreateTaskBody = zod.object({
 })).optional()
 })
 
+
+export const createTaskResponseDataQuantityTextMax = 40;
 
 export const createTaskResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
@@ -146,6 +156,8 @@ export const CreateTaskResponse = zod.object({
   "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
   "scheduled_timezone": zod.string().nullish(),
   "estimated_minutes": zod.number().int().min(1).nullish(),
+  "quantity_text": zod.string().max(createTaskResponseDataQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
   "focus_date": zod.string().date().nullish().describe('用户明确指定在哪一天关注该任务。'),
   "list_id": zod.string(),
   "project_id": zod.string().nullish(),
@@ -184,6 +196,8 @@ export const GetTaskParams = zod.object({
 })
 
 
+export const getTaskResponseDataQuantityTextMax = 40;
+
 export const getTaskResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
 export const GetTaskResponse = zod.object({
@@ -201,6 +215,8 @@ export const GetTaskResponse = zod.object({
   "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
   "scheduled_timezone": zod.string().nullish(),
   "estimated_minutes": zod.number().int().min(1).nullish(),
+  "quantity_text": zod.string().max(getTaskResponseDataQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
   "focus_date": zod.string().date().nullish().describe('用户明确指定在哪一天关注该任务。'),
   "list_id": zod.string(),
   "project_id": zod.string().nullish(),
@@ -244,10 +260,12 @@ export const UpdateTaskHeader = zod.object({
 
 export const updateTaskBodyTitleMax = 200;
 
+export const updateTaskBodyQuantityTextMax = 40;
+
 
 
 export const UpdateTaskBody = zod.object({
-  "clear": zod.array(zod.enum(['description', 'due_date', 'due_at', 'scheduled_start_at', 'scheduled_end_at', 'estimated_minutes', 'focus_date', 'project_id', 'reminders'])).optional().describe('需要清空的可空字段。同一字段不得同时出现在 clear 与具体取值中。'),
+  "clear": zod.array(zod.enum(['description', 'due_date', 'due_at', 'scheduled_start_at', 'scheduled_end_at', 'estimated_minutes', 'focus_date', 'project_id', 'reminders', 'quantity_text'])).optional().describe('需要清空的可空字段。同一字段不得同时出现在 clear 与具体取值中。'),
   "title": zod.string().min(1).max(updateTaskBodyTitleMax).optional(),
   "description": zod.string().nullish(),
   "status": zod.enum(['todo', 'doing', 'done', 'cancelled']).optional(),
@@ -259,6 +277,8 @@ export const UpdateTaskBody = zod.object({
   "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
   "scheduled_timezone": zod.string().nullish(),
   "estimated_minutes": zod.number().int().nullish(),
+  "quantity_text": zod.string().max(updateTaskBodyQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
   "focus_date": zod.string().date().nullish(),
   "list_id": zod.string().optional(),
   "project_id": zod.string().nullish(),
@@ -270,6 +290,8 @@ export const UpdateTaskBody = zod.object({
 })).optional()
 }).describe('只提交需要修改的字段；不传表示保持原值。\n清空一个可空字段必须把字段名放进 clear 数组，\n因为生成的 Go 类型无法区分“不传”与“传 null”。\n')
 
+
+export const updateTaskResponseDataQuantityTextMax = 40;
 
 export const updateTaskResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
@@ -288,6 +310,8 @@ export const UpdateTaskResponse = zod.object({
   "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
   "scheduled_timezone": zod.string().nullish(),
   "estimated_minutes": zod.number().int().min(1).nullish(),
+  "quantity_text": zod.string().max(updateTaskResponseDataQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
   "focus_date": zod.string().date().nullish().describe('用户明确指定在哪一天关注该任务。'),
   "list_id": zod.string(),
   "project_id": zod.string().nullish(),

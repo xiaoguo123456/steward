@@ -13,20 +13,18 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { CreateTaskListRequestColor } from './createTaskListRequestColor';
-import type { TaskListKind } from './taskListKind';
 
-export interface CreateTaskListRequest {
-  /**
-     * @minLength 1
-     * @maxLength 30
-     */
-  name: string;
-  /** @nullable */
-  color?: CreateTaskListRequestColor;
-  /** @nullable */
-  icon?: string | null;
-  /** @nullable */
-  position?: number | null;
-  list_kind?: TaskListKind;
-}
+/**
+ * 购物清单的品类。由服务端确定性分类，客户端不维护这套规则，
+ * 分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。
+ */
+export type ShoppingCategory = typeof ShoppingCategory[keyof typeof ShoppingCategory];
+
+
+export const ShoppingCategory = {
+  produce: 'produce',
+  protein: 'protein',
+  staple: 'staple',
+  beverage: 'beverage',
+  other: 'other',
+} as const;

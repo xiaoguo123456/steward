@@ -105,16 +105,19 @@ INSERT INTO tasks (
     due_date, due_at, due_timezone,
     scheduled_start_at, scheduled_end_at, scheduled_timezone,
     estimated_minutes, focus_date, list_id, project_id,
-    reminders, completed_at, created_by, provenance_refs
+    reminders, completed_at, quantity_text, shopping_category,
+    created_by, provenance_refs
 ) VALUES (
     $1, $2, $3, $4,
     $5, $6,
     $7, $8, $9,
     $10, $11, $12,
     $13, $14, $15, $16,
-    $17, $18, $19, $20
+    $17, $18,
+    $19, $20,
+    $21, $22
 )
-RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category
 `
 
 type CreateTaskParams struct {
@@ -136,6 +139,8 @@ type CreateTaskParams struct {
 	ProjectID         *string
 	Reminders         []byte
 	CompletedAt       *time.Time
+	QuantityText      *string
+	ShoppingCategory  *string
 	CreatedBy         string
 	ProvenanceRefs    []byte
 }
@@ -160,6 +165,8 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		arg.ProjectID,
 		arg.Reminders,
 		arg.CompletedAt,
+		arg.QuantityText,
+		arg.ShoppingCategory,
 		arg.CreatedBy,
 		arg.ProvenanceRefs,
 	)
@@ -189,12 +196,14 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.QuantityText,
+		&i.ShoppingCategory,
 	)
 	return i, err
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM tasks WHERE id = $1 AND deleted_at IS NULL
+SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category FROM tasks WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
@@ -225,6 +234,8 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.QuantityText,
+		&i.ShoppingCategory,
 	)
 	return i, err
 }
@@ -272,7 +283,7 @@ func (q *Queries) ListCompletedTasksBetween(ctx context.Context, arg ListComplet
 
 const listTasks = `-- name: ListTasks :many
 
-SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM tasks
+SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category FROM tasks
 WHERE deleted_at IS NULL
   AND (cardinality($1::text[]) = 0 OR status = ANY ($1::text[]))
   AND ($2::text IS NULL OR list_id = $2::text)
@@ -374,6 +385,8 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.QuantityText,
+			&i.ShoppingCategory,
 		); err != nil {
 			return nil, err
 		}
@@ -386,7 +399,7 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 }
 
 const listTasksInRange = `-- name: ListTasksInRange :many
-SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM tasks
+SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category FROM tasks
 WHERE deleted_at IS NULL
   AND status IN ('todo', 'doing', 'done')
   AND ($1::text IS NULL OR project_id = $1::text)
@@ -449,6 +462,8 @@ func (q *Queries) ListTasksInRange(ctx context.Context, arg ListTasksInRangePara
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.QuantityText,
+			&i.ShoppingCategory,
 		); err != nil {
 			return nil, err
 		}
@@ -462,7 +477,7 @@ func (q *Queries) ListTasksInRange(ctx context.Context, arg ListTasksInRangePara
 
 const listTodayTasks = `-- name: ListTodayTasks :many
 WITH scoped AS (
-    SELECT t.id, t.user_id, t.title, t.description, t.status, t.priority, t.due_date, t.due_at, t.due_timezone, t.scheduled_start_at, t.scheduled_end_at, t.scheduled_timezone, t.estimated_minutes, t.focus_date, t.list_id, t.project_id, t.reminders, t.completed_at, t.created_by, t.provenance_refs, t.created_at, t.updated_at, t.deleted_at, t.version,
+    SELECT t.id, t.user_id, t.title, t.description, t.status, t.priority, t.due_date, t.due_at, t.due_timezone, t.scheduled_start_at, t.scheduled_end_at, t.scheduled_timezone, t.estimated_minutes, t.focus_date, t.list_id, t.project_id, t.reminders, t.completed_at, t.created_by, t.provenance_refs, t.created_at, t.updated_at, t.deleted_at, t.version, t.quantity_text, t.shopping_category,
            tl.name  AS list_name,
            tl.color AS list_color,
            CASE
@@ -491,7 +506,7 @@ WITH scoped AS (
          OR (t.due_at IS NOT NULL AND t.due_at <= $4::timestamptz)
       )
 )
-SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, list_name, list_color, group_rank FROM scoped
+SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category, list_name, list_color, group_rank FROM scoped
 ORDER BY
     group_rank,
     CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,
@@ -541,6 +556,8 @@ type ListTodayTasksRow struct {
 	UpdatedAt         time.Time
 	DeletedAt         *time.Time
 	Version           int32
+	QuantityText      *string
+	ShoppingCategory  *string
 	ListName          string
 	ListColor         *string
 	GroupRank         int32
@@ -589,6 +606,8 @@ func (q *Queries) ListTodayTasks(ctx context.Context, arg ListTodayTasksParams) 
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.QuantityText,
+			&i.ShoppingCategory,
 			&i.ListName,
 			&i.ListColor,
 			&i.GroupRank,
@@ -606,7 +625,7 @@ func (q *Queries) ListTodayTasks(ctx context.Context, arg ListTodayTasksParams) 
 const restoreTask = `-- name: RestoreTask :one
 UPDATE tasks SET deleted_at = NULL, updated_at = now(), version = version + 1
 WHERE id = $1
-RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category
 `
 
 func (q *Queries) RestoreTask(ctx context.Context, id string) (Task, error) {
@@ -637,6 +656,8 @@ func (q *Queries) RestoreTask(ctx context.Context, id string) (Task, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.QuantityText,
+		&i.ShoppingCategory,
 	)
 	return i, err
 }
@@ -682,7 +703,7 @@ func (q *Queries) SearchTasks(ctx context.Context, arg SearchTasksParams) ([]Sea
 const softDeleteTask = `-- name: SoftDeleteTask :one
 UPDATE tasks SET deleted_at = now(), updated_at = now(), version = version + 1
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category
 `
 
 func (q *Queries) SoftDeleteTask(ctx context.Context, id string) (Task, error) {
@@ -713,6 +734,8 @@ func (q *Queries) SoftDeleteTask(ctx context.Context, id string) (Task, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.QuantityText,
+		&i.ShoppingCategory,
 	)
 	return i, err
 }
@@ -749,13 +772,17 @@ UPDATE tasks SET
                        ELSE coalesce($22, project_id) END,
     reminders   = CASE WHEN $23::bool THEN '[]'::jsonb
                        ELSE coalesce($24, reminders) END,
+    quantity_text = CASE WHEN $25::bool THEN NULL
+                         ELSE coalesce($26, quantity_text) END,
+    -- 品类由服务端重新分类后传入，不接受客户端直接指定。
+    shopping_category = coalesce($27, shopping_category),
     -- 完成时间由 Domain 计算后传入，保持与 status 一致。
-    completed_at = CASE WHEN $25::bool THEN $26
+    completed_at = CASE WHEN $28::bool THEN $29
                         ELSE completed_at END,
     updated_at  = now(),
     version     = version + 1
-WHERE id = $27 AND deleted_at IS NULL
-RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+WHERE id = $30 AND deleted_at IS NULL
+RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category
 `
 
 type UpdateTaskParams struct {
@@ -783,6 +810,9 @@ type UpdateTaskParams struct {
 	ProjectID             *string
 	ClearReminders        bool
 	Reminders             []byte
+	ClearQuantityText     bool
+	QuantityText          *string
+	ShoppingCategory      *string
 	SetCompletedAt        bool
 	CompletedAt           *time.Time
 	ID                    string
@@ -815,6 +845,9 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		arg.ProjectID,
 		arg.ClearReminders,
 		arg.Reminders,
+		arg.ClearQuantityText,
+		arg.QuantityText,
+		arg.ShoppingCategory,
 		arg.SetCompletedAt,
 		arg.CompletedAt,
 		arg.ID,
@@ -845,6 +878,8 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, e
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.QuantityText,
+		&i.ShoppingCategory,
 	)
 	return i, err
 }

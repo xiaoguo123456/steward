@@ -42,14 +42,17 @@ INSERT INTO tasks (
     due_date, due_at, due_timezone,
     scheduled_start_at, scheduled_end_at, scheduled_timezone,
     estimated_minutes, focus_date, list_id, project_id,
-    reminders, completed_at, created_by, provenance_refs
+    reminders, completed_at, quantity_text, shopping_category,
+    created_by, provenance_refs
 ) VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(title), sqlc.narg(description),
     sqlc.arg(status), sqlc.arg(priority),
     sqlc.narg(due_date), sqlc.narg(due_at), sqlc.narg(due_timezone),
     sqlc.narg(scheduled_start_at), sqlc.narg(scheduled_end_at), sqlc.narg(scheduled_timezone),
     sqlc.narg(estimated_minutes), sqlc.narg(focus_date), sqlc.arg(list_id), sqlc.narg(project_id),
-    sqlc.arg(reminders), sqlc.narg(completed_at), sqlc.arg(created_by), sqlc.arg(provenance_refs)
+    sqlc.arg(reminders), sqlc.narg(completed_at),
+    sqlc.narg(quantity_text), sqlc.narg(shopping_category),
+    sqlc.arg(created_by), sqlc.arg(provenance_refs)
 )
 RETURNING *;
 
@@ -86,6 +89,10 @@ UPDATE tasks SET
                        ELSE coalesce(sqlc.narg(project_id), project_id) END,
     reminders   = CASE WHEN sqlc.arg(clear_reminders)::bool THEN '[]'::jsonb
                        ELSE coalesce(sqlc.narg(reminders), reminders) END,
+    quantity_text = CASE WHEN sqlc.arg(clear_quantity_text)::bool THEN NULL
+                         ELSE coalesce(sqlc.narg(quantity_text), quantity_text) END,
+    -- 品类由服务端重新分类后传入，不接受客户端直接指定。
+    shopping_category = coalesce(sqlc.narg(shopping_category), shopping_category),
     -- 完成时间由 Domain 计算后传入，保持与 status 一致。
     completed_at = CASE WHEN sqlc.arg(set_completed_at)::bool THEN sqlc.narg(completed_at)
                         ELSE completed_at END,
