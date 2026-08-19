@@ -12,10 +12,12 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant"
 	authmod "github.com/guoxiaozheng1/steward/apps/backend/internal/modules/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/media"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memory"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/users"
@@ -23,6 +25,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/fake"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/openai"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/direct"
 	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
@@ -46,6 +49,8 @@ type Server struct {
 	*captures.CaptureAPI
 	*media.MediaAPI
 	*activity.ActivityAPI
+	*assistant.AssistantAPI
+	*memory.MemoryAPI
 }
 
 var _ httpapi.StrictServerInterface = (*Server)(nil)
@@ -60,6 +65,8 @@ type App struct {
 	Jobs   *jobs.Runtime
 	Parser ai.CaptureParser
 	Store  storage.ObjectStore
+	// Capabilities 保存全部已登记能力，供健康检查与调试查看。
+	Capabilities []string
 	// LocalStore 只在使用本地存储时非空，供路由挂载传输端点。
 	LocalStore *localfs.Store
 }
@@ -110,7 +117,34 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	capturesSvc := captures.New(db, parser, processor, mediaSvc,
 		objectsSvc, trackersSvc, listsSvc, usersSvc, activitySvc, enqueuer)
 
-	runtime, err := jobs.New(db.Pool, capturesSvc, logger, opts.RunWorkers)
+	// Assistant 与 Memory 互相需要对方的窄接口：
+	// Assistant 检索记忆，Memory 的写入由 Assistant 的建议确认触发。
+	// 两个方向都是接口，实体在这里注入。
+	memorySvc := memory.New(db, []byte(cfg.MemoryFingerprintKey))
+	proposalSvc := assistant.NewProposalService(db, objectsSvc, listsSvc,
+		usersSvc, activitySvc, memorySvc)
+
+	registry := ai.NewRegistry()
+	capabilityDeps := assistant.CapabilityDeps{
+		Tasks:   objectsSvc,
+		Views:   viewsSvc,
+		Records: trackersSvc,
+		Memory:  memorySvc,
+	}
+	assistant.RegisterReadOnly(registry, capabilityDeps)
+	assistant.RegisterProposals(registry, capabilityDeps)
+
+	chat := newChatProvider(parser)
+	engine := newEngine(chat, logger)
+	assistantSvc := assistant.New(db, engine, registry,
+		usersSvc, enqueuer, proposalSvc, memorySvc, logger)
+	viewsSvc.WithNarrative(chat, enqueuer, logger)
+
+	runtime, err := jobs.New(db.Pool, jobs.Deps{
+		Captures:  capturesSvc,
+		Assistant: assistantSvc,
+		Views:     viewsSvc,
+	}, logger, opts.RunWorkers)
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -134,12 +168,15 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 			CaptureAPI: captures.NewCaptureAPI(capturesSvc),
 			MediaAPI:   media.NewMediaAPI(mediaSvc),
 			// 撤销必须回到拥有资源的模块执行，Activity 自己不改别人的表。
-			ActivityAPI: activity.NewActivityAPI(activitySvc, objectsSvc, trackersSvc),
+			ActivityAPI:  activity.NewActivityAPI(activitySvc, objectsSvc, trackersSvc),
+			AssistantAPI: assistant.NewAssistantAPI(assistantSvc, proposalSvc),
+			MemoryAPI:    memory.NewMemoryAPI(memorySvc),
 		},
-		Jobs:       runtime,
-		Parser:     parser,
-		Store:      store,
-		LocalStore: localStore,
+		Jobs:         runtime,
+		Parser:       parser,
+		Store:        store,
+		LocalStore:   localStore,
+		Capabilities: registry.Names(),
 	}, nil
 }
 
@@ -185,7 +222,7 @@ func newObjectStore(cfg config.Config, logger *slog.Logger) (storage.ObjectStore
 // 它只在组装阶段处于未绑定状态；如果真的在未绑定时被调用，
 // 说明组装顺序出了问题，此时必须明确报错而不是静默丢弃任务。
 type lazyEnqueuer struct {
-	inner captures.JobEnqueuer
+	inner *jobs.Enqueuer
 }
 
 func (l *lazyEnqueuer) EnqueueCaptureParse(ctx context.Context, q *dbgen.Queries, args captures.CaptureParseArgs) error {
@@ -194,6 +231,48 @@ func (l *lazyEnqueuer) EnqueueCaptureParse(ctx context.Context, q *dbgen.Queries
 	}
 	return l.inner.EnqueueCaptureParse(ctx, q, args)
 }
+
+func (l *lazyEnqueuer) EnqueueAssistantRespond(ctx context.Context, q *dbgen.Queries, args assistant.RespondArgs) error {
+	if l.inner == nil {
+		return fmt.Errorf("任务队列尚未初始化，无法登记回复任务")
+	}
+	return l.inner.EnqueueAssistantRespond(ctx, q, args)
+}
+
+func (l *lazyEnqueuer) EnqueueReviewGenerate(ctx context.Context, q *dbgen.Queries, args views.GenerateArgs) error {
+	if l.inner == nil {
+		return fmt.Errorf("任务队列尚未初始化，无法登记复盘生成任务")
+	}
+	return l.inner.EnqueueReviewGenerate(ctx, q, args)
+}
+
+// newChatProvider 从解析器里取出对话能力。
+//
+// fake 解析器不实现 ChatProvider，此时返回 nil：Assistant 会明确告诉用户
+// 对话功能不可用，而不是用一个假回复冒充模型。
+func newChatProvider(parser ai.CaptureParser) ai.ChatProvider {
+	chat, _ := parser.(ai.ChatProvider)
+	return chat
+}
+
+// newEngine 构造编排引擎。
+func newEngine(chat ai.ChatProvider, logger *slog.Logger) ai.OrchestrationEngine {
+	if chat == nil {
+		return unavailableEngine{}
+	}
+	return direct.New(chat, logger)
+}
+
+// unavailableEngine 在没有配置模型服务时接管对话。
+//
+// 它明确报"不可用"而不是返回一段编好的话：用户需要知道这次没有真的问到模型。
+type unavailableEngine struct{}
+
+func (unavailableEngine) RunTurn(context.Context, ai.TurnRequest) (ai.TurnResult, error) {
+	return ai.TurnResult{}, ai.ErrProviderUnavailable
+}
+
+func (unavailableEngine) Version() string { return "unavailable" }
 
 // newParser 按配置选择 Capture 解析实现。
 //
@@ -212,6 +291,7 @@ func newParser(cfg config.Config, logger *slog.Logger) (ai.CaptureParser, error)
 			APIKey:          cfg.AI.APIKey,
 			ParseModel:      cfg.AI.ModelParse,
 			VisionModel:     cfg.AI.ModelVision,
+			ChatModel:       cfg.AI.ModelChat,
 			TranscribeModel: cfg.AI.ModelTranscribe,
 			Timeout:         cfg.AI.Timeout,
 			MaxOutputTokens: cfg.AI.MaxOutputTokens,

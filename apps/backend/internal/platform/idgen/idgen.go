@@ -39,6 +39,16 @@ const (
 	PrefixRun              = "run"
 	PrefixReviewSuggestion = "rsg"
 	PrefixReminder         = "rmd"
+	PrefixThread           = "ath"
+	PrefixMessage          = "amsg"
+	PrefixTurn             = "atrn"
+	PrefixToolCall         = "atc"
+	PrefixProposal         = "aprp"
+	PrefixMemory           = "mem"
+	PrefixMemoryEvidence   = "mev"
+	PrefixMemoryRevision   = "mrv"
+	PrefixRelearnBlock     = "rlb"
+	PrefixReviewSnapshot   = "rvs"
 )
 
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)

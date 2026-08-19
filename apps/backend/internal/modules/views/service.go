@@ -6,12 +6,15 @@ package views
 
 import (
 	"context"
+	"encoding/json"
+	"log/slog"
 	"sort"
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
@@ -22,17 +25,37 @@ type UserProfile interface {
 	Timezone(ctx context.Context, q *dbgen.Queries, userID string) (string, error)
 }
 
+// JobEnqueuer 在业务事务内登记异步任务。
+type JobEnqueuer interface {
+	EnqueueReviewGenerate(ctx context.Context, q *dbgen.Queries, args GenerateArgs) error
+}
+
 // Service 是聚合视图的应用服务。
 type Service struct {
 	db    *database.DB
 	users UserProfile
+	// chat 与 jobs 只用于复盘叙述这一个可选增强。
+	// 它们为空时指标照常可用，只是没有小结。
+	chat   ai.ChatProvider
+	jobs   JobEnqueuer
+	logger *slog.Logger
 	// now 可注入，便于测试固定时间下的收录与排序。
 	now func() time.Time
 }
 
 // New 构造 Service。
 func New(db *database.DB, users UserProfile) *Service {
-	return &Service{db: db, users: users, now: time.Now}
+	return &Service{db: db, users: users, logger: slog.Default(), now: time.Now}
+}
+
+// WithNarrative 注入生成复盘叙述所需的依赖。
+func (s *Service) WithNarrative(chat ai.ChatProvider, jobs JobEnqueuer, logger *slog.Logger) *Service {
+	s.chat = chat
+	s.jobs = jobs
+	if logger != nil {
+		s.logger = logger
+	}
+	return s
 }
 
 // Today 是首页聚合结果。
@@ -339,9 +362,36 @@ func (s *Service) GetWeeklyReview(ctx context.Context, userID string, weekOf *ti
 			Sources:     sources,
 			GeneratedBy: httpapi.CreatedBySystem,
 		}
+
+		// 叙述是可选增强：有生成过就带上，没有也不影响上面的指标。
+		snapshot, err := q.GetReviewSnapshot(ctx, dbgen.GetReviewSnapshotParams{
+			PeriodKind: "weekly", PeriodStart: periodStart,
+		})
+		if err != nil {
+			if !database.IsNoRows(err) {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		applySnapshot(&out, snapshot)
 		return nil
 	})
 	return out, err
+}
+
+// applySnapshot 把已生成的叙述与建议合并进复盘结果。
+//
+// 指标不从快照读：它们每次都由 SQL 重算，快照里的那份只是当时的留档。
+func applySnapshot(review *httpapi.WeeklyReview, snapshot dbgen.ReviewSnapshot) {
+	if snapshot.Narrative != nil && *snapshot.Narrative != "" {
+		review.Narrative = snapshot.Narrative
+		review.GeneratedBy = httpapi.CreatedByAi
+		review.GeneratedAt = snapshot.GeneratedAt
+	}
+	var suggestions []httpapi.ReviewSuggestion
+	if err := json.Unmarshal(snapshot.Suggestions, &suggestions); err == nil && len(suggestions) > 0 {
+		review.Suggestions = &suggestions
+	}
 }
 
 // Search 在已确认的正式内容中做关键词检索。

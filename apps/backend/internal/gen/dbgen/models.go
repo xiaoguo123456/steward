@@ -8,6 +8,29 @@ import (
 	"time"
 )
 
+type ActionProposal struct {
+	ID                    string
+	UserID                string
+	ThreadID              *string
+	TurnID                *string
+	ProposalType          string
+	ProposalSchemaVersion string
+	TargetType            *string
+	TargetID              *string
+	TargetExpectedVersion *int32
+	Command               []byte
+	Preview               []byte
+	Reason                string
+	SourceRefs            []byte
+	Status                string
+	ExpiresAt             time.Time
+	ExecutedBatchID       *string
+	ErrorCode             *string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	Version               int32
+}
+
 type ActivityBatch struct {
 	ID        string
 	UserID    string
@@ -56,6 +79,73 @@ type AiAction struct {
 	LatencyMs           int32
 	ConfirmationOutcome *string
 	CreatedAt           time.Time
+}
+
+type AiToolCall struct {
+	ID                string
+	UserID            string
+	TurnID            string
+	CallSeq           int32
+	CapabilityName    string
+	CapabilityVersion string
+	Risk              string
+	ArgumentsHash     []byte
+	ResultHash        []byte
+	ResultSummary     []byte
+	SourceRefs        []byte
+	Status            string
+	ErrorCode         *string
+	DurationMs        int32
+	CreatedAt         time.Time
+}
+
+type AssistantMessage struct {
+	ID          string
+	UserID      string
+	ThreadID    string
+	MessageSeq  int32
+	Role        string
+	Content     string
+	Status      string
+	TurnID      *string
+	CreatedAt   time.Time
+	CompletedAt *time.Time
+	DeletedAt   *time.Time
+}
+
+type AssistantThread struct {
+	ID             string
+	UserID         string
+	Title          string
+	Status         string
+	LastMessageSeq int32
+	LastTurnSeq    int32
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	ArchivedAt     *time.Time
+	DeletedAt      *time.Time
+	Version        int32
+}
+
+type AssistantTurn struct {
+	ID                 string
+	UserID             string
+	ThreadID           string
+	TurnSeq            int32
+	UserMessageID      *string
+	AssistantMessageID *string
+	OperationID        *string
+	Status             string
+	Mode               *string
+	EngineType         string
+	EngineVersion      string
+	ModelPolicy        string
+	ProviderState      []byte
+	ErrorCode          *string
+	StartedAt          *time.Time
+	CompletedAt        *time.Time
+	CreatedAt          time.Time
+	Version            int32
 }
 
 type AsyncOperation struct {
@@ -232,6 +322,65 @@ type MediaAsset struct {
 	DeletedAt   *time.Time
 }
 
+type MemoryEvidence struct {
+	ID            string
+	UserID        string
+	MemoryID      string
+	MemoryVersion int32
+	SourceType    string
+	SourceID      string
+	SourceVersion *int32
+	Locator       []byte
+	EvidenceRole  string
+	CreatedAt     time.Time
+	DeletedAt     *time.Time
+}
+
+type MemoryItem struct {
+	ID                 string
+	UserID             string
+	MemoryKey          string
+	MemoryType         string
+	ValueSchemaVersion string
+	Value              []byte
+	CanonicalText      string
+	Sensitivity        string
+	Origin             string
+	Status             string
+	ValidFrom          *time.Time
+	ValidUntil         *time.Time
+	ConfirmedAt        *time.Time
+	LastUsedAt         *time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	DeletedAt          *time.Time
+	Version            int32
+}
+
+type MemoryRelearnBlock struct {
+	ID                    string
+	UserID                string
+	MemoryKey             string
+	ValueFingerprint      []byte
+	FingerprintKeyVersion string
+	BlockedAt             time.Time
+	ExpiresAt             *time.Time
+	CreatedAt             time.Time
+}
+
+type MemoryRevision struct {
+	ID            string
+	UserID        string
+	MemoryID      string
+	Revision      int32
+	Value         []byte
+	CanonicalText *string
+	ChangeKind    string
+	ChangedBy     string
+	ProposalID    *string
+	CreatedAt     time.Time
+}
+
 type Note struct {
 	ID             string
 	UserID         string
@@ -303,6 +452,22 @@ type Relation struct {
 	ProvenanceRefs []byte
 	CreatedAt      time.Time
 	DeletedAt      *time.Time
+}
+
+type ReviewSnapshot struct {
+	ID            string
+	UserID        string
+	PeriodKind    string
+	PeriodStart   time.Time
+	PeriodEnd     time.Time
+	Metrics       []byte
+	Narrative     *string
+	Suggestions   []byte
+	Sources       []byte
+	GeneratedBy   string
+	PromptVersion *string
+	CreatedAt     time.Time
+	GeneratedAt   *time.Time
 }
 
 type Task struct {

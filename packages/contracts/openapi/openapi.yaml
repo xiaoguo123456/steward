@@ -43,6 +43,10 @@ tags:
     x-displayName: 统一输入
   - name: media
     x-displayName: 媒体上传
+  - name: assistant
+    x-displayName: AI 助手
+  - name: memory
+    x-displayName: 长期记忆
   - name: views
     x-displayName: 聚合视图
   - name: system
@@ -117,12 +121,42 @@ paths:
   /v1/capture-questions/{question_id}/answer:
     $ref: './paths/captures.yaml#/QuestionAnswer'
 
+  /v1/assistant/threads:
+    $ref: './paths/assistant.yaml#/Threads'
+  /v1/assistant/threads/{thread_id}:
+    $ref: './paths/assistant.yaml#/Thread'
+  /v1/assistant/threads/{thread_id}/messages:
+    $ref: './paths/assistant.yaml#/Messages'
+  /v1/assistant/threads/{thread_id}/turns:
+    $ref: './paths/assistant.yaml#/Turns'
+  /v1/assistant/turns/{turn_id}/cancel:
+    $ref: './paths/assistant.yaml#/CancelTurn'
+  /v1/assistant/proposals:
+    $ref: './paths/assistant.yaml#/Proposals'
+  /v1/assistant/proposals/{proposal_id}:
+    $ref: './paths/assistant.yaml#/Proposal'
+  /v1/assistant/proposals/{proposal_id}/confirm:
+    $ref: './paths/assistant.yaml#/ConfirmProposal'
+  /v1/assistant/proposals/{proposal_id}/reject:
+    $ref: './paths/assistant.yaml#/RejectProposal'
+
+  /v1/me/memories:
+    $ref: './paths/memory.yaml#/Memories'
+  /v1/me/memories/{memory_id}:
+    $ref: './paths/memory.yaml#/Memory'
+  /v1/me/memory-relearn-blocks:
+    $ref: './paths/memory.yaml#/RelearnBlocks'
+  /v1/me/memory-relearn-blocks/{block_id}:
+    $ref: './paths/memory.yaml#/RelearnBlock'
+
   /v1/today:
     $ref: './paths/views.yaml#/Today'
   /v1/calendar:
     $ref: './paths/views.yaml#/Calendar'
   /v1/reviews/weekly:
     $ref: './paths/views.yaml#/WeeklyReview'
+  /v1/reviews/weekly/generate:
+    $ref: './paths/views.yaml#/GenerateWeeklyReview'
   /v1/search:
     $ref: './paths/views.yaml#/Search'
 

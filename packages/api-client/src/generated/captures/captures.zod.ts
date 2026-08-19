@@ -84,7 +84,7 @@ export const GetCaptureResponse = zod.object({
   "media_url": zod.string().nullish().describe('有效期受限的私有访问地址。'),
   "duration_ms": zod.number().int().nullish(),
   "error": zod.object({
-  "code": zod.enum(['VALIDATION_FAILED', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'RESOURCE_NOT_FOUND', 'VERSION_CONFLICT', 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'RATE_LIMITED', 'INTERNAL_ERROR', 'PHONE_INVALID', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'REFRESH_TOKEN_INVALID', 'TASK_LIST_NAME_DUPLICATED', 'TASK_LIST_NOT_EMPTY', 'TASK_LIST_DEFAULT_REQUIRED', 'TASK_STATUS_TRANSITION_INVALID', 'EVENT_TIME_RANGE_INVALID', 'EVENT_RECURRENCE_NOT_ALLOWED', 'TRACKER_SCHEMA_INVALID', 'RECORD_VALUES_INVALID', 'PROJECT_HAS_OPEN_TASKS', 'OBJECT_ALREADY_DELETED', 'CAPTURE_NOT_READY', 'CAPTURE_ALREADY_CONFIRMED', 'CAPTURE_REVISION_STALE', 'CAPTURE_QUESTION_RESOLVED', 'AI_PROVIDER_UNAVAILABLE', 'AI_PROVIDER_RATE_LIMITED', 'AI_SCHEMA_INVALID', 'AI_SOURCE_INVALID', 'AI_BUDGET_EXCEEDED', 'AI_TURN_CANCELLED']).describe('稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。\n新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。\n'),
+  "code": zod.enum(['VALIDATION_FAILED', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'RESOURCE_NOT_FOUND', 'VERSION_CONFLICT', 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'RATE_LIMITED', 'INTERNAL_ERROR', 'PHONE_INVALID', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'REFRESH_TOKEN_INVALID', 'TASK_LIST_NAME_DUPLICATED', 'TASK_LIST_NOT_EMPTY', 'TASK_LIST_DEFAULT_REQUIRED', 'TASK_STATUS_TRANSITION_INVALID', 'EVENT_TIME_RANGE_INVALID', 'EVENT_RECURRENCE_NOT_ALLOWED', 'TRACKER_SCHEMA_INVALID', 'RECORD_VALUES_INVALID', 'PROJECT_HAS_OPEN_TASKS', 'OBJECT_ALREADY_DELETED', 'CAPTURE_NOT_READY', 'CAPTURE_ALREADY_CONFIRMED', 'CAPTURE_REVISION_STALE', 'CAPTURE_QUESTION_RESOLVED', 'AI_PROVIDER_UNAVAILABLE', 'AI_PROVIDER_RATE_LIMITED', 'AI_SCHEMA_INVALID', 'AI_SOURCE_INVALID', 'AI_BUDGET_EXCEEDED', 'AI_TURN_CANCELLED', 'AI_PROPOSAL_STALE', 'AI_PROPOSAL_EXPIRED', 'AI_PROPOSAL_ALREADY_RESOLVED', 'AI_PROPOSAL_EDIT_NOT_ALLOWED', 'MEMORY_RELEARN_BLOCKED']).describe('稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。\n新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。\n'),
   "message": zod.string().describe('面向用户的默认中文文案。App 可以覆盖为更贴合场景的文案。'),
   "retryable": zod.boolean().describe('是否可以用相同参数安全重试。'),
   "reload_target": zod.boolean().default(getCaptureResponseDataPartsItemErrorReloadTargetDefault).describe('App 是否需要重新加载目标资源后再重试。'),
@@ -224,7 +224,7 @@ export const GetCaptureResponse = zod.object({
 })).optional(),
   "instruction_note": zod.string().nullish().describe('用户在文字或语音中给出的限制条件，例如“只处理第一张”。'),
   "error": zod.object({
-  "code": zod.enum(['VALIDATION_FAILED', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'RESOURCE_NOT_FOUND', 'VERSION_CONFLICT', 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'RATE_LIMITED', 'INTERNAL_ERROR', 'PHONE_INVALID', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'REFRESH_TOKEN_INVALID', 'TASK_LIST_NAME_DUPLICATED', 'TASK_LIST_NOT_EMPTY', 'TASK_LIST_DEFAULT_REQUIRED', 'TASK_STATUS_TRANSITION_INVALID', 'EVENT_TIME_RANGE_INVALID', 'EVENT_RECURRENCE_NOT_ALLOWED', 'TRACKER_SCHEMA_INVALID', 'RECORD_VALUES_INVALID', 'PROJECT_HAS_OPEN_TASKS', 'OBJECT_ALREADY_DELETED', 'CAPTURE_NOT_READY', 'CAPTURE_ALREADY_CONFIRMED', 'CAPTURE_REVISION_STALE', 'CAPTURE_QUESTION_RESOLVED', 'AI_PROVIDER_UNAVAILABLE', 'AI_PROVIDER_RATE_LIMITED', 'AI_SCHEMA_INVALID', 'AI_SOURCE_INVALID', 'AI_BUDGET_EXCEEDED', 'AI_TURN_CANCELLED']).describe('稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。\n新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。\n'),
+  "code": zod.enum(['VALIDATION_FAILED', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'RESOURCE_NOT_FOUND', 'VERSION_CONFLICT', 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'RATE_LIMITED', 'INTERNAL_ERROR', 'PHONE_INVALID', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'REFRESH_TOKEN_INVALID', 'TASK_LIST_NAME_DUPLICATED', 'TASK_LIST_NOT_EMPTY', 'TASK_LIST_DEFAULT_REQUIRED', 'TASK_STATUS_TRANSITION_INVALID', 'EVENT_TIME_RANGE_INVALID', 'EVENT_RECURRENCE_NOT_ALLOWED', 'TRACKER_SCHEMA_INVALID', 'RECORD_VALUES_INVALID', 'PROJECT_HAS_OPEN_TASKS', 'OBJECT_ALREADY_DELETED', 'CAPTURE_NOT_READY', 'CAPTURE_ALREADY_CONFIRMED', 'CAPTURE_REVISION_STALE', 'CAPTURE_QUESTION_RESOLVED', 'AI_PROVIDER_UNAVAILABLE', 'AI_PROVIDER_RATE_LIMITED', 'AI_SCHEMA_INVALID', 'AI_SOURCE_INVALID', 'AI_BUDGET_EXCEEDED', 'AI_TURN_CANCELLED', 'AI_PROPOSAL_STALE', 'AI_PROPOSAL_EXPIRED', 'AI_PROPOSAL_ALREADY_RESOLVED', 'AI_PROPOSAL_EDIT_NOT_ALLOWED', 'MEMORY_RELEARN_BLOCKED']).describe('稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。\n新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。\n'),
   "message": zod.string().describe('面向用户的默认中文文案。App 可以覆盖为更贴合场景的文案。'),
   "retryable": zod.boolean().describe('是否可以用相同参数安全重试。'),
   "reload_target": zod.boolean().default(getCaptureResponseDataErrorReloadTargetDefault).describe('App 是否需要重新加载目标资源后再重试。'),
@@ -234,7 +234,7 @@ export const GetCaptureResponse = zod.object({
 })).optional().describe('字段级校验明细，仅在 VALIDATION_FAILED 等场景出现。')
 }).optional(),
   "created_objects": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })).optional().describe('确认后本次实际创建或更新的实体引用。'),
   "activity_batch_id": zod.string().nullish().describe('确认成功后生成的 Activity 批次，用于即时撤销。'),
@@ -266,7 +266,7 @@ export const DiscardCaptureHeader = zod.object({
 export const DiscardCaptureResponse = zod.object({
   "data": zod.object({
   "affected_resources": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })),
   "activity_batch_id": zod.string().nullish()
@@ -394,7 +394,7 @@ export const ConfirmCaptureResponse = zod.object({
   "media_url": zod.string().nullish().describe('有效期受限的私有访问地址。'),
   "duration_ms": zod.number().int().nullish(),
   "error": zod.object({
-  "code": zod.enum(['VALIDATION_FAILED', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'RESOURCE_NOT_FOUND', 'VERSION_CONFLICT', 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'RATE_LIMITED', 'INTERNAL_ERROR', 'PHONE_INVALID', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'REFRESH_TOKEN_INVALID', 'TASK_LIST_NAME_DUPLICATED', 'TASK_LIST_NOT_EMPTY', 'TASK_LIST_DEFAULT_REQUIRED', 'TASK_STATUS_TRANSITION_INVALID', 'EVENT_TIME_RANGE_INVALID', 'EVENT_RECURRENCE_NOT_ALLOWED', 'TRACKER_SCHEMA_INVALID', 'RECORD_VALUES_INVALID', 'PROJECT_HAS_OPEN_TASKS', 'OBJECT_ALREADY_DELETED', 'CAPTURE_NOT_READY', 'CAPTURE_ALREADY_CONFIRMED', 'CAPTURE_REVISION_STALE', 'CAPTURE_QUESTION_RESOLVED', 'AI_PROVIDER_UNAVAILABLE', 'AI_PROVIDER_RATE_LIMITED', 'AI_SCHEMA_INVALID', 'AI_SOURCE_INVALID', 'AI_BUDGET_EXCEEDED', 'AI_TURN_CANCELLED']).describe('稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。\n新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。\n'),
+  "code": zod.enum(['VALIDATION_FAILED', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'RESOURCE_NOT_FOUND', 'VERSION_CONFLICT', 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'RATE_LIMITED', 'INTERNAL_ERROR', 'PHONE_INVALID', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'REFRESH_TOKEN_INVALID', 'TASK_LIST_NAME_DUPLICATED', 'TASK_LIST_NOT_EMPTY', 'TASK_LIST_DEFAULT_REQUIRED', 'TASK_STATUS_TRANSITION_INVALID', 'EVENT_TIME_RANGE_INVALID', 'EVENT_RECURRENCE_NOT_ALLOWED', 'TRACKER_SCHEMA_INVALID', 'RECORD_VALUES_INVALID', 'PROJECT_HAS_OPEN_TASKS', 'OBJECT_ALREADY_DELETED', 'CAPTURE_NOT_READY', 'CAPTURE_ALREADY_CONFIRMED', 'CAPTURE_REVISION_STALE', 'CAPTURE_QUESTION_RESOLVED', 'AI_PROVIDER_UNAVAILABLE', 'AI_PROVIDER_RATE_LIMITED', 'AI_SCHEMA_INVALID', 'AI_SOURCE_INVALID', 'AI_BUDGET_EXCEEDED', 'AI_TURN_CANCELLED', 'AI_PROPOSAL_STALE', 'AI_PROPOSAL_EXPIRED', 'AI_PROPOSAL_ALREADY_RESOLVED', 'AI_PROPOSAL_EDIT_NOT_ALLOWED', 'MEMORY_RELEARN_BLOCKED']).describe('稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。\n新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。\n'),
   "message": zod.string().describe('面向用户的默认中文文案。App 可以覆盖为更贴合场景的文案。'),
   "retryable": zod.boolean().describe('是否可以用相同参数安全重试。'),
   "reload_target": zod.boolean().default(confirmCaptureResponseDataCapturePartsItemErrorReloadTargetDefault).describe('App 是否需要重新加载目标资源后再重试。'),
@@ -534,7 +534,7 @@ export const ConfirmCaptureResponse = zod.object({
 })).optional(),
   "instruction_note": zod.string().nullish().describe('用户在文字或语音中给出的限制条件，例如“只处理第一张”。'),
   "error": zod.object({
-  "code": zod.enum(['VALIDATION_FAILED', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'RESOURCE_NOT_FOUND', 'VERSION_CONFLICT', 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'RATE_LIMITED', 'INTERNAL_ERROR', 'PHONE_INVALID', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'REFRESH_TOKEN_INVALID', 'TASK_LIST_NAME_DUPLICATED', 'TASK_LIST_NOT_EMPTY', 'TASK_LIST_DEFAULT_REQUIRED', 'TASK_STATUS_TRANSITION_INVALID', 'EVENT_TIME_RANGE_INVALID', 'EVENT_RECURRENCE_NOT_ALLOWED', 'TRACKER_SCHEMA_INVALID', 'RECORD_VALUES_INVALID', 'PROJECT_HAS_OPEN_TASKS', 'OBJECT_ALREADY_DELETED', 'CAPTURE_NOT_READY', 'CAPTURE_ALREADY_CONFIRMED', 'CAPTURE_REVISION_STALE', 'CAPTURE_QUESTION_RESOLVED', 'AI_PROVIDER_UNAVAILABLE', 'AI_PROVIDER_RATE_LIMITED', 'AI_SCHEMA_INVALID', 'AI_SOURCE_INVALID', 'AI_BUDGET_EXCEEDED', 'AI_TURN_CANCELLED']).describe('稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。\n新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。\n'),
+  "code": zod.enum(['VALIDATION_FAILED', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'RESOURCE_NOT_FOUND', 'VERSION_CONFLICT', 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'RATE_LIMITED', 'INTERNAL_ERROR', 'PHONE_INVALID', 'VERIFICATION_CODE_INVALID', 'VERIFICATION_CODE_EXPIRED', 'REFRESH_TOKEN_INVALID', 'TASK_LIST_NAME_DUPLICATED', 'TASK_LIST_NOT_EMPTY', 'TASK_LIST_DEFAULT_REQUIRED', 'TASK_STATUS_TRANSITION_INVALID', 'EVENT_TIME_RANGE_INVALID', 'EVENT_RECURRENCE_NOT_ALLOWED', 'TRACKER_SCHEMA_INVALID', 'RECORD_VALUES_INVALID', 'PROJECT_HAS_OPEN_TASKS', 'OBJECT_ALREADY_DELETED', 'CAPTURE_NOT_READY', 'CAPTURE_ALREADY_CONFIRMED', 'CAPTURE_REVISION_STALE', 'CAPTURE_QUESTION_RESOLVED', 'AI_PROVIDER_UNAVAILABLE', 'AI_PROVIDER_RATE_LIMITED', 'AI_SCHEMA_INVALID', 'AI_SOURCE_INVALID', 'AI_BUDGET_EXCEEDED', 'AI_TURN_CANCELLED', 'AI_PROPOSAL_STALE', 'AI_PROPOSAL_EXPIRED', 'AI_PROPOSAL_ALREADY_RESOLVED', 'AI_PROPOSAL_EDIT_NOT_ALLOWED', 'MEMORY_RELEARN_BLOCKED']).describe('稳定错误码。App 只能依赖此枚举做分支，不得解析 message 文案。\n新增错误码必须同时定义默认中文文案、是否可重试和推荐 App 动作。\n'),
   "message": zod.string().describe('面向用户的默认中文文案。App 可以覆盖为更贴合场景的文案。'),
   "retryable": zod.boolean().describe('是否可以用相同参数安全重试。'),
   "reload_target": zod.boolean().default(confirmCaptureResponseDataCaptureErrorReloadTargetDefault).describe('App 是否需要重新加载目标资源后再重试。'),
@@ -544,7 +544,7 @@ export const ConfirmCaptureResponse = zod.object({
 })).optional().describe('字段级校验明细，仅在 VALIDATION_FAILED 等场景出现。')
 }).optional(),
   "created_objects": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })).optional().describe('确认后本次实际创建或更新的实体引用。'),
   "activity_batch_id": zod.string().nullish().describe('确认成功后生成的 Activity 批次，用于即时撤销。'),
@@ -553,7 +553,7 @@ export const ConfirmCaptureResponse = zod.object({
   "confirmed_at": zod.string().datetime({"offset":true}).nullish()
 }),
   "affected_resources": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 }))
 }),

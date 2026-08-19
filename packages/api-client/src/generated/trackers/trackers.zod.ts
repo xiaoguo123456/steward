@@ -276,7 +276,7 @@ export const DeleteTrackerHeader = zod.object({
 export const DeleteTrackerResponse = zod.object({
   "data": zod.object({
   "affected_resources": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })),
   "activity_batch_id": zod.string().nullish()
@@ -529,7 +529,7 @@ export const DeleteRecordHeader = zod.object({
 export const DeleteRecordResponse = zod.object({
   "data": zod.object({
   "affected_resources": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })),
   "activity_batch_id": zod.string().nullish()

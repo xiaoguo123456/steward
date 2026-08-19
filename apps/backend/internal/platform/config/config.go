@@ -27,6 +27,10 @@ type Config struct {
 	RefreshTokenTTL time.Duration
 	DevSMSCode      string
 
+	// MemoryFingerprintKey 用于计算「不再学习」阻止项的指纹。
+	// 它是独立用途的密钥，不复用 JWT 密钥：两者的轮换周期与泄漏影响完全不同。
+	MemoryFingerprintKey string
+
 	AI      AIConfig
 	Storage StorageConfig
 }
@@ -43,6 +47,7 @@ type AIConfig struct {
 
 	ModelParse      string
 	ModelVision     string
+	ModelChat       string
 	ModelTranscribe string
 
 	Timeout         time.Duration
@@ -68,18 +73,20 @@ func Load() (Config, error) {
 	_ = godotenv.Load(findEnvFile()...)
 
 	cfg := Config{
-		HTTPAddr:      env("STEWARD_HTTP_ADDR", ":8787"),
-		CORSOrigins:   splitAndTrim(env("STEWARD_CORS_ORIGINS", "http://localhost:8081,http://localhost:4174")),
-		PublicBaseURL: env("STEWARD_PUBLIC_BASE_URL", "http://localhost:8787"),
-		DatabaseURL:   env("STEWARD_DATABASE_URL", ""),
-		JWTSecret:     env("STEWARD_JWT_SECRET", ""),
-		DevSMSCode:    env("STEWARD_DEV_SMS_CODE", ""),
+		HTTPAddr:             env("STEWARD_HTTP_ADDR", ":8787"),
+		CORSOrigins:          splitAndTrim(env("STEWARD_CORS_ORIGINS", "http://localhost:8081,http://localhost:4174")),
+		PublicBaseURL:        env("STEWARD_PUBLIC_BASE_URL", "http://localhost:8787"),
+		DatabaseURL:          env("STEWARD_DATABASE_URL", ""),
+		JWTSecret:            env("STEWARD_JWT_SECRET", ""),
+		DevSMSCode:           env("STEWARD_DEV_SMS_CODE", ""),
+		MemoryFingerprintKey: env("STEWARD_MEMORY_FINGERPRINT_KEY", ""),
 		AI: AIConfig{
 			Provider:        env("STEWARD_AI_PROVIDER", "fake"),
 			BaseURL:         strings.TrimRight(env("STEWARD_AI_BASE_URL", ""), "/"),
 			APIKey:          env("STEWARD_AI_API_KEY", ""),
 			ModelParse:      env("STEWARD_AI_MODEL_PARSE", ""),
 			ModelVision:     env("STEWARD_AI_MODEL_VISION", ""),
+			ModelChat:       env("STEWARD_AI_MODEL_CHAT", ""),
 			ModelTranscribe: env("STEWARD_AI_MODEL_TRANSCRIBE", ""),
 			MaxOutputTokens: envInt("STEWARD_AI_MAX_OUTPUT_TOKENS", 2048),
 		},
@@ -110,6 +117,9 @@ func Load() (Config, error) {
 	}
 	if cfg.JWTSecret == "" {
 		return Config{}, errors.New("必须设置 STEWARD_JWT_SECRET")
+	}
+	if cfg.MemoryFingerprintKey == "" {
+		return Config{}, errors.New("必须设置 STEWARD_MEMORY_FINGERPRINT_KEY")
 	}
 
 	if err := cfg.AI.validate(); err != nil {
@@ -177,13 +187,14 @@ func (c StorageConfig) validate() error {
 func LoadForTest() Config {
 	_ = godotenv.Load(findEnvFile()...)
 	return Config{
-		DatabaseURL:     os.Getenv("STEWARD_TEST_DATABASE_URL"),
-		JWTSecret:       "test-secret",
-		AccessTokenTTL:  time.Hour,
-		RefreshTokenTTL: time.Hour,
-		DevSMSCode:      "123456",
-		AI:              AIConfig{Provider: "fake"},
-		Storage:         StorageConfig{Driver: "localfs", Root: os.TempDir() + "/steward-test-storage"},
+		DatabaseURL:          os.Getenv("STEWARD_TEST_DATABASE_URL"),
+		JWTSecret:            "test-secret",
+		AccessTokenTTL:       time.Hour,
+		RefreshTokenTTL:      time.Hour,
+		DevSMSCode:           "123456",
+		MemoryFingerprintKey: "test-fingerprint-key",
+		AI:                   AIConfig{Provider: "fake"},
+		Storage:              StorageConfig{Driver: "localfs", Root: os.TempDir() + "/steward-test-storage"},
 	}
 }
 

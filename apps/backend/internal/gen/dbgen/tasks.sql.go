@@ -278,30 +278,31 @@ WHERE deleted_at IS NULL
   AND ($2::text IS NULL OR list_id = $2::text)
   AND ($3::text IS NULL OR project_id = $3::text)
   AND ($4::date IS NULL OR due_date <= $4::date)
-  AND ($5::timestamptz IS NULL
-       OR (scheduled_start_at >= $5::timestamptz
-           AND scheduled_start_at <= $6::timestamptz))
+  AND ($5::date IS NULL OR due_date >= $5::date)
+  AND ($6::timestamptz IS NULL
+       OR (scheduled_start_at >= $6::timestamptz
+           AND scheduled_start_at <= $7::timestamptz))
   -- 未安排：todo 且没有任何截止、计划与 focus_date。
-  AND (NOT $7::bool
+  AND (NOT $8::bool
        OR (status = 'todo' AND due_date IS NULL AND due_at IS NULL
            AND scheduled_start_at IS NULL AND focus_date IS NULL))
-  AND ($8::text IS NULL OR title ILIKE '%' || $8::text || '%')
+  AND ($9::text IS NULL OR title ILIKE '%' || $9::text || '%')
   -- day：与 Today 相同的收录规则，用于“明天”等按天视图。
-  AND ($9::date IS NULL
+  AND ($10::date IS NULL
        OR (status IN ('todo', 'doing')
-           AND (focus_date = $9::date
+           AND (focus_date = $10::date
                 OR (scheduled_start_at IS NOT NULL
-                    AND scheduled_start_at >= $10::timestamptz
-                    AND scheduled_start_at <= $11::timestamptz)
-                OR due_date = $9::date
+                    AND scheduled_start_at >= $11::timestamptz
+                    AND scheduled_start_at <= $12::timestamptz)
+                OR due_date = $10::date
                 OR (due_at IS NOT NULL
-                    AND due_at >= $10::timestamptz
-                    AND due_at <= $11::timestamptz))))
+                    AND due_at >= $11::timestamptz
+                    AND due_at <= $12::timestamptz))))
   -- 键集分页游标：按 (created_at, id) 递减推进。
-  AND ($12::timestamptz IS NULL
-       OR (created_at, id) < ($12::timestamptz, $13::text))
+  AND ($13::timestamptz IS NULL
+       OR (created_at, id) < ($13::timestamptz, $14::text))
 ORDER BY created_at DESC, id DESC
-LIMIT $14
+LIMIT $15
 `
 
 type ListTasksParams struct {
@@ -309,6 +310,7 @@ type ListTasksParams struct {
 	ListID          *string
 	ProjectID       *string
 	DueBefore       *time.Time
+	DueFrom         *time.Time
 	ScheduledFrom   *time.Time
 	ScheduledTo     *time.Time
 	Unscheduled     bool
@@ -328,6 +330,7 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 		arg.ListID,
 		arg.ProjectID,
 		arg.DueBefore,
+		arg.DueFrom,
 		arg.ScheduledFrom,
 		arg.ScheduledTo,
 		arg.Unscheduled,

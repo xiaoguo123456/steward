@@ -1,0 +1,357 @@
+# Assistant 对话与 Action Proposal。
+#
+# 两条硬规则贯穿全部结构：
+#   1. 系统权威会话是服务端的 Thread/Message/Turn，Provider 状态不对客户端暴露。
+#   2. 模型只产 Proposal；任何正式写入都必须经过用户确认后由 Go Domain 执行。
+
+ThreadStatus:
+  type: string
+  enum: [active, archived, deleted]
+
+AssistantThread:
+  type: object
+  additionalProperties: false
+  required: [id, title, status, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: ath_01J8Z3
+    title:
+      type: string
+      description: 由首条用户消息生成，用户可以修改。
+    status:
+      $ref: '#/ThreadStatus'
+    last_message_seq:
+      type: integer
+      description: Thread 内最新消息序号，客户端据此判断是否有新内容。
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    version:
+      type: integer
+
+AssistantThreadResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/AssistantThread'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+AssistantThreadsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/AssistantThread'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+CreateThreadRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    title:
+      type: string
+      nullable: true
+      maxLength: 60
+
+UpdateThreadRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    title:
+      type: string
+      minLength: 1
+      maxLength: 60
+    status:
+      $ref: '#/ThreadStatus'
+
+MessageRole:
+  type: string
+  enum: [user, assistant, system_summary]
+
+AssistantMessage:
+  type: object
+  additionalProperties: false
+  required: [id, thread_id, message_seq, role, content, status, created_at]
+  properties:
+    id:
+      type: string
+      example: amsg_01J8Z3
+    thread_id:
+      type: string
+    message_seq:
+      type: integer
+      description: Thread 内单调递增序号。消息一经展示不原地改写。
+    role:
+      $ref: '#/MessageRole'
+    content:
+      type: string
+      description: |
+        用户可见文本。不包含 Provider 原始响应对象，
+        也不包含模型的隐藏思维过程。
+    status:
+      type: string
+      enum: [draft, completed, failed, superseded]
+    turn_id:
+      type: string
+      nullable: true
+    proposal_ids:
+      type: array
+      description: 本条消息附带的待确认建议。
+      items:
+        type: string
+    created_at:
+      type: string
+      format: date-time
+
+AssistantMessagesResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      description: 按 message_seq 倒序返回，最新的在前。
+      items:
+        $ref: '#/AssistantMessage'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+EntryContext:
+  type: object
+  additionalProperties: false
+  description: |
+    客户端的页面上下文，只用于消歧，不是授权。
+    服务端会重新校验资源归属与版本；App 不得传入权限结论。
+  properties:
+    screen:
+      type: string
+      description: 例如 task_detail、today。
+    resource_type:
+      type: string
+      nullable: true
+    resource_id:
+      type: string
+      nullable: true
+    selected_date:
+      type: string
+      format: date
+      nullable: true
+
+CreateTurnRequest:
+  type: object
+  additionalProperties: false
+  required: [text]
+  properties:
+    text:
+      type: string
+      minLength: 1
+      maxLength: 2000
+      description: |
+        第一阶段通用 Assistant 只支持文本。
+        图片与音频继续走统一 Capture，不在这里重复一套媒体协议。
+    entry_context:
+      $ref: '#/EntryContext'
+
+TurnAcceptedResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: object
+      additionalProperties: false
+      required: [thread_id, message_id, turn_id, operation_id]
+      properties:
+        thread_id:
+          type: string
+        message_id:
+          type: string
+        turn_id:
+          type: string
+        operation_id:
+          type: string
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+# ---- Action Proposal ----
+
+ProposalType:
+  type: string
+  description: |
+    每种类型都有独立的 command 结构与对应的 Domain Command Mapper。
+    command 不是任意 JSON Patch。
+  enum: [task_create, task_update, event_create, memory_upsert]
+
+ProposalStatus:
+  type: string
+  enum: [pending, executed, rejected, expired, stale, superseded, failed]
+
+ProposalChange:
+  type: object
+  additionalProperties: false
+  required: [field, label]
+  properties:
+    field:
+      type: string
+    label:
+      type: string
+      description: 面向用户的字段名。
+    before:
+      type: string
+      nullable: true
+    after:
+      type: string
+      nullable: true
+
+ProposalPreview:
+  type: object
+  additionalProperties: false
+  required: [title]
+  properties:
+    title:
+      type: string
+      description: 一句话说明这条建议会做什么。
+    changes:
+      type: array
+      items:
+        $ref: '#/ProposalChange'
+    impact:
+      type: string
+      nullable: true
+      description: 影响范围说明，例如会影响多少条内容。
+
+ActionProposal:
+  type: object
+  additionalProperties: false
+  required: [id, proposal_type, status, preview, reason, expires_at, created_at, version]
+  properties:
+    id:
+      type: string
+      example: aprp_01J8Z3
+    thread_id:
+      type: string
+      nullable: true
+    turn_id:
+      type: string
+      nullable: true
+    proposal_type:
+      $ref: '#/ProposalType'
+    target_type:
+      type: string
+      nullable: true
+    target_id:
+      type: string
+      nullable: true
+    target_expected_version:
+      type: integer
+      nullable: true
+      description: 目标在建议生成后被改动过时，确认会失败并标记 stale。
+    status:
+      $ref: '#/ProposalStatus'
+    preview:
+      $ref: '#/ProposalPreview'
+    reason:
+      type: string
+      description: 模型给出的理由。它不能替代服务端的重新校验。
+    source_refs:
+      type: array
+      description: 生成这条建议时实际读取过的来源。
+      items:
+        type: string
+    editable_fields:
+      type: array
+      description: 用户在确认页可以修改的字段。其他字段不接受编辑。
+      items:
+        type: string
+    expires_at:
+      type: string
+      format: date-time
+    executed_batch_id:
+      type: string
+      nullable: true
+      description: 执行成功后生成的 Activity 批次，用于撤销。
+    created_at:
+      type: string
+      format: date-time
+    version:
+      type: integer
+
+ActionProposalResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/ActionProposal'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+ActionProposalsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/ActionProposal'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+ConfirmProposalRequest:
+  type: object
+  additionalProperties: false
+  required: [proposal_version]
+  properties:
+    proposal_version:
+      type: integer
+      description: 与服务端当前版本不一致时拒绝执行。
+    target_expected_version:
+      type: integer
+      nullable: true
+      description: 目标资源的期望版本，缺省时使用建议生成时记录的版本。
+    edits:
+      type: object
+      additionalProperties: true
+      description: |
+        用户在确认页的修改，只允许 editable_fields 声明过的字段。
+        不接受替换 command 类型或目标 ID。
+
+ConfirmProposalResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: object
+      additionalProperties: false
+      required: [proposal, affected_resources]
+      properties:
+        proposal:
+          $ref: '#/ActionProposal'
+        affected_resources:
+          type: array
+          items:
+            $ref: './common.yaml#/AffectedResource'
+        activity_batch_id:
+          type: string
+          nullable: true
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

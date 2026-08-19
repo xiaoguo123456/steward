@@ -9,8 +9,15 @@ import (
 )
 
 type Querier interface {
+	// 在同一事务内原子分配消息与 Turn 序号，避免并发下产生重复序号。
+	AdvanceThreadSeq(ctx context.Context, arg AdvanceThreadSeqParams) (AdvanceThreadSeqRow, error)
+	// records.aggregate 能力用：由 SQL 完成计数、求和、平均与范围，
+	// 避免把逐条明细发给模型。字段值取 JSONB 中的数字，非数字项自动跳过。
+	// 聚合值统一 coalesce 成 0：没有数据时用 value_count = 0 判断，不要读 average。
+	AggregateRecordField(ctx context.Context, arg AggregateRecordFieldParams) (AggregateRecordFieldRow, error)
 	AnswerCaptureQuestion(ctx context.Context, arg AnswerCaptureQuestionParams) (CaptureQuestion, error)
 	BumpCaptureRevision(ctx context.Context, arg BumpCaptureRevisionParams) (Capture, error)
+	CancelTurn(ctx context.Context, id string) (AssistantTurn, error)
 	ClearProjectFromEvents(ctx context.Context, projectID *string) error
 	ClearProjectFromNotes(ctx context.Context, projectID *string) error
 	ClearProjectFromRecords(ctx context.Context, projectID *string) error
@@ -23,6 +30,7 @@ type Querier interface {
 	CountNotesCreatedBetween(ctx context.Context, arg CountNotesCreatedBetweenParams) (int32, error)
 	CountOpenCaptureQuestions(ctx context.Context) (int32, error)
 	CountOverdueTasks(ctx context.Context, arg CountOverdueTasksParams) (int32, error)
+	CountPendingProposals(ctx context.Context) (int32, error)
 	CountRecordsBetween(ctx context.Context, arg CountRecordsBetweenParams) (int32, error)
 	CountTaskLists(ctx context.Context) (int32, error)
 	CountTasksByProject(ctx context.Context, projectID *string) (CountTasksByProjectRow, error)
@@ -39,21 +47,39 @@ type Querier interface {
 	CreateEvent(ctx context.Context, arg CreateEventParams) (Event, error)
 	// 媒体资产。二进制内容在对象存储，这里只保存受控引用与元数据。
 	CreateMediaAsset(ctx context.Context, arg CreateMediaAssetParams) (MediaAsset, error)
+	// 长期记忆。只有用户确认过的条目才是 active，Context Builder 只读 active。
+	CreateMemory(ctx context.Context, arg CreateMemoryParams) (MemoryItem, error)
+	CreateMemoryEvidence(ctx context.Context, arg CreateMemoryEvidenceParams) error
+	CreateMemoryRevision(ctx context.Context, arg CreateMemoryRevisionParams) error
+	CreateMessage(ctx context.Context, arg CreateMessageParams) (AssistantMessage, error)
 	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
 	// 异步 Operation、Activity、幂等与 AI 审计。
 	CreateOperation(ctx context.Context, arg CreateOperationParams) (AsyncOperation, error)
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
+	// Action Proposal。模型只产建议，用户确认后才由 Domain Command 写入。
+	CreateProposal(ctx context.Context, arg CreateProposalParams) (ActionProposal, error)
 	CreateRecord(ctx context.Context, arg CreateRecordParams) (Record, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (AuthRefreshToken, error)
+	// 只保存指纹，不保存明文；用于阻止已删除语义被自动再次建议。
+	CreateRelearnBlock(ctx context.Context, arg CreateRelearnBlockParams) error
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
 	CreateTaskList(ctx context.Context, arg CreateTaskListParams) (TaskList, error)
+	// Assistant 对话。系统权威会话是这些表，Provider 状态只是可丢弃的优化列。
+	CreateThread(ctx context.Context, arg CreateThreadParams) (AssistantThread, error)
 	CreateTracker(ctx context.Context, arg CreateTrackerParams) (Tracker, error)
+	CreateTurn(ctx context.Context, arg CreateTurnParams) (AssistantTurn, error)
 	CreateVerificationCode(ctx context.Context, arg CreateVerificationCodeParams) (AuthVerificationCode, error)
 	DeleteExpiredIdempotencyRecords(ctx context.Context) error
+	// 同步标记删除，查询立即不可见；派生数据由清理任务处理。
+	DeleteMemory(ctx context.Context, id string) (MemoryItem, error)
+	DeleteRelearnBlock(ctx context.Context, id string) (MemoryRelearnBlock, error)
 	EnsureAiSettings(ctx context.Context, userID string) (UserAiSetting, error)
 	EnsureUserPreferences(ctx context.Context, userID string) (UserPreference, error)
+	ExpireStaleProposals(ctx context.Context) error
 	// 同一用户上传相同内容时复用已有资产，避免重复占用存储。
 	FindUploadedMediaByHash(ctx context.Context, contentHash *string) (MediaAsset, error)
+	FinishTurn(ctx context.Context, arg FinishTurnParams) (AssistantTurn, error)
+	GetActiveMemoryByKey(ctx context.Context, memoryKey string) (MemoryItem, error)
 	GetActivityBatch(ctx context.Context, id string) (ActivityBatch, error)
 	GetAiSettings(ctx context.Context, userID string) (UserAiSetting, error)
 	GetCapture(ctx context.Context, id string) (Capture, error)
@@ -64,14 +90,19 @@ type Querier interface {
 	GetIdempotencyRecord(ctx context.Context, arg GetIdempotencyRecordParams) (IdempotencyKey, error)
 	GetLatestVerificationCode(ctx context.Context, arg GetLatestVerificationCodeParams) (AuthVerificationCode, error)
 	GetMediaAsset(ctx context.Context, id string) (MediaAsset, error)
+	GetMemory(ctx context.Context, id string) (MemoryItem, error)
 	GetNote(ctx context.Context, id string) (Note, error)
 	GetOperation(ctx context.Context, id string) (AsyncOperation, error)
 	GetProcessedJob(ctx context.Context, idempotencyKey string) (ProcessedJob, error)
 	GetProject(ctx context.Context, id string) (Project, error)
+	GetProposal(ctx context.Context, id string) (ActionProposal, error)
 	GetRecord(ctx context.Context, id string) (GetRecordRow, error)
+	GetReviewSnapshot(ctx context.Context, arg GetReviewSnapshotParams) (ReviewSnapshot, error)
 	GetTask(ctx context.Context, id string) (Task, error)
 	GetTaskList(ctx context.Context, id string) (GetTaskListRow, error)
+	GetThread(ctx context.Context, id string) (AssistantThread, error)
 	GetTracker(ctx context.Context, id string) (Tracker, error)
+	GetTurn(ctx context.Context, id string) (AssistantTurn, error)
 	// 账户与偏好。登录链路在拿到用户身份之前只能走 SECURITY DEFINER 函数。
 	// 说明：登录前的三个查询（按手机号查用户、创建用户、按哈希查 Refresh Token）
 	// 必须调用 SECURITY DEFINER 函数才能在没有 app.user_id 的情况下访问受 RLS 保护的表。
@@ -80,6 +111,7 @@ type Querier interface {
 	GetUser(ctx context.Context, id string) (User, error)
 	GetUserPreferences(ctx context.Context, userID string) (UserPreference, error)
 	IncrementVerificationAttempts(ctx context.Context, id string) error
+	IsRelearnBlocked(ctx context.Context, arg IsRelearnBlockedParams) (bool, error)
 	ListActivityBatches(ctx context.Context, arg ListActivityBatchesParams) ([]ActivityBatch, error)
 	ListActivityEntries(ctx context.Context, batchID string) ([]ActivityEntry, error)
 	ListActivityEntriesForBatches(ctx context.Context, batchIds []string) ([]ActivityEntry, error)
@@ -94,6 +126,10 @@ type Querier interface {
 	ListEvents(ctx context.Context, arg ListEventsParams) ([]Event, error)
 	// 日历与 Today 用：只返回定时与全天事件的原始行，投影在应用层完成。
 	ListEventsInRange(ctx context.Context, arg ListEventsInRangeParams) ([]Event, error)
+	ListMemories(ctx context.Context, arg ListMemoriesParams) ([]MemoryItem, error)
+	ListMemoryEvidence(ctx context.Context, memoryID string) ([]MemoryEvidence, error)
+	ListMemoryRevisions(ctx context.Context, memoryID string) ([]MemoryRevision, error)
+	ListMessages(ctx context.Context, arg ListMessagesParams) ([]AssistantMessage, error)
 	ListNoteTags(ctx context.Context) ([]string, error)
 	// Note 查询。Note 没有完成状态，列表按置顶优先、更新时间倒序。
 	ListNotes(ctx context.Context, arg ListNotesParams) ([]Note, error)
@@ -101,30 +137,44 @@ type Querier interface {
 	ListPendingMediaBefore(ctx context.Context, arg ListPendingMediaBeforeParams) ([]MediaAsset, error)
 	// Project 查询。progress 由 Task 计数在应用层计算，不落库。
 	ListProjects(ctx context.Context, arg ListProjectsParams) ([]Project, error)
+	ListProposals(ctx context.Context, arg ListProposalsParams) ([]ActionProposal, error)
+	ListProposalsForTurn(ctx context.Context, turnID *string) ([]ActionProposal, error)
+	// Context Builder 用：按序取最近若干轮原始消息。
+	ListRecentMessages(ctx context.Context, arg ListRecentMessagesParams) ([]AssistantMessage, error)
 	ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error)
+	ListRelearnBlocks(ctx context.Context, rowLimit int32) ([]MemoryRelearnBlock, error)
 	ListTaskLists(ctx context.Context, includeArchived bool) ([]ListTaskListsRow, error)
 	// Task 查询。Today 的收录与排序完全由这里的确定性 SQL 决定，客户端不得重排。
 	ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, error)
 	// 日历用：当天截止或当天有计划时间的 Task。
 	ListTasksInRange(ctx context.Context, arg ListTasksInRangeParams) ([]Task, error)
+	ListThreads(ctx context.Context, arg ListThreadsParams) ([]AssistantThread, error)
 	// 收录条件与分组顺序来自功能规格 8.3 与 8.4：
 	// 分组依次为已逾期、今天截止、今天有计划时间、手动加入今天；
 	// 一个 Task 同时符合多个分组时只进入最靠前的一个。
 	ListTodayTasks(ctx context.Context, arg ListTodayTasksParams) ([]ListTodayTasksRow, error)
+	ListToolCalls(ctx context.Context, turnID string) ([]AiToolCall, error)
 	// 每个 Tracker 的记录数与最近记录时间。
 	// GROUP BY 保证每个分组至少有一行，因此 max(timestamp) 非空；
 	// 没有任何记录的 Tracker 不会出现在结果里，由调用方按 0 与 nil 处理。
 	ListTrackerStats(ctx context.Context) ([]ListTrackerStatsRow, error)
 	// Tracker 与 Record 查询。Record 的 values 结构由 Go Domain 依据 Tracker fields 校验。
 	ListTrackers(ctx context.Context, status *string) ([]Tracker, error)
+	// 确认执行前先锁住这一行：并发的两次确认里只有一个能拿到锁，
+	// 另一个会看到状态已变成 executed 而被拒绝。
+	LockProposal(ctx context.Context, id string) (ActionProposal, error)
 	MarkActivityBatchUndone(ctx context.Context, id string) (ActivityBatch, error)
 	MarkCaptureConfirmed(ctx context.Context, arg MarkCaptureConfirmedParams) (Capture, error)
 	MarkMediaFailed(ctx context.Context, arg MarkMediaFailedParams) error
 	// byte_size 与 content_hash 来自服务端对存储侧的回查，不采信客户端上报值。
 	MarkMediaUploaded(ctx context.Context, arg MarkMediaUploadedParams) (MediaAsset, error)
+	MarkProposalExecuted(ctx context.Context, arg MarkProposalExecutedParams) (ActionProposal, error)
+	// 用于 rejected、stale、expired、failed 等终态。
+	MarkProposalResolved(ctx context.Context, arg MarkProposalResolvedParams) (ActionProposal, error)
 	MarkUserInitialized(ctx context.Context, id string) error
 	MoveTasksToList(ctx context.Context, arg MoveTasksToListParams) error
 	RecordAiAction(ctx context.Context, arg RecordAiActionParams) error
+	RecordToolCall(ctx context.Context, arg RecordToolCallParams) error
 	RestoreEvent(ctx context.Context, id string) (Event, error)
 	RestoreNote(ctx context.Context, id string) (Note, error)
 	RestoreRecord(ctx context.Context, id string) (Record, error)
@@ -133,25 +183,46 @@ type Querier interface {
 	RevokeRefreshToken(ctx context.Context, id string) error
 	SaveIdempotencyRecord(ctx context.Context, arg SaveIdempotencyRecordParams) error
 	SaveProcessedJob(ctx context.Context, arg SaveProcessedJobParams) error
+	// provider_state 存客户端页面上下文，只用于消歧；执行前仍会重新校验归属与版本。
+	SaveTurnEntryContext(ctx context.Context, arg SaveTurnEntryContextParams) error
 	SearchEvents(ctx context.Context, arg SearchEventsParams) ([]SearchEventsRow, error)
+	// Context Builder 用：先做确定性过滤，再按相关性排序。
+	// 高敏记忆默认不参与检索，只有当前功能确实需要且策略允许时才单独读取。
+	SearchMemories(ctx context.Context, arg SearchMemoriesParams) ([]MemoryItem, error)
 	SearchNotes(ctx context.Context, arg SearchNotesParams) ([]SearchNotesRow, error)
 	SearchProjects(ctx context.Context, arg SearchProjectsParams) ([]SearchProjectsRow, error)
 	SearchRecords(ctx context.Context, arg SearchRecordsParams) ([]SearchRecordsRow, error)
 	SearchTasks(ctx context.Context, arg SearchTasksParams) ([]SearchTasksRow, error)
+	SetTurnEngine(ctx context.Context, arg SetTurnEngineParams) error
 	SoftDeleteEvent(ctx context.Context, id string) (Event, error)
 	SoftDeleteMediaAsset(ctx context.Context, id string) (MediaAsset, error)
+	SoftDeleteMessagesByThread(ctx context.Context, threadID string) error
 	SoftDeleteNote(ctx context.Context, id string) (Note, error)
 	SoftDeleteProject(ctx context.Context, id string) (Project, error)
 	SoftDeleteRecord(ctx context.Context, id string) (Record, error)
 	SoftDeleteRecordsByTracker(ctx context.Context, trackerID string) error
 	SoftDeleteTask(ctx context.Context, id string) (Task, error)
 	SoftDeleteTaskList(ctx context.Context, id string) (TaskList, error)
+	SoftDeleteThread(ctx context.Context, id string) (AssistantThread, error)
 	SoftDeleteTracker(ctx context.Context, id string) (Tracker, error)
+	// 允许从 running 重新接管：保存结果的事务失败时 Turn 会停在 running，
+	// 若只接受 queued，River 重试会直接跳过，用户的 Operation 永远停在排队中。
+	StartTurn(ctx context.Context, id string) (AssistantTurn, error)
 	SupersedeCaptureQuestions(ctx context.Context, arg SupersedeCaptureQuestionsParams) error
+	SupersedeMemory(ctx context.Context, id string) (MemoryItem, error)
+	// 同一 Thread 只让最新一轮继续跑。用户改口后旧的排队轮次直接作废，
+	// 避免迟到的回复打乱上下文顺序。已生成的建议不受影响，仍需用户显式处理。
+	SupersedeOlderTurns(ctx context.Context, arg SupersedeOlderTurnsParams) error
+	// 新建议明确替换同一目标上的旧建议时，把旧项标为 superseded。
+	SupersedeProposalsForTarget(ctx context.Context, arg SupersedeProposalsForTargetParams) error
+	// 记录被使用的时间用于排序。被模型引用不提高事实可信度。
+	TouchMemoryUsed(ctx context.Context, ids []string) error
+	TouchThread(ctx context.Context, id string) error
 	UpdateAiSettings(ctx context.Context, arg UpdateAiSettingsParams) (UserAiSetting, error)
 	UpdateCapturePartResult(ctx context.Context, arg UpdateCapturePartResultParams) error
 	UpdateCaptureStatus(ctx context.Context, arg UpdateCaptureStatusParams) (Capture, error)
 	UpdateEvent(ctx context.Context, arg UpdateEventParams) (Event, error)
+	UpdateMemoryValue(ctx context.Context, arg UpdateMemoryValueParams) (MemoryItem, error)
 	UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error)
 	UpdateOperationStatus(ctx context.Context, arg UpdateOperationStatusParams) (AsyncOperation, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
@@ -159,9 +230,12 @@ type Querier interface {
 	// clear_* 参数对应契约里的 clear 数组：显式清空一个可空字段。
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)
 	UpdateTaskList(ctx context.Context, arg UpdateTaskListParams) (TaskList, error)
+	UpdateThread(ctx context.Context, arg UpdateThreadParams) (AssistantThread, error)
 	UpdateTracker(ctx context.Context, arg UpdateTrackerParams) (Tracker, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) (UserPreference, error)
+	// Review 快照。确定性指标始终可用，AI 叙述是可选增强。
+	UpsertReviewSnapshot(ctx context.Context, arg UpsertReviewSnapshotParams) (ReviewSnapshot, error)
 }
 
 var _ Querier = (*Queries)(nil)

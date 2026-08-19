@@ -63,6 +63,28 @@ func (h *ViewAPI) GetWeeklyReview(ctx context.Context, req httpapi.GetWeeklyRevi
 	return httpapi.GetWeeklyReview200JSONResponse{Data: review, Meta: httpx.Meta(ctx)}, nil
 }
 
+// GenerateWeeklyReview 生成本周复盘的叙述与建议。
+//
+// 返回 202：确定性指标不依赖这一步，即使生成失败复盘页仍然完整可用。
+func (h *ViewAPI) GenerateWeeklyReview(ctx context.Context, req httpapi.GenerateWeeklyReviewRequestObject) (httpapi.GenerateWeeklyReviewResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var weekOf *time.Time
+	if req.Body != nil && req.Body.WeekOf != nil {
+		t := req.Body.WeekOf.Time
+		weekOf = &t
+	}
+	accepted, err := h.svc.GenerateWeeklyReview(ctx, userID, weekOf)
+	if err != nil {
+		return nil, err
+	}
+	resp := httpapi.GenerateWeeklyReview202JSONResponse{Meta: httpx.Meta(ctx)}
+	resp.Data.OperationId = accepted.OperationID
+	return resp, nil
+}
+
 // Search 跨实体关键词检索。
 func (h *ViewAPI) Search(ctx context.Context, req httpapi.SearchRequestObject) (httpapi.SearchResponseObject, error) {
 	userID, err := httpx.UserID(ctx)

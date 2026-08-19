@@ -268,6 +268,59 @@ type RecordFilter struct {
 	Limit      int32
 }
 
+// FieldAggregate 是某个记录项字段在一段时间内的统计结果。
+type FieldAggregate struct {
+	TrackerName string
+	RecordCount int32
+	// ValueCount 是真正取到数值的条数。为 0 时其余统计值没有意义。
+	ValueCount int32
+	Total      float64
+	Average    float64
+	Minimum    float64
+	Maximum    float64
+}
+
+// AggregateField 由 SQL 统计某个字段，不把逐条明细取回内存。
+//
+// 这是 records.aggregate 能力的实现：问「这个月花了多少」时，
+// 把上千条记录发给模型让它自己加既慢又容易算错。
+func (s *Service) AggregateField(ctx context.Context, userID, trackerID, fieldKey string,
+	from, to *time.Time) (FieldAggregate, error) {
+
+	var out FieldAggregate
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		// RLS 已经拦住跨用户读取；这里再确认一次是为了区分
+		// 「记录项不存在」和「有记录项但这段时间没数据」。
+		tracker, err := q.GetTracker(ctx, trackerID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return apperr.NotFound("记录项")
+			}
+			return apperr.Internal(err)
+		}
+		row, err := q.AggregateRecordField(ctx, dbgen.AggregateRecordFieldParams{
+			FieldKey:  fieldKey,
+			TrackerID: trackerID,
+			FromAt:    from,
+			ToAt:      to,
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		out = FieldAggregate{
+			TrackerName: tracker.Name,
+			RecordCount: row.RecordCount,
+			ValueCount:  row.ValueCount,
+			Total:       row.Total,
+			Average:     row.Average,
+			Minimum:     row.Minimum,
+			Maximum:     row.Maximum,
+		}
+		return nil
+	})
+	return out, err
+}
+
 // ListRecords 查询 Record。
 func (s *Service) ListRecords(ctx context.Context, userID string, f RecordFilter) ([]dbgen.ListRecordsRow, error) {
 	var out []dbgen.ListRecordsRow

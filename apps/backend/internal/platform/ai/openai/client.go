@@ -33,6 +33,7 @@ type Config struct {
 	ParseModel      string
 	VisionModel     string
 	TranscribeModel string
+	ChatModel       string
 
 	Timeout         time.Duration
 	MaxOutputTokens int
@@ -68,6 +69,9 @@ func New(cfg Config) (*Provider, error) {
 	}
 	if cfg.VisionModel == "" {
 		cfg.VisionModel = cfg.ParseModel
+	}
+	if cfg.ChatModel == "" {
+		cfg.ChatModel = cfg.ParseModel
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()

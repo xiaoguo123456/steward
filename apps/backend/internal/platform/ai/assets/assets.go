@@ -18,6 +18,16 @@ var CaptureParsePromptV1 string
 //go:embed prompts/vision-extract/v1.md
 var VisionExtractPromptV1 string
 
+// AssistantPolicyV1 是通用 Assistant 的 System Policy。
+//
+//go:embed prompts/assistant/v1.md
+var AssistantPolicyV1 string
+
+// ReviewNarrativePromptV1 是复盘叙述的系统提示词。
+//
+//go:embed prompts/review-narrative/v1.md
+var ReviewNarrativePromptV1 string
+
 // CaptureParseSchemaV1 是解析结果的完整 JSON Schema。
 //
 // 模型返回的原始 JSON 属于不可信输入，必须先通过它再进入 Domain 校验。
@@ -27,7 +37,9 @@ var CaptureParseSchemaV1 []byte
 
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion  = "capture-parse@v1"
-	VisionExtractPromptVersion = "vision-extract@v1"
-	CaptureParseSchemaVersion  = "capture-parse-result.v1"
+	CaptureParsePromptVersion    = "capture-parse@v1"
+	VisionExtractPromptVersion   = "vision-extract@v1"
+	AssistantPolicyVersion       = "assistant@v1"
+	ReviewNarrativePromptVersion = "review-narrative@v1"
+	CaptureParseSchemaVersion    = "capture-parse-result.v1"
 )

@@ -19,6 +19,8 @@ var (
 	ErrRateLimited = errors.New("AI Provider 限流")
 	// ErrSchemaInvalid 表示模型输出经过一次结构修复后仍不符合契约。
 	ErrSchemaInvalid = errors.New("模型输出不符合契约")
+	// ErrTurnCancelled 表示用户已取消这一轮。
+	ErrTurnCancelled = errors.New("本轮已取消")
 )
 
 // Usage 是一次调用的用量统计，用于成本核算与预算控制。

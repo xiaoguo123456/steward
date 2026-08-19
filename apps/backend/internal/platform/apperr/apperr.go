@@ -51,6 +51,15 @@ const (
 	CodeAISourceInvalid         Code = "AI_SOURCE_INVALID"
 	CodeAIBudgetExceeded        Code = "AI_BUDGET_EXCEEDED"
 	CodeAITurnCancelled         Code = "AI_TURN_CANCELLED"
+
+	// Action Proposal。
+	CodeAIProposalStale          Code = "AI_PROPOSAL_STALE"
+	CodeAIProposalExpired        Code = "AI_PROPOSAL_EXPIRED"
+	CodeAIProposalResolved       Code = "AI_PROPOSAL_ALREADY_RESOLVED"
+	CodeAIProposalEditNotAllowed Code = "AI_PROPOSAL_EDIT_NOT_ALLOWED"
+
+	// 长期记忆。
+	CodeMemoryRelearnBlocked Code = "MEMORY_RELEARN_BLOCKED"
 )
 
 // FieldError 是单个字段的校验失败说明。
@@ -139,7 +148,9 @@ func (e *Error) HTTPStatus() int {
 	case CodeVersionConflict, CodeIdempotencyReused,
 		CodeTaskListNameDuplicated, CodeTaskListNotEmpty, CodeTaskListDefaultReq,
 		CodeTaskStatusInvalid, CodeProjectHasOpenTasks, CodeObjectAlreadyDeleted,
-		CodeCaptureAlreadyConfirm, CodeCaptureRevisionStale, CodeCaptureQuestionResolved:
+		CodeCaptureAlreadyConfirm, CodeCaptureRevisionStale, CodeCaptureQuestionResolved,
+		CodeAIProposalStale, CodeAIProposalExpired, CodeAIProposalResolved,
+		CodeAITurnCancelled:
 		return http.StatusConflict
 	case CodeRateLimited, CodeAIProviderRateLimited:
 		return http.StatusTooManyRequests
@@ -165,7 +176,8 @@ func (e *Error) Retryable() bool {
 func reloadTarget(code Code) bool {
 	switch code {
 	case CodeVersionConflict, CodeCaptureRevisionStale, CodeCaptureAlreadyConfirm,
-		CodeCaptureQuestionResolved, CodeObjectAlreadyDeleted:
+		CodeCaptureQuestionResolved, CodeObjectAlreadyDeleted,
+		CodeAIProposalStale, CodeAIProposalExpired, CodeAIProposalResolved:
 		return true
 	default:
 		return false
@@ -228,6 +240,16 @@ func defaultMessage(code Code) string {
 		return "本次输入已经保存过了。"
 	case CodeCaptureRevisionStale:
 		return "输入内容已更新，请查看最新的整理结果。"
+	case CodeAIProposalStale:
+		return "这条内容在此期间被改动过，请重新查看后再确认。"
+	case CodeAIProposalExpired:
+		return "这条建议已经过期，请重新提问。"
+	case CodeAIProposalResolved:
+		return "这条建议已经处理过了。"
+	case CodeAIProposalEditNotAllowed:
+		return "这个字段不支持在确认页修改。"
+	case CodeMemoryRelearnBlocked:
+		return "你已设置不再记住这类信息。"
 	case CodeCaptureQuestionResolved:
 		return "这个问题已经处理过了。"
 	case CodeAIProviderUnavailable:

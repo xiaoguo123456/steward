@@ -32,4 +32,7 @@ export const AffectedResourceType = {
   today: 'today',
   calendar: 'calendar',
   activity: 'activity',
+  assistant_thread: 'assistant_thread',
+  action_proposal: 'action_proposal',
+  memory: 'memory',
 } as const;

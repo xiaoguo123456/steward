@@ -80,29 +80,38 @@ func (e ActivityBatchSource) Valid() bool {
 
 // Defines values for AffectedResourceType.
 const (
-	AffectedResourceTypeActivity AffectedResourceType = "activity"
-	AffectedResourceTypeCalendar AffectedResourceType = "calendar"
-	AffectedResourceTypeCapture  AffectedResourceType = "capture"
-	AffectedResourceTypeEvent    AffectedResourceType = "event"
-	AffectedResourceTypeNote     AffectedResourceType = "note"
-	AffectedResourceTypeProject  AffectedResourceType = "project"
-	AffectedResourceTypeRecord   AffectedResourceType = "record"
-	AffectedResourceTypeTask     AffectedResourceType = "task"
-	AffectedResourceTypeTaskList AffectedResourceType = "task_list"
-	AffectedResourceTypeToday    AffectedResourceType = "today"
-	AffectedResourceTypeTracker  AffectedResourceType = "tracker"
+	AffectedResourceTypeActionProposal  AffectedResourceType = "action_proposal"
+	AffectedResourceTypeActivity        AffectedResourceType = "activity"
+	AffectedResourceTypeAssistantThread AffectedResourceType = "assistant_thread"
+	AffectedResourceTypeCalendar        AffectedResourceType = "calendar"
+	AffectedResourceTypeCapture         AffectedResourceType = "capture"
+	AffectedResourceTypeEvent           AffectedResourceType = "event"
+	AffectedResourceTypeMemory          AffectedResourceType = "memory"
+	AffectedResourceTypeNote            AffectedResourceType = "note"
+	AffectedResourceTypeProject         AffectedResourceType = "project"
+	AffectedResourceTypeRecord          AffectedResourceType = "record"
+	AffectedResourceTypeTask            AffectedResourceType = "task"
+	AffectedResourceTypeTaskList        AffectedResourceType = "task_list"
+	AffectedResourceTypeToday           AffectedResourceType = "today"
+	AffectedResourceTypeTracker         AffectedResourceType = "tracker"
 )
 
 // Valid indicates whether the value is a known member of the AffectedResourceType enum.
 func (e AffectedResourceType) Valid() bool {
 	switch e {
+	case AffectedResourceTypeActionProposal:
+		return true
 	case AffectedResourceTypeActivity:
+		return true
+	case AffectedResourceTypeAssistantThread:
 		return true
 	case AffectedResourceTypeCalendar:
 		return true
 	case AffectedResourceTypeCapture:
 		return true
 	case AffectedResourceTypeEvent:
+		return true
+	case AffectedResourceTypeMemory:
 		return true
 	case AffectedResourceTypeNote:
 		return true
@@ -117,6 +126,30 @@ func (e AffectedResourceType) Valid() bool {
 	case AffectedResourceTypeToday:
 		return true
 	case AffectedResourceTypeTracker:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AssistantMessageStatus.
+const (
+	AssistantMessageStatusCompleted  AssistantMessageStatus = "completed"
+	AssistantMessageStatusDraft      AssistantMessageStatus = "draft"
+	AssistantMessageStatusFailed     AssistantMessageStatus = "failed"
+	AssistantMessageStatusSuperseded AssistantMessageStatus = "superseded"
+)
+
+// Valid indicates whether the value is a known member of the AssistantMessageStatus enum.
+func (e AssistantMessageStatus) Valid() bool {
+	switch e {
+	case AssistantMessageStatusCompleted:
+		return true
+	case AssistantMessageStatusDraft:
+		return true
+	case AssistantMessageStatusFailed:
+		return true
+	case AssistantMessageStatusSuperseded:
 		return true
 	default:
 		return false
@@ -423,6 +456,10 @@ func (e CreatedBy) Valid() bool {
 // Defines values for ErrorCode.
 const (
 	AIBUDGETEXCEEDED            ErrorCode = "AI_BUDGET_EXCEEDED"
+	AIPROPOSALALREADYRESOLVED   ErrorCode = "AI_PROPOSAL_ALREADY_RESOLVED"
+	AIPROPOSALEDITNOTALLOWED    ErrorCode = "AI_PROPOSAL_EDIT_NOT_ALLOWED"
+	AIPROPOSALEXPIRED           ErrorCode = "AI_PROPOSAL_EXPIRED"
+	AIPROPOSALSTALE             ErrorCode = "AI_PROPOSAL_STALE"
 	AIPROVIDERRATELIMITED       ErrorCode = "AI_PROVIDER_RATE_LIMITED"
 	AIPROVIDERUNAVAILABLE       ErrorCode = "AI_PROVIDER_UNAVAILABLE"
 	AISCHEMAINVALID             ErrorCode = "AI_SCHEMA_INVALID"
@@ -437,6 +474,7 @@ const (
 	IDEMPOTENCYKEYREQUIRED      ErrorCode = "IDEMPOTENCY_KEY_REQUIRED"
 	IDEMPOTENCYKEYREUSED        ErrorCode = "IDEMPOTENCY_KEY_REUSED"
 	INTERNALERROR               ErrorCode = "INTERNAL_ERROR"
+	MEMORYRELEARNBLOCKED        ErrorCode = "MEMORY_RELEARN_BLOCKED"
 	OBJECTALREADYDELETED        ErrorCode = "OBJECT_ALREADY_DELETED"
 	PERMISSIONDENIED            ErrorCode = "PERMISSION_DENIED"
 	PHONEINVALID                ErrorCode = "PHONE_INVALID"
@@ -461,6 +499,14 @@ const (
 func (e ErrorCode) Valid() bool {
 	switch e {
 	case AIBUDGETEXCEEDED:
+		return true
+	case AIPROPOSALALREADYRESOLVED:
+		return true
+	case AIPROPOSALEDITNOTALLOWED:
+		return true
+	case AIPROPOSALEXPIRED:
+		return true
+	case AIPROPOSALSTALE:
 		return true
 	case AIPROVIDERRATELIMITED:
 		return true
@@ -489,6 +535,8 @@ func (e ErrorCode) Valid() bool {
 	case IDEMPOTENCYKEYREUSED:
 		return true
 	case INTERNALERROR:
+		return true
+	case MEMORYRELEARNBLOCKED:
 		return true
 	case OBJECTALREADYDELETED:
 		return true
@@ -618,6 +666,171 @@ func (e MediaStatus) Valid() bool {
 	case MediaStatusPending:
 		return true
 	case MediaStatusUploaded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MemoryEvidenceEvidenceRole.
+const (
+	MemoryEvidenceEvidenceRoleExplicit      MemoryEvidenceEvidenceRole = "explicit"
+	MemoryEvidenceEvidenceRoleInferred      MemoryEvidenceEvidenceRole = "inferred"
+	MemoryEvidenceEvidenceRoleUserConfirmed MemoryEvidenceEvidenceRole = "user_confirmed"
+)
+
+// Valid indicates whether the value is a known member of the MemoryEvidenceEvidenceRole enum.
+func (e MemoryEvidenceEvidenceRole) Valid() bool {
+	switch e {
+	case MemoryEvidenceEvidenceRoleExplicit:
+		return true
+	case MemoryEvidenceEvidenceRoleInferred:
+		return true
+	case MemoryEvidenceEvidenceRoleUserConfirmed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MemoryEvidenceSourceType.
+const (
+	MemoryEvidenceSourceTypeAssistantMessage MemoryEvidenceSourceType = "assistant_message"
+	MemoryEvidenceSourceTypeObject           MemoryEvidenceSourceType = "object"
+	MemoryEvidenceSourceTypeRecord           MemoryEvidenceSourceType = "record"
+	MemoryEvidenceSourceTypeUserMessage      MemoryEvidenceSourceType = "user_message"
+	MemoryEvidenceSourceTypeUserSetting      MemoryEvidenceSourceType = "user_setting"
+)
+
+// Valid indicates whether the value is a known member of the MemoryEvidenceSourceType enum.
+func (e MemoryEvidenceSourceType) Valid() bool {
+	switch e {
+	case MemoryEvidenceSourceTypeAssistantMessage:
+		return true
+	case MemoryEvidenceSourceTypeObject:
+		return true
+	case MemoryEvidenceSourceTypeRecord:
+		return true
+	case MemoryEvidenceSourceTypeUserMessage:
+		return true
+	case MemoryEvidenceSourceTypeUserSetting:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MemoryOrigin.
+const (
+	MemoryOriginExplicit MemoryOrigin = "explicit"
+	MemoryOriginImported MemoryOrigin = "imported"
+	MemoryOriginLearned  MemoryOrigin = "learned"
+)
+
+// Valid indicates whether the value is a known member of the MemoryOrigin enum.
+func (e MemoryOrigin) Valid() bool {
+	switch e {
+	case MemoryOriginExplicit:
+		return true
+	case MemoryOriginImported:
+		return true
+	case MemoryOriginLearned:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MemorySensitivity.
+const (
+	MemorySensitivityHighlySensitive MemorySensitivity = "highly_sensitive"
+	MemorySensitivityNormal          MemorySensitivity = "normal"
+	MemorySensitivitySensitive       MemorySensitivity = "sensitive"
+)
+
+// Valid indicates whether the value is a known member of the MemorySensitivity enum.
+func (e MemorySensitivity) Valid() bool {
+	switch e {
+	case MemorySensitivityHighlySensitive:
+		return true
+	case MemorySensitivityNormal:
+		return true
+	case MemorySensitivitySensitive:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MemoryStatus.
+const (
+	MemoryStatusActive     MemoryStatus = "active"
+	MemoryStatusDeleted    MemoryStatus = "deleted"
+	MemoryStatusExpired    MemoryStatus = "expired"
+	MemoryStatusShadowed   MemoryStatus = "shadowed"
+	MemoryStatusSuperseded MemoryStatus = "superseded"
+)
+
+// Valid indicates whether the value is a known member of the MemoryStatus enum.
+func (e MemoryStatus) Valid() bool {
+	switch e {
+	case MemoryStatusActive:
+		return true
+	case MemoryStatusDeleted:
+		return true
+	case MemoryStatusExpired:
+		return true
+	case MemoryStatusShadowed:
+		return true
+	case MemoryStatusSuperseded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MemoryType.
+const (
+	CommunicationPreference MemoryType = "communication_preference"
+	Constraint              MemoryType = "constraint"
+	DomainPreference        MemoryType = "domain_preference"
+	PersonalContext         MemoryType = "personal_context"
+	RoutinePreference       MemoryType = "routine_preference"
+)
+
+// Valid indicates whether the value is a known member of the MemoryType enum.
+func (e MemoryType) Valid() bool {
+	switch e {
+	case CommunicationPreference:
+		return true
+	case Constraint:
+		return true
+	case DomainPreference:
+		return true
+	case PersonalContext:
+		return true
+	case RoutinePreference:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MessageRole.
+const (
+	MessageRoleAssistant     MessageRole = "assistant"
+	MessageRoleSystemSummary MessageRole = "system_summary"
+	MessageRoleUser          MessageRole = "user"
+)
+
+// Valid indicates whether the value is a known member of the MessageRole enum.
+func (e MessageRole) Valid() bool {
+	switch e {
+	case MessageRoleAssistant:
+		return true
+	case MessageRoleSystemSummary:
+		return true
+	case MessageRoleUser:
 		return true
 	default:
 		return false
@@ -756,6 +969,63 @@ func (e ProjectStatus) Valid() bool {
 	case ProjectStatusCompleted:
 		return true
 	case ProjectStatusPaused:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProposalStatus.
+const (
+	ProposalStatusExecuted   ProposalStatus = "executed"
+	ProposalStatusExpired    ProposalStatus = "expired"
+	ProposalStatusFailed     ProposalStatus = "failed"
+	ProposalStatusPending    ProposalStatus = "pending"
+	ProposalStatusRejected   ProposalStatus = "rejected"
+	ProposalStatusStale      ProposalStatus = "stale"
+	ProposalStatusSuperseded ProposalStatus = "superseded"
+)
+
+// Valid indicates whether the value is a known member of the ProposalStatus enum.
+func (e ProposalStatus) Valid() bool {
+	switch e {
+	case ProposalStatusExecuted:
+		return true
+	case ProposalStatusExpired:
+		return true
+	case ProposalStatusFailed:
+		return true
+	case ProposalStatusPending:
+		return true
+	case ProposalStatusRejected:
+		return true
+	case ProposalStatusStale:
+		return true
+	case ProposalStatusSuperseded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProposalType.
+const (
+	EventCreate  ProposalType = "event_create"
+	MemoryUpsert ProposalType = "memory_upsert"
+	TaskCreate   ProposalType = "task_create"
+	TaskUpdate   ProposalType = "task_update"
+)
+
+// Valid indicates whether the value is a known member of the ProposalType enum.
+func (e ProposalType) Valid() bool {
+	switch e {
+	case EventCreate:
+		return true
+	case MemoryUpsert:
+		return true
+	case TaskCreate:
+		return true
+	case TaskUpdate:
 		return true
 	default:
 		return false
@@ -957,6 +1227,27 @@ func (e TaskStatus) Valid() bool {
 	case TaskStatusDone:
 		return true
 	case TaskStatusTodo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ThreadStatus.
+const (
+	ThreadStatusActive   ThreadStatus = "active"
+	ThreadStatusArchived ThreadStatus = "archived"
+	ThreadStatusDeleted  ThreadStatus = "deleted"
+)
+
+// Valid indicates whether the value is a known member of the ThreadStatus enum.
+func (e ThreadStatus) Valid() bool {
+	switch e {
+	case ThreadStatusActive:
+		return true
+	case ThreadStatusArchived:
+		return true
+	case ThreadStatusDeleted:
 		return true
 	default:
 		return false
@@ -1384,6 +1675,58 @@ type AcceptedResponse struct {
 	Meta ResponseMeta `json:"meta"`
 }
 
+// ActionProposal defines model for ActionProposal.
+type ActionProposal struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// EditableFields 用户在确认页可以修改的字段。其他字段不接受编辑。
+	EditableFields *[]string `json:"editable_fields,omitempty"`
+
+	// ExecutedBatchId 执行成功后生成的 Activity 批次，用于撤销。
+	ExecutedBatchId *string   `json:"executed_batch_id,omitempty"`
+	ExpiresAt       time.Time `json:"expires_at"`
+
+	// Id Example: aprp_01J8Z3
+	Id      string          `json:"id"`
+	Preview ProposalPreview `json:"preview"`
+
+	// ProposalType 每种类型都有独立的 command 结构与对应的 Domain Command Mapper。
+	// command 不是任意 JSON Patch。
+	ProposalType ProposalType `json:"proposal_type"`
+
+	// Reason 模型给出的理由。它不能替代服务端的重新校验。
+	Reason string `json:"reason"`
+
+	// SourceRefs 生成这条建议时实际读取过的来源。
+	SourceRefs *[]string      `json:"source_refs,omitempty"`
+	Status     ProposalStatus `json:"status"`
+
+	// TargetExpectedVersion 目标在建议生成后被改动过时，确认会失败并标记 stale。
+	TargetExpectedVersion *int    `json:"target_expected_version,omitempty"`
+	TargetId              *string `json:"target_id,omitempty"`
+	TargetType            *string `json:"target_type,omitempty"`
+	ThreadId              *string `json:"thread_id,omitempty"`
+	TurnId                *string `json:"turn_id,omitempty"`
+	Version               int     `json:"version"`
+}
+
+// ActionProposalResponse defines model for ActionProposalResponse.
+type ActionProposalResponse struct {
+	Data ActionProposal `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+}
+
+// ActionProposalsResponse defines model for ActionProposalsResponse.
+type ActionProposalsResponse struct {
+	Data []ActionProposal `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+	Page PageInfo     `json:"page"`
+}
+
 // ActivityAction defines model for ActivityAction.
 type ActivityAction string
 
@@ -1470,6 +1813,74 @@ type AiSettingsResponse struct {
 type AnswerCaptureQuestionRequest struct {
 	// Answer 用户补充的文字说明。服务端据此创建新 revision 重新解析。
 	Answer string `json:"answer"`
+}
+
+// AssistantMessage defines model for AssistantMessage.
+type AssistantMessage struct {
+	// Content 用户可见文本。不包含 Provider 原始响应对象，
+	// 也不包含模型的隐藏思维过程。
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Example: amsg_01J8Z3
+	Id string `json:"id"`
+
+	// MessageSeq Thread 内单调递增序号。消息一经展示不原地改写。
+	MessageSeq int `json:"message_seq"`
+
+	// ProposalIds 本条消息附带的待确认建议。
+	ProposalIds *[]string              `json:"proposal_ids,omitempty"`
+	Role        MessageRole            `json:"role"`
+	Status      AssistantMessageStatus `json:"status"`
+	ThreadId    string                 `json:"thread_id"`
+	TurnId      *string                `json:"turn_id,omitempty"`
+}
+
+// AssistantMessageStatus defines model for AssistantMessage.Status.
+type AssistantMessageStatus string
+
+// AssistantMessagesResponse defines model for AssistantMessagesResponse.
+type AssistantMessagesResponse struct {
+	// Data 按 message_seq 倒序返回，最新的在前。
+	Data []AssistantMessage `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+	Page PageInfo     `json:"page"`
+}
+
+// AssistantThread defines model for AssistantThread.
+type AssistantThread struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Example: ath_01J8Z3
+	Id string `json:"id"`
+
+	// LastMessageSeq Thread 内最新消息序号，客户端据此判断是否有新内容。
+	LastMessageSeq *int         `json:"last_message_seq,omitempty"`
+	Status         ThreadStatus `json:"status"`
+
+	// Title 由首条用户消息生成，用户可以修改。
+	Title     string    `json:"title"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Version   int       `json:"version"`
+}
+
+// AssistantThreadResponse defines model for AssistantThreadResponse.
+type AssistantThreadResponse struct {
+	Data AssistantThread `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+}
+
+// AssistantThreadsResponse defines model for AssistantThreadsResponse.
+type AssistantThreadsResponse struct {
+	Data []AssistantThread `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+	Page PageInfo     `json:"page"`
 }
 
 // AsyncOperation defines model for AsyncOperation.
@@ -1840,6 +2251,31 @@ type ConfirmCaptureResponse struct {
 	Meta ResponseMeta `json:"meta"`
 }
 
+// ConfirmProposalRequest defines model for ConfirmProposalRequest.
+type ConfirmProposalRequest struct {
+	// Edits 用户在确认页的修改，只允许 editable_fields 声明过的字段。
+	// 不接受替换 command 类型或目标 ID。
+	Edits *map[string]interface{} `json:"edits,omitempty"`
+
+	// ProposalVersion 与服务端当前版本不一致时拒绝执行。
+	ProposalVersion int `json:"proposal_version"`
+
+	// TargetExpectedVersion 目标资源的期望版本，缺省时使用建议生成时记录的版本。
+	TargetExpectedVersion *int `json:"target_expected_version,omitempty"`
+}
+
+// ConfirmProposalResponse defines model for ConfirmProposalResponse.
+type ConfirmProposalResponse struct {
+	Data struct {
+		ActivityBatchId   *string            `json:"activity_batch_id,omitempty"`
+		AffectedResources []AffectedResource `json:"affected_resources"`
+		Proposal          ActionProposal     `json:"proposal"`
+	} `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+}
+
 // CreateCaptureRequest defines model for CreateCaptureRequest.
 type CreateCaptureRequest struct {
 	// Origin Capture 入口来源，只影响候选建议，不授权跳过确认。
@@ -1942,6 +2378,11 @@ type CreateTaskRequest struct {
 	Title             string           `json:"title"`
 }
 
+// CreateThreadRequest defines model for CreateThreadRequest.
+type CreateThreadRequest struct {
+	Title *string `json:"title,omitempty"`
+}
+
 // CreateTrackerRequest defines model for CreateTrackerRequest.
 type CreateTrackerRequest struct {
 	Color       *CreateTrackerRequestColor `json:"color,omitempty"`
@@ -1953,6 +2394,17 @@ type CreateTrackerRequest struct {
 
 // CreateTrackerRequestColor defines model for CreateTrackerRequest.Color.
 type CreateTrackerRequestColor string
+
+// CreateTurnRequest defines model for CreateTurnRequest.
+type CreateTurnRequest struct {
+	// EntryContext 客户端的页面上下文，只用于消歧，不是授权。
+	// 服务端会重新校验资源归属与版本；App 不得传入权限结论。
+	EntryContext *EntryContext `json:"entry_context,omitempty"`
+
+	// Text 第一阶段通用 Assistant 只支持文本。
+	// 图片与音频继续走统一 Capture，不在这里重复一套媒体协议。
+	Text string `json:"text"`
+}
 
 // CreateUploadGrantsRequest defines model for CreateUploadGrantsRequest.
 type CreateUploadGrantsRequest struct {
@@ -1970,6 +2422,27 @@ type CreateUploadGrantsResponse struct {
 // CreatedBy 实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。
 type CreatedBy string
 
+// DeleteMemoryRequest defines model for DeleteMemoryRequest.
+type DeleteMemoryRequest struct {
+	// BlockRelearning 为 true 时同时写入 Relearn Block，阻止系统再次自动学到同一语义。
+	// Block 只保存指纹，不保存明文，也不能用来恢复原值。
+	BlockRelearning *bool `json:"block_relearning,omitempty"`
+}
+
+// DeleteMemoryResponse defines model for DeleteMemoryResponse.
+type DeleteMemoryResponse struct {
+	Data struct {
+		BlockedRelearning *bool `json:"blocked_relearning,omitempty"`
+
+		// Recoverable 是否可以恢复。高敏记忆不提供恢复，契约显式给出该字段，
+		// 不让 App 自行猜测。
+		Recoverable bool `json:"recoverable"`
+	} `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+}
+
 // DeleteTaskListRequest defines model for DeleteTaskListRequest.
 type DeleteTaskListRequest struct {
 	// MoveTasksToListId 清单非空时必填，指定 Task 迁移到的目标清单。
@@ -1980,6 +2453,17 @@ type DeleteTaskListRequest struct {
 type EmptyResponse struct {
 	// Meta 所有成功响应共有的元信息。
 	Meta ResponseMeta `json:"meta"`
+}
+
+// EntryContext 客户端的页面上下文，只用于消歧，不是授权。
+// 服务端会重新校验资源归属与版本；App 不得传入权限结论。
+type EntryContext struct {
+	ResourceId   *string `json:"resource_id,omitempty"`
+	ResourceType *string `json:"resource_type,omitempty"`
+
+	// Screen 例如 task_detail、today。
+	Screen       *string             `json:"screen,omitempty"`
+	SelectedDate *openapi_types.Date `json:"selected_date,omitempty"`
 }
 
 // ErrorBody defines model for ErrorBody.
@@ -2146,6 +2630,91 @@ type MediaKind string
 // MediaStatus pending 表示已分配授权但尚未确认上传；uploaded 表示服务端已回查过真实元数据；
 // 只有 uploaded 的资产可以被 Capture 引用。
 type MediaStatus string
+
+// MemoryEvidence defines model for MemoryEvidence.
+type MemoryEvidence struct {
+	CreatedAt    time.Time                  `json:"created_at"`
+	EvidenceRole MemoryEvidenceEvidenceRole `json:"evidence_role"`
+
+	// SourceDeleted 来源被删除后显示 tombstone，不把原文复制回记忆。
+	SourceDeleted *bool                    `json:"source_deleted,omitempty"`
+	SourceId      string                   `json:"source_id"`
+	SourceType    MemoryEvidenceSourceType `json:"source_type"`
+}
+
+// MemoryEvidenceEvidenceRole defines model for MemoryEvidence.EvidenceRole.
+type MemoryEvidenceEvidenceRole string
+
+// MemoryEvidenceSourceType defines model for MemoryEvidence.SourceType.
+type MemoryEvidenceSourceType string
+
+// MemoryItem defines model for MemoryItem.
+type MemoryItem struct {
+	// CanonicalText 面向用户展示的规范表述。
+	CanonicalText string     `json:"canonical_text"`
+	ConfirmedAt   *time.Time `json:"confirmed_at,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+
+	// Evidence 每条记忆至少有一条来源。用户可以据此判断系统为什么记住它。
+	Evidence *[]MemoryEvidence `json:"evidence,omitempty"`
+
+	// Id Example: mem_01J8Z3
+	Id string `json:"id"`
+
+	// LastUsedAt 最近一次被用作上下文的时间。被引用不提高事实可信度。
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+
+	// MemoryKey 稳定语义键，例如 communication.response_style。
+	MemoryKey string `json:"memory_key"`
+
+	// MemoryType 第一阶段只开放这几种稳定类型。
+	// 禁止用一个自由文本类型无限承载未知业务。
+	MemoryType MemoryType `json:"memory_type"`
+
+	// Origin explicit 表示用户直接说出；learned 表示从对话中学到并经确认。
+	Origin MemoryOrigin `json:"origin"`
+
+	// Sensitivity 健康、财务、住址、家庭关系与受保护属性默认视为高敏。
+	// 高敏记忆只允许用户明确输入并单独确认，不通过行为自动推断。
+	Sensitivity MemorySensitivity `json:"sensitivity"`
+	Status      MemoryStatus      `json:"status"`
+	UpdatedAt   *time.Time        `json:"updated_at,omitempty"`
+	Version     int               `json:"version"`
+}
+
+// MemoryItemResponse defines model for MemoryItemResponse.
+type MemoryItemResponse struct {
+	Data MemoryItem `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+}
+
+// MemoryItemsResponse defines model for MemoryItemsResponse.
+type MemoryItemsResponse struct {
+	Data []MemoryItem `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+	Page PageInfo     `json:"page"`
+}
+
+// MemoryOrigin explicit 表示用户直接说出；learned 表示从对话中学到并经确认。
+type MemoryOrigin string
+
+// MemorySensitivity 健康、财务、住址、家庭关系与受保护属性默认视为高敏。
+// 高敏记忆只允许用户明确输入并单独确认，不通过行为自动推断。
+type MemorySensitivity string
+
+// MemoryStatus defines model for MemoryStatus.
+type MemoryStatus string
+
+// MemoryType 第一阶段只开放这几种稳定类型。
+// 禁止用一个自由文本类型无限承载未知业务。
+type MemoryType string
+
+// MessageRole defines model for MessageRole.
+type MessageRole string
 
 // MutationResponse 删除等不返回实体的写操作响应，携带需要失效的资源列表。
 type MutationResponse struct {
@@ -2315,6 +2884,34 @@ type ProjectsResponse struct {
 	Page PageInfo     `json:"page"`
 }
 
+// ProposalChange defines model for ProposalChange.
+type ProposalChange struct {
+	After  *string `json:"after,omitempty"`
+	Before *string `json:"before,omitempty"`
+	Field  string  `json:"field"`
+
+	// Label 面向用户的字段名。
+	Label string `json:"label"`
+}
+
+// ProposalPreview defines model for ProposalPreview.
+type ProposalPreview struct {
+	Changes *[]ProposalChange `json:"changes,omitempty"`
+
+	// Impact 影响范围说明，例如会影响多少条内容。
+	Impact *string `json:"impact,omitempty"`
+
+	// Title 一句话说明这条建议会做什么。
+	Title string `json:"title"`
+}
+
+// ProposalStatus defines model for ProposalStatus.
+type ProposalStatus string
+
+// ProposalType 每种类型都有独立的 command 结构与对应的 Domain Command Mapper。
+// command 不是任意 JSON Patch。
+type ProposalType string
+
 // ProvenanceAction defines model for ProvenanceAction.
 type ProvenanceAction string
 
@@ -2413,6 +3010,23 @@ type RefreshResponse struct {
 
 // RelationKind defines model for RelationKind.
 type RelationKind string
+
+// RelearnBlock defines model for RelearnBlock.
+type RelearnBlock struct {
+	BlockedAt time.Time `json:"blocked_at"`
+	Id        string    `json:"id"`
+
+	// MemoryKey 只展示语义键，不展示被阻止的具体内容。
+	MemoryKey string `json:"memory_key"`
+}
+
+// RelearnBlocksResponse defines model for RelearnBlocksResponse.
+type RelearnBlocksResponse struct {
+	Data []RelearnBlock `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+}
 
 // Reminder defines model for Reminder.
 type Reminder struct {
@@ -2615,6 +3229,9 @@ type TasksResponse struct {
 	Page PageInfo     `json:"page"`
 }
 
+// ThreadStatus defines model for ThreadStatus.
+type ThreadStatus string
+
 // TodayCounts defines model for TodayCounts.
 type TodayCounts struct {
 	DueToday       int `json:"due_today"`
@@ -2738,6 +3355,19 @@ type TrackersResponse struct {
 	Meta ResponseMeta `json:"meta"`
 }
 
+// TurnAcceptedResponse defines model for TurnAcceptedResponse.
+type TurnAcceptedResponse struct {
+	Data struct {
+		MessageId   string `json:"message_id"`
+		OperationId string `json:"operation_id"`
+		ThreadId    string `json:"thread_id"`
+		TurnId      string `json:"turn_id"`
+	} `json:"data"`
+
+	// Meta 所有成功响应共有的元信息。
+	Meta ResponseMeta `json:"meta"`
+}
+
 // UndoResponse defines model for UndoResponse.
 type UndoResponse struct {
 	Data struct {
@@ -2783,6 +3413,12 @@ type UpdateEventRequest struct {
 
 // UpdateEventRequestClear defines model for UpdateEventRequest.Clear.
 type UpdateEventRequestClear string
+
+// UpdateMemoryRequest defines model for UpdateMemoryRequest.
+type UpdateMemoryRequest struct {
+	// CanonicalText 用户改写后的表述。修改会创建新的 Revision。
+	CanonicalText string `json:"canonical_text"`
+}
 
 // UpdateNoteRequest 只提交需要修改的字段；不传表示保持原值。
 // 清空一个可空字段必须把字段名放进 clear 数组，
@@ -2881,6 +3517,12 @@ type UpdateTaskRequest struct {
 
 // UpdateTaskRequestClear defines model for UpdateTaskRequest.Clear.
 type UpdateTaskRequestClear string
+
+// UpdateThreadRequest defines model for UpdateThreadRequest.
+type UpdateThreadRequest struct {
+	Status *ThreadStatus `json:"status,omitempty"`
+	Title  *string       `json:"title,omitempty"`
+}
 
 // UpdateTrackerRequest 只提交需要修改的字段；不传表示保持原值。
 // 清空一个可空字段必须把字段名放进 clear 数组，
@@ -3053,6 +3695,9 @@ type WeeklyReviewResponse struct {
 // BatchId defines model for BatchId.
 type BatchId = string
 
+// BlockId defines model for BlockId.
+type BlockId = string
+
 // CaptureId defines model for CaptureId.
 type CaptureId = string
 
@@ -3074,6 +3719,9 @@ type Limit = int
 // MediaId defines model for MediaId.
 type MediaId = string
 
+// MemoryId defines model for MemoryId.
+type MemoryId = string
+
 // NoteId defines model for NoteId.
 type NoteId = string
 
@@ -3082,6 +3730,9 @@ type OperationId = string
 
 // ProjectId defines model for ProjectId.
 type ProjectId = string
+
+// ProposalId defines model for ProposalId.
+type ProposalId = string
 
 // QuestionId defines model for QuestionId.
 type QuestionId = string
@@ -3095,8 +3746,14 @@ type TaskId = string
 // TaskListId defines model for TaskListId.
 type TaskListId = string
 
+// ThreadId defines model for ThreadId.
+type ThreadId = string
+
 // TrackerId defines model for TrackerId.
 type TrackerId = string
+
+// TurnId defines model for TurnId.
+type TurnId = string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ErrorResponse
@@ -3127,6 +3784,87 @@ type ListActivityBatchesParams struct {
 
 // UndoActivityBatchParams defines parameters for UndoActivityBatch.
 type UndoActivityBatchParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// ListProposalsParams defines parameters for ListProposals.
+type ListProposalsParams struct {
+	// Status 不传时只返回待确认项。
+	Status *[]ProposalStatus `form:"status,omitempty" json:"status,omitempty"`
+
+	// Cursor 上一页返回的不透明游标。App 不得解析其内容。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 单页条数。
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ConfirmProposalParams defines parameters for ConfirmProposal.
+type ConfirmProposalParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// RejectProposalParams defines parameters for RejectProposal.
+type RejectProposalParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// ListThreadsParams defines parameters for ListThreads.
+type ListThreadsParams struct {
+	IncludeArchived *bool `form:"include_archived,omitempty" json:"include_archived,omitempty"`
+
+	// Cursor 上一页返回的不透明游标。App 不得解析其内容。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 单页条数。
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// CreateThreadParams defines parameters for CreateThread.
+type CreateThreadParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// DeleteThreadParams defines parameters for DeleteThread.
+type DeleteThreadParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// UpdateThreadParams defines parameters for UpdateThread.
+type UpdateThreadParams struct {
+	// IfMatch 目标资源的 version。提供后与服务端当前版本不一致时返回 VERSION_CONFLICT。
+	// 并发编辑场景应始终携带。
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ListMessagesParams defines parameters for ListMessages.
+type ListMessagesParams struct {
+	// Cursor 上一页返回的不透明游标。App 不得解析其内容。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 单页条数。
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// CreateTurnParams defines parameters for CreateTurn.
+type CreateTurnParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// CancelTurnParams defines parameters for CancelTurn.
+type CancelTurnParams struct {
 	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
 	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -3217,6 +3955,41 @@ type UpdateEventParams struct {
 	// IfMatch 目标资源的 version。提供后与服务端当前版本不一致时返回 VERSION_CONFLICT。
 	// 并发编辑场景应始终携带。
 	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// ListMemoriesParams defines parameters for ListMemories.
+type ListMemoriesParams struct {
+	MemoryType *MemoryType `form:"memory_type,omitempty" json:"memory_type,omitempty"`
+
+	// Status 不传时只返回生效中的记忆。
+	Status *[]MemoryStatus `form:"status,omitempty" json:"status,omitempty"`
+
+	// Cursor 上一页返回的不透明游标。App 不得解析其内容。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 单页条数。
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// DeleteMemoryParams defines parameters for DeleteMemory.
+type DeleteMemoryParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// UpdateMemoryParams defines parameters for UpdateMemory.
+type UpdateMemoryParams struct {
+	// IfMatch 目标资源的 version。提供后与服务端当前版本不一致时返回 VERSION_CONFLICT。
+	// 并发编辑场景应始终携带。
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
+}
+
+// DeleteRelearnBlockParams defines parameters for DeleteRelearnBlock.
+type DeleteRelearnBlockParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // CreateUploadGrantsParams defines parameters for CreateUploadGrants.
@@ -3347,6 +4120,19 @@ type GetWeeklyReviewParams struct {
 	WeekOf *openapi_types.Date `form:"week_of,omitempty" json:"week_of,omitempty"`
 }
 
+// GenerateWeeklyReviewJSONBody defines parameters for GenerateWeeklyReview.
+type GenerateWeeklyReviewJSONBody struct {
+	// WeekOf 该周内任意一天的当地日期。不传时为本周。
+	WeekOf *openapi_types.Date `json:"week_of,omitempty"`
+}
+
+// GenerateWeeklyReviewParams defines parameters for GenerateWeeklyReview.
+type GenerateWeeklyReviewParams struct {
+	// IdempotencyKey 写请求幂等键，由客户端生成并在重试时保持不变。
+	// 缺失时返回 IDEMPOTENCY_KEY_REQUIRED。
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
 // SearchParams defines parameters for Search.
 type SearchParams struct {
 	Q     string        `form:"q" json:"q"`
@@ -3461,6 +4247,18 @@ type UpdateTrackerParams struct {
 	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
+// ConfirmProposalJSONRequestBody defines body for ConfirmProposal for application/json ContentType.
+type ConfirmProposalJSONRequestBody = ConfirmProposalRequest
+
+// CreateThreadJSONRequestBody defines body for CreateThread for application/json ContentType.
+type CreateThreadJSONRequestBody = CreateThreadRequest
+
+// UpdateThreadJSONRequestBody defines body for UpdateThread for application/json ContentType.
+type UpdateThreadJSONRequestBody = UpdateThreadRequest
+
+// CreateTurnJSONRequestBody defines body for CreateTurn for application/json ContentType.
+type CreateTurnJSONRequestBody = CreateTurnRequest
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
@@ -3491,6 +4289,12 @@ type UpdateCurrentUserJSONRequestBody = UpdateUserRequest
 // UpdateAiSettingsJSONRequestBody defines body for UpdateAiSettings for application/json ContentType.
 type UpdateAiSettingsJSONRequestBody = UpdateAiSettingsRequest
 
+// DeleteMemoryJSONRequestBody defines body for DeleteMemory for application/json ContentType.
+type DeleteMemoryJSONRequestBody = DeleteMemoryRequest
+
+// UpdateMemoryJSONRequestBody defines body for UpdateMemory for application/json ContentType.
+type UpdateMemoryJSONRequestBody = UpdateMemoryRequest
+
 // UpdateUserPreferencesJSONRequestBody defines body for UpdateUserPreferences for application/json ContentType.
 type UpdateUserPreferencesJSONRequestBody = UpdateUserPreferencesRequest
 
@@ -3517,6 +4321,9 @@ type CreateRecordJSONRequestBody = CreateRecordRequest
 
 // UpdateRecordJSONRequestBody defines body for UpdateRecord for application/json ContentType.
 type UpdateRecordJSONRequestBody = UpdateRecordRequest
+
+// GenerateWeeklyReviewJSONRequestBody defines body for GenerateWeeklyReview for application/json ContentType.
+type GenerateWeeklyReviewJSONRequestBody GenerateWeeklyReviewJSONBody
 
 // CreateTaskListJSONRequestBody defines body for CreateTaskList for application/json ContentType.
 type CreateTaskListJSONRequestBody = CreateTaskListRequest
@@ -3547,6 +4354,42 @@ type ServerInterface interface {
 	// UndoActivityBatch 撤销一个变更批次
 	// (POST /v1/activities/{batch_id}/undo)
 	UndoActivityBatch(w http.ResponseWriter, r *http.Request, batchId BatchId, params UndoActivityBatchParams)
+	// ListProposals 读取待确认与历史建议
+	// (GET /v1/assistant/proposals)
+	ListProposals(w http.ResponseWriter, r *http.Request, params ListProposalsParams)
+	// GetProposal 读取建议详情
+	// (GET /v1/assistant/proposals/{proposal_id})
+	GetProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId)
+	// ConfirmProposal 确认并执行建议
+	// (POST /v1/assistant/proposals/{proposal_id}/confirm)
+	ConfirmProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId, params ConfirmProposalParams)
+	// RejectProposal 拒绝建议
+	// (POST /v1/assistant/proposals/{proposal_id}/reject)
+	RejectProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId, params RejectProposalParams)
+	// ListThreads 读取对话列表
+	// (GET /v1/assistant/threads)
+	ListThreads(w http.ResponseWriter, r *http.Request, params ListThreadsParams)
+	// CreateThread 新建对话
+	// (POST /v1/assistant/threads)
+	CreateThread(w http.ResponseWriter, r *http.Request, params CreateThreadParams)
+	// DeleteThread 删除对话内容
+	// (DELETE /v1/assistant/threads/{thread_id})
+	DeleteThread(w http.ResponseWriter, r *http.Request, threadId ThreadId, params DeleteThreadParams)
+	// GetThread 读取对话摘要
+	// (GET /v1/assistant/threads/{thread_id})
+	GetThread(w http.ResponseWriter, r *http.Request, threadId ThreadId)
+	// UpdateThread 修改标题或归档状态
+	// (PATCH /v1/assistant/threads/{thread_id})
+	UpdateThread(w http.ResponseWriter, r *http.Request, threadId ThreadId, params UpdateThreadParams)
+	// ListMessages 读取对话消息
+	// (GET /v1/assistant/threads/{thread_id}/messages)
+	ListMessages(w http.ResponseWriter, r *http.Request, threadId ThreadId, params ListMessagesParams)
+	// CreateTurn 发送一条消息并触发回复
+	// (POST /v1/assistant/threads/{thread_id}/turns)
+	CreateTurn(w http.ResponseWriter, r *http.Request, threadId ThreadId, params CreateTurnParams)
+	// CancelTurn 取消仍在执行的回复
+	// (POST /v1/assistant/turns/{turn_id}/cancel)
+	CancelTurn(w http.ResponseWriter, r *http.Request, turnId TurnId, params CancelTurnParams)
 	// Login 手机号验证码登录
 	// (POST /v1/auth/login)
 	Login(w http.ResponseWriter, r *http.Request)
@@ -3607,6 +4450,24 @@ type ServerInterface interface {
 	// UpdateAiSettings 修改 AI 开关
 	// (PATCH /v1/me/ai-settings)
 	UpdateAiSettings(w http.ResponseWriter, r *http.Request)
+	// ListMemories 查看系统记住了什么
+	// (GET /v1/me/memories)
+	ListMemories(w http.ResponseWriter, r *http.Request, params ListMemoriesParams)
+	// DeleteMemory 删除记忆
+	// (DELETE /v1/me/memories/{memory_id})
+	DeleteMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId, params DeleteMemoryParams)
+	// GetMemory 查看记忆的值、来源与历史
+	// (GET /v1/me/memories/{memory_id})
+	GetMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId)
+	// UpdateMemory 修改已确认的记忆
+	// (PATCH /v1/me/memories/{memory_id})
+	UpdateMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId, params UpdateMemoryParams)
+	// ListRelearnBlocks 查看已禁止重新学习的项目
+	// (GET /v1/me/memory-relearn-blocks)
+	ListRelearnBlocks(w http.ResponseWriter, r *http.Request)
+	// DeleteRelearnBlock 解除重新学习阻止
+	// (DELETE /v1/me/memory-relearn-blocks/{block_id})
+	DeleteRelearnBlock(w http.ResponseWriter, r *http.Request, blockId BlockId, params DeleteRelearnBlockParams)
 	// GetUserPreferences 读取显式偏好设置
 	// (GET /v1/me/preferences)
 	GetUserPreferences(w http.ResponseWriter, r *http.Request)
@@ -3676,6 +4537,9 @@ type ServerInterface interface {
 	// GetWeeklyReview 读取某一周的复盘
 	// (GET /v1/reviews/weekly)
 	GetWeeklyReview(w http.ResponseWriter, r *http.Request, params GetWeeklyReviewParams)
+	// GenerateWeeklyReview 生成本周复盘的叙述与建议
+	// (POST /v1/reviews/weekly/generate)
+	GenerateWeeklyReview(w http.ResponseWriter, r *http.Request, params GenerateWeeklyReviewParams)
 	// Search 跨实体关键词检索
 	// (GET /v1/search)
 	Search(w http.ResponseWriter, r *http.Request, params SearchParams)
@@ -3739,6 +4603,78 @@ func (_ Unimplemented) ListActivityBatches(w http.ResponseWriter, r *http.Reques
 // UndoActivityBatch 撤销一个变更批次
 // (POST /v1/activities/{batch_id}/undo)
 func (_ Unimplemented) UndoActivityBatch(w http.ResponseWriter, r *http.Request, batchId BatchId, params UndoActivityBatchParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListProposals 读取待确认与历史建议
+// (GET /v1/assistant/proposals)
+func (_ Unimplemented) ListProposals(w http.ResponseWriter, r *http.Request, params ListProposalsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetProposal 读取建议详情
+// (GET /v1/assistant/proposals/{proposal_id})
+func (_ Unimplemented) GetProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ConfirmProposal 确认并执行建议
+// (POST /v1/assistant/proposals/{proposal_id}/confirm)
+func (_ Unimplemented) ConfirmProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId, params ConfirmProposalParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RejectProposal 拒绝建议
+// (POST /v1/assistant/proposals/{proposal_id}/reject)
+func (_ Unimplemented) RejectProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId, params RejectProposalParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListThreads 读取对话列表
+// (GET /v1/assistant/threads)
+func (_ Unimplemented) ListThreads(w http.ResponseWriter, r *http.Request, params ListThreadsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateThread 新建对话
+// (POST /v1/assistant/threads)
+func (_ Unimplemented) CreateThread(w http.ResponseWriter, r *http.Request, params CreateThreadParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteThread 删除对话内容
+// (DELETE /v1/assistant/threads/{thread_id})
+func (_ Unimplemented) DeleteThread(w http.ResponseWriter, r *http.Request, threadId ThreadId, params DeleteThreadParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetThread 读取对话摘要
+// (GET /v1/assistant/threads/{thread_id})
+func (_ Unimplemented) GetThread(w http.ResponseWriter, r *http.Request, threadId ThreadId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateThread 修改标题或归档状态
+// (PATCH /v1/assistant/threads/{thread_id})
+func (_ Unimplemented) UpdateThread(w http.ResponseWriter, r *http.Request, threadId ThreadId, params UpdateThreadParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListMessages 读取对话消息
+// (GET /v1/assistant/threads/{thread_id}/messages)
+func (_ Unimplemented) ListMessages(w http.ResponseWriter, r *http.Request, threadId ThreadId, params ListMessagesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateTurn 发送一条消息并触发回复
+// (POST /v1/assistant/threads/{thread_id}/turns)
+func (_ Unimplemented) CreateTurn(w http.ResponseWriter, r *http.Request, threadId ThreadId, params CreateTurnParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CancelTurn 取消仍在执行的回复
+// (POST /v1/assistant/turns/{turn_id}/cancel)
+func (_ Unimplemented) CancelTurn(w http.ResponseWriter, r *http.Request, turnId TurnId, params CancelTurnParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3859,6 +4795,42 @@ func (_ Unimplemented) GetAiSettings(w http.ResponseWriter, r *http.Request) {
 // UpdateAiSettings 修改 AI 开关
 // (PATCH /v1/me/ai-settings)
 func (_ Unimplemented) UpdateAiSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListMemories 查看系统记住了什么
+// (GET /v1/me/memories)
+func (_ Unimplemented) ListMemories(w http.ResponseWriter, r *http.Request, params ListMemoriesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteMemory 删除记忆
+// (DELETE /v1/me/memories/{memory_id})
+func (_ Unimplemented) DeleteMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId, params DeleteMemoryParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMemory 查看记忆的值、来源与历史
+// (GET /v1/me/memories/{memory_id})
+func (_ Unimplemented) GetMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateMemory 修改已确认的记忆
+// (PATCH /v1/me/memories/{memory_id})
+func (_ Unimplemented) UpdateMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId, params UpdateMemoryParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListRelearnBlocks 查看已禁止重新学习的项目
+// (GET /v1/me/memory-relearn-blocks)
+func (_ Unimplemented) ListRelearnBlocks(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteRelearnBlock 解除重新学习阻止
+// (DELETE /v1/me/memory-relearn-blocks/{block_id})
+func (_ Unimplemented) DeleteRelearnBlock(w http.ResponseWriter, r *http.Request, blockId BlockId, params DeleteRelearnBlockParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3997,6 +4969,12 @@ func (_ Unimplemented) UpdateRecord(w http.ResponseWriter, r *http.Request, reco
 // GetWeeklyReview 读取某一周的复盘
 // (GET /v1/reviews/weekly)
 func (_ Unimplemented) GetWeeklyReview(w http.ResponseWriter, r *http.Request, params GetWeeklyReviewParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GenerateWeeklyReview 生成本周复盘的叙述与建议
+// (POST /v1/reviews/weekly/generate)
+func (_ Unimplemented) GenerateWeeklyReview(w http.ResponseWriter, r *http.Request, params GenerateWeeklyReviewParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4196,6 +5174,596 @@ func (siw *ServerInterfaceWrapper) UndoActivityBatch(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UndoActivityBatch(w, r, batchId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListProposals operation middleware
+func (siw *ServerInterfaceWrapper) ListProposals(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListProposalsParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListProposals(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProposal operation middleware
+func (siw *ServerInterfaceWrapper) GetProposal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "proposal_id" -------------
+	var proposalId ProposalId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "proposal_id", chi.URLParam(r, "proposal_id"), &proposalId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "proposal_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProposal(w, r, proposalId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ConfirmProposal operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmProposal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "proposal_id" -------------
+	var proposalId ProposalId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "proposal_id", chi.URLParam(r, "proposal_id"), &proposalId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "proposal_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ConfirmProposalParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConfirmProposal(w, r, proposalId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RejectProposal operation middleware
+func (siw *ServerInterfaceWrapper) RejectProposal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "proposal_id" -------------
+	var proposalId ProposalId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "proposal_id", chi.URLParam(r, "proposal_id"), &proposalId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "proposal_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RejectProposalParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RejectProposal(w, r, proposalId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListThreads operation middleware
+func (siw *ServerInterfaceWrapper) ListThreads(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListThreadsParams
+
+	// ------------- Optional query parameter "include_archived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "include_archived", r.URL.Query(), &params.IncludeArchived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include_archived"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include_archived", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListThreads(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateThread operation middleware
+func (siw *ServerInterfaceWrapper) CreateThread(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateThreadParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateThread(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteThread operation middleware
+func (siw *ServerInterfaceWrapper) DeleteThread(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "thread_id" -------------
+	var threadId ThreadId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "thread_id", chi.URLParam(r, "thread_id"), &threadId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "thread_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteThreadParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteThread(w, r, threadId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetThread operation middleware
+func (siw *ServerInterfaceWrapper) GetThread(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "thread_id" -------------
+	var threadId ThreadId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "thread_id", chi.URLParam(r, "thread_id"), &threadId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "thread_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetThread(w, r, threadId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateThread operation middleware
+func (siw *ServerInterfaceWrapper) UpdateThread(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "thread_id" -------------
+	var threadId ThreadId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "thread_id", chi.URLParam(r, "thread_id"), &threadId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "thread_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateThreadParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = &IfMatch
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateThread(w, r, threadId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMessages operation middleware
+func (siw *ServerInterfaceWrapper) ListMessages(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "thread_id" -------------
+	var threadId ThreadId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "thread_id", chi.URLParam(r, "thread_id"), &threadId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "thread_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMessagesParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMessages(w, r, threadId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateTurn operation middleware
+func (siw *ServerInterfaceWrapper) CreateTurn(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "thread_id" -------------
+	var threadId ThreadId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "thread_id", chi.URLParam(r, "thread_id"), &threadId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "thread_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateTurnParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateTurn(w, r, threadId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CancelTurn operation middleware
+func (siw *ServerInterfaceWrapper) CancelTurn(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "turn_id" -------------
+	var turnId TurnId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "turn_id", chi.URLParam(r, "turn_id"), &turnId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "turn_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CancelTurnParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CancelTurn(w, r, turnId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4932,6 +6500,276 @@ func (siw *ServerInterfaceWrapper) UpdateAiSettings(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateAiSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMemories operation middleware
+func (siw *ServerInterfaceWrapper) ListMemories(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMemoriesParams
+
+	// ------------- Optional query parameter "memory_type" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "memory_type", r.URL.Query(), &params.MemoryType, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "memory_type"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memory_type", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMemories(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteMemory operation middleware
+func (siw *ServerInterfaceWrapper) DeleteMemory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "memory_id" -------------
+	var memoryId MemoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memory_id", chi.URLParam(r, "memory_id"), &memoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memory_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteMemoryParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteMemory(w, r, memoryId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMemory operation middleware
+func (siw *ServerInterfaceWrapper) GetMemory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "memory_id" -------------
+	var memoryId MemoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memory_id", chi.URLParam(r, "memory_id"), &memoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memory_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMemory(w, r, memoryId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateMemory operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMemory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "memory_id" -------------
+	var memoryId MemoryId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memory_id", chi.URLParam(r, "memory_id"), &memoryId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memory_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateMemoryParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = &IfMatch
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateMemory(w, r, memoryId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListRelearnBlocks operation middleware
+func (siw *ServerInterfaceWrapper) ListRelearnBlocks(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListRelearnBlocks(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteRelearnBlock operation middleware
+func (siw *ServerInterfaceWrapper) DeleteRelearnBlock(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "block_id" -------------
+	var blockId BlockId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "block_id", chi.URLParam(r, "block_id"), &blockId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "block_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteRelearnBlockParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteRelearnBlock(w, r, blockId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5952,6 +7790,51 @@ func (siw *ServerInterfaceWrapper) GetWeeklyReview(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetWeeklyReview(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GenerateWeeklyReview operation middleware
+func (siw *ServerInterfaceWrapper) GenerateWeeklyReview(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GenerateWeeklyReviewParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenerateWeeklyReview(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7038,6 +8921,60 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/capture-questions/{question_id}/answer", wrapper.AnswerCaptureQuestion)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/assistant/threads", wrapper.ListThreads)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/assistant/threads", wrapper.CreateThread)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/assistant/threads/{thread_id}", wrapper.DeleteThread)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/assistant/threads/{thread_id}", wrapper.GetThread)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/v1/assistant/threads/{thread_id}", wrapper.UpdateThread)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/assistant/threads/{thread_id}/messages", wrapper.ListMessages)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/assistant/threads/{thread_id}/turns", wrapper.CreateTurn)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/assistant/turns/{turn_id}/cancel", wrapper.CancelTurn)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/assistant/proposals", wrapper.ListProposals)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/assistant/proposals/{proposal_id}", wrapper.GetProposal)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/assistant/proposals/{proposal_id}/confirm", wrapper.ConfirmProposal)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/assistant/proposals/{proposal_id}/reject", wrapper.RejectProposal)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/me/memories", wrapper.ListMemories)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/me/memories/{memory_id}", wrapper.DeleteMemory)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/me/memories/{memory_id}", wrapper.GetMemory)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/v1/me/memories/{memory_id}", wrapper.UpdateMemory)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/v1/me/memory-relearn-blocks", wrapper.ListRelearnBlocks)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/v1/me/memory-relearn-blocks/{block_id}", wrapper.DeleteRelearnBlock)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/today", wrapper.GetToday)
 	})
 	r.Group(func(r chi.Router) {
@@ -7045,6 +8982,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/reviews/weekly", wrapper.GetWeeklyReview)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/reviews/weekly/generate", wrapper.GenerateWeeklyReview)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/search", wrapper.Search)
@@ -7192,6 +9132,883 @@ func (response UndoActivityBatch409JSONResponse) VisitUndoActivityBatchResponse(
 type UndoActivityBatch500JSONResponse struct{ InternalErrorJSONResponse }
 
 func (response UndoActivityBatch500JSONResponse) VisitUndoActivityBatchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProposalsRequestObject struct {
+	Params ListProposalsParams
+}
+
+type ListProposalsResponseObject interface {
+	VisitListProposalsResponse(w http.ResponseWriter) error
+}
+
+type ListProposals200JSONResponse ActionProposalsResponse
+
+func (response ListProposals200JSONResponse) VisitListProposalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProposals400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListProposals400JSONResponse) VisitListProposalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProposals401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListProposals401JSONResponse) VisitListProposalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListProposals500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ListProposals500JSONResponse) VisitListProposalsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProposalRequestObject struct {
+	ProposalId ProposalId `json:"proposal_id"`
+}
+
+type GetProposalResponseObject interface {
+	VisitGetProposalResponse(w http.ResponseWriter) error
+}
+
+type GetProposal200JSONResponse ActionProposalResponse
+
+func (response GetProposal200JSONResponse) VisitGetProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProposal401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetProposal401JSONResponse) VisitGetProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProposal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetProposal404JSONResponse) VisitGetProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProposal500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetProposal500JSONResponse) VisitGetProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmProposalRequestObject struct {
+	ProposalId ProposalId `json:"proposal_id"`
+	Params     ConfirmProposalParams
+	Body       *ConfirmProposalJSONRequestBody
+}
+
+type ConfirmProposalResponseObject interface {
+	VisitConfirmProposalResponse(w http.ResponseWriter) error
+}
+
+type ConfirmProposal200JSONResponse ConfirmProposalResponse
+
+func (response ConfirmProposal200JSONResponse) VisitConfirmProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmProposal400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ConfirmProposal400JSONResponse) VisitConfirmProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmProposal401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ConfirmProposal401JSONResponse) VisitConfirmProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmProposal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ConfirmProposal404JSONResponse) VisitConfirmProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmProposal409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ConfirmProposal409JSONResponse) VisitConfirmProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmProposal500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ConfirmProposal500JSONResponse) VisitConfirmProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RejectProposalRequestObject struct {
+	ProposalId ProposalId `json:"proposal_id"`
+	Params     RejectProposalParams
+}
+
+type RejectProposalResponseObject interface {
+	VisitRejectProposalResponse(w http.ResponseWriter) error
+}
+
+type RejectProposal200JSONResponse ActionProposalResponse
+
+func (response RejectProposal200JSONResponse) VisitRejectProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RejectProposal401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RejectProposal401JSONResponse) VisitRejectProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RejectProposal404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RejectProposal404JSONResponse) VisitRejectProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RejectProposal409JSONResponse struct{ ConflictJSONResponse }
+
+func (response RejectProposal409JSONResponse) VisitRejectProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RejectProposal500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response RejectProposal500JSONResponse) VisitRejectProposalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListThreadsRequestObject struct {
+	Params ListThreadsParams
+}
+
+type ListThreadsResponseObject interface {
+	VisitListThreadsResponse(w http.ResponseWriter) error
+}
+
+type ListThreads200JSONResponse AssistantThreadsResponse
+
+func (response ListThreads200JSONResponse) VisitListThreadsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListThreads401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListThreads401JSONResponse) VisitListThreadsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListThreads500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ListThreads500JSONResponse) VisitListThreadsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateThreadRequestObject struct {
+	Params CreateThreadParams
+	Body   *CreateThreadJSONRequestBody
+}
+
+type CreateThreadResponseObject interface {
+	VisitCreateThreadResponse(w http.ResponseWriter) error
+}
+
+type CreateThread201JSONResponse AssistantThreadResponse
+
+func (response CreateThread201JSONResponse) VisitCreateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateThread400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateThread400JSONResponse) VisitCreateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateThread401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateThread401JSONResponse) VisitCreateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateThread500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CreateThread500JSONResponse) VisitCreateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteThreadRequestObject struct {
+	ThreadId ThreadId `json:"thread_id"`
+	Params   DeleteThreadParams
+}
+
+type DeleteThreadResponseObject interface {
+	VisitDeleteThreadResponse(w http.ResponseWriter) error
+}
+
+type DeleteThread200JSONResponse MutationResponse
+
+func (response DeleteThread200JSONResponse) VisitDeleteThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteThread401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteThread401JSONResponse) VisitDeleteThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteThread404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteThread404JSONResponse) VisitDeleteThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteThread500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response DeleteThread500JSONResponse) VisitDeleteThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetThreadRequestObject struct {
+	ThreadId ThreadId `json:"thread_id"`
+}
+
+type GetThreadResponseObject interface {
+	VisitGetThreadResponse(w http.ResponseWriter) error
+}
+
+type GetThread200JSONResponse AssistantThreadResponse
+
+func (response GetThread200JSONResponse) VisitGetThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetThread401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetThread401JSONResponse) VisitGetThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetThread404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetThread404JSONResponse) VisitGetThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetThread500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetThread500JSONResponse) VisitGetThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateThreadRequestObject struct {
+	ThreadId ThreadId `json:"thread_id"`
+	Params   UpdateThreadParams
+	Body     *UpdateThreadJSONRequestBody
+}
+
+type UpdateThreadResponseObject interface {
+	VisitUpdateThreadResponse(w http.ResponseWriter) error
+}
+
+type UpdateThread200JSONResponse AssistantThreadResponse
+
+func (response UpdateThread200JSONResponse) VisitUpdateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateThread400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateThread400JSONResponse) VisitUpdateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateThread401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateThread401JSONResponse) VisitUpdateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateThread404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateThread404JSONResponse) VisitUpdateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateThread409JSONResponse struct{ ConflictJSONResponse }
+
+func (response UpdateThread409JSONResponse) VisitUpdateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateThread500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response UpdateThread500JSONResponse) VisitUpdateThreadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMessagesRequestObject struct {
+	ThreadId ThreadId `json:"thread_id"`
+	Params   ListMessagesParams
+}
+
+type ListMessagesResponseObject interface {
+	VisitListMessagesResponse(w http.ResponseWriter) error
+}
+
+type ListMessages200JSONResponse AssistantMessagesResponse
+
+func (response ListMessages200JSONResponse) VisitListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMessages401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListMessages401JSONResponse) VisitListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMessages404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListMessages404JSONResponse) VisitListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMessages500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ListMessages500JSONResponse) VisitListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTurnRequestObject struct {
+	ThreadId ThreadId `json:"thread_id"`
+	Params   CreateTurnParams
+	Body     *CreateTurnJSONRequestBody
+}
+
+type CreateTurnResponseObject interface {
+	VisitCreateTurnResponse(w http.ResponseWriter) error
+}
+
+type CreateTurn202JSONResponse TurnAcceptedResponse
+
+func (response CreateTurn202JSONResponse) VisitCreateTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTurn400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateTurn400JSONResponse) VisitCreateTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTurn401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateTurn401JSONResponse) VisitCreateTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTurn404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateTurn404JSONResponse) VisitCreateTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTurn429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response CreateTurn429JSONResponse) VisitCreateTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTurn500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CreateTurn500JSONResponse) VisitCreateTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTurnRequestObject struct {
+	TurnId TurnId `json:"turn_id"`
+	Params CancelTurnParams
+}
+
+type CancelTurnResponseObject interface {
+	VisitCancelTurnResponse(w http.ResponseWriter) error
+}
+
+type CancelTurn200JSONResponse EmptyResponse
+
+func (response CancelTurn200JSONResponse) VisitCancelTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTurn401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CancelTurn401JSONResponse) VisitCancelTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTurn404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CancelTurn404JSONResponse) VisitCancelTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTurn409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CancelTurn409JSONResponse) VisitCancelTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelTurn500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CancelTurn500JSONResponse) VisitCancelTurnResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -8549,6 +11366,408 @@ func (response UpdateAiSettings401JSONResponse) VisitUpdateAiSettingsResponse(w 
 type UpdateAiSettings500JSONResponse struct{ InternalErrorJSONResponse }
 
 func (response UpdateAiSettings500JSONResponse) VisitUpdateAiSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMemoriesRequestObject struct {
+	Params ListMemoriesParams
+}
+
+type ListMemoriesResponseObject interface {
+	VisitListMemoriesResponse(w http.ResponseWriter) error
+}
+
+type ListMemories200JSONResponse MemoryItemsResponse
+
+func (response ListMemories200JSONResponse) VisitListMemoriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMemories400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListMemories400JSONResponse) VisitListMemoriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMemories401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListMemories401JSONResponse) VisitListMemoriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMemories500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ListMemories500JSONResponse) VisitListMemoriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMemoryRequestObject struct {
+	MemoryId MemoryId `json:"memory_id"`
+	Params   DeleteMemoryParams
+	Body     *DeleteMemoryJSONRequestBody
+}
+
+type DeleteMemoryResponseObject interface {
+	VisitDeleteMemoryResponse(w http.ResponseWriter) error
+}
+
+type DeleteMemory200JSONResponse DeleteMemoryResponse
+
+func (response DeleteMemory200JSONResponse) VisitDeleteMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMemory401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteMemory401JSONResponse) VisitDeleteMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMemory404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteMemory404JSONResponse) VisitDeleteMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMemory500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response DeleteMemory500JSONResponse) VisitDeleteMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMemoryRequestObject struct {
+	MemoryId MemoryId `json:"memory_id"`
+}
+
+type GetMemoryResponseObject interface {
+	VisitGetMemoryResponse(w http.ResponseWriter) error
+}
+
+type GetMemory200JSONResponse MemoryItemResponse
+
+func (response GetMemory200JSONResponse) VisitGetMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMemory401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetMemory401JSONResponse) VisitGetMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMemory404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetMemory404JSONResponse) VisitGetMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMemory500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetMemory500JSONResponse) VisitGetMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMemoryRequestObject struct {
+	MemoryId MemoryId `json:"memory_id"`
+	Params   UpdateMemoryParams
+	Body     *UpdateMemoryJSONRequestBody
+}
+
+type UpdateMemoryResponseObject interface {
+	VisitUpdateMemoryResponse(w http.ResponseWriter) error
+}
+
+type UpdateMemory200JSONResponse MemoryItemResponse
+
+func (response UpdateMemory200JSONResponse) VisitUpdateMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMemory400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateMemory400JSONResponse) VisitUpdateMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMemory401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateMemory401JSONResponse) VisitUpdateMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMemory404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateMemory404JSONResponse) VisitUpdateMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMemory409JSONResponse struct{ ConflictJSONResponse }
+
+func (response UpdateMemory409JSONResponse) VisitUpdateMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMemory500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response UpdateMemory500JSONResponse) VisitUpdateMemoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListRelearnBlocksRequestObject struct {
+}
+
+type ListRelearnBlocksResponseObject interface {
+	VisitListRelearnBlocksResponse(w http.ResponseWriter) error
+}
+
+type ListRelearnBlocks200JSONResponse RelearnBlocksResponse
+
+func (response ListRelearnBlocks200JSONResponse) VisitListRelearnBlocksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListRelearnBlocks401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListRelearnBlocks401JSONResponse) VisitListRelearnBlocksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListRelearnBlocks500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ListRelearnBlocks500JSONResponse) VisitListRelearnBlocksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteRelearnBlockRequestObject struct {
+	BlockId BlockId `json:"block_id"`
+	Params  DeleteRelearnBlockParams
+}
+
+type DeleteRelearnBlockResponseObject interface {
+	VisitDeleteRelearnBlockResponse(w http.ResponseWriter) error
+}
+
+type DeleteRelearnBlock200JSONResponse MutationResponse
+
+func (response DeleteRelearnBlock200JSONResponse) VisitDeleteRelearnBlockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteRelearnBlock401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteRelearnBlock401JSONResponse) VisitDeleteRelearnBlockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteRelearnBlock404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteRelearnBlock404JSONResponse) VisitDeleteRelearnBlockResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteRelearnBlock500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response DeleteRelearnBlock500JSONResponse) VisitDeleteRelearnBlockResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -10173,6 +13392,85 @@ func (response GetWeeklyReview500JSONResponse) VisitGetWeeklyReviewResponse(w ht
 	return err
 }
 
+type GenerateWeeklyReviewRequestObject struct {
+	Params GenerateWeeklyReviewParams
+	Body   *GenerateWeeklyReviewJSONRequestBody
+}
+
+type GenerateWeeklyReviewResponseObject interface {
+	VisitGenerateWeeklyReviewResponse(w http.ResponseWriter) error
+}
+
+type GenerateWeeklyReview202JSONResponse AcceptedResponse
+
+func (response GenerateWeeklyReview202JSONResponse) VisitGenerateWeeklyReviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GenerateWeeklyReview400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GenerateWeeklyReview400JSONResponse) VisitGenerateWeeklyReviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GenerateWeeklyReview401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GenerateWeeklyReview401JSONResponse) VisitGenerateWeeklyReviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GenerateWeeklyReview429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response GenerateWeeklyReview429JSONResponse) VisitGenerateWeeklyReviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GenerateWeeklyReview500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GenerateWeeklyReview500JSONResponse) VisitGenerateWeeklyReviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SearchRequestObject struct {
 	Params SearchParams
 }
@@ -11329,6 +14627,42 @@ type StrictServerInterface interface {
 	// UndoActivityBatch 撤销一个变更批次
 	// (POST /v1/activities/{batch_id}/undo)
 	UndoActivityBatch(ctx context.Context, request UndoActivityBatchRequestObject) (UndoActivityBatchResponseObject, error)
+	// ListProposals 读取待确认与历史建议
+	// (GET /v1/assistant/proposals)
+	ListProposals(ctx context.Context, request ListProposalsRequestObject) (ListProposalsResponseObject, error)
+	// GetProposal 读取建议详情
+	// (GET /v1/assistant/proposals/{proposal_id})
+	GetProposal(ctx context.Context, request GetProposalRequestObject) (GetProposalResponseObject, error)
+	// ConfirmProposal 确认并执行建议
+	// (POST /v1/assistant/proposals/{proposal_id}/confirm)
+	ConfirmProposal(ctx context.Context, request ConfirmProposalRequestObject) (ConfirmProposalResponseObject, error)
+	// RejectProposal 拒绝建议
+	// (POST /v1/assistant/proposals/{proposal_id}/reject)
+	RejectProposal(ctx context.Context, request RejectProposalRequestObject) (RejectProposalResponseObject, error)
+	// ListThreads 读取对话列表
+	// (GET /v1/assistant/threads)
+	ListThreads(ctx context.Context, request ListThreadsRequestObject) (ListThreadsResponseObject, error)
+	// CreateThread 新建对话
+	// (POST /v1/assistant/threads)
+	CreateThread(ctx context.Context, request CreateThreadRequestObject) (CreateThreadResponseObject, error)
+	// DeleteThread 删除对话内容
+	// (DELETE /v1/assistant/threads/{thread_id})
+	DeleteThread(ctx context.Context, request DeleteThreadRequestObject) (DeleteThreadResponseObject, error)
+	// GetThread 读取对话摘要
+	// (GET /v1/assistant/threads/{thread_id})
+	GetThread(ctx context.Context, request GetThreadRequestObject) (GetThreadResponseObject, error)
+	// UpdateThread 修改标题或归档状态
+	// (PATCH /v1/assistant/threads/{thread_id})
+	UpdateThread(ctx context.Context, request UpdateThreadRequestObject) (UpdateThreadResponseObject, error)
+	// ListMessages 读取对话消息
+	// (GET /v1/assistant/threads/{thread_id}/messages)
+	ListMessages(ctx context.Context, request ListMessagesRequestObject) (ListMessagesResponseObject, error)
+	// CreateTurn 发送一条消息并触发回复
+	// (POST /v1/assistant/threads/{thread_id}/turns)
+	CreateTurn(ctx context.Context, request CreateTurnRequestObject) (CreateTurnResponseObject, error)
+	// CancelTurn 取消仍在执行的回复
+	// (POST /v1/assistant/turns/{turn_id}/cancel)
+	CancelTurn(ctx context.Context, request CancelTurnRequestObject) (CancelTurnResponseObject, error)
 	// Login 手机号验证码登录
 	// (POST /v1/auth/login)
 	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
@@ -11389,6 +14723,24 @@ type StrictServerInterface interface {
 	// UpdateAiSettings 修改 AI 开关
 	// (PATCH /v1/me/ai-settings)
 	UpdateAiSettings(ctx context.Context, request UpdateAiSettingsRequestObject) (UpdateAiSettingsResponseObject, error)
+	// ListMemories 查看系统记住了什么
+	// (GET /v1/me/memories)
+	ListMemories(ctx context.Context, request ListMemoriesRequestObject) (ListMemoriesResponseObject, error)
+	// DeleteMemory 删除记忆
+	// (DELETE /v1/me/memories/{memory_id})
+	DeleteMemory(ctx context.Context, request DeleteMemoryRequestObject) (DeleteMemoryResponseObject, error)
+	// GetMemory 查看记忆的值、来源与历史
+	// (GET /v1/me/memories/{memory_id})
+	GetMemory(ctx context.Context, request GetMemoryRequestObject) (GetMemoryResponseObject, error)
+	// UpdateMemory 修改已确认的记忆
+	// (PATCH /v1/me/memories/{memory_id})
+	UpdateMemory(ctx context.Context, request UpdateMemoryRequestObject) (UpdateMemoryResponseObject, error)
+	// ListRelearnBlocks 查看已禁止重新学习的项目
+	// (GET /v1/me/memory-relearn-blocks)
+	ListRelearnBlocks(ctx context.Context, request ListRelearnBlocksRequestObject) (ListRelearnBlocksResponseObject, error)
+	// DeleteRelearnBlock 解除重新学习阻止
+	// (DELETE /v1/me/memory-relearn-blocks/{block_id})
+	DeleteRelearnBlock(ctx context.Context, request DeleteRelearnBlockRequestObject) (DeleteRelearnBlockResponseObject, error)
 	// GetUserPreferences 读取显式偏好设置
 	// (GET /v1/me/preferences)
 	GetUserPreferences(ctx context.Context, request GetUserPreferencesRequestObject) (GetUserPreferencesResponseObject, error)
@@ -11458,6 +14810,9 @@ type StrictServerInterface interface {
 	// GetWeeklyReview 读取某一周的复盘
 	// (GET /v1/reviews/weekly)
 	GetWeeklyReview(ctx context.Context, request GetWeeklyReviewRequestObject) (GetWeeklyReviewResponseObject, error)
+	// GenerateWeeklyReview 生成本周复盘的叙述与建议
+	// (POST /v1/reviews/weekly/generate)
+	GenerateWeeklyReview(ctx context.Context, request GenerateWeeklyReviewRequestObject) (GenerateWeeklyReviewResponseObject, error)
 	// Search 跨实体关键词检索
 	// (GET /v1/search)
 	Search(ctx context.Context, request SearchRequestObject) (SearchResponseObject, error)
@@ -11593,6 +14948,356 @@ func (sh *strictHandler) UndoActivityBatch(w http.ResponseWriter, r *http.Reques
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UndoActivityBatchResponseObject); ok {
 		if err := validResponse.VisitUndoActivityBatchResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListProposals operation middleware
+func (sh *strictHandler) ListProposals(w http.ResponseWriter, r *http.Request, params ListProposalsParams) {
+	var request ListProposalsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListProposals(ctx, request.(ListProposalsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListProposals")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListProposalsResponseObject); ok {
+		if err := validResponse.VisitListProposalsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetProposal operation middleware
+func (sh *strictHandler) GetProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId) {
+	var request GetProposalRequestObject
+
+	request.ProposalId = proposalId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProposal(ctx, request.(GetProposalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProposal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetProposalResponseObject); ok {
+		if err := validResponse.VisitGetProposalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ConfirmProposal operation middleware
+func (sh *strictHandler) ConfirmProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId, params ConfirmProposalParams) {
+	var request ConfirmProposalRequestObject
+
+	request.ProposalId = proposalId
+	request.Params = params
+
+	var body ConfirmProposalJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ConfirmProposal(ctx, request.(ConfirmProposalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ConfirmProposal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ConfirmProposalResponseObject); ok {
+		if err := validResponse.VisitConfirmProposalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RejectProposal operation middleware
+func (sh *strictHandler) RejectProposal(w http.ResponseWriter, r *http.Request, proposalId ProposalId, params RejectProposalParams) {
+	var request RejectProposalRequestObject
+
+	request.ProposalId = proposalId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RejectProposal(ctx, request.(RejectProposalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RejectProposal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RejectProposalResponseObject); ok {
+		if err := validResponse.VisitRejectProposalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListThreads operation middleware
+func (sh *strictHandler) ListThreads(w http.ResponseWriter, r *http.Request, params ListThreadsParams) {
+	var request ListThreadsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListThreads(ctx, request.(ListThreadsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListThreads")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListThreadsResponseObject); ok {
+		if err := validResponse.VisitListThreadsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateThread operation middleware
+func (sh *strictHandler) CreateThread(w http.ResponseWriter, r *http.Request, params CreateThreadParams) {
+	var request CreateThreadRequestObject
+
+	request.Params = params
+
+	var body CreateThreadJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateThread(ctx, request.(CreateThreadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateThread")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateThreadResponseObject); ok {
+		if err := validResponse.VisitCreateThreadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteThread operation middleware
+func (sh *strictHandler) DeleteThread(w http.ResponseWriter, r *http.Request, threadId ThreadId, params DeleteThreadParams) {
+	var request DeleteThreadRequestObject
+
+	request.ThreadId = threadId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteThread(ctx, request.(DeleteThreadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteThread")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteThreadResponseObject); ok {
+		if err := validResponse.VisitDeleteThreadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetThread operation middleware
+func (sh *strictHandler) GetThread(w http.ResponseWriter, r *http.Request, threadId ThreadId) {
+	var request GetThreadRequestObject
+
+	request.ThreadId = threadId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetThread(ctx, request.(GetThreadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetThread")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetThreadResponseObject); ok {
+		if err := validResponse.VisitGetThreadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateThread operation middleware
+func (sh *strictHandler) UpdateThread(w http.ResponseWriter, r *http.Request, threadId ThreadId, params UpdateThreadParams) {
+	var request UpdateThreadRequestObject
+
+	request.ThreadId = threadId
+	request.Params = params
+
+	var body UpdateThreadJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateThread(ctx, request.(UpdateThreadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateThread")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateThreadResponseObject); ok {
+		if err := validResponse.VisitUpdateThreadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMessages operation middleware
+func (sh *strictHandler) ListMessages(w http.ResponseWriter, r *http.Request, threadId ThreadId, params ListMessagesParams) {
+	var request ListMessagesRequestObject
+
+	request.ThreadId = threadId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMessages(ctx, request.(ListMessagesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMessages")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMessagesResponseObject); ok {
+		if err := validResponse.VisitListMessagesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateTurn operation middleware
+func (sh *strictHandler) CreateTurn(w http.ResponseWriter, r *http.Request, threadId ThreadId, params CreateTurnParams) {
+	var request CreateTurnRequestObject
+
+	request.ThreadId = threadId
+	request.Params = params
+
+	var body CreateTurnJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateTurn(ctx, request.(CreateTurnRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateTurn")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateTurnResponseObject); ok {
+		if err := validResponse.VisitCreateTurnResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CancelTurn operation middleware
+func (sh *strictHandler) CancelTurn(w http.ResponseWriter, r *http.Request, turnId TurnId, params CancelTurnParams) {
+	var request CancelTurnRequestObject
+
+	request.TurnId = turnId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CancelTurn(ctx, request.(CancelTurnRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CancelTurn")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CancelTurnResponseObject); ok {
+		if err := validResponse.VisitCancelTurnResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -12172,6 +15877,180 @@ func (sh *strictHandler) UpdateAiSettings(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateAiSettingsResponseObject); ok {
 		if err := validResponse.VisitUpdateAiSettingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMemories operation middleware
+func (sh *strictHandler) ListMemories(w http.ResponseWriter, r *http.Request, params ListMemoriesParams) {
+	var request ListMemoriesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMemories(ctx, request.(ListMemoriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMemories")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMemoriesResponseObject); ok {
+		if err := validResponse.VisitListMemoriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteMemory operation middleware
+func (sh *strictHandler) DeleteMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId, params DeleteMemoryParams) {
+	var request DeleteMemoryRequestObject
+
+	request.MemoryId = memoryId
+	request.Params = params
+
+	var body DeleteMemoryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteMemory(ctx, request.(DeleteMemoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteMemory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteMemoryResponseObject); ok {
+		if err := validResponse.VisitDeleteMemoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMemory operation middleware
+func (sh *strictHandler) GetMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId) {
+	var request GetMemoryRequestObject
+
+	request.MemoryId = memoryId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMemory(ctx, request.(GetMemoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMemory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMemoryResponseObject); ok {
+		if err := validResponse.VisitGetMemoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateMemory operation middleware
+func (sh *strictHandler) UpdateMemory(w http.ResponseWriter, r *http.Request, memoryId MemoryId, params UpdateMemoryParams) {
+	var request UpdateMemoryRequestObject
+
+	request.MemoryId = memoryId
+	request.Params = params
+
+	var body UpdateMemoryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateMemory(ctx, request.(UpdateMemoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateMemory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateMemoryResponseObject); ok {
+		if err := validResponse.VisitUpdateMemoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListRelearnBlocks operation middleware
+func (sh *strictHandler) ListRelearnBlocks(w http.ResponseWriter, r *http.Request) {
+	var request ListRelearnBlocksRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListRelearnBlocks(ctx, request.(ListRelearnBlocksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListRelearnBlocks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListRelearnBlocksResponseObject); ok {
+		if err := validResponse.VisitListRelearnBlocksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteRelearnBlock operation middleware
+func (sh *strictHandler) DeleteRelearnBlock(w http.ResponseWriter, r *http.Request, blockId BlockId, params DeleteRelearnBlockParams) {
+	var request DeleteRelearnBlockRequestObject
+
+	request.BlockId = blockId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteRelearnBlock(ctx, request.(DeleteRelearnBlockRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteRelearnBlock")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteRelearnBlockResponseObject); ok {
+		if err := validResponse.VisitDeleteRelearnBlockResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -12847,6 +16726,42 @@ func (sh *strictHandler) GetWeeklyReview(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// GenerateWeeklyReview operation middleware
+func (sh *strictHandler) GenerateWeeklyReview(w http.ResponseWriter, r *http.Request, params GenerateWeeklyReviewParams) {
+	var request GenerateWeeklyReviewRequestObject
+
+	request.Params = params
+
+	var body GenerateWeeklyReviewJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GenerateWeeklyReview(ctx, request.(GenerateWeeklyReviewRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GenerateWeeklyReview")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GenerateWeeklyReviewResponseObject); ok {
+		if err := validResponse.VisitGenerateWeeklyReviewResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Search operation middleware
 func (sh *strictHandler) Search(w http.ResponseWriter, r *http.Request, params SearchParams) {
 	var request SearchRequestObject
@@ -13324,299 +17239,371 @@ func (sh *strictHandler) UpdateTracker(w http.ResponseWriter, r *http.Request, t
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"//8=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

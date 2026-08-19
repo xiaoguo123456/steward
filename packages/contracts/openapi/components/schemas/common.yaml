@@ -54,6 +54,13 @@ ErrorCode:
     - AI_SOURCE_INVALID
     - AI_BUDGET_EXCEEDED
     - AI_TURN_CANCELLED
+    # Action Proposal
+    - AI_PROPOSAL_STALE
+    - AI_PROPOSAL_EXPIRED
+    - AI_PROPOSAL_ALREADY_RESOLVED
+    - AI_PROPOSAL_EDIT_NOT_ALLOWED
+    # 长期记忆
+    - MEMORY_RELEARN_BLOCKED
 
 ErrorBody:
   type: object
@@ -205,7 +212,7 @@ AffectedResource:
     type:
       type: string
       description: 受影响资源类型，App 据此精确失效缓存。
-      enum: [task, event, project, note, record, tracker, task_list, capture, today, calendar, activity]
+      enum: [task, event, project, note, record, tracker, task_list, capture, today, calendar, activity, assistant_thread, action_proposal, memory]
     id:
       type: string
       nullable: true

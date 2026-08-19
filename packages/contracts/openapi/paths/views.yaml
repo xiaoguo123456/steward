@@ -125,3 +125,43 @@ Search:
         $ref: '../components/responses.yaml#/Unauthorized'
       '500':
         $ref: '../components/responses.yaml#/InternalError'
+
+GenerateWeeklyReview:
+  post:
+    operationId: generateWeeklyReview
+    summary: 生成本周复盘的叙述与建议
+    description: |
+      返回 202 与 operation_id，叙述在 Worker 中异步生成。
+      确定性指标不依赖这一步：即使生成失败，复盘页仍然完整可用。
+      没有来源支撑的结论会被丢弃，不会出现在建议里。
+    tags: [views]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              week_of:
+                type: string
+                format: date
+                nullable: true
+                description: 该周内任意一天的当地日期。不传时为本周。
+    responses:
+      '202':
+        description: 已受理。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/common.yaml#/AcceptedResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

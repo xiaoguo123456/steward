@@ -6,15 +6,16 @@
 
 ## 当前实现状态
 
-对应后端指南第 25 节的**阶段 0 与阶段 1 已完成，阶段 2 与阶段 3 完成骨架**：
+对应后端指南第 25 节的**阶段 0～7 的服务端部分已完成**：
 
-- `packages/contracts`：OpenAPI 3.0.3 契约，33 个路径、57 个操作，是前后端唯一事实来源。
-- `apps/backend`：Go 模块化单体，实现全部 57 个契约操作；PostgreSQL + RLS + River。
+- `packages/contracts`：OpenAPI 3.0.3 契约，50 个路径、80 个操作，是前后端唯一事实来源。
+- `apps/backend`：Go 模块化单体，实现全部 80 个契约操作；PostgreSQL + RLS + River。
 - `packages/api-client`：Orval 生成的 TypeScript Client、TanStack Query Hooks 与 Zod 校验器。
 - `apps/mobile`：登录、首页、计划、笔记、打卡、日历、任务详情与 Capture 全流程已接真实 API。
 
-尚未实现：通用 Assistant 多轮对话、长期记忆、媒体上传与转写／OCR、向量检索、SSE。
-真实模型 Provider 未接入，`STEWARD_AI_PROVIDER=fake` 时使用确定性本地解析。
+尚未实现：向量检索与 Embedding、SSE 流式回复、Assistant 与记忆的移动端界面。
+`STEWARD_AI_PROVIDER=fake` 时使用确定性本地解析，不发起任何外部请求，
+此时对话会明确返回"暂时回复不了"而不是伪造一个回答。
 
 仍在本地 Fixture 上的前端场景：运动、食谱、番茄钟、记账、重要日、购物、复盘、行程。
 它们的正式契约尚未设计，详见各自的 `src/features/*/README.md`。
@@ -75,14 +76,32 @@ apps/backend/
     ├── bootstrap/                     # 唯一知道全部模块的地方；组装与路由
     ├── gen/{httpapi,dbgen}            # 生成代码，禁止手改
     ├── modules/                       # 业务模块，各自有 README.md
-    │   ├── auth users lists objects trackers views captures activity
-    └── platform/                      # config database auth httpx timeutil idgen apperr ai jobs
+    │   ├── auth users lists objects trackers views captures activity media
+    │   └── assistant memory
+    └── platform/                      # config database auth httpx timeutil idgen apperr jobs storage
+        └── ai/                        # ports capability engine assets
+            ├── fake/ openai/          # Provider 适配器，SDK 与线上协议只出现在这里
+            └── runtime/direct/        # 薄工具循环，实现 ai.OrchestrationEngine
 ```
 
 模块之间只通过各自声明的窄接口通信，具体实现在 `bootstrap` 注入，因此没有跨模块直接依赖。
 每个模块的 API 层类型名各不相同（`SessionAPI`、`ObjectAPI`…），
 这样 `bootstrap.Server` 可以直接嵌入它们并依靠 Go 的方法提升；
 `var _ httpapi.StrictServerInterface = (*Server)(nil)` 保证漏实现任何一个操作都编译不过。
+
+## AI 编排的授权边界
+
+- `ai.Registry` 只接受代码里显式登记过的 Capability，**不支持按名字反射任意 Go 方法**。
+- `Allowed(allowProposals)` 算出的工具列表只是给模型的**提示**；
+  `direct.Engine.executeCall` 每次调用前都会重新按名字授权，
+  列表外的工具一律拒绝（`AI_TOOL_NOT_ALLOWED`）并留审计。
+- `user_id` 只来自服务端已验证身份（`ai.CapabilityContext`），忽略模型自报的任何身份。
+- 工具循环的停止条件都在 `direct.Engine.RunTurn` 里，
+  `internal/platform/ai/runtime/direct/engine_test.go` 是它们的 Conformance Test。
+- 模型产出的建议只落 `action_proposals`；写入发生在
+  `assistant.ProposalService.Confirm` 的那一个事务里，并在其中重新读目标、重跑校验。
+- 无来源的结论一律丢弃：复盘建议、Action Proposal 都要求 `source_refs` 非空
+  且每个 ID 都出自服务端给出的清单。
 
 ## 数据库与安全
 
@@ -94,6 +113,9 @@ apps/backend/
   业务模块继续只用 `*dbgen.Queries`。
 - 中文检索用 `pg_trgm` + `ILIKE`。Postgres 默认分词器不切分中文，
   `to_tsvector` 会把整句当成一个 token，搜不到子串。
+- `STEWARD_MEMORY_FINGERPRINT_KEY` 是「不再学习这项」阻止记录的 HMAC 密钥，
+  独立用途，不要复用 JWT 密钥。指纹基于规范化后的语义值计算，
+  换更强的归一化时必须递增 `memory.FingerprintKeyVersion`。
 
 ## 移动端代码约定
 

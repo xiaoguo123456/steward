@@ -10,6 +10,65 @@ import (
 	"time"
 )
 
+const aggregateRecordField = `-- name: AggregateRecordField :one
+SELECT
+    count(*)::int                                  AS record_count,
+    count(v.num)::int                              AS value_count,
+    coalesce(sum(v.num), 0)::double precision      AS total,
+    coalesce(avg(v.num), 0)::double precision      AS average,
+    coalesce(min(v.num), 0)::double precision      AS minimum,
+    coalesce(max(v.num), 0)::double precision      AS maximum
+FROM records r
+LEFT JOIN LATERAL (
+    SELECT CASE
+        WHEN jsonb_typeof(r.values -> $1::text) = 'number'
+        THEN (r.values ->> $1::text)::double precision
+    END AS num
+) v ON true
+WHERE r.deleted_at IS NULL
+  AND r.tracker_id = $2::text
+  AND ($3::timestamptz IS NULL OR r.timestamp >= $3::timestamptz)
+  AND ($4::timestamptz IS NULL OR r.timestamp < $4::timestamptz)
+`
+
+type AggregateRecordFieldParams struct {
+	FieldKey  string
+	TrackerID string
+	FromAt    *time.Time
+	ToAt      *time.Time
+}
+
+type AggregateRecordFieldRow struct {
+	RecordCount int32
+	ValueCount  int32
+	Total       float64
+	Average     float64
+	Minimum     float64
+	Maximum     float64
+}
+
+// records.aggregate 能力用：由 SQL 完成计数、求和、平均与范围，
+// 避免把逐条明细发给模型。字段值取 JSONB 中的数字，非数字项自动跳过。
+// 聚合值统一 coalesce 成 0：没有数据时用 value_count = 0 判断，不要读 average。
+func (q *Queries) AggregateRecordField(ctx context.Context, arg AggregateRecordFieldParams) (AggregateRecordFieldRow, error) {
+	row := q.db.QueryRow(ctx, aggregateRecordField,
+		arg.FieldKey,
+		arg.TrackerID,
+		arg.FromAt,
+		arg.ToAt,
+	)
+	var i AggregateRecordFieldRow
+	err := row.Scan(
+		&i.RecordCount,
+		&i.ValueCount,
+		&i.Total,
+		&i.Average,
+		&i.Minimum,
+		&i.Maximum,
+	)
+	return i, err
+}
+
 const clearProjectFromRecords = `-- name: ClearProjectFromRecords :exec
 UPDATE records SET project_id = NULL, updated_at = now(), version = version + 1
 WHERE project_id = $1 AND deleted_at IS NULL

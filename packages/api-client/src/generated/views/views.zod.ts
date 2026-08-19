@@ -275,6 +275,35 @@ export const GetWeeklyReviewResponse = zod.object({
 })
 
 /**
+ * 返回 202 与 operation_id，叙述在 Worker 中异步生成。
+ * 确定性指标不依赖这一步：即使生成失败，复盘页仍然完整可用。
+ * 没有来源支撑的结论会被丢弃，不会出现在建议里。
+ * @summary 生成本周复盘的叙述与建议
+ */
+export const generateWeeklyReviewHeaderIdempotencyKeyMin = 8;
+export const generateWeeklyReviewHeaderIdempotencyKeyMax = 128;
+
+
+
+export const GenerateWeeklyReviewHeader = zod.object({
+  "Idempotency-Key": zod.string().min(generateWeeklyReviewHeaderIdempotencyKeyMin).max(generateWeeklyReviewHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const GenerateWeeklyReviewBody = zod.object({
+  "week_of": zod.string().date().nullish().describe('该周内任意一天的当地日期。不传时为本周。')
+})
+
+export const GenerateWeeklyReviewResponse = zod.object({
+  "data": zod.object({
+  "operation_id": zod.string(),
+  "resource_id": zod.string().nullish().describe('已经创建的目标资源 ID，例如 Capture ID。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
  * 只返回已确认的正式内容，处理中或待确认的 Capture 不会出现。
  * @summary 跨实体关键词检索
  */

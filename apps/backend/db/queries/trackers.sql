@@ -125,3 +125,26 @@ SELECT id, title, updated_at FROM records
 WHERE deleted_at IS NULL AND title ILIKE '%' || sqlc.arg(query)::text || '%'
 ORDER BY updated_at DESC
 LIMIT sqlc.arg(row_limit);
+
+-- name: AggregateRecordField :one
+-- records.aggregate 能力用：由 SQL 完成计数、求和、平均与范围，
+-- 避免把逐条明细发给模型。字段值取 JSONB 中的数字，非数字项自动跳过。
+-- 聚合值统一 coalesce 成 0：没有数据时用 value_count = 0 判断，不要读 average。
+SELECT
+    count(*)::int                                  AS record_count,
+    count(v.num)::int                              AS value_count,
+    coalesce(sum(v.num), 0)::double precision      AS total,
+    coalesce(avg(v.num), 0)::double precision      AS average,
+    coalesce(min(v.num), 0)::double precision      AS minimum,
+    coalesce(max(v.num), 0)::double precision      AS maximum
+FROM records r
+LEFT JOIN LATERAL (
+    SELECT CASE
+        WHEN jsonb_typeof(r.values -> sqlc.arg(field_key)::text) = 'number'
+        THEN (r.values ->> sqlc.arg(field_key)::text)::double precision
+    END AS num
+) v ON true
+WHERE r.deleted_at IS NULL
+  AND r.tracker_id = sqlc.arg(tracker_id)::text
+  AND (sqlc.narg(from_at)::timestamptz IS NULL OR r.timestamp >= sqlc.narg(from_at)::timestamptz)
+  AND (sqlc.narg(to_at)::timestamptz IS NULL OR r.timestamp < sqlc.narg(to_at)::timestamptz);

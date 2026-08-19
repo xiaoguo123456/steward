@@ -1,0 +1,191 @@
+# 长期记忆。
+#
+# 它与显式设置分开：user_preferences 保存产品设置与用户直接填写的稳定偏好，
+# memory_items 保存对话中提出、经用户确认的补充上下文。
+# 两者表达同一语义时以显式设置为准，记忆被标记为 shadowed。
+
+MemoryType:
+  type: string
+  description: |
+    第一阶段只开放这几种稳定类型。
+    禁止用一个自由文本类型无限承载未知业务。
+  enum:
+    - communication_preference
+    - routine_preference
+    - domain_preference
+    - personal_context
+    - constraint
+
+MemorySensitivity:
+  type: string
+  description: |
+    健康、财务、住址、家庭关系与受保护属性默认视为高敏。
+    高敏记忆只允许用户明确输入并单独确认，不通过行为自动推断。
+  enum: [normal, sensitive, highly_sensitive]
+
+MemoryOrigin:
+  type: string
+  description: explicit 表示用户直接说出；learned 表示从对话中学到并经确认。
+  enum: [explicit, learned, imported]
+
+MemoryStatus:
+  type: string
+  enum: [active, superseded, deleted, expired, shadowed]
+
+MemoryEvidence:
+  type: object
+  additionalProperties: false
+  required: [source_type, source_id, evidence_role, created_at]
+  properties:
+    source_type:
+      type: string
+      enum: [assistant_message, user_message, object, record, user_setting]
+    source_id:
+      type: string
+    source_deleted:
+      type: boolean
+      default: false
+      description: 来源被删除后显示 tombstone，不把原文复制回记忆。
+    evidence_role:
+      type: string
+      enum: [explicit, inferred, user_confirmed]
+    created_at:
+      type: string
+      format: date-time
+
+MemoryItem:
+  type: object
+  additionalProperties: false
+  required: [id, memory_key, memory_type, canonical_text, sensitivity, origin, status, created_at, version]
+  properties:
+    id:
+      type: string
+      example: mem_01J8Z3
+    memory_key:
+      type: string
+      description: 稳定语义键，例如 communication.response_style。
+    memory_type:
+      $ref: '#/MemoryType'
+    canonical_text:
+      type: string
+      description: 面向用户展示的规范表述。
+    sensitivity:
+      $ref: '#/MemorySensitivity'
+    origin:
+      $ref: '#/MemoryOrigin'
+    status:
+      $ref: '#/MemoryStatus'
+    evidence:
+      type: array
+      description: 每条记忆至少有一条来源。用户可以据此判断系统为什么记住它。
+      items:
+        $ref: '#/MemoryEvidence'
+    confirmed_at:
+      type: string
+      format: date-time
+      nullable: true
+    last_used_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: 最近一次被用作上下文的时间。被引用不提高事实可信度。
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    version:
+      type: integer
+
+MemoryItemResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MemoryItem'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+MemoryItemsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/MemoryItem'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+UpdateMemoryRequest:
+  type: object
+  additionalProperties: false
+  required: [canonical_text]
+  properties:
+    canonical_text:
+      type: string
+      minLength: 1
+      maxLength: 200
+      description: 用户改写后的表述。修改会创建新的 Revision。
+
+DeleteMemoryRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    block_relearning:
+      type: boolean
+      default: false
+      description: |
+        为 true 时同时写入 Relearn Block，阻止系统再次自动学到同一语义。
+        Block 只保存指纹，不保存明文，也不能用来恢复原值。
+
+DeleteMemoryResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: object
+      additionalProperties: false
+      required: [recoverable]
+      properties:
+        recoverable:
+          type: boolean
+          description: |
+            是否可以恢复。高敏记忆不提供恢复，契约显式给出该字段，
+            不让 App 自行猜测。
+        blocked_relearning:
+          type: boolean
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+RelearnBlock:
+  type: object
+  additionalProperties: false
+  required: [id, memory_key, blocked_at]
+  properties:
+    id:
+      type: string
+    memory_key:
+      type: string
+      description: 只展示语义键，不展示被阻止的具体内容。
+    blocked_at:
+      type: string
+      format: date-time
+
+RelearnBlocksResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/RelearnBlock'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

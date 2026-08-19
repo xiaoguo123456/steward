@@ -111,8 +111,43 @@ QuestionId:
   schema:
     type: string
 
+ThreadId:
+  name: thread_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+TurnId:
+  name: turn_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+ProposalId:
+  name: proposal_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+MemoryId:
+  name: memory_id
+  in: path
+  required: true
+  schema:
+    type: string
+
 OperationId:
   name: operation_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+BlockId:
+  name: block_id
   in: path
   required: true
   schema:

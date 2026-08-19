@@ -1,0 +1,163 @@
+# 长期记忆管理。
+#
+# AI 开关与显式设置仍使用 /v1/me/ai-settings 与 /v1/me/preferences，不迁入这里。
+
+Memories:
+  get:
+    operationId: listMemories
+    summary: 查看系统记住了什么
+    description: |
+      用户据此了解「系统记住了什么、从哪里来、为什么使用」。
+      每条记忆都带来源，没有来源的条目不会存在。
+    tags: [memory]
+    parameters:
+      - name: memory_type
+        in: query
+        required: false
+        schema:
+          $ref: '../components/schemas/memory.yaml#/MemoryType'
+      - name: status
+        in: query
+        required: false
+        description: 不传时只返回生效中的记忆。
+        schema:
+          type: array
+          items:
+            $ref: '../components/schemas/memory.yaml#/MemoryStatus'
+        style: form
+        explode: false
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/memory.yaml#/MemoryItemsResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Memory:
+  get:
+    operationId: getMemory
+    summary: 查看记忆的值、来源与历史
+    tags: [memory]
+    parameters:
+      - $ref: '../components/parameters.yaml#/MemoryId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/memory.yaml#/MemoryItemResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  patch:
+    operationId: updateMemory
+    summary: 修改已确认的记忆
+    description: 修改会创建新的 Revision，旧值保留最小审计关系但不再使用。
+    tags: [memory]
+    parameters:
+      - $ref: '../components/parameters.yaml#/MemoryId'
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/memory.yaml#/UpdateMemoryRequest'
+    responses:
+      '200':
+        description: 修改成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/memory.yaml#/MemoryItemResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deleteMemory
+    summary: 删除记忆
+    description: |
+      删除后立即从检索与 Prompt 上下文中排除。
+      选择阻止重新学习时写入 Relearn Block，只保存指纹，不保存明文。
+    tags: [memory]
+    parameters:
+      - $ref: '../components/parameters.yaml#/MemoryId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/memory.yaml#/DeleteMemoryRequest'
+    responses:
+      '200':
+        description: 已删除。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/memory.yaml#/DeleteMemoryResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+RelearnBlocks:
+  get:
+    operationId: listRelearnBlocks
+    summary: 查看已禁止重新学习的项目
+    tags: [memory]
+    responses:
+      '200':
+        description: 只返回语义键与时间，不返回被阻止的具体内容。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/memory.yaml#/RelearnBlocksResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+RelearnBlock:
+  delete:
+    operationId: deleteRelearnBlock
+    summary: 解除重新学习阻止
+    tags: [memory]
+    parameters:
+      - $ref: '../components/parameters.yaml#/BlockId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 已解除。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

@@ -7,6 +7,7 @@ WHERE deleted_at IS NULL
   AND (sqlc.narg(list_id)::text IS NULL OR list_id = sqlc.narg(list_id)::text)
   AND (sqlc.narg(project_id)::text IS NULL OR project_id = sqlc.narg(project_id)::text)
   AND (sqlc.narg(due_before)::date IS NULL OR due_date <= sqlc.narg(due_before)::date)
+  AND (sqlc.narg(due_from)::date IS NULL OR due_date >= sqlc.narg(due_from)::date)
   AND (sqlc.narg(scheduled_from)::timestamptz IS NULL
        OR (scheduled_start_at >= sqlc.narg(scheduled_from)::timestamptz
            AND scheduled_start_at <= sqlc.narg(scheduled_to)::timestamptz))

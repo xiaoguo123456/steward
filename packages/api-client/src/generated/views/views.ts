@@ -14,29 +14,36 @@
  * OpenAPI spec version: 1.0.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
+  AcceptedResponse,
   BadRequestResponse,
   CalendarViewResponse,
+  GenerateWeeklyReviewBody,
   GetCalendarParams,
   GetWeeklyReviewParams,
   InternalErrorResponse,
   SearchParams,
   SearchResponse,
   TodayViewResponse,
+  TooManyRequestsResponse,
   UnauthorizedResponse,
   WeeklyReviewResponse
 } from '../model';
@@ -381,7 +388,80 @@ export function useGetWeeklyReview<TData = Awaited<ReturnType<typeof getWeeklyRe
 
 
 
-export const getSearchUrl = (params: SearchParams,) => {
+export const getGenerateWeeklyReviewUrl = () => {
+
+
+
+
+  return `/v1/reviews/weekly/generate`
+}
+
+/**
+ * 返回 202 与 operation_id，叙述在 Worker 中异步生成。
+ * 确定性指标不依赖这一步：即使生成失败，复盘页仍然完整可用。
+ * 没有来源支撑的结论会被丢弃，不会出现在建议里。
+ * @summary 生成本周复盘的叙述与建议
+ */
+export const generateWeeklyReview = async (generateWeeklyReviewBody?: GenerateWeeklyReviewBody, options?: Parameters<typeof stewardFetch>[1]): Promise<AcceptedResponse> => {
+
+  return stewardFetch<AcceptedResponse>(getGenerateWeeklyReviewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(generateWeeklyReviewBody)
+  }
+);}
+
+
+
+
+
+export const getGenerateWeeklyReviewMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateWeeklyReview>>, TError,{data?: GenerateWeeklyReviewBody}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateWeeklyReview>>, TError,{data?: GenerateWeeklyReviewBody}, TContext> => {
+
+const mutationKey = ['generateWeeklyReview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateWeeklyReview>>, {data?: GenerateWeeklyReviewBody}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateWeeklyReview(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateWeeklyReviewMutationResult = NonNullable<Awaited<ReturnType<typeof generateWeeklyReview>>>
+    export type GenerateWeeklyReviewMutationBody = GenerateWeeklyReviewBody | undefined
+    export type GenerateWeeklyReviewMutationError = BadRequestResponse | UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse
+
+    /**
+ * @summary 生成本周复盘的叙述与建议
+ */
+export const useGenerateWeeklyReview = <TError = BadRequestResponse | UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateWeeklyReview>>, TError,{data?: GenerateWeeklyReviewBody}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateWeeklyReview>>,
+        TError,
+        {data?: GenerateWeeklyReviewBody},
+        TContext
+      > => {
+      return useMutation(getGenerateWeeklyReviewMutationOptions(options), queryClient);
+    }
+    export const getSearchUrl = (params: SearchParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {

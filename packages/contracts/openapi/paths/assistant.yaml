@@ -1,0 +1,323 @@
+# Assistant 对话与 Action Proposal。
+
+Threads:
+  get:
+    operationId: listThreads
+    summary: 读取对话列表
+    tags: [assistant]
+    parameters:
+      - name: include_archived
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 按更新时间倒序返回。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/AssistantThreadsResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createThread
+    summary: 新建对话
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assistant.yaml#/CreateThreadRequest'
+    responses:
+      '201':
+        description: 创建成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/AssistantThreadResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Thread:
+  get:
+    operationId: getThread
+    summary: 读取对话摘要
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ThreadId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/AssistantThreadResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  patch:
+    operationId: updateThread
+    summary: 修改标题或归档状态
+    description: 归档只影响默认列表展示，不会让待确认建议自动执行。
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ThreadId'
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assistant.yaml#/UpdateThreadRequest'
+    responses:
+      '200':
+        description: 修改成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/AssistantThreadResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deleteThread
+    summary: 删除对话内容
+    description: |
+      按保留策略清理消息与派生摘要。
+      已经执行的业务实体及其 Activity 不随对话删除。
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ThreadId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 删除成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Messages:
+  get:
+    operationId: listMessages
+    summary: 读取对话消息
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ThreadId'
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 按序号倒序返回。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/AssistantMessagesResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Turns:
+  post:
+    operationId: createTurn
+    summary: 发送一条消息并触发回复
+    description: |
+      同步保存用户消息并返回 202 与 operation_id，回复在 Worker 中异步生成。
+      客户端通过 Operation 轮询，完成后读取消息列表。
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ThreadId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assistant.yaml#/CreateTurnRequest'
+    responses:
+      '202':
+        description: 已受理，回复任务已入队。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/TurnAcceptedResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+CancelTurn:
+  post:
+    operationId: cancelTurn
+    summary: 取消仍在执行的回复
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/TurnId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 已请求取消。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/common.yaml#/EmptyResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Proposals:
+  get:
+    operationId: listProposals
+    summary: 读取待确认与历史建议
+    tags: [assistant]
+    parameters:
+      - name: status
+        in: query
+        required: false
+        description: 不传时只返回待确认项。
+        schema:
+          type: array
+          items:
+            $ref: '../components/schemas/assistant.yaml#/ProposalStatus'
+        style: form
+        explode: false
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/ActionProposalsResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Proposal:
+  get:
+    operationId: getProposal
+    summary: 读取建议详情
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ProposalId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/ActionProposalResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+ConfirmProposal:
+  post:
+    operationId: confirmProposal
+    summary: 确认并执行建议
+    description: |
+      服务端会重新读取目标、重新执行权限与状态机校验，再把允许的用户编辑
+      映射成类型化 Domain Command 执行。模型给出的理由不能替代这一步。
+      目标在建议生成后被改动过时返回 AI_PROPOSAL_STALE。
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ProposalId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/assistant.yaml#/ConfirmProposalRequest'
+    responses:
+      '200':
+        description: 执行成功，返回受影响资源与撤销入口。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/ConfirmProposalResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+RejectProposal:
+  post:
+    operationId: rejectProposal
+    summary: 拒绝建议
+    description: 不修改任何业务数据。
+    tags: [assistant]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ProposalId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 已拒绝。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/ActionProposalResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

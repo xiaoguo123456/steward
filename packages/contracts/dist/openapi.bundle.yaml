@@ -39,6 +39,10 @@ tags:
     x-displayName: 统一输入
   - name: media
     x-displayName: 媒体上传
+  - name: assistant
+    x-displayName: AI 助手
+  - name: memory
+    x-displayName: 长期记忆
   - name: views
     x-displayName: 聚合视图
   - name: system
@@ -1525,6 +1529,493 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/assistant/threads:
+    get:
+      operationId: listThreads
+      summary: 读取对话列表
+      tags:
+        - assistant
+      parameters:
+        - name: include_archived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 按更新时间倒序返回。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantThreadsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createThread
+      summary: 新建对话
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateThreadRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantThreadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/assistant/threads/{thread_id}:
+    get:
+      operationId: getThread
+      summary: 读取对话摘要
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantThreadResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateThread
+      summary: 修改标题或归档状态
+      description: 归档只影响默认列表展示，不会让待确认建议自动执行。
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateThreadRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantThreadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteThread
+      summary: 删除对话内容
+      description: |
+        按保留策略清理消息与派生摘要。
+        已经执行的业务实体及其 Activity 不随对话删除。
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/assistant/threads/{thread_id}/messages:
+    get:
+      operationId: listMessages
+      summary: 读取对话消息
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 按序号倒序返回。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantMessagesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/assistant/threads/{thread_id}/turns:
+    post:
+      operationId: createTurn
+      summary: 发送一条消息并触发回复
+      description: |
+        同步保存用户消息并返回 202 与 operation_id，回复在 Worker 中异步生成。
+        客户端通过 Operation 轮询，完成后读取消息列表。
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTurnRequest'
+      responses:
+        '202':
+          description: 已受理，回复任务已入队。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/assistant/turns/{turn_id}/cancel:
+    post:
+      operationId: cancelTurn
+      summary: 取消仍在执行的回复
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/TurnId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 已请求取消。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/assistant/proposals:
+    get:
+      operationId: listProposals
+      summary: 读取待确认与历史建议
+      tags:
+        - assistant
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: 不传时只返回待确认项。
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ProposalStatus'
+          style: form
+          explode: false
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionProposalsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/assistant/proposals/{proposal_id}:
+    get:
+      operationId: getProposal
+      summary: 读取建议详情
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/ProposalId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionProposalResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/assistant/proposals/{proposal_id}/confirm:
+    post:
+      operationId: confirmProposal
+      summary: 确认并执行建议
+      description: |
+        服务端会重新读取目标、重新执行权限与状态机校验，再把允许的用户编辑
+        映射成类型化 Domain Command 执行。模型给出的理由不能替代这一步。
+        目标在建议生成后被改动过时返回 AI_PROPOSAL_STALE。
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/ProposalId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmProposalRequest'
+      responses:
+        '200':
+          description: 执行成功，返回受影响资源与撤销入口。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmProposalResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/assistant/proposals/{proposal_id}/reject:
+    post:
+      operationId: rejectProposal
+      summary: 拒绝建议
+      description: 不修改任何业务数据。
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/ProposalId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 已拒绝。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionProposalResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/memories:
+    get:
+      operationId: listMemories
+      summary: 查看系统记住了什么
+      description: |
+        用户据此了解「系统记住了什么、从哪里来、为什么使用」。
+        每条记忆都带来源，没有来源的条目不会存在。
+      tags:
+        - memory
+      parameters:
+        - name: memory_type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/MemoryType'
+        - name: status
+          in: query
+          required: false
+          description: 不传时只返回生效中的记忆。
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/MemoryStatus'
+          style: form
+          explode: false
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryItemsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/memories/{memory_id}:
+    get:
+      operationId: getMemory
+      summary: 查看记忆的值、来源与历史
+      tags:
+        - memory
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateMemory
+      summary: 修改已确认的记忆
+      description: 修改会创建新的 Revision，旧值保留最小审计关系但不再使用。
+      tags:
+        - memory
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemoryRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryItemResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteMemory
+      summary: 删除记忆
+      description: |
+        删除后立即从检索与 Prompt 上下文中排除。
+        选择阻止重新学习时写入 Relearn Block，只保存指纹，不保存明文。
+      tags:
+        - memory
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteMemoryRequest'
+      responses:
+        '200':
+          description: 已删除。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteMemoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/memory-relearn-blocks:
+    get:
+      operationId: listRelearnBlocks
+      summary: 查看已禁止重新学习的项目
+      tags:
+        - memory
+      responses:
+        '200':
+          description: 只返回语义键与时间，不返回被阻止的具体内容。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelearnBlocksResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/memory-relearn-blocks/{block_id}:
+    delete:
+      operationId: deleteRelearnBlock
+      summary: 解除重新学习阻止
+      tags:
+        - memory
+      parameters:
+        - $ref: '#/components/parameters/BlockId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 已解除。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/today:
     get:
       operationId: getToday
@@ -1611,6 +2102,46 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/reviews/weekly/generate:
+    post:
+      operationId: generateWeeklyReview
+      summary: 生成本周复盘的叙述与建议
+      description: |
+        返回 202 与 operation_id，叙述在 Worker 中异步生成。
+        确定性指标不依赖这一步：即使生成失败，复盘页仍然完整可用。
+        没有来源支撑的结论会被丢弃，不会出现在建议里。
+      tags:
+        - views
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                week_of:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: 该周内任意一天的当地日期。不传时为本周。
+      responses:
+        '202':
+          description: 已受理。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/search:
@@ -1822,6 +2353,11 @@ components:
         - AI_SOURCE_INVALID
         - AI_BUDGET_EXCEEDED
         - AI_TURN_CANCELLED
+        - AI_PROPOSAL_STALE
+        - AI_PROPOSAL_EXPIRED
+        - AI_PROPOSAL_ALREADY_RESOLVED
+        - AI_PROPOSAL_EDIT_NOT_ALLOWED
+        - MEMORY_RELEARN_BLOCKED
     ErrorDetail:
       type: object
       additionalProperties: false
@@ -2248,6 +2784,9 @@ components:
             - today
             - calendar
             - activity
+            - assistant_thread
+            - action_proposal
+            - memory
         id:
           type: string
           nullable: true
@@ -4468,6 +5007,624 @@ components:
           type: string
           minLength: 1
           description: 用户补充的文字说明。服务端据此创建新 revision 重新解析。
+    ThreadStatus:
+      type: string
+      enum:
+        - active
+        - archived
+        - deleted
+    AssistantThread:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - status
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: ath_01J8Z3
+        title:
+          type: string
+          description: 由首条用户消息生成，用户可以修改。
+        status:
+          $ref: '#/components/schemas/ThreadStatus'
+        last_message_seq:
+          type: integer
+          description: Thread 内最新消息序号，客户端据此判断是否有新内容。
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    AssistantThreadsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssistantThread'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateThreadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 60
+    AssistantThreadResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/AssistantThread'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateThreadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 60
+        status:
+          $ref: '#/components/schemas/ThreadStatus'
+    MessageRole:
+      type: string
+      enum:
+        - user
+        - assistant
+        - system_summary
+    AssistantMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - thread_id
+        - message_seq
+        - role
+        - content
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          example: amsg_01J8Z3
+        thread_id:
+          type: string
+        message_seq:
+          type: integer
+          description: Thread 内单调递增序号。消息一经展示不原地改写。
+        role:
+          $ref: '#/components/schemas/MessageRole'
+        content:
+          type: string
+          description: |
+            用户可见文本。不包含 Provider 原始响应对象，
+            也不包含模型的隐藏思维过程。
+        status:
+          type: string
+          enum:
+            - draft
+            - completed
+            - failed
+            - superseded
+        turn_id:
+          type: string
+          nullable: true
+        proposal_ids:
+          type: array
+          description: 本条消息附带的待确认建议。
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    AssistantMessagesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          description: 按 message_seq 倒序返回，最新的在前。
+          items:
+            $ref: '#/components/schemas/AssistantMessage'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    EntryContext:
+      type: object
+      additionalProperties: false
+      description: |
+        客户端的页面上下文，只用于消歧，不是授权。
+        服务端会重新校验资源归属与版本；App 不得传入权限结论。
+      properties:
+        screen:
+          type: string
+          description: 例如 task_detail、today。
+        resource_type:
+          type: string
+          nullable: true
+        resource_id:
+          type: string
+          nullable: true
+        selected_date:
+          type: string
+          format: date
+          nullable: true
+    CreateTurnRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: |
+            第一阶段通用 Assistant 只支持文本。
+            图片与音频继续走统一 Capture，不在这里重复一套媒体协议。
+        entry_context:
+          $ref: '#/components/schemas/EntryContext'
+    TurnAcceptedResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - thread_id
+            - message_id
+            - turn_id
+            - operation_id
+          properties:
+            thread_id:
+              type: string
+            message_id:
+              type: string
+            turn_id:
+              type: string
+            operation_id:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ProposalStatus:
+      type: string
+      enum:
+        - pending
+        - executed
+        - rejected
+        - expired
+        - stale
+        - superseded
+        - failed
+    ProposalType:
+      type: string
+      description: |
+        每种类型都有独立的 command 结构与对应的 Domain Command Mapper。
+        command 不是任意 JSON Patch。
+      enum:
+        - task_create
+        - task_update
+        - event_create
+        - memory_upsert
+    ProposalChange:
+      type: object
+      additionalProperties: false
+      required:
+        - field
+        - label
+      properties:
+        field:
+          type: string
+        label:
+          type: string
+          description: 面向用户的字段名。
+        before:
+          type: string
+          nullable: true
+        after:
+          type: string
+          nullable: true
+    ProposalPreview:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: 一句话说明这条建议会做什么。
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProposalChange'
+        impact:
+          type: string
+          nullable: true
+          description: 影响范围说明，例如会影响多少条内容。
+    ActionProposal:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - proposal_type
+        - status
+        - preview
+        - reason
+        - expires_at
+        - created_at
+        - version
+      properties:
+        id:
+          type: string
+          example: aprp_01J8Z3
+        thread_id:
+          type: string
+          nullable: true
+        turn_id:
+          type: string
+          nullable: true
+        proposal_type:
+          $ref: '#/components/schemas/ProposalType'
+        target_type:
+          type: string
+          nullable: true
+        target_id:
+          type: string
+          nullable: true
+        target_expected_version:
+          type: integer
+          nullable: true
+          description: 目标在建议生成后被改动过时，确认会失败并标记 stale。
+        status:
+          $ref: '#/components/schemas/ProposalStatus'
+        preview:
+          $ref: '#/components/schemas/ProposalPreview'
+        reason:
+          type: string
+          description: 模型给出的理由。它不能替代服务端的重新校验。
+        source_refs:
+          type: array
+          description: 生成这条建议时实际读取过的来源。
+          items:
+            type: string
+        editable_fields:
+          type: array
+          description: 用户在确认页可以修改的字段。其他字段不接受编辑。
+          items:
+            type: string
+        expires_at:
+          type: string
+          format: date-time
+        executed_batch_id:
+          type: string
+          nullable: true
+          description: 执行成功后生成的 Activity 批次，用于撤销。
+        created_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    ActionProposalsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionProposal'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ActionProposalResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/ActionProposal'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ConfirmProposalRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - proposal_version
+      properties:
+        proposal_version:
+          type: integer
+          description: 与服务端当前版本不一致时拒绝执行。
+        target_expected_version:
+          type: integer
+          nullable: true
+          description: 目标资源的期望版本，缺省时使用建议生成时记录的版本。
+        edits:
+          type: object
+          additionalProperties: true
+          description: |
+            用户在确认页的修改，只允许 editable_fields 声明过的字段。
+            不接受替换 command 类型或目标 ID。
+    ConfirmProposalResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - proposal
+            - affected_resources
+          properties:
+            proposal:
+              $ref: '#/components/schemas/ActionProposal'
+            affected_resources:
+              type: array
+              items:
+                $ref: '#/components/schemas/AffectedResource'
+            activity_batch_id:
+              type: string
+              nullable: true
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    MemoryType:
+      type: string
+      description: |
+        第一阶段只开放这几种稳定类型。
+        禁止用一个自由文本类型无限承载未知业务。
+      enum:
+        - communication_preference
+        - routine_preference
+        - domain_preference
+        - personal_context
+        - constraint
+    MemoryStatus:
+      type: string
+      enum:
+        - active
+        - superseded
+        - deleted
+        - expired
+        - shadowed
+    MemorySensitivity:
+      type: string
+      description: |
+        健康、财务、住址、家庭关系与受保护属性默认视为高敏。
+        高敏记忆只允许用户明确输入并单独确认，不通过行为自动推断。
+      enum:
+        - normal
+        - sensitive
+        - highly_sensitive
+    MemoryOrigin:
+      type: string
+      description: explicit 表示用户直接说出；learned 表示从对话中学到并经确认。
+      enum:
+        - explicit
+        - learned
+        - imported
+    MemoryEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - source_type
+        - source_id
+        - evidence_role
+        - created_at
+      properties:
+        source_type:
+          type: string
+          enum:
+            - assistant_message
+            - user_message
+            - object
+            - record
+            - user_setting
+        source_id:
+          type: string
+        source_deleted:
+          type: boolean
+          default: false
+          description: 来源被删除后显示 tombstone，不把原文复制回记忆。
+        evidence_role:
+          type: string
+          enum:
+            - explicit
+            - inferred
+            - user_confirmed
+        created_at:
+          type: string
+          format: date-time
+    MemoryItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - memory_key
+        - memory_type
+        - canonical_text
+        - sensitivity
+        - origin
+        - status
+        - created_at
+        - version
+      properties:
+        id:
+          type: string
+          example: mem_01J8Z3
+        memory_key:
+          type: string
+          description: 稳定语义键，例如 communication.response_style。
+        memory_type:
+          $ref: '#/components/schemas/MemoryType'
+        canonical_text:
+          type: string
+          description: 面向用户展示的规范表述。
+        sensitivity:
+          $ref: '#/components/schemas/MemorySensitivity'
+        origin:
+          $ref: '#/components/schemas/MemoryOrigin'
+        status:
+          $ref: '#/components/schemas/MemoryStatus'
+        evidence:
+          type: array
+          description: 每条记忆至少有一条来源。用户可以据此判断系统为什么记住它。
+          items:
+            $ref: '#/components/schemas/MemoryEvidence'
+        confirmed_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 最近一次被用作上下文的时间。被引用不提高事实可信度。
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    MemoryItemsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryItem'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    MemoryItemResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MemoryItem'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DeleteMemoryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        block_relearning:
+          type: boolean
+          default: false
+          description: |
+            为 true 时同时写入 Relearn Block，阻止系统再次自动学到同一语义。
+            Block 只保存指纹，不保存明文，也不能用来恢复原值。
+    DeleteMemoryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - recoverable
+          properties:
+            recoverable:
+              type: boolean
+              description: |
+                是否可以恢复。高敏记忆不提供恢复，契约显式给出该字段，
+                不让 App 自行猜测。
+            blocked_relearning:
+              type: boolean
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateMemoryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - canonical_text
+      properties:
+        canonical_text:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 用户改写后的表述。修改会创建新的 Revision。
+    RelearnBlock:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - memory_key
+        - blocked_at
+      properties:
+        id:
+          type: string
+        memory_key:
+          type: string
+          description: 只展示语义键，不展示被阻止的具体内容。
+        blocked_at:
+          type: string
+          format: date-time
+    RelearnBlocksResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelearnBlock'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
     TodayGroup:
       type: string
       description: |
@@ -5062,6 +6219,36 @@ components:
         type: string
     QuestionId:
       name: question_id
+      in: path
+      required: true
+      schema:
+        type: string
+    ThreadId:
+      name: thread_id
+      in: path
+      required: true
+      schema:
+        type: string
+    TurnId:
+      name: turn_id
+      in: path
+      required: true
+      schema:
+        type: string
+    ProposalId:
+      name: proposal_id
+      in: path
+      required: true
+      schema:
+        type: string
+    MemoryId:
+      name: memory_id
+      in: path
+      required: true
+      schema:
+        type: string
+    BlockId:
+      name: block_id
       in: path
       required: true
       schema:
