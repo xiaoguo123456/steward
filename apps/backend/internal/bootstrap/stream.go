@@ -37,6 +37,13 @@ func (a *App) turnStreamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 进度流整个关掉时明确拒绝，让客户端退回轮询，
+	// 而不是挂着一个永远不出内容的连接。
+	if a.Stream == nil {
+		http.Error(w, "进度流未启用，请使用轮询", http.StatusNotImplemented)
+		return
+	}
+
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		// 服务端没法逐段推送时明确拒绝，让客户端退回轮询，
@@ -81,7 +88,7 @@ func (a *App) turnStreamHandler(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		defer close(done)
-		_ = a.StreamSubscriber.Subscribe(ctx, turnID, func(event streams.Event) error {
+		_ = a.Stream.Subscribe(ctx, turnID, func(event streams.Event) error {
 			select {
 			case events <- event:
 				return nil

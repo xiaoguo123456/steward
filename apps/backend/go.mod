@@ -8,6 +8,7 @@ require (
 	github.com/aliyun/alibabacloud-oss-go-sdk-v2 v1.5.3 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cubicdaiya/gonp v1.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -41,6 +42,7 @@ require (
 	github.com/pingcap/log v1.1.0 // indirect
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20260418072757-ce92298d1124 // indirect
 	github.com/pressly/goose/v3 v3.27.3 // indirect
+	github.com/redis/go-redis/v9 v9.22.0 // indirect
 	github.com/riverqueue/river v0.44.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.44.0 // indirect
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.44.0 // indirect

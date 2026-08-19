@@ -94,6 +94,14 @@ func (a *App) localDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// streamName 报告进度流用的是哪种传输，便于排查「为什么没有流」。
+func (a *App) streamName() string {
+	if a.Stream == nil {
+		return "off"
+	}
+	return a.Stream.Name()
+}
+
 func (a *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 	dbOK := a.DB.Healthy(r.Context())
 	status := "ok"
@@ -113,5 +121,6 @@ func (a *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 		"database":    dbStatus,
 		"ai_provider": a.Parser.Name(),
 		"storage":     a.Store.Name(),
+		"stream":      a.streamName(),
 	})
 }

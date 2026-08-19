@@ -109,11 +109,34 @@ apps/backend/
 - SSE 端点 `/v1/assistant/turns/{id}/stream` **手工挂载**在 `bootstrap/stream.go`：
   生成的 strict server 给不出可以持续 flush 的写入口，和本地存储的传输端点同理。
   帧结构仍定义在契约的 `TurnStreamEvent`，因此客户端有类型与校验器。
-- Worker 与 API 是两个进程，进度用 PostgreSQL `LISTEN/NOTIFY` 打通，不引入 Redis。
 - **`delta` 携带的是「到目前为止的全文」而不是增量**：客户端直接替换缓冲区。
   丢事件不会造成缺字，中途连上来也不需要额外的补齐与去重规则。
-- 每条流独占一个数据库连接（LISTEN 是连接级状态），因此 `streams.NewLimiter`
-  的上限必须明显小于 `database.MaxConns`。
+- 传输可切换（`STEWARD_STREAM_DRIVER`），因为这条通道不承载权威状态：
+
+  | 驱动 | 适用 | 代价 |
+  |---|---|---|
+  | `redis` | 有 Redis 的部署 | 需要 Redis |
+  | `postgres` | 本地开发、没有 Redis | 每条流独占一个数据库连接；PgBouncer transaction 模式下失效；单条载荷 8000 字节 |
+  | `off` | 不需要逐字效果 | 客户端只能轮询 |
+
+  `auto`（默认）配了 `STEWARD_REDIS_URL` 就用 Redis。
+- **载荷超限时只能截断成前缀，不能切成多段**：delta 是替换语义，
+  分段发送会让客户端只显示最后一段，屏幕上是一句从中间开始的话。
+  截断的快照带 `truncated` 标记，客户端据此提示「完整内容稍后显示」。
+- `streams.Limiter` 的上限跟着驱动走：postgres 必须明显小于
+  `database.MaxConns`（默认 6），redis 可以高两个数量级（默认 256）。
+
+## Redis 的边界
+
+Redis 只用于**临时、非权威、连接数高**的东西，目前就是进度流一处。
+
+不要把这些搬过去：
+
+- **任务队列**。River 的核心价值是「业务写入与入队在同一个事务里」，
+  没有它就会出现「Capture 已创建但解析任务丢失」。Redis 队列给不了这个保证。
+- **幂等记录、刷新令牌、长期记忆**。它们都需要和业务数据同事务。
+
+判断标准很简单：丢了会不会导致用户数据不一致。会，就留在 PostgreSQL。
 
 ## 向量检索：先不做
 

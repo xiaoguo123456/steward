@@ -35,6 +35,8 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/aliyunoss"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/localfs"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams/pgnotify"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams/redisstream"
 )
 
 // Server 组合全部模块的 API 层，实现生成的 StrictServerInterface。
@@ -70,10 +72,11 @@ type App struct {
 	Store  storage.ObjectStore
 	// Capabilities 保存全部已登记能力，供健康检查与调试查看。
 	Capabilities []string
-	// Assistant、StreamSubscriber 与 StreamLimiter 供手工挂载的 SSE 端点使用。
-	Assistant        *assistant.Service
-	StreamSubscriber *streams.Subscriber
-	StreamLimiter    *streams.Limiter
+	// Assistant、Stream 与 StreamLimiter 供手工挂载的 SSE 端点使用。
+	// Stream 为空表示进度流关闭，客户端只能轮询。
+	Assistant     *assistant.Service
+	Stream        streams.Transport
+	StreamLimiter *streams.Limiter
 	// LocalStore 只在使用本地存储时非空，供路由挂载传输端点。
 	LocalStore *localfs.Store
 }
@@ -144,9 +147,17 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 
 	chat := newChatProvider(parser)
 	engine := newEngine(chat, logger)
+	stream, streamLimit, err := newStreamTransport(ctx, cfg, db, logger)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
 	assistantSvc := assistant.New(db, engine, registry,
-		usersSvc, enqueuer, proposalSvc, memorySvc, logger).
-		WithStream(streams.NewPublisher(db.Pool, logger))
+		usersSvc, enqueuer, proposalSvc, memorySvc, logger)
+	if stream != nil {
+		assistantSvc = assistantSvc.WithStream(stream)
+	}
 	viewsSvc.WithNarrative(chat, enqueuer, logger)
 
 	runtime, err := jobs.New(db.Pool, jobs.Deps{
@@ -182,16 +193,14 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 			MemoryAPI:    memory.NewMemoryAPI(memorySvc),
 			RecipeAPI:    recipes.NewRecipeAPI(recipesSvc),
 		},
-		Jobs:         runtime,
-		Parser:       parser,
-		Store:        store,
-		LocalStore:   localStore,
-		Capabilities: registry.Names(),
-		Assistant:    assistantSvc,
-		// 每个流独占一个数据库连接（LISTEN 是连接级状态），
-		// 上限必须明显小于连接池，否则长连接会把池占满，普通请求排不上队。
-		StreamSubscriber: streams.NewSubscriber(db.Pool, logger),
-		StreamLimiter:    streams.NewLimiter(6),
+		Jobs:          runtime,
+		Parser:        parser,
+		Store:         store,
+		LocalStore:    localStore,
+		Capabilities:  registry.Names(),
+		Assistant:     assistantSvc,
+		Stream:        stream,
+		StreamLimiter: streams.NewLimiter(streamLimit),
 	}, nil
 }
 
@@ -229,6 +238,46 @@ func newObjectStore(cfg config.Config, logger *slog.Logger) (storage.ObjectStore
 		return store, nil, nil
 	default:
 		return nil, nil, fmt.Errorf("不支持的 STEWARD_STORAGE_DRIVER=%s", cfg.Storage.Driver)
+	}
+}
+
+// newStreamTransport 按配置选择进度流的传输，并给出并发上限。
+//
+// 返回 nil 表示关闭进度流：客户端退回轮询，功能不受影响。
+// 这条通道从来不承载权威状态，因此「换传输」和「整个关掉」都是安全的。
+func newStreamTransport(ctx context.Context, cfg config.Config, db *database.DB,
+	logger *slog.Logger) (streams.Transport, int, error) {
+
+	limit := cfg.Stream.MaxConcurrent
+
+	switch cfg.Stream.Resolve() {
+	case "off":
+		logger.Info("Turn 进度流已关闭，客户端使用轮询")
+		return nil, 0, nil
+
+	case "redis":
+		transport, err := redisstream.New(ctx, cfg.Stream.RedisURL, logger)
+		if err != nil {
+			return nil, 0, err
+		}
+		if limit <= 0 {
+			// 订阅连接便宜，可以放得比数据库方案高一到两个数量级。
+			limit = 256
+		}
+		logger.Info("Turn 进度流使用 Redis Pub/Sub", "max_concurrent", limit)
+		return transport, limit, nil
+
+	default:
+		if limit <= 0 {
+			// 每条流独占一个数据库连接（LISTEN 是连接级状态），
+			// 上限必须明显小于连接池，否则长连接会把池占满，
+			// 普通请求排不上队。
+			limit = 6
+		}
+		logger.Info("Turn 进度流使用 PostgreSQL LISTEN/NOTIFY",
+			"max_concurrent", limit,
+			"note", "部署里有 Redis 时设置 STEWARD_REDIS_URL 可以去掉连接占用")
+		return pgnotify.New(db.Pool, logger), limit, nil
 	}
 }
 
@@ -320,6 +369,9 @@ func newParser(cfg config.Config, logger *slog.Logger) (ai.CaptureParser, error)
 
 // Close 释放资源。
 func (a *App) Close() {
+	if a.Stream != nil {
+		_ = a.Stream.Close()
+	}
 	if a.DB != nil {
 		a.DB.Close()
 	}

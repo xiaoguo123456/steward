@@ -20,9 +20,17 @@ type StreamState = {
   text: string;
   label: string;
   finished: boolean;
+  /** 传输层截断过这条快照：屏幕上的文字还不是全部。 */
+  truncated: boolean;
 };
 
-const emptyState: StreamState = { forTurn: '', text: '', label: '', finished: false };
+const emptyState: StreamState = {
+  forTurn: '',
+  text: '',
+  label: '',
+  finished: false,
+  truncated: false,
+};
 
 export function useTurnStream(turnId: string) {
   const [state, setState] = useState<StreamState>(emptyState);
@@ -49,7 +57,7 @@ export function useTurnStream(turnId: string) {
       switch (event.kind) {
         case 'delta':
           // text 是到目前为止的全文，直接替换。
-          update({ text: event.text ?? '' });
+          update({ text: event.text ?? '', truncated: event.truncated ?? false });
           break;
         case 'status':
         case 'tool':

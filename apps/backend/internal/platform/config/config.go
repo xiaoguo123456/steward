@@ -33,6 +33,24 @@ type Config struct {
 
 	AI      AIConfig
 	Storage StorageConfig
+	Stream  StreamConfig
+}
+
+// StreamConfig 是 Turn 进度流的配置。
+//
+// 这条通道不承载权威状态：整个关掉，客户端退回轮询，功能照常。
+type StreamConfig struct {
+	// Driver 取 auto、postgres、redis 或 off。
+	//
+	// auto 表示配了 Redis 就用 Redis，否则退回 PostgreSQL 的 LISTEN/NOTIFY。
+	Driver string
+	// RedisURL 形如 redis://user:pass@host:6379/0。
+	RedisURL string
+	// MaxConcurrent 是同时允许的流连接数。
+	//
+	// 留空时按驱动取默认值：postgres 每条流独占一个数据库连接，
+	// 上限必须明显小于连接池；redis 的订阅连接便宜得多。
+	MaxConcurrent int
 }
 
 // AIConfig 是模型 Provider 配置。
@@ -90,6 +108,11 @@ func Load() (Config, error) {
 			ModelTranscribe: env("STEWARD_AI_MODEL_TRANSCRIBE", ""),
 			MaxOutputTokens: envInt("STEWARD_AI_MAX_OUTPUT_TOKENS", 2048),
 		},
+		Stream: StreamConfig{
+			Driver:        env("STEWARD_STREAM_DRIVER", "auto"),
+			RedisURL:      env("STEWARD_REDIS_URL", ""),
+			MaxConcurrent: envInt("STEWARD_STREAM_MAX_CONCURRENT", 0),
+		},
 		Storage: StorageConfig{
 			Driver:             env("STEWARD_STORAGE_DRIVER", "localfs"),
 			Root:               env("STEWARD_STORAGE_ROOT", "./.local/storage"),
@@ -126,6 +149,9 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	if err := cfg.Storage.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Stream.validate(); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
@@ -181,6 +207,32 @@ func (c StorageConfig) validate() error {
 	default:
 		return fmt.Errorf("不支持的 STEWARD_STORAGE_DRIVER=%s，可选 localfs 或 aliyun-oss", c.Driver)
 	}
+}
+
+// validate 检查流配置的完整性。
+func (c StreamConfig) validate() error {
+	switch c.Driver {
+	case "", "auto", "postgres", "off":
+		return nil
+	case "redis":
+		if c.RedisURL == "" {
+			return errors.New("STEWARD_STREAM_DRIVER=redis 时必须设置 STEWARD_REDIS_URL")
+		}
+		return nil
+	default:
+		return fmt.Errorf("不支持的 STEWARD_STREAM_DRIVER=%s", c.Driver)
+	}
+}
+
+// Resolve 按配置与可用依赖算出实际驱动。
+func (c StreamConfig) Resolve() string {
+	if c.Driver == "auto" || c.Driver == "" {
+		if c.RedisURL != "" {
+			return "redis"
+		}
+		return "postgres"
+	}
+	return c.Driver
 }
 
 // LoadForTest 返回指向测试库的配置，缺少测试库地址时返回空字符串由调用方跳过。

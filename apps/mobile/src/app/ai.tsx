@@ -215,7 +215,12 @@ export default function AiConversationScreen() {
             </View>
             <View style={[styles.bubble, styles.assistantBubble]}>
               {stream.text ? (
-                <Text style={styles.messageText}>{stream.text}</Text>
+                <>
+                  <Text style={styles.messageText}>{stream.text}</Text>
+                  {stream.truncated ? (
+                    <Text style={styles.truncatedHint}>回复较长，完整内容稍后显示…</Text>
+                  ) : null}
+                </>
               ) : (
                 <View style={styles.thinkingBubble}>
                   <ActivityIndicator color={colors.textSecondary} size="small" />
@@ -412,6 +417,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
+  },
+  truncatedHint: {
+    marginTop: 6,
+    color: colors.textTertiary,
+    fontFamily,
+    ...typography.meta,
   },
   thinkingText: {
     color: colors.textSecondary,

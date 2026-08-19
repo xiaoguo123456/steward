@@ -61,3 +61,20 @@ POST /assistant/threads/{id}/turns
 本模块依赖 `objects`、`views`、`trackers`、`memory` 的**窄接口**，实体在
 `internal/bootstrap` 注入。它不 import 这些模块的私有类型，也不直接读它们的表
 （`ListProposalsForTurn` 等只碰自己的表）。
+
+## 进度流的传输是可切换的
+
+回复在 Worker 里生成，SSE 连接挂在 API 进程上，两者不共享内存，因此需要一条
+跨进程广播通道。它由 `platform/streams` 提供，有两个适配器：
+
+- `redisstream` —— Redis Pub/Sub。有 Redis 的部署用它。
+- `pgnotify` —— PostgreSQL LISTEN/NOTIFY。零额外依赖，本地开发默认。
+
+之所以能随便换，是因为**这条通道从不承载权威状态**：丢事件、连不上、
+整个关掉，客户端读 Message 与 Operation 都能拿到完整结果。这也是为什么
+适配器里没有重连退避、没有持久化、没有 ACK——那些都是给权威通道用的。
+
+pgnotify 的三个代价都是结构性的，不是实现不好：LISTEN 是连接级状态所以每条流
+独占一个数据库连接；PgBouncer 的 transaction 模式会让它彻底失效；单条 NOTIFY
+载荷上限 8000 字节。最后一条尤其要小心——delta 是替换语义，超限时只能截断成
+**前缀**并打 `truncated` 标记，切成多段会让客户端只显示最后一段。

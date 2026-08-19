@@ -397,5 +397,11 @@ TurnStreamEvent:
     proposal_id:
       type: string
       description: 只在 kind=proposal 出现。建议此时已经通过完整校验并落库。
+    truncated:
+      type: boolean
+      default: false
+      description: |
+        这条快照被传输层截断过，屏幕上的文字还不是全部。
+        done 之后读消息列表即可拿到完整内容。
     code:
       $ref: './common.yaml#/ErrorCode'
