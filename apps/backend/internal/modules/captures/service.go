@@ -47,6 +47,12 @@ type ActivityRecorder interface {
 		source activity.Source, sourceID *string, entries []activity.EntryInput) (string, error)
 }
 
+// MediaReader 是 media 模块公开的读取能力。
+type MediaReader interface {
+	ResolveForParse(ctx context.Context, userID, mediaID string) (dbgen.MediaAsset, error)
+	ReadBytes(ctx context.Context, objectKey string, limit int64) ([]byte, error)
+}
+
 // JobEnqueuer 在业务事务内登记异步任务。
 //
 // 必须与业务写入使用同一个事务：否则会出现 Capture 已创建但解析任务丢失，
@@ -68,14 +74,17 @@ type CaptureParseArgs struct {
 
 // Service 是 Capture 的应用服务。
 type Service struct {
-	db       *database.DB
-	parser   ai.CaptureParser
-	objects  ObjectCommands
-	trackers TrackerCommands
-	lists    ListResolver
-	users    UserProfile
-	activity ActivityRecorder
-	jobs     JobEnqueuer
+	db     *database.DB
+	parser ai.CaptureParser
+	media  MediaReader
+	// processor 为空时不做 OCR 与转写，媒体输入项会被标记为失败并提示用户改用文字。
+	processor ai.MediaProcessor
+	objects   ObjectCommands
+	trackers  TrackerCommands
+	lists     ListResolver
+	users     UserProfile
+	activity  ActivityRecorder
+	jobs      JobEnqueuer
 }
 
 // TrackerCommands 是 trackers 模块公开的事务内写入能力。
@@ -87,10 +96,12 @@ type TrackerCommands interface {
 }
 
 // New 构造 Service。
-func New(db *database.DB, parser ai.CaptureParser, obj ObjectCommands, trk TrackerCommands,
+func New(db *database.DB, parser ai.CaptureParser, processor ai.MediaProcessor,
+	mediaReader MediaReader, obj ObjectCommands, trk TrackerCommands,
 	lists ListResolver, users UserProfile, act ActivityRecorder, jobs JobEnqueuer) *Service {
 	return &Service{
-		db: db, parser: parser, objects: obj, trackers: trk,
+		db: db, parser: parser, processor: processor, media: mediaReader,
+		objects: obj, trackers: trk,
 		lists: lists, users: users, activity: act, jobs: jobs,
 	}
 }
@@ -158,6 +169,23 @@ func (s *Service) Create(ctx context.Context, userID string, body httpapi.Create
 			}
 			if kind != "text" && (p.MediaId == nil || *p.MediaId == "") {
 				return apperr.Validation(apperr.Field("parts", "音频与图片输入必须提供 media_id。"))
+			}
+			if kind != "text" {
+				// 媒体必须确实存在、属于当前用户且已完成上传。
+				// RLS 保证跨用户不可见，这里再确认状态，避免引用到半成品对象。
+				asset, err := q.GetMediaAsset(ctx, *p.MediaId)
+				if err != nil {
+					if database.IsNoRows(err) {
+						return apperr.Validation(apperr.Field("parts", "引用的文件不存在，请重新上传。"))
+					}
+					return apperr.Internal(err)
+				}
+				if asset.Status != "uploaded" {
+					return apperr.Validation(apperr.Field("parts", "文件还没有上传完成，请稍候再提交。"))
+				}
+				if asset.Kind != kind {
+					return apperr.Validation(apperr.Field("parts", "文件类型与输入类型不一致。"))
+				}
 			}
 			if _, err := q.CreateCapturePart(ctx, dbgen.CreateCapturePartParams{
 				ID:        idgen.New(idgen.PrefixCapturePart),
@@ -280,7 +308,11 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 		return err
 	}
 
-	// 第二步：事务外调用 Provider。
+	// 第二步：事务外完成媒体预处理。
+	// 这一步对应状态机里的 preprocessing：先把图片与音频转成文字，再统一理解。
+	parts = s.preprocessMedia(ctx, args, parts)
+
+	// 第三步：事务外调用 Provider 做结构化解析。
 	req := ai.CaptureParseRequest{
 		RunID:    idgen.New(idgen.PrefixRun),
 		Timezone: capture.Timezone,
@@ -300,7 +332,7 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 
 	result, parseErr := s.parser.ParseCapture(ctx, req)
 
-	// 第三步：短事务保存结果。
+	// 第四步：短事务保存结果。
 	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
 		if parseErr != nil {
 			errBody, _ := json.Marshal(map[string]any{

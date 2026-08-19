@@ -12,8 +12,14 @@ import (
 	"time"
 )
 
-// ErrProviderUnavailable 表示 Provider 暂时不可用，调用方应降级而不是失败整个请求。
-var ErrProviderUnavailable = errors.New("AI Provider 不可用")
+var (
+	// ErrProviderUnavailable 表示 Provider 暂时不可用，调用方应降级而不是失败整个请求。
+	ErrProviderUnavailable = errors.New("AI Provider 不可用")
+	// ErrRateLimited 表示被服务商限流，可以稍后重试。
+	ErrRateLimited = errors.New("AI Provider 限流")
+	// ErrSchemaInvalid 表示模型输出经过一次结构修复后仍不符合契约。
+	ErrSchemaInvalid = errors.New("模型输出不符合契约")
+)
 
 // Usage 是一次调用的用量统计，用于成本核算与预算控制。
 type Usage struct {
@@ -174,14 +180,23 @@ type CaptureParser interface {
 	ParseCapture(ctx context.Context, req CaptureParseRequest) (CaptureParseResult, error)
 }
 
-// TranscriptionProvider 把音频转写为文字。
-type TranscriptionProvider interface {
-	Transcribe(ctx context.Context, mediaID string) (string, Usage, error)
+// MediaInput 是一份已读入内存的媒体内容。
+//
+// 大小上限由 storage 包在上传阶段保证，因此这里可以安全地整份持有。
+type MediaInput struct {
+	ContentType string
+	Data        []byte
 }
 
-// VisionProvider 从图片提取文字与结构化描述。
-type VisionProvider interface {
-	ExtractFromImage(ctx context.Context, mediaID string) (string, Usage, error)
+// MediaProcessor 把媒体转成文字，供后续结构化解析使用。
+//
+// 提取出的文字属于用户资料而不是系统指令：
+// 图片里出现的任何“忽略以上指令”之类的内容都只能作为待整理素材。
+type MediaProcessor interface {
+	// ExtractFromImage 识别图片中的文字与关键信息。
+	ExtractFromImage(ctx context.Context, input MediaInput) (string, Usage, error)
+	// Transcribe 把音频转写为文字。
+	Transcribe(ctx context.Context, input MediaInput) (string, Usage, error)
 }
 
 // EmbeddingProvider 生成语义检索向量。

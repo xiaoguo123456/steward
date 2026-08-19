@@ -37,6 +37,8 @@ type Querier interface {
 	CreateCaptureQuestion(ctx context.Context, arg CreateCaptureQuestionParams) (CaptureQuestion, error)
 	CreateCaptureRelationCandidate(ctx context.Context, arg CreateCaptureRelationCandidateParams) error
 	CreateEvent(ctx context.Context, arg CreateEventParams) (Event, error)
+	// 媒体资产。二进制内容在对象存储，这里只保存受控引用与元数据。
+	CreateMediaAsset(ctx context.Context, arg CreateMediaAssetParams) (MediaAsset, error)
 	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
 	// 异步 Operation、Activity、幂等与 AI 审计。
 	CreateOperation(ctx context.Context, arg CreateOperationParams) (AsyncOperation, error)
@@ -50,6 +52,8 @@ type Querier interface {
 	DeleteExpiredIdempotencyRecords(ctx context.Context) error
 	EnsureAiSettings(ctx context.Context, userID string) (UserAiSetting, error)
 	EnsureUserPreferences(ctx context.Context, userID string) (UserPreference, error)
+	// 同一用户上传相同内容时复用已有资产，避免重复占用存储。
+	FindUploadedMediaByHash(ctx context.Context, contentHash *string) (MediaAsset, error)
 	GetActivityBatch(ctx context.Context, id string) (ActivityBatch, error)
 	GetAiSettings(ctx context.Context, userID string) (UserAiSetting, error)
 	GetCapture(ctx context.Context, id string) (Capture, error)
@@ -59,6 +63,7 @@ type Querier interface {
 	GetEvent(ctx context.Context, id string) (Event, error)
 	GetIdempotencyRecord(ctx context.Context, arg GetIdempotencyRecordParams) (IdempotencyKey, error)
 	GetLatestVerificationCode(ctx context.Context, arg GetLatestVerificationCodeParams) (AuthVerificationCode, error)
+	GetMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	GetNote(ctx context.Context, id string) (Note, error)
 	GetOperation(ctx context.Context, id string) (AsyncOperation, error)
 	GetProcessedJob(ctx context.Context, idempotencyKey string) (ProcessedJob, error)
@@ -92,6 +97,8 @@ type Querier interface {
 	ListNoteTags(ctx context.Context) ([]string, error)
 	// Note 查询。Note 没有完成状态，列表按置顶优先、更新时间倒序。
 	ListNotes(ctx context.Context, arg ListNotesParams) ([]Note, error)
+	// 长期停留在 pending 的资产说明客户端放弃了上传，交给清理任务回收。
+	ListPendingMediaBefore(ctx context.Context, arg ListPendingMediaBeforeParams) ([]MediaAsset, error)
 	// Project 查询。progress 由 Task 计数在应用层计算，不落库。
 	ListProjects(ctx context.Context, arg ListProjectsParams) ([]Project, error)
 	ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error)
@@ -112,6 +119,9 @@ type Querier interface {
 	ListTrackers(ctx context.Context, status *string) ([]Tracker, error)
 	MarkActivityBatchUndone(ctx context.Context, id string) (ActivityBatch, error)
 	MarkCaptureConfirmed(ctx context.Context, arg MarkCaptureConfirmedParams) (Capture, error)
+	MarkMediaFailed(ctx context.Context, arg MarkMediaFailedParams) error
+	// byte_size 与 content_hash 来自服务端对存储侧的回查，不采信客户端上报值。
+	MarkMediaUploaded(ctx context.Context, arg MarkMediaUploadedParams) (MediaAsset, error)
 	MarkUserInitialized(ctx context.Context, id string) error
 	MoveTasksToList(ctx context.Context, arg MoveTasksToListParams) error
 	RecordAiAction(ctx context.Context, arg RecordAiActionParams) error
@@ -129,6 +139,7 @@ type Querier interface {
 	SearchRecords(ctx context.Context, arg SearchRecordsParams) ([]SearchRecordsRow, error)
 	SearchTasks(ctx context.Context, arg SearchTasksParams) ([]SearchTasksRow, error)
 	SoftDeleteEvent(ctx context.Context, id string) (Event, error)
+	SoftDeleteMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	SoftDeleteNote(ctx context.Context, id string) (Note, error)
 	SoftDeleteProject(ctx context.Context, id string) (Project, error)
 	SoftDeleteRecord(ctx context.Context, id string) (Record, error)

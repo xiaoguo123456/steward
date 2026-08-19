@@ -15,6 +15,7 @@ import (
 	authmod "github.com/guoxiaozheng1/steward/apps/backend/internal/modules/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/media"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/users"
@@ -26,6 +27,9 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/jobs"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/aliyunoss"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/localfs"
 )
 
 // Server 组合全部模块的 API 层，实现生成的 StrictServerInterface。
@@ -40,6 +44,7 @@ type Server struct {
 	*trackers.TrackerAPI
 	*views.ViewAPI
 	*captures.CaptureAPI
+	*media.MediaAPI
 	*activity.ActivityAPI
 }
 
@@ -54,6 +59,9 @@ type App struct {
 	Server *Server
 	Jobs   *jobs.Runtime
 	Parser ai.CaptureParser
+	Store  storage.ObjectStore
+	// LocalStore 只在使用本地存储时非空，供路由挂载传输端点。
+	LocalStore *localfs.Store
 }
 
 // Options 控制组装行为。
@@ -78,6 +86,12 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		return nil, err
 	}
 
+	store, localStore, err := newObjectStore(cfg, logger)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
 	// 构造顺序遵循依赖方向：被依赖的模块先于依赖它们的模块。
 	activitySvc := activity.New(db)
 	listsSvc := lists.New(db)
@@ -85,12 +99,16 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
+	mediaSvc := media.New(db, store)
 
 	// Capture 需要队列才能入队，而队列的 Worker 又需要 Capture 服务。
 	// 用一个延迟绑定的入队器打破这个循环，绑定发生在任何请求到达之前。
 	enqueuer := &lazyEnqueuer{}
-	capturesSvc := captures.New(db, parser, objectsSvc, trackersSvc,
-		listsSvc, usersSvc, activitySvc, enqueuer)
+	// Provider 同时实现解析与媒体处理时把它接上；fake 只做解析，媒体处理为空，
+	// 此时图片与语音会被标记为失败并提示用户改用文字，而不是伪造识别结果。
+	processor, _ := parser.(ai.MediaProcessor)
+	capturesSvc := captures.New(db, parser, processor, mediaSvc,
+		objectsSvc, trackersSvc, listsSvc, usersSvc, activitySvc, enqueuer)
 
 	runtime, err := jobs.New(db.Pool, capturesSvc, logger, opts.RunWorkers)
 	if err != nil {
@@ -114,12 +132,52 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 			TrackerAPI: trackers.NewTrackerAPI(trackersSvc),
 			ViewAPI:    views.NewViewAPI(viewsSvc),
 			CaptureAPI: captures.NewCaptureAPI(capturesSvc),
+			MediaAPI:   media.NewMediaAPI(mediaSvc),
 			// 撤销必须回到拥有资源的模块执行，Activity 自己不改别人的表。
 			ActivityAPI: activity.NewActivityAPI(activitySvc, objectsSvc, trackersSvc),
 		},
-		Jobs:   runtime,
-		Parser: parser,
+		Jobs:       runtime,
+		Parser:     parser,
+		Store:      store,
+		LocalStore: localStore,
 	}, nil
+}
+
+// newObjectStore 按配置选择对象存储适配器。
+//
+// 默认使用本地文件系统：没有任何云凭证时上传链路依然可以完整跑通，
+// 客户端代码与生产环境完全一致。
+func newObjectStore(cfg config.Config, logger *slog.Logger) (storage.ObjectStore, *localfs.Store, error) {
+	switch cfg.Storage.Driver {
+	case "", "localfs":
+		store, err := localfs.New(localfs.Config{
+			Root:    cfg.Storage.Root,
+			BaseURL: cfg.PublicBaseURL,
+			// 与 JWT 共用密钥来源，但签名内容包含方法与对象键，用途不会混淆。
+			Secret: cfg.JWTSecret,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		logger.Info("媒体使用本地文件系统存储，仅适用于开发", "root", cfg.Storage.Root)
+		return store, store, nil
+	case "aliyun-oss":
+		store, err := aliyunoss.New(aliyunoss.Config{
+			Endpoint:        cfg.Storage.OSSEndpoint,
+			Region:          cfg.Storage.OSSRegion,
+			Bucket:          cfg.Storage.OSSBucket,
+			AccessKeyID:     cfg.Storage.OSSAccessKeyID,
+			AccessKeySecret: cfg.Storage.OSSAccessKeySecret,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		logger.Info("媒体使用阿里云 OSS",
+			"bucket", cfg.Storage.OSSBucket, "region", cfg.Storage.OSSRegion)
+		return store, nil, nil
+	default:
+		return nil, nil, fmt.Errorf("不支持的 STEWARD_STORAGE_DRIVER=%s", cfg.Storage.Driver)
+	}
 }
 
 // lazyEnqueuer 把入队请求转发给稍后注入的实现。
@@ -142,15 +200,26 @@ func (l *lazyEnqueuer) EnqueueCaptureParse(ctx context.Context, q *dbgen.Queries
 // 未配置任何 Provider 时使用确定性的本地实现：
 // 即使所有 Provider 关闭，用户仍可用表单管理全部正式内容。
 func newParser(cfg config.Config, logger *slog.Logger) (ai.CaptureParser, error) {
-	switch cfg.AIProvider {
+	switch cfg.AI.Provider {
 	case "", "fake":
 		logger.Info("Capture 使用确定性本地解析，不会发起任何外部请求")
 		return fake.New(), nil
 	case "openai":
-		logger.Warn("OpenAI Adapter 尚未接入真实模型，暂时回退到本地解析")
-		return openai.New(cfg.OpenAIAPIKey, cfg.OpenAIBaseURL, fake.New()), nil
+		logger.Info("Capture 使用兼容 OpenAI 协议的模型服务",
+			"base_url", cfg.AI.BaseURL, "model", cfg.AI.ModelParse)
+		return openai.New(openai.Config{
+			BaseURL:         cfg.AI.BaseURL,
+			APIKey:          cfg.AI.APIKey,
+			ParseModel:      cfg.AI.ModelParse,
+			VisionModel:     cfg.AI.ModelVision,
+			TranscribeModel: cfg.AI.ModelTranscribe,
+			Timeout:         cfg.AI.Timeout,
+			MaxOutputTokens: cfg.AI.MaxOutputTokens,
+			Fallback:        fake.New(),
+			Logger:          logger,
+		})
 	default:
-		return nil, fmt.Errorf("不支持的 STEWARD_AI_PROVIDER=%s", cfg.AIProvider)
+		return nil, fmt.Errorf("不支持的 STEWARD_AI_PROVIDER=%s", cfg.AI.Provider)
 	}
 }
 

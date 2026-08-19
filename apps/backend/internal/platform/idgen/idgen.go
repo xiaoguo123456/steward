@@ -24,6 +24,7 @@ const (
 	PrefixTracker          = "trk"
 	PrefixRelation         = "rel"
 	PrefixCapture          = "cap"
+	PrefixMedia            = "med"
 	PrefixCapturePart      = "cpt"
 	PrefixCandidate        = "cnd"
 	PrefixCaptureQuestion  = "cq"

@@ -22,6 +22,10 @@ var publicPaths = []string{
 	"/healthz",
 }
 
+// publicPrefixes 是按前缀放行的路径。
+// 本地存储的传输端点用签名 URL 自证身份，不走 Bearer Token。
+var publicPrefixes = []string{"/media/local/"}
+
 // RequestIDMiddleware 为每个请求生成追踪 ID，并回写到响应头。
 func RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +121,15 @@ func RecovererMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 }
 
 func isPublicPath(path string) bool {
-	return slices.Contains(publicPaths, path)
+	if slices.Contains(publicPaths, path) {
+		return true
+	}
+	for _, prefix := range publicPrefixes {
+		if strings.HasPrefix(path, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // WriteError 按契约结构输出错误响应。

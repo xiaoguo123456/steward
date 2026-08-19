@@ -5,6 +5,7 @@ go 1.26.2
 require (
 	cel.dev/expr v0.25.1 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
+	github.com/aliyun/alibabacloud-oss-go-sdk-v2 v1.5.3 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect

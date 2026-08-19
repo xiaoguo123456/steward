@@ -1,0 +1,141 @@
+# 媒体资产的上传授权与完成通知。
+#
+# 上传链路：App 申请授权 → 直传对象存储 → 通知服务端 → 服务端回查真实元数据。
+# 大文件不经过 API 进程，避免连接与内存被中转占满。
+
+MediaKind:
+  type: string
+  enum: [image, audio]
+
+MediaStatus:
+  type: string
+  description: |
+    pending 表示已分配授权但尚未确认上传；uploaded 表示服务端已回查过真实元数据；
+    只有 uploaded 的资产可以被 Capture 引用。
+  enum: [pending, uploaded, failed, deleted]
+
+CreateUploadGrantsRequest:
+  type: object
+  additionalProperties: false
+  required: [items]
+  properties:
+    items:
+      type: array
+      minItems: 1
+      maxItems: 10
+      items:
+        $ref: '#/UploadGrantRequestItem'
+
+UploadGrantRequestItem:
+  type: object
+  additionalProperties: false
+  required: [kind, content_type]
+  properties:
+    kind:
+      $ref: '#/MediaKind'
+    content_type:
+      type: string
+      description: |
+        客户端声明的 MIME。它只用于早期拒绝与生成扩展名，
+        服务端在上传完成后仍会回查真实类型，不采信这里的值。
+      example: image/jpeg
+    byte_size:
+      type: integer
+      format: int64
+      nullable: true
+      description: 预估大小，仅用于提前拒绝超限文件。
+
+UploadGrant:
+  type: object
+  additionalProperties: false
+  required: [media_id, upload_url, method, expires_at]
+  properties:
+    media_id:
+      type: string
+      example: med_01J8Z3
+    upload_url:
+      type: string
+      description: |
+        短期直传地址。客户端按 method 发送字节并带上 headers 即可，
+        不需要知道背后是哪家对象存储。该地址不得写入日志或分享。
+    method:
+      type: string
+      enum: [PUT, POST]
+    headers:
+      type: object
+      additionalProperties:
+        type: string
+      description: 上传时必须原样携带的请求头，其中 Content-Type 参与签名。
+    max_bytes:
+      type: integer
+      format: int64
+      description: 该类型允许的最大字节数，超出时上传会被拒绝。
+    expires_at:
+      type: string
+      format: date-time
+      description: 过期后需要重新申请授权，但仍复用同一个 media_id。
+
+CreateUploadGrantsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/UploadGrant'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+CompleteUploadRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    byte_size:
+      type: integer
+      format: int64
+      nullable: true
+      description: 客户端观测到的大小，仅用于比对；以服务端回查结果为准。
+    content_hash:
+      type: string
+      nullable: true
+      description: 客户端计算的 SHA-256，仅用于比对与去重提示。
+
+MediaAsset:
+  type: object
+  additionalProperties: false
+  required: [id, kind, content_type, status, created_at]
+  properties:
+    id:
+      type: string
+    kind:
+      $ref: '#/MediaKind'
+    content_type:
+      type: string
+    status:
+      $ref: '#/MediaStatus'
+    byte_size:
+      type: integer
+      format: int64
+      nullable: true
+    read_url:
+      type: string
+      nullable: true
+      description: 短期只读地址，不可长期缓存，也不得写入日志。
+    created_at:
+      type: string
+      format: date-time
+    uploaded_at:
+      type: string
+      format: date-time
+      nullable: true
+
+MediaAssetResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MediaAsset'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

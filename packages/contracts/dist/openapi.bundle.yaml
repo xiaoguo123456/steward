@@ -37,6 +37,8 @@ tags:
     x-displayName: 记录与数据
   - name: captures
     x-displayName: 统一输入
+  - name: media
+    x-displayName: 媒体上传
   - name: views
     x-displayName: 聚合视图
   - name: system
@@ -1233,6 +1235,118 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/media/upload-grants:
+    post:
+      operationId: createUploadGrants
+      summary: 申请媒体直传授权
+      description: |
+        为每个媒体项分配用户隔离的对象键与短期直传地址。
+        授权过期后可以重新申请，但必须复用同一个 media_id，不要新建。
+      tags:
+        - media
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUploadGrantsRequest'
+      responses:
+        '201':
+          description: 已分配授权。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUploadGrantsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/media/{media_id}:
+    get:
+      operationId: getMediaAsset
+      summary: 读取媒体资产状态
+      tags:
+        - media
+      parameters:
+        - $ref: '#/components/parameters/MediaId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaAssetResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteMediaAsset
+      summary: 删除媒体资产
+      description: |
+        先标记为不可读取，再由清理任务删除对象存储中的全部版本与残留分片。
+        已生成且允许保留的转写与 OCR 结果不受影响，但会标注“原始资产已删除”。
+      tags:
+        - media
+      parameters:
+        - $ref: '#/components/parameters/MediaId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 已删除。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/media/{media_id}/complete:
+    post:
+      operationId: completeMediaUpload
+      summary: 通知媒体上传完成
+      description: |
+        服务端据此回查对象存储中的真实大小与类型。
+        客户端上报的值只用于比对，不会被直接采信。
+      tags:
+        - media
+      parameters:
+        - $ref: '#/components/parameters/MediaId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteUploadRequest'
+      responses:
+        '200':
+          description: 已确认上传，资产可以被 Capture 引用。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaAssetResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/captures:
@@ -3519,6 +3633,158 @@ components:
         project_id:
           type: string
           nullable: true
+    MediaKind:
+      type: string
+      enum:
+        - image
+        - audio
+    UploadGrantRequestItem:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - content_type
+      properties:
+        kind:
+          $ref: '#/components/schemas/MediaKind'
+        content_type:
+          type: string
+          description: |
+            客户端声明的 MIME。它只用于早期拒绝与生成扩展名，
+            服务端在上传完成后仍会回查真实类型，不采信这里的值。
+          example: image/jpeg
+        byte_size:
+          type: integer
+          format: int64
+          nullable: true
+          description: 预估大小，仅用于提前拒绝超限文件。
+    CreateUploadGrantsRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/UploadGrantRequestItem'
+    UploadGrant:
+      type: object
+      additionalProperties: false
+      required:
+        - media_id
+        - upload_url
+        - method
+        - expires_at
+      properties:
+        media_id:
+          type: string
+          example: med_01J8Z3
+        upload_url:
+          type: string
+          description: |
+            短期直传地址。客户端按 method 发送字节并带上 headers 即可，
+            不需要知道背后是哪家对象存储。该地址不得写入日志或分享。
+        method:
+          type: string
+          enum:
+            - PUT
+            - POST
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: 上传时必须原样携带的请求头，其中 Content-Type 参与签名。
+        max_bytes:
+          type: integer
+          format: int64
+          description: 该类型允许的最大字节数，超出时上传会被拒绝。
+        expires_at:
+          type: string
+          format: date-time
+          description: 过期后需要重新申请授权，但仍复用同一个 media_id。
+    CreateUploadGrantsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UploadGrant'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    MediaStatus:
+      type: string
+      description: |
+        pending 表示已分配授权但尚未确认上传；uploaded 表示服务端已回查过真实元数据；
+        只有 uploaded 的资产可以被 Capture 引用。
+      enum:
+        - pending
+        - uploaded
+        - failed
+        - deleted
+    MediaAsset:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - content_type
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/MediaKind'
+        content_type:
+          type: string
+        status:
+          $ref: '#/components/schemas/MediaStatus'
+        byte_size:
+          type: integer
+          format: int64
+          nullable: true
+        read_url:
+          type: string
+          nullable: true
+          description: 短期只读地址，不可长期缓存，也不得写入日志。
+        created_at:
+          type: string
+          format: date-time
+        uploaded_at:
+          type: string
+          format: date-time
+          nullable: true
+    MediaAssetResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MediaAsset'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CompleteUploadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        byte_size:
+          type: integer
+          format: int64
+          nullable: true
+          description: 客户端观测到的大小，仅用于比对；以服务端回查结果为准。
+        content_hash:
+          type: string
+          nullable: true
+          description: 客户端计算的 SHA-256，仅用于比对与去重提示。
     CaptureOrigin:
       type: string
       description: Capture 入口来源，只影响候选建议，不授权跳过确认。
@@ -4778,6 +5044,12 @@ components:
         type: string
     RecordId:
       name: record_id
+      in: path
+      required: true
+      schema:
+        type: string
+    MediaId:
+      name: media_id
       in: path
       required: true
       schema:

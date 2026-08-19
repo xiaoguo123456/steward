@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 type Config struct {
 	HTTPAddr    string
 	CORSOrigins []string
+	// PublicBaseURL 是 API 对外可达的地址，本地存储用它生成签名 URL。
+	PublicBaseURL string
 
 	DatabaseURL string
 
@@ -24,12 +27,39 @@ type Config struct {
 	RefreshTokenTTL time.Duration
 	DevSMSCode      string
 
-	AIProvider    string
-	OpenAIAPIKey  string
-	OpenAIBaseURL string
+	AI      AIConfig
+	Storage StorageConfig
+}
 
-	StorageDriver string
-	StorageRoot   string
+// AIConfig 是模型 Provider 配置。
+//
+// 业务代码只引用逻辑用途（解析、视觉、转写），具体模型名在这里配置，
+// 换模型不需要改动任何业务模块。
+type AIConfig struct {
+	// Provider 取 fake 或 openai。
+	Provider string
+	BaseURL  string
+	APIKey   string
+
+	ModelParse      string
+	ModelVision     string
+	ModelTranscribe string
+
+	Timeout         time.Duration
+	MaxOutputTokens int
+}
+
+// StorageConfig 是对象存储配置。
+type StorageConfig struct {
+	// Driver 取 localfs 或 aliyun-oss。
+	Driver string
+	Root   string
+
+	OSSRegion          string
+	OSSEndpoint        string
+	OSSBucket          string
+	OSSAccessKeyID     string
+	OSSAccessKeySecret string
 }
 
 // Load 读取 .env（如果存在）与进程环境变量，并校验必填项。
@@ -40,14 +70,28 @@ func Load() (Config, error) {
 	cfg := Config{
 		HTTPAddr:      env("STEWARD_HTTP_ADDR", ":8787"),
 		CORSOrigins:   splitAndTrim(env("STEWARD_CORS_ORIGINS", "http://localhost:8081,http://localhost:4174")),
+		PublicBaseURL: env("STEWARD_PUBLIC_BASE_URL", "http://localhost:8787"),
 		DatabaseURL:   env("STEWARD_DATABASE_URL", ""),
 		JWTSecret:     env("STEWARD_JWT_SECRET", ""),
 		DevSMSCode:    env("STEWARD_DEV_SMS_CODE", ""),
-		AIProvider:    env("STEWARD_AI_PROVIDER", "fake"),
-		OpenAIAPIKey:  env("STEWARD_OPENAI_API_KEY", ""),
-		OpenAIBaseURL: env("STEWARD_OPENAI_BASE_URL", ""),
-		StorageDriver: env("STEWARD_STORAGE_DRIVER", "filesystem"),
-		StorageRoot:   env("STEWARD_STORAGE_ROOT", "./.local/storage"),
+		AI: AIConfig{
+			Provider:        env("STEWARD_AI_PROVIDER", "fake"),
+			BaseURL:         strings.TrimRight(env("STEWARD_AI_BASE_URL", ""), "/"),
+			APIKey:          env("STEWARD_AI_API_KEY", ""),
+			ModelParse:      env("STEWARD_AI_MODEL_PARSE", ""),
+			ModelVision:     env("STEWARD_AI_MODEL_VISION", ""),
+			ModelTranscribe: env("STEWARD_AI_MODEL_TRANSCRIBE", ""),
+			MaxOutputTokens: envInt("STEWARD_AI_MAX_OUTPUT_TOKENS", 2048),
+		},
+		Storage: StorageConfig{
+			Driver:             env("STEWARD_STORAGE_DRIVER", "localfs"),
+			Root:               env("STEWARD_STORAGE_ROOT", "./.local/storage"),
+			OSSRegion:          env("STEWARD_OSS_REGION", ""),
+			OSSEndpoint:        env("STEWARD_OSS_ENDPOINT", ""),
+			OSSBucket:          env("STEWARD_OSS_BUCKET", ""),
+			OSSAccessKeyID:     env("STEWARD_OSS_ACCESS_KEY_ID", ""),
+			OSSAccessKeySecret: env("STEWARD_OSS_ACCESS_KEY_SECRET", ""),
+		},
 	}
 
 	var err error
@@ -57,6 +101,9 @@ func Load() (Config, error) {
 	if cfg.RefreshTokenTTL, err = duration("STEWARD_REFRESH_TOKEN_TTL", 30*24*time.Hour); err != nil {
 		return Config{}, err
 	}
+	if cfg.AI.Timeout, err = duration("STEWARD_AI_TIMEOUT", 45*time.Second); err != nil {
+		return Config{}, err
+	}
 
 	if cfg.DatabaseURL == "" {
 		return Config{}, errors.New("必须设置 STEWARD_DATABASE_URL")
@@ -64,11 +111,66 @@ func Load() (Config, error) {
 	if cfg.JWTSecret == "" {
 		return Config{}, errors.New("必须设置 STEWARD_JWT_SECRET")
 	}
-	if cfg.AIProvider == "openai" && cfg.OpenAIAPIKey == "" {
-		return Config{}, errors.New("STEWARD_AI_PROVIDER=openai 时必须设置 STEWARD_OPENAI_API_KEY")
-	}
 
+	if err := cfg.AI.validate(); err != nil {
+		return Config{}, err
+	}
+	if err := cfg.Storage.validate(); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+// validate 检查 Provider 配置的完整性。
+//
+// 宁可启动失败也不要带着半套配置跑起来：那样第一次真实调用才会暴露问题，
+// 而那时用户已经在等一个永远不会成功的解析。
+func (c AIConfig) validate() error {
+	switch c.Provider {
+	case "", "fake":
+		return nil
+	case "openai":
+		if c.APIKey == "" {
+			return errors.New("STEWARD_AI_PROVIDER=openai 时必须设置 STEWARD_AI_API_KEY")
+		}
+		if c.BaseURL == "" {
+			return errors.New("STEWARD_AI_PROVIDER=openai 时必须设置 STEWARD_AI_BASE_URL")
+		}
+		if c.ModelParse == "" {
+			return errors.New("STEWARD_AI_PROVIDER=openai 时必须设置 STEWARD_AI_MODEL_PARSE")
+		}
+		return nil
+	default:
+		return fmt.Errorf("不支持的 STEWARD_AI_PROVIDER=%s，可选 fake 或 openai", c.Provider)
+	}
+}
+
+func (c StorageConfig) validate() error {
+	switch c.Driver {
+	case "", "localfs":
+		return nil
+	case "aliyun-oss":
+		missing := make([]string, 0, 4)
+		if c.OSSBucket == "" {
+			missing = append(missing, "STEWARD_OSS_BUCKET")
+		}
+		if c.OSSRegion == "" {
+			missing = append(missing, "STEWARD_OSS_REGION")
+		}
+		if c.OSSAccessKeyID == "" {
+			missing = append(missing, "STEWARD_OSS_ACCESS_KEY_ID")
+		}
+		if c.OSSAccessKeySecret == "" {
+			missing = append(missing, "STEWARD_OSS_ACCESS_KEY_SECRET")
+		}
+		if len(missing) > 0 {
+			return fmt.Errorf("STEWARD_STORAGE_DRIVER=aliyun-oss 时必须设置：%s",
+				strings.Join(missing, "、"))
+		}
+		return nil
+	default:
+		return fmt.Errorf("不支持的 STEWARD_STORAGE_DRIVER=%s，可选 localfs 或 aliyun-oss", c.Driver)
+	}
 }
 
 // LoadForTest 返回指向测试库的配置，缺少测试库地址时返回空字符串由调用方跳过。
@@ -79,8 +181,9 @@ func LoadForTest() Config {
 		JWTSecret:       "test-secret",
 		AccessTokenTTL:  time.Hour,
 		RefreshTokenTTL: time.Hour,
-		AIProvider:      "fake",
 		DevSMSCode:      "123456",
+		AI:              AIConfig{Provider: "fake"},
+		Storage:         StorageConfig{Driver: "localfs", Root: os.TempDir() + "/steward-test-storage"},
 	}
 }
 
@@ -102,6 +205,18 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func envInt(key string, fallback int) int {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v <= 0 {
+		return fallback
+	}
+	return v
 }
 
 func duration(key string, fallback time.Duration) (time.Duration, error) {

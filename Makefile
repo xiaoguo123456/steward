@@ -13,7 +13,11 @@ install: ## 安装 TypeScript 依赖
 	pnpm install
 
 .PHONY: generate
-generate: generate-contracts generate-backend generate-client ## 运行全部代码生成
+generate: generate-contracts generate-ai-contracts generate-backend generate-client ## 运行全部代码生成
+
+.PHONY: generate-ai-contracts
+generate-ai-contracts: ## 把 AI Prompt 与 Schema 同步到后端供 go:embed
+	./scripts/sync-ai-contracts.sh
 
 .PHONY: generate-contracts
 generate-contracts: ## 校验并打包 OpenAPI 为单文件 bundle

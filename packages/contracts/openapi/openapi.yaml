@@ -41,6 +41,8 @@ tags:
     x-displayName: 记录与数据
   - name: captures
     x-displayName: 统一输入
+  - name: media
+    x-displayName: 媒体上传
   - name: views
     x-displayName: 聚合视图
   - name: system
@@ -96,6 +98,13 @@ paths:
     $ref: './paths/trackers.yaml#/RecordCollection'
   /v1/records/{record_id}:
     $ref: './paths/trackers.yaml#/RecordItem'
+
+  /v1/media/upload-grants:
+    $ref: './paths/media.yaml#/UploadGrants'
+  /v1/media/{media_id}:
+    $ref: './paths/media.yaml#/Item'
+  /v1/media/{media_id}/complete:
+    $ref: './paths/media.yaml#/Complete'
 
   /v1/captures:
     $ref: './paths/captures.yaml#/Collection'

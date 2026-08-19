@@ -217,6 +217,21 @@ type IdempotencyKey struct {
 	ExpiresAt    time.Time
 }
 
+type MediaAsset struct {
+	ID          string
+	UserID      string
+	ObjectKey   string
+	Kind        string
+	ContentType string
+	ByteSize    *int64
+	ContentHash *string
+	Status      string
+	Error       []byte
+	CreatedAt   time.Time
+	UploadedAt  *time.Time
+	DeletedAt   *time.Time
+}
+
 type Note struct {
 	ID             string
 	UserID         string

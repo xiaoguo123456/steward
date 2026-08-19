@@ -1,0 +1,112 @@
+# 媒体上传。二进制内容直传对象存储，不经过 API 进程。
+
+UploadGrants:
+  post:
+    operationId: createUploadGrants
+    summary: 申请媒体直传授权
+    description: |
+      为每个媒体项分配用户隔离的对象键与短期直传地址。
+      授权过期后可以重新申请，但必须复用同一个 media_id，不要新建。
+    tags: [media]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/media.yaml#/CreateUploadGrantsRequest'
+    responses:
+      '201':
+        description: 已分配授权。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/media.yaml#/CreateUploadGrantsResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Item:
+  get:
+    operationId: getMediaAsset
+    summary: 读取媒体资产状态
+    tags: [media]
+    parameters:
+      - $ref: '../components/parameters.yaml#/MediaId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/media.yaml#/MediaAssetResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deleteMediaAsset
+    summary: 删除媒体资产
+    description: |
+      先标记为不可读取，再由清理任务删除对象存储中的全部版本与残留分片。
+      已生成且允许保留的转写与 OCR 结果不受影响，但会标注“原始资产已删除”。
+    tags: [media]
+    parameters:
+      - $ref: '../components/parameters.yaml#/MediaId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 已删除。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Complete:
+  post:
+    operationId: completeMediaUpload
+    summary: 通知媒体上传完成
+    description: |
+      服务端据此回查对象存储中的真实大小与类型。
+      客户端上报的值只用于比对，不会被直接采信。
+    tags: [media]
+    parameters:
+      - $ref: '../components/parameters.yaml#/MediaId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/media.yaml#/CompleteUploadRequest'
+    responses:
+      '200':
+        description: 已确认上传，资产可以被 Capture 引用。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/media.yaml#/MediaAssetResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

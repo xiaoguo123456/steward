@@ -90,6 +90,13 @@ RecordId:
   schema:
     type: string
 
+MediaId:
+  name: media_id
+  in: path
+  required: true
+  schema:
+    type: string
+
 CaptureId:
   name: capture_id
   in: path
