@@ -5,34 +5,69 @@ import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { FlatListGroup, FlatListRow } from '@/components/ui/flat-list';
 import { NavHeader } from '@/components/ui/nav-header';
+import { preferencesSummary, useUserPreferences } from '@/features/account/use-account';
 import { colors, fontFamily, typography } from '@/theme/tokens';
 
+/**
+ * 设置。
+ *
+ * 只列已经接通的入口。原来这里还有「原始输入」「最近删除」「导出个人数据」
+ * 「隐私与数据」，点进去都是同一页写死的假清单——契约里还没有这些操作。
+ * 等它们真的做出来再放回来。
+ */
 export default function SettingsScreen() {
   const router = useRouter();
+  const { preferences } = useUserPreferences();
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader title="设置" />
+      <NavHeader onBack={() => router.back()} title="设置" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>日常使用</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
+          日常使用
+        </Text>
         <FlatListGroup>
-          <FlatListRow icon="time-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'habits' } })} subtitle="工作日 09:00—18:00" title="使用习惯" />
-          <FlatListRow icon="sparkles-outline" onPress={() => router.push('/settings/ai')} subtitle="智能整理、建议与长期偏好" title="AI 设置" />
-          <FlatListRow icon="notifications-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'notifications' } })} showDivider={false} subtitle="事件前 10 分钟" title="通知设置" />
+          <FlatListRow
+            icon="time-outline"
+            onPress={() => router.push('/settings/preferences')}
+            subtitle={preferencesSummary(preferences)}
+            title="时间与作息"
+          />
+          <FlatListRow
+            icon="sparkles-outline"
+            onPress={() => router.push('/settings/ai')}
+            subtitle="智能整理、建议与长期偏好"
+            title="AI 设置"
+          />
+          <FlatListRow
+            icon="bookmark-outline"
+            onPress={() => router.push('/settings/memories')}
+            showDivider={false}
+            subtitle="助理记住的长期偏好"
+            title="长期记忆"
+          />
         </FlatListGroup>
 
-        <Text accessibilityRole="header" style={styles.sectionTitle}>数据与账户</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
+          账户
+        </Text>
         <FlatListGroup>
-          <FlatListRow icon="folder-open-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'data' } })} title="原始输入" />
-          <FlatListRow icon="trash-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'data' } })} subtitle="内容保留 30 天" title="最近删除" />
-          <FlatListRow icon="download-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'data' } })} title="导出个人数据" />
-          <FlatListRow icon="shield-checkmark-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'data' } })} title="隐私与数据" />
-          <FlatListRow icon="person-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'account' } })} showDivider={false} title="账号与安全" />
+          <FlatListRow
+            icon="person-outline"
+            onPress={() => router.push('/settings/profile')}
+            title="个人资料"
+          />
+          <FlatListRow
+            icon="person-circle-outline"
+            onPress={() => router.push('/settings/account')}
+            showDivider={false}
+            title="账号与登录"
+          />
         </FlatListGroup>
 
         <Text style={styles.version}>清单 0.1.0 · Development Build</Text>
       </ScrollView>
-      <AiFab count={1} />
+      <AiFab />
     </AppScreen>
   );
 }

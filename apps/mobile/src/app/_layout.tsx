@@ -44,8 +44,10 @@ export default function RootLayout() {
             <Stack.Screen name="trips/[id]" />
             <Stack.Screen name="focus" />
             <Stack.Screen name="settings/index" />
-            <Stack.Screen name="settings/detail" />
             <Stack.Screen name="settings/ai" />
+            <Stack.Screen name="settings/profile" />
+            <Stack.Screen name="settings/preferences" />
+            <Stack.Screen name="settings/account" />
             <Stack.Screen name="settings/memories" />
             <Stack.Screen name="assistant/threads" />
             <Stack.Screen
