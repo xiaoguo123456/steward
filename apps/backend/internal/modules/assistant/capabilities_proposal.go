@@ -96,8 +96,9 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 					"domain_preference", "personal_context", "constraint",
 				}, "偏好类型。"),
 				"text": str("给用户看的一句话表述，用他自己的说法。"),
-				"sensitivity": enumOf([]string{"normal", "sensitive"},
-					"涉及健康、财务、住址、家庭关系时填 sensitive。"),
+				"sensitivity": enumOf([]string{"normal"},
+					"只能是 normal。健康、财务、住址、家庭关系这类信息不要用这个能力记，"+
+						"请在回答里请用户自己去设置里添加。"),
 				"reason":      str("一句话说明你为什么觉得这是长期偏好。"),
 				"source_refs": enumFreeArray("依据来源，通常是用户这条消息。"),
 			}, []string{"memory_key", "memory_type", "text", "reason", "source_refs"}),
@@ -270,6 +271,17 @@ func (d CapabilityDeps) proposeMemoryUpsert(_ context.Context, _ ai.CapabilityCo
 	}
 	if len([]rune(value)) > 200 {
 		return ai.CapabilityResult{}, fmt.Errorf("这条偏好太长了，请压缩成一句话")
+	}
+	// 高敏信息不接受推断。用户说了一句"最近老是头疼"，不等于他愿意让系统
+	// 长期记下"有慢性头痛"——那是他自己才有资格下的结论。
+	//
+	// 这里直接拒绝，而不是把级别降回 normal 再存：降级会把一条真敏感的事实
+	// 变成可被检索的普通记忆，比不记更糟。参数枚举里只留 normal 只是给模型的提示，
+	// 提示挡不住越权，真正的判断在这一行。
+	if s := strings.TrimSpace(text(args["sensitivity"])); s != "" && s != "normal" {
+		return ai.CapabilityResult{}, fmt.Errorf(
+			"健康、财务、住址、家庭关系这类信息不能由你来记。" +
+				"请在回答里告诉用户，如果他愿意长期保留，可以自己在设置里添加")
 	}
 	sources, err := requireSources(args)
 	if err != nil {

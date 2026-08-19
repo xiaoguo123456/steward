@@ -131,6 +131,10 @@ LIMIT sqlc.arg(row_limit);
 -- records.aggregate 能力用：由 SQL 完成计数、求和、平均与范围，
 -- 避免把逐条明细发给模型。字段值取 JSONB 中的数字，非数字项自动跳过。
 -- 聚合值统一 coalesce 成 0：没有数据时用 value_count = 0 判断，不要读 average。
+--
+-- records.values 是 [{key, number_value, text_value}, ...] 这样的数组，
+-- 不是以字段名为键的对象。用 -> '字段名' 取值在数组上恒为 NULL，
+-- 于是每次聚合都返回 value_count = 0，用户明明有账却被告知"没有记录"。
 SELECT
     count(*)::int                                  AS record_count,
     count(v.num)::int                              AS value_count,
@@ -140,10 +144,11 @@ SELECT
     coalesce(max(v.num), 0)::double precision      AS maximum
 FROM records r
 LEFT JOIN LATERAL (
-    SELECT CASE
-        WHEN jsonb_typeof(r.values -> sqlc.arg(field_key)::text) = 'number'
-        THEN (r.values ->> sqlc.arg(field_key)::text)::double precision
-    END AS num
+    SELECT (elem ->> 'number_value')::double precision AS num
+    FROM jsonb_array_elements(r.values) AS elem
+    WHERE elem ->> 'key' = sqlc.arg(field_key)::text
+      AND jsonb_typeof(elem -> 'number_value') = 'number'
+    LIMIT 1
 ) v ON true
 WHERE r.deleted_at IS NULL
   AND r.tracker_id = sqlc.arg(tracker_id)::text

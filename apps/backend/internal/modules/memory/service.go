@@ -103,6 +103,14 @@ func (s *Service) UpsertInTx(ctx context.Context, q *dbgen.Queries,
 		return "", apperr.Validation(apperr.Field("text", "记忆内容不完整。"))
 	}
 
+	// 这条路径写出来的记忆一律是 learned（见下面的 Origin），
+	// 而高于 normal 的敏感级别只能由用户自己显式选择。
+	// 能力层已经挡过一次，这里再挡一次：它是最后一道，越权到这里就该炸。
+	if cmd.Sensitivity != "" && cmd.Sensitivity != "normal" {
+		return "", apperr.Validation(apperr.Field("sensitivity",
+			"敏感信息只能由你自己添加，助理不能替你记。"))
+	}
+
 	// 用户此前选择过"不再学这个"，就不能靠换一种说法绕回来。
 	blocked, err := q.IsRelearnBlocked(ctx, dbgen.IsRelearnBlockedParams{
 		MemoryKey:        key,
@@ -442,7 +450,9 @@ func memoryTypeOr(v string) string {
 }
 
 // sensitivityOr 只接受契约里的级别，未知值按普通处理。
-// 模型不能把一条记忆声明成比实际更低的敏感级别——更高的级别只能由用户显式选择。
+//
+// 它只做取值收敛，不判断谁有资格用哪一级：那条规则在 UpsertInTx 里，
+// 因为只有那里知道这次写入的来源是不是 learned。
 func sensitivityOr(v string) string {
 	switch v {
 	case "sensitive", "highly_sensitive":

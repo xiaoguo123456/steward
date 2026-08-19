@@ -17,6 +17,10 @@ Tracker 字段定义与 Record 录入。Tracker 是可复用的 Schema，Record 
 ## 不变量
 
 - Record 的 `values` 必须满足所属 Tracker 的字段定义，必填字段不可缺失。
+- `records.values` 在库里是**数组**：`[{key, number_value, text_value}, ...]`，
+  不是以字段名为键的对象。写 SQL 时 `values -> '字段名'` 在数组上恒为 NULL，
+  要用 `jsonb_array_elements` 按 `key` 找元素（见 `AggregateRecordField`）。
+  取错会静默返回 0 而不是报错，用户明明有账却被告知“没有记录”。
 - Record 标题由服务端生成，例如“2026-08-12 · 体重 72.3 kg”。
 - 单位换算由服务端完成，客户端不得自行折算后写入。
 - 修改 Tracker 字段不会重写历史 Record。

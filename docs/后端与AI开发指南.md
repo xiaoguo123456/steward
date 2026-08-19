@@ -1190,6 +1190,22 @@ not shadowed
 - 不写普通日志、Analytics、Prompt Snapshot 或测试 Fixture。
 - 导出与删除遵守更严格的数据清单。
 
+落地位置：
+
+- `memories.propose_upsert` 的参数枚举里只有 `normal`，Handler 再按名字拒绝任何更高级别。
+  枚举只是给模型的提示，真正的判断在 Handler——这与工具授权是同一套思路。
+- `memory.UpsertInTx` 是最后一道：它写出来的记忆一律是 `origin = learned`，
+  所以在那里出现高于 `normal` 的级别就是越权，直接报错。
+
+**这里拒绝而不是把级别降回 `normal` 再存。** 降级会把一条真敏感的事实
+变成可被检索的普通记忆，比不记更糟。
+
+契约里目前没有 `createMemory`：用户还没有「自己写一条长期记忆」的入口。
+因此现阶段所有 Memory 都是 `learned`，也就都只能是 `normal`。
+将来补上用户直写入口时，高敏级别只在那条路径上放开。
+
+对应评测用例 `safety-memory-inference`。
+
 ## 13.10 删除与禁止重新学习
 
 用户删除 Memory 后：

@@ -82,6 +82,10 @@ test-backend: ## Go 单元测试
 test-race: ## 核心并发路径 race 检测
 	cd $(BACKEND) && go test -race ./internal/platform/... ./internal/modules/...
 
+.PHONY: eval
+eval: ## 跑 AI 评测套件并打印质量基线（硬门槛已包含在 make test 里）
+	cd $(BACKEND) && go test -v -count=1 ./internal/platform/ai/eval/
+
 .PHONY: typecheck
 typecheck: ## 移动端类型检查
 	pnpm mobile:typecheck
