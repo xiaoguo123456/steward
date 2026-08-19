@@ -8,7 +8,6 @@ import { NavHeader } from '@/components/ui/nav-header';
 import { RouteMap } from '@/features/workouts/components/route-map';
 import {
   WorkoutDivider,
-  WorkoutMetric,
   WorkoutPrimaryButton,
 } from '@/features/workouts/components/workout-ui';
 import {
@@ -56,14 +55,13 @@ function OutdoorActiveWorkout({
   const router = useRouter();
   const clientReady = useClientReady();
   const [status, setStatus] = useState<ActiveStatus>('active');
-  const [elapsedSeconds, setElapsedSeconds] = useState(1938);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const goalParam = Array.isArray(params.goal) ? params.goal[0] : params.goal;
   const voiceParam = Array.isArray(params.voice) ? params.voice[0] : params.voice;
   const goal = clientReady ? goalParam : undefined;
   const voice = clientReady ? voiceParam : undefined;
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
-  const metrics = outdoorMetrics[mode];
 
   useEffect(() => {
     if (status !== 'active' || showEndConfirm) return;
@@ -74,7 +72,7 @@ function OutdoorActiveWorkout({
   const finishWorkout = () => {
     router.replace({
       pathname: '/features/exercise/[mode]/summary',
-      params: { mode, duration: formatWorkoutDuration(elapsedSeconds) },
+      params: { mode, seconds: String(elapsedSeconds) },
     } as Href);
   };
 
@@ -92,7 +90,7 @@ function OutdoorActiveWorkout({
 
       <View style={styles.outdoorBody}>
         <View style={styles.mapWrap}>
-          <RouteMap mode={mode} />
+          <RouteMap />
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.liveBadgeText}>{status === 'active' ? '记录中' : '已暂停'}</Text>
@@ -105,21 +103,17 @@ function OutdoorActiveWorkout({
         </View>
 
         <View style={styles.outdoorTray}>
+          {/*
+            主数字是用时，不是距离。
+            这一版不申请定位与计步权限，能诚实测到的只有经过的时间；
+            把一个不会变的「5.24 公里」摆在最显眼处，比不显示更糟。
+          */}
           <View style={styles.distanceLine}>
-            <Text style={styles.distanceValue}>{metrics.distance}</Text>
-            <Text style={styles.distanceUnit}>公里</Text>
-          </View>
-
-          <View style={styles.metricStrip}>
-            <WorkoutMetric label="时间" value={formatWorkoutDuration(elapsedSeconds)} />
-            <View style={styles.metricDivider} />
-            <WorkoutMetric label={metrics.secondaryLabel} value={metrics.secondaryValue} />
-            <View style={styles.metricDivider} />
-            <WorkoutMetric label={metrics.thirdLabel} value={metrics.thirdValue} />
+            <Text style={styles.distanceValue}>{formatWorkoutDuration(elapsedSeconds)}</Text>
           </View>
 
           <Text style={styles.currentMetric}>
-            {metrics.currentLabel} <Text style={styles.currentMetricValue}>{metrics.currentValue}</Text>
+            {modeDefinition.label}进行中 · 距离与配速这一版不记录，结束后可以自己补填
           </Text>
 
           <View style={styles.outdoorControls}>
@@ -170,9 +164,9 @@ function OutdoorActiveWorkout({
 function StrengthActiveWorkout() {
   const router = useRouter();
   const [status, setStatus] = useState<ActiveStatus>('active');
-  const [elapsedSeconds, setElapsedSeconds] = useState(766);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [exerciseIndex, setExerciseIndex] = useState(0);
-  const [completedSets, setCompletedSets] = useState(2);
+  const [completedSets, setCompletedSets] = useState(0);
   const [restSeconds, setRestSeconds] = useState(0);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const currentExercise = strengthExercises[exerciseIndex];
@@ -196,7 +190,7 @@ function StrengthActiveWorkout() {
   const finishWorkout = () => {
     router.replace({
       pathname: '/features/exercise/[mode]/summary',
-      params: { mode: 'strength', duration: formatWorkoutDuration(elapsedSeconds) },
+      params: { mode: 'strength', seconds: String(elapsedSeconds) },
     } as Href);
   };
 
@@ -412,46 +406,6 @@ function EndWorkoutSheet({
     </View>
   );
 }
-
-type OutdoorMetricConfig = {
-  distance: string;
-  secondaryLabel: string;
-  secondaryValue: string;
-  thirdLabel: string;
-  thirdValue: string;
-  currentLabel: string;
-  currentValue: string;
-};
-
-const outdoorMetrics: Record<OutdoorWorkoutMode, OutdoorMetricConfig> = {
-  running: {
-    distance: '5.24',
-    secondaryLabel: '平均配速',
-    secondaryValue: `06'10\"`,
-    thirdLabel: '千卡',
-    thirdValue: '328',
-    currentLabel: '当前配速',
-    currentValue: `05'58\" /km`,
-  },
-  walking: {
-    distance: '4.12',
-    secondaryLabel: '步数',
-    secondaryValue: '6218',
-    thirdLabel: '步频',
-    thirdValue: '128',
-    currentLabel: '连续健走',
-    currentValue: '本周第 2 次',
-  },
-  cycling: {
-    distance: '12.80',
-    secondaryLabel: '平均速度',
-    secondaryValue: '18.4',
-    thirdLabel: '累计爬升',
-    thirdValue: '86 m',
-    currentLabel: '当前速度',
-    currentValue: '21.6 km/h',
-  },
-};
 
 const styles = StyleSheet.create({
   lockButton: {

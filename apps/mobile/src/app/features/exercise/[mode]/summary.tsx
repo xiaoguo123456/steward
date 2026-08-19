@@ -1,23 +1,22 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
-import { RouteMap } from '@/features/workouts/components/route-map';
 import {
   WorkoutMetric,
   WorkoutNotice,
   WorkoutPrimaryButton,
   WorkoutSectionTitle,
 } from '@/features/workouts/components/workout-ui';
+import { workoutAccent, workoutModes } from '@/features/workouts/mock-data';
 import {
-  strengthExercises,
-  workoutAccent,
-  workoutModes,
-} from '@/features/workouts/mock-data';
-import { getWorkoutMode, isOutdoorWorkoutMode } from '@/features/workouts/model';
+  formatWorkoutDuration,
+  getWorkoutMode,
+  isOutdoorWorkoutMode,
+} from '@/features/workouts/model';
 import { useBuiltinTracker } from '@/features/trackers/use-builtin-tracker';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -32,19 +31,44 @@ export default function WorkoutSummaryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     mode?: string | string[];
-    duration?: string | string[];
+    seconds?: string | string[];
   }>();
   const rawMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
-  const duration = Array.isArray(params.duration) ? params.duration[0] : params.duration;
+  const rawSeconds = Array.isArray(params.seconds) ? params.seconds[0] : params.seconds;
   const mode = getWorkoutMode(rawMode);
   const outdoor = isOutdoorWorkoutMode(mode);
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
   const [feeling, setFeeling] = useState<(typeof feelings)[number]['id']>('good');
-  const summary = workoutSummary[mode];
   const workout = useBuiltinTracker('workout', { limit: 1 });
 
+  // 这一版能诚实测到的只有经过的时间；距离与步数要用户自己填。
+  const elapsedSeconds = Number(rawSeconds ?? 0) || 0;
+  const durationMin = Math.max(1, Math.round(elapsedSeconds / 60));
+  const [distance, setDistance] = useState('');
+  const [steps, setSteps] = useState('');
+
+  const distanceValue = numberOrUndefined(distance);
+  const stepsValue = numberOrUndefined(steps);
+  const inputInvalid =
+    (distance.trim() !== '' && distanceValue === undefined) ||
+    (steps.trim() !== '' && stepsValue === undefined);
+
   const saveRecord = () => {
-    workout.save({ ...workoutMetrics[mode], mode }, new Date());
+    if (inputInvalid || workout.saving) return;
+    // 只写测到的和用户填的。没填的字段不落库——
+    // 编一个数字进去，用户之后就再也分不清哪条记录是真的。
+    workout.save(
+      {
+        duration_min: durationMin,
+        mode,
+        distance_km: outdoor ? distanceValue : undefined,
+        steps: mode === 'walking' ? stepsValue : undefined,
+      },
+      new Date(),
+      // 「感觉」在运动记录项里没有对应字段，但它是用户真给出的信息，
+      // 不该收集完就丢掉。放进 note，打卡详情里看得见。
+      `感觉：${feelings.find((item) => item.id === feeling)?.label ?? ''}`,
+    );
     returnHome(true);
   };
 
@@ -71,21 +95,40 @@ export default function WorkoutSummaryScreen() {
           </Text>
         </View>
 
-        {outdoor ? <RouteMap compact mode={mode} showCurrent={false} /> : null}
-
         <View style={styles.summaryMetrics}>
-          <WorkoutMetric emphasized label={summary.primaryLabel} value={summary.primaryValue} />
+          <WorkoutMetric
+            emphasized
+            label="运动时间"
+            value={formatWorkoutDuration(elapsedSeconds)}
+          />
           <View style={styles.metricDivider} />
-          <WorkoutMetric label="运动时间" value={duration ?? summary.duration} />
-          <View style={styles.metricDivider} />
-          <WorkoutMetric label={summary.thirdLabel} value={summary.thirdValue} />
+          <WorkoutMetric label="运动方式" value={modeDefinition.label} />
         </View>
 
         {outdoor ? (
-          <OutdoorDetail mode={mode} />
-        ) : (
-          <StrengthDetail />
-        )}
+          <>
+            <WorkoutSectionTitle title="补填这次的数据" />
+            <View style={styles.manualFields}>
+              <ManualField
+                label="距离"
+                onChangeText={setDistance}
+                placeholder="例如 5.2"
+                unit="公里"
+                value={distance}
+              />
+              {mode === 'walking' ? (
+                <ManualField
+                  label="步数"
+                  onChangeText={setSteps}
+                  placeholder="例如 6200"
+                  unit="步"
+                  value={steps}
+                />
+              ) : null}
+            </View>
+            <Text style={styles.manualHint}>不填就不记这一项，之后也可以在打卡里补。</Text>
+          </>
+        ) : null}
 
         <WorkoutSectionTitle title="这次感觉怎么样？" />
         <View accessibilityRole="radiogroup" style={styles.feelingRow}>
@@ -117,11 +160,14 @@ export default function WorkoutSummaryScreen() {
         </View>
 
         <WorkoutNotice icon="information-circle-outline" tone="neutral">
-          距离与步数仍来自本地模拟，这一版不申请定位与计步权限。
-          保存后记录会出现在「打卡」里。
+          这一版不申请定位与计步权限，只记录了运动时长。
+          距离和步数需要你自己填，保存后会出现在「打卡」里。
         </WorkoutNotice>
 
         <View style={styles.footerActions}>
+          {inputInvalid ? (
+            <Text style={styles.inputError}>距离和步数请填数字。</Text>
+          ) : null}
           <WorkoutPrimaryButton
             icon="checkmark-circle-outline"
             label={workout.saving ? '正在保存…' : '保存运动记录'}
@@ -140,135 +186,93 @@ export default function WorkoutSummaryScreen() {
   );
 }
 
-function OutdoorDetail({ mode }: { mode: 'running' | 'walking' | 'cycling' }) {
-  if (mode === 'running') {
-    return (
-      <View style={styles.detailSection}>
-        <WorkoutSectionTitle aside="每公里" title="配速分段" />
-        {[
-          ['1 km', `06'18\"`],
-          ['2 km', `06'08\"`],
-          ['3 km', `06'15\"`],
-          ['4 km', `06'02\"`],
-          ['5 km', `06'07\"`],
-        ].map(([label, value], index) => (
-          <View key={label} style={styles.detailRow}>
-            <Text style={styles.detailLabel}>{label}</Text>
-            <View style={styles.splitTrack}>
-              <View style={[styles.splitFill, { width: `${78 + index * 4}%` }]} />
-            </View>
-            <Text style={styles.detailValue}>{value}</Text>
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  if (mode === 'walking') {
-    return (
-      <View style={styles.detailSection}>
-        <WorkoutSectionTitle title="健走表现" />
-        <View style={styles.readableStats}>
-          <ReadableStat label="总步数" value="6218 步" />
-          <ReadableStat label="平均步频" value="128 步/分钟" />
-          <ReadableStat label="本周完成" value="2 / 3 次" />
-        </View>
-      </View>
-    );
-  }
-
+/** 手填的一项。留空就是「这次不记这一项」，不是 0。 */
+function ManualField({
+  label,
+  unit,
+  value,
+  placeholder,
+  onChangeText,
+}: {
+  label: string;
+  unit: string;
+  value: string;
+  placeholder: string;
+  onChangeText: (value: string) => void;
+}) {
   return (
-    <View style={styles.detailSection}>
-      <WorkoutSectionTitle title="骑行表现" />
-      <View style={styles.readableStats}>
-        <ReadableStat label="平均速度" value="18.4 km/h" />
-        <ReadableStat label="最快速度" value="24.2 km/h" />
-        <ReadableStat label="累计爬升" value="86 米" />
-      </View>
+    <View style={styles.manualField}>
+      <Text style={styles.manualLabel}>{label}</Text>
+      <TextInput
+        accessibilityLabel={`${label}（${unit}）`}
+        keyboardType="decimal-pad"
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={workoutAccent.muted}
+        style={styles.manualInput}
+        value={value}
+      />
+      <Text style={styles.manualUnit}>{unit}</Text>
     </View>
   );
 }
 
-function StrengthDetail() {
-  return (
-    <View style={styles.detailSection}>
-      <WorkoutSectionTitle aside="17 组" title="完成动作" />
-      <View style={styles.strengthSummaryList}>
-        {strengthExercises.slice(0, 4).map((exercise, index) => (
-          <View key={exercise.id} style={styles.strengthSummaryRow}>
-            <View style={styles.summaryIndex}>
-              <Text style={styles.summaryIndexText}>{index + 1}</Text>
-            </View>
-            <View style={styles.summaryExerciseCopy}>
-              <Text style={styles.summaryExerciseTitle}>{exercise.title}</Text>
-              <Text style={styles.summaryExerciseMeta}>
-                {exercise.sets} 组 × {exercise.reps} 次
-              </Text>
-            </View>
-            <AppIcon color={colors.primary} name="checkmark-circle" size={20} />
-          </View>
-        ))}
-        <Text style={styles.moreCompleted}>另完成俯身划船和平板支撑</Text>
-      </View>
-    </View>
-  );
+/** 空串表示没填，非法输入返回 undefined 交给调用方拦下。 */
+function numberOrUndefined(raw: string): number | undefined {
+  const text = raw.trim();
+  if (text === '') return undefined;
+  const value = Number(text);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
 }
-
-function ReadableStat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.readableStatRow}>
-      <Text style={styles.readableStatLabel}>{label}</Text>
-      <Text style={styles.readableStatValue}>{value}</Text>
-    </View>
-  );
-}
-
-const workoutSummary = {
-  running: {
-    primaryLabel: '运动距离',
-    primaryValue: '5.24 km',
-    duration: '32:18',
-    thirdLabel: '平均配速',
-    thirdValue: `06'10\"`,
-  },
-  walking: {
-    primaryLabel: '运动距离',
-    primaryValue: '4.12 km',
-    duration: '48:16',
-    thirdLabel: '总步数',
-    thirdValue: '6218',
-  },
-  cycling: {
-    primaryLabel: '运动距离',
-    primaryValue: '12.80 km',
-    duration: '41:44',
-    thirdLabel: '平均速度',
-    thirdValue: '18.4',
-  },
-  strength: {
-    primaryLabel: '完成动作',
-    primaryValue: '6 个',
-    duration: '27:08',
-    thirdLabel: '完成组数',
-    thirdValue: '17 组',
-  },
-} as const;
-
-/**
- * 保存时写入的数值。
- *
- * 这一版仍然不申请定位与计步权限，因此距离、步数来自本地模拟；
- * 但「保存运动记录」写的是真实 Record，不再只是本地预览。
- * 接入真实传感器后只要换掉这里的来源，写入路径不用动。
- */
-const workoutMetrics = {
-  running: { duration_min: 32, distance_km: 5.24 },
-  walking: { duration_min: 48, distance_km: 4.12, steps: 6218 },
-  cycling: { duration_min: 42, distance_km: 12.8 },
-  strength: { duration_min: 27 },
-} as const;
 
 const styles = StyleSheet.create({
+  manualFields: {
+    gap: 10,
+  },
+  manualField: {
+    minHeight: 52,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
+  },
+  manualLabel: {
+    width: 44,
+    color: workoutAccent.muted,
+    fontFamily,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  manualInput: {
+    flex: 1,
+    minHeight: 48,
+    color: workoutAccent.ink,
+    fontFamily,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  manualUnit: {
+    color: workoutAccent.muted,
+    fontFamily,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  manualHint: {
+    marginTop: 10,
+    color: workoutAccent.muted,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  inputError: {
+    marginBottom: 10,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
   content: {
     paddingHorizontal: 16,
     paddingTop: 10,

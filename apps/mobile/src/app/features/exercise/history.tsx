@@ -164,7 +164,7 @@ function HistoryRow({
             <Text style={styles.expandedLabel}>运动感受</Text>
             <Text style={styles.expandedValue}>刚刚好</Text>
           </View>
-          <Text style={styles.previewHint}>当前为本地预览记录</Text>
+          <Text style={styles.previewHint}>距离由你自己填写，这一版不自动测量</Text>
         </View>
       ) : null}
     </Pressable>

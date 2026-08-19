@@ -51,13 +51,21 @@ export function useBuiltinTracker(key: TrackerBuiltinKey, options?: { limit?: nu
      * timestamp 用发生时刻而不是保存时刻：用户可能跑完步过一会儿才点保存，
      * 记录应当落在他实际运动的那个时间点上。
      */
-    save: (values: Record<string, number | string | undefined>, timestamp: Date) => {
+    save: (
+      values: Record<string, number | string | undefined>,
+      timestamp: Date,
+      note?: string,
+    ) => {
       if (!tracker) return;
+      const trimmed = note?.trim();
       create.mutate({
         data: {
           tracker_id: tracker.id,
           timestamp: timestamp.toISOString(),
           values: toRecordValues(tracker.fields.map((f) => f.key), values),
+          // 记录项字段之外的补充说明走 note，不为了一句话去改内置 Schema：
+          // 改字段会让已有记录读不出来。
+          ...(trimmed ? { note: trimmed } : {}),
         },
       });
     },

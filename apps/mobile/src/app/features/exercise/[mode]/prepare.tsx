@@ -106,7 +106,6 @@ function OutdoorWorkoutPrepare({
         <View style={styles.sectionBlock}>
           <WorkoutSectionTitle title="开始前" />
           <View style={styles.readinessBar}>
-            <ReadinessItem icon="location-outline" label="GPS 良好" value="模拟信号" />
             <View style={styles.readinessDivider} />
             <ReadinessItem icon="navigate-outline" label="路线已准备" value="等待开始" />
           </View>
@@ -133,7 +132,7 @@ function OutdoorWorkoutPrepare({
 
         <View style={styles.noticeWrap}>
           <WorkoutNotice icon="information-circle-outline" tone="neutral">
-            当前为前端模拟，不会申请定位权限，也不会在后台记录真实轨迹。
+            这一版不申请定位权限，只记录运动时长；距离结束后可以自己补填。
           </WorkoutNotice>
         </View>
       </ScrollView>

@@ -4,10 +4,8 @@ import { AppIcon } from '@/components/ui/icon';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 import { workoutAccent } from '../mock-data';
-import type { OutdoorWorkoutMode } from '../model';
 
 type RouteMapProps = {
-  mode: OutdoorWorkoutMode;
   compact?: boolean;
   showCurrent?: boolean;
 };
@@ -30,16 +28,10 @@ const routeSegments = [
   { top: '27%', left: '66%', width: '22%', rotate: '-20deg' },
 ] as const;
 
-const modeDistance: Record<OutdoorWorkoutMode, string> = {
-  running: '5.24 km',
-  walking: '4.12 km',
-  cycling: '12.80 km',
-};
-
-export function RouteMap({ mode, compact = false, showCurrent = true }: RouteMapProps) {
+export function RouteMap({ compact = false, showCurrent = true }: RouteMapProps) {
   return (
     <View
-      accessibilityLabel={`${modeDistance[mode]} 的模拟运动路线，当前仅用于前端预览`}
+      accessibilityLabel="示意用的运动路线图，这一版不记录真实轨迹"
       style={[styles.map, compact && styles.mapCompact]}
     >
       <View style={styles.parkOne} />
@@ -78,9 +70,6 @@ export function RouteMap({ mode, compact = false, showCurrent = true }: RouteMap
 
       <View style={[styles.marker, styles.startMarker]}>
         <View style={styles.markerCenter} />
-      </View>
-      <View style={[styles.distanceMarker, compact && styles.distanceMarkerCompact]}>
-        <Text style={styles.distanceMarkerText}>{compact ? modeDistance[mode] : '1 km'}</Text>
       </View>
       <View style={[styles.pin, styles.endPin]}>
         <AppIcon color={colors.background} name="location" size={compact ? 15 : 18} />
@@ -201,30 +190,6 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: colors.background,
     backgroundColor: colors.primary,
-  },
-  distanceMarker: {
-    position: 'absolute',
-    right: '24%',
-    top: '28%',
-    minWidth: 58,
-    height: 32,
-    paddingHorizontal: 10,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  distanceMarkerCompact: {
-    right: 12,
-    top: 12,
-  },
-  distanceMarkerText: {
-    color: workoutAccent.muted,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
   },
   previewBadge: {
     position: 'absolute',

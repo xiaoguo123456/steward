@@ -52,7 +52,7 @@ export default function ExerciseHomeScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {params.saved === '1' ? (
           <WorkoutNotice icon="checkmark-circle" tone="mint">
-            运动记录已保存到本地预览，正式接入后会同步到“打卡”。
+            运动记录已保存，在“打卡”里可以查看和修改。
           </WorkoutNotice>
         ) : null}
 
