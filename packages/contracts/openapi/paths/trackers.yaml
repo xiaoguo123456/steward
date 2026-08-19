@@ -11,6 +11,12 @@ Collection:
         required: false
         schema:
           $ref: '../components/schemas/trackers.yaml#/TrackerStatus'
+      - name: builtin_key
+        in: query
+        required: false
+        description: 只返回该内置记录项。生活场景页据此找到自己的记录项。
+        schema:
+          $ref: '../components/schemas/trackers.yaml#/TrackerBuiltinKey'
     responses:
       '200':
         description: 成功。

@@ -13,13 +13,17 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { TrackerBuiltinKey } from './trackerBuiltinKey';
-import type { TrackerStatus } from './trackerStatus';
 
-export type ListTrackersParams = {
-status?: TrackerStatus;
 /**
- * 只返回该内置记录项。生活场景页据此找到自己的记录项。
+ * 内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段
+ * 结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。
+ * 用户自建的记录项没有这个键。
  */
-builtin_key?: TrackerBuiltinKey;
-};
+export type TrackerBuiltinKey = typeof TrackerBuiltinKey[keyof typeof TrackerBuiltinKey];
+
+
+export const TrackerBuiltinKey = {
+  workout: 'workout',
+  focus: 'focus',
+  ledger: 'ledger',
+} as const;

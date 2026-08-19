@@ -63,7 +63,7 @@ type TrackerWithStats struct {
 func (s *Service) ListTrackers(ctx context.Context, userID string, status *string) ([]TrackerWithStats, error) {
 	var out []TrackerWithStats
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		rows, err := q.ListTrackers(ctx, status)
+		rows, err := q.ListTrackers(ctx, dbgen.ListTrackersParams{Status: status})
 		if err != nil {
 			return apperr.Internal(err)
 		}

@@ -281,7 +281,7 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 			lists = append(lists, ai.ListRef{ID: l.ID, Name: l.Name, IsDefault: l.IsDefault})
 		}
 
-		trackerRows, err := q.ListTrackers(ctx, strPtr("active"))
+		trackerRows, err := q.ListTrackers(ctx, dbgen.ListTrackersParams{Status: strPtr("active")})
 		if err != nil {
 			return apperr.Internal(err)
 		}

@@ -9,11 +9,11 @@ import {
   WorkoutSectionTitle,
 } from '@/features/workouts/components/workout-ui';
 import {
-  recentWorkouts,
   workoutAccent,
   workoutModes,
   type WorkoutHistoryItem,
 } from '@/features/workouts/mock-data';
+import { useWorkoutHistory } from '@/features/workouts/use-workout-history';
 import type { WorkoutMode } from '@/features/workouts/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -26,10 +26,11 @@ const filters: { id: HistoryFilter; label: string }[] = [
 
 export default function WorkoutHistoryScreen() {
   const [filter, setFilter] = useState<HistoryFilter>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(recentWorkouts[0].id);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const history = useWorkoutHistory(30);
   const visibleItems = useMemo(
-    () => recentWorkouts.filter((item) => filter === 'all' || item.mode === filter),
-    [filter],
+    () => history.items.filter((item) => filter === 'all' || item.mode === filter),
+    [filter, history.items],
   );
 
   return (

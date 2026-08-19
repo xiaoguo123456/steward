@@ -29,6 +29,14 @@ TrackerField:
         可选单位，例如 kg、元、分钟。
         单位换算由服务端确定性代码执行，客户端不得自行折算后写入。
 
+TrackerBuiltinKey:
+  type: string
+  description: |
+    内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段
+    结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。
+    用户自建的记录项没有这个键。
+  enum: [workout, focus, ledger]
+
 TrackerStatus:
   type: string
   enum: [active, archived]
@@ -51,6 +59,8 @@ Tracker:
       minItems: 1
       items:
         $ref: '#/TrackerField'
+    builtin_key:
+      $ref: '#/TrackerBuiltinKey'
     status:
       $ref: '#/TrackerStatus'
     color:

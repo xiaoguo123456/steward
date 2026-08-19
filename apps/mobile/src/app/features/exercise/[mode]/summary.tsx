@@ -18,6 +18,7 @@ import {
   workoutModes,
 } from '@/features/workouts/mock-data';
 import { getWorkoutMode, isOutdoorWorkoutMode } from '@/features/workouts/model';
+import { useBuiltinTracker } from '@/features/trackers/use-builtin-tracker';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 const feelings = [
@@ -40,6 +41,12 @@ export default function WorkoutSummaryScreen() {
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
   const [feeling, setFeeling] = useState<(typeof feelings)[number]['id']>('good');
   const summary = workoutSummary[mode];
+  const workout = useBuiltinTracker('workout', { limit: 1 });
+
+  const saveRecord = () => {
+    workout.save({ ...workoutMetrics[mode], mode }, new Date());
+    returnHome(true);
+  };
 
   const returnHome = (saved = false) => {
     router.replace({
@@ -110,14 +117,15 @@ export default function WorkoutSummaryScreen() {
         </View>
 
         <WorkoutNotice icon="information-circle-outline" tone="neutral">
-          当前只保存本地预览状态。正式版本会在你确认后写入对应运动 Record。
+          距离与步数仍来自本地模拟，这一版不申请定位与计步权限。
+          保存后记录会出现在「打卡」里。
         </WorkoutNotice>
 
         <View style={styles.footerActions}>
           <WorkoutPrimaryButton
             icon="checkmark-circle-outline"
-            label="保存运动记录"
-            onPress={() => returnHome(true)}
+            label={workout.saving ? '正在保存…' : '保存运动记录'}
+            onPress={saveRecord}
           />
           <Pressable
             accessibilityRole="button"
@@ -244,6 +252,20 @@ const workoutSummary = {
     thirdLabel: '完成组数',
     thirdValue: '17 组',
   },
+} as const;
+
+/**
+ * 保存时写入的数值。
+ *
+ * 这一版仍然不申请定位与计步权限，因此距离、步数来自本地模拟；
+ * 但「保存运动记录」写的是真实 Record，不再只是本地预览。
+ * 接入真实传感器后只要换掉这里的来源，写入路径不用动。
+ */
+const workoutMetrics = {
+  running: { duration_min: 32, distance_km: 5.24 },
+  walking: { duration_min: 48, distance_km: 4.12, steps: 6218 },
+  cycling: { duration_min: 42, distance_km: 12.8 },
+  strength: { duration_min: 27 },
 } as const;
 
 const styles = StyleSheet.create({

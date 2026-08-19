@@ -4,6 +4,7 @@
 SELECT * FROM trackers
 WHERE deleted_at IS NULL
   AND (sqlc.narg(status)::text IS NULL OR status = sqlc.narg(status)::text)
+  AND (sqlc.narg(builtin_key)::text IS NULL OR builtin_key = sqlc.narg(builtin_key)::text)
 ORDER BY created_at, id;
 
 -- name: GetTracker :one
@@ -23,11 +24,11 @@ GROUP BY tracker_id;
 -- name: CreateTracker :one
 INSERT INTO trackers (
     id, user_id, name, description, fields, status, color, icon,
-    created_by, provenance_refs
+    builtin_key, created_by, provenance_refs
 ) VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.narg(description),
     sqlc.arg(fields), sqlc.arg(status), sqlc.narg(color), sqlc.narg(icon),
-    sqlc.arg(created_by), sqlc.arg(provenance_refs)
+    sqlc.narg(builtin_key), sqlc.arg(created_by), sqlc.arg(provenance_refs)
 )
 RETURNING *;
 
@@ -148,3 +149,18 @@ WHERE r.deleted_at IS NULL
   AND r.tracker_id = sqlc.arg(tracker_id)::text
   AND (sqlc.narg(from_at)::timestamptz IS NULL OR r.timestamp >= sqlc.narg(from_at)::timestamptz)
   AND (sqlc.narg(to_at)::timestamptz IS NULL OR r.timestamp < sqlc.narg(to_at)::timestamptz);
+
+-- name: EnsureBuiltinTracker :one
+-- 内置记录项按需创建：用户第一次进这个场景时才建，
+-- 不在注册时凭空造三个他可能永远不用的记录项。
+INSERT INTO trackers (
+    id, user_id, name, description, fields, status, color, icon,
+    builtin_key, created_by, provenance_refs
+) VALUES (
+    sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.narg(description),
+    sqlc.arg(fields), 'active', sqlc.narg(color), sqlc.narg(icon),
+    sqlc.arg(builtin_key), 'system', '[]'::jsonb
+)
+ON CONFLICT (user_id, builtin_key) WHERE builtin_key IS NOT NULL AND deleted_at IS NULL
+DO UPDATE SET updated_at = now()
+RETURNING *;

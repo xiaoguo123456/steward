@@ -20,7 +20,8 @@ import * as zod from 'zod';
  * @summary 读取全部 Tracker
  */
 export const ListTrackersQueryParams = zod.object({
-  "status": zod.enum(['active', 'archived']).optional()
+  "status": zod.enum(['active', 'archived']).optional(),
+  "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('只返回该内置记录项。生活场景页据此找到自己的记录项。')
 })
 
 export const listTrackersResponseDataItemFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
@@ -39,6 +40,7 @@ export const ListTrackersResponse = zod.object({
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
 })).min(1),
+  "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段\n结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。\n用户自建的记录项没有这个键。\n'),
   "status": zod.enum(['active', 'archived']),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),
@@ -112,6 +114,7 @@ export const CreateTrackerResponse = zod.object({
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
 })).min(1),
+  "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段\n结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。\n用户自建的记录项没有这个键。\n'),
   "status": zod.enum(['active', 'archived']),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),
@@ -159,6 +162,7 @@ export const GetTrackerResponse = zod.object({
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
 })).min(1),
+  "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段\n结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。\n用户自建的记录项没有这个键。\n'),
   "status": zod.enum(['active', 'archived']),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),
@@ -233,6 +237,7 @@ export const UpdateTrackerResponse = zod.object({
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
 })).min(1),
+  "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段\n结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。\n用户自建的记录项没有这个键。\n'),
   "status": zod.enum(['active', 'archived']),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),

@@ -224,6 +224,7 @@ export * from './todayViewResponse';
 export * from './tokenPair';
 export * from './tooManyRequestsResponse';
 export * from './tracker';
+export * from './trackerBuiltinKey';
 export * from './trackerColor';
 export * from './trackerField';
 export * from './trackerFieldType';

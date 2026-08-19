@@ -230,53 +230,6 @@ export const strengthExercises: StrengthExercise[] = [
   },
 ];
 
-export const recentWorkouts: WorkoutHistoryItem[] = [
-  {
-    id: 'run-0617',
-    mode: 'running',
-    title: '户外跑步',
-    date: '昨天 19:24',
-    primary: '3.26 公里',
-    secondary: `平均配速 06'34\"`,
-    duration: '21:26',
-  },
-  {
-    id: 'strength-0615',
-    mode: 'strength',
-    title: '全身入门',
-    date: '6月15日 20:10',
-    primary: '6 个动作',
-    secondary: '完成 17 组',
-    duration: '27:08',
-  },
-  {
-    id: 'walk-0613',
-    mode: 'walking',
-    title: '晚间健走',
-    date: '6月13日 18:42',
-    primary: '4.12 公里',
-    secondary: '6218 步',
-    duration: '48:16',
-  },
-  {
-    id: 'cycle-0609',
-    mode: 'cycling',
-    title: '周末骑行',
-    date: '6月9日 08:16',
-    primary: '12.80 公里',
-    secondary: '均速 18.4 km/h',
-    duration: '41:44',
-  },
-  {
-    id: 'run-0606',
-    mode: 'running',
-    title: '户外跑步',
-    date: '6月6日 07:32',
-    primary: '5.02 公里',
-    secondary: `平均配速 06'18\"`,
-    duration: '31:37',
-  },
-];
 
 export const workoutAccent = {
   // 运动场景不维护独立的“运动系”中性色，统一继承首页视觉 Token。

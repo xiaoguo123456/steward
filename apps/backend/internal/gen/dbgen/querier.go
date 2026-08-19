@@ -80,6 +80,9 @@ type Querier interface {
 	DeleteMemory(ctx context.Context, id string) (MemoryItem, error)
 	DeleteRelearnBlock(ctx context.Context, id string) (MemoryRelearnBlock, error)
 	EnsureAiSettings(ctx context.Context, userID string) (UserAiSetting, error)
+	// 内置记录项按需创建：用户第一次进这个场景时才建，
+	// 不在注册时凭空造三个他可能永远不用的记录项。
+	EnsureBuiltinTracker(ctx context.Context, arg EnsureBuiltinTrackerParams) (Tracker, error)
 	EnsureUserPreferences(ctx context.Context, userID string) (UserPreference, error)
 	ExpireStaleProposals(ctx context.Context) error
 	// 同一用户上传相同内容时复用已有资产，避免重复占用存储。
@@ -170,7 +173,7 @@ type Querier interface {
 	// 没有任何记录的 Tracker 不会出现在结果里，由调用方按 0 与 nil 处理。
 	ListTrackerStats(ctx context.Context) ([]ListTrackerStatsRow, error)
 	// Tracker 与 Record 查询。Record 的 values 结构由 Go Domain 依据 Tracker fields 校验。
-	ListTrackers(ctx context.Context, status *string) ([]Tracker, error)
+	ListTrackers(ctx context.Context, arg ListTrackersParams) ([]Tracker, error)
 	// 确认执行前先锁住这一行：并发的两次确认里只有一个能拿到锁，
 	// 另一个会看到状态已变成 executed 而被拒绝。
 	LockProposal(ctx context.Context, id string) (ActionProposal, error)

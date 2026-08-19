@@ -17,7 +17,7 @@ import { NavHeader } from '@/components/ui/nav-header';
 import { FocusRing } from '@/features/focus/components/focus-ring';
 import { FocusSheet } from '@/features/focus/components/focus-sheet';
 import { useFocusPrototype } from '@/features/focus/focus-context';
-import { focusTaskOptions } from '@/features/focus/mock-data';
+import { useTodayFocusTasks } from '@/features/focus/use-today-focus-tasks';
 import {
   formatFocusClock,
   formatFocusDuration,
@@ -58,9 +58,10 @@ export default function FocusScreen() {
   const [mode, setMode] = useState<FocusMode>('pomodoro');
   const [durationMinutes, setDurationMinutes] = useState(25);
   const [customMinutes, setCustomMinutes] = useState(35);
-  const [selectedTask, setSelectedTask] = useState<FocusTaskReference | null>(
-    focusTaskOptions[0] ?? null,
-  );
+  // 关联任务来自真实的 Today：专注要挂的是用户今天真的要做的事。
+  // 不预选任何一条——默认选中一个他没看的任务只会让记录挂错地方。
+  const focusTaskOptions = useTodayFocusTasks();
+  const [selectedTask, setSelectedTask] = useState<FocusTaskReference | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(25 * 60);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [breakRemainingSeconds, setBreakRemainingSeconds] = useState(DEFAULT_BREAK_SECONDS);

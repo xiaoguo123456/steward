@@ -14,7 +14,15 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { AppSegmentedControl } from '@/components/ui/selection-controls';
+import type { Record as TrackerRecord } from '@steward/api-client';
+
+import {
+  numberOf,
+  textOf,
+  useBuiltinTracker,
+} from '@/features/trackers/use-builtin-tracker';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { formatRelativeTime } from '@/utils/format';
 
 type LedgerEntryType = 'expense' | 'income';
 type ScanStep = 'source' | 'processing' | 'review';
@@ -50,44 +58,6 @@ const incomeCategories: CategoryOption[] = [
   { label: '其他', icon: 'ellipsis-horizontal' },
 ];
 
-const initialEntries: LedgerEntry[] = [
-  {
-    id: 'market',
-    title: '盒马鲜生',
-    category: '餐饮',
-    amount: 86.4,
-    type: 'expense',
-    time: '今天 14:32',
-    account: '微信支付',
-  },
-  {
-    id: 'transport',
-    title: '地铁出行',
-    category: '交通',
-    amount: 6,
-    type: 'expense',
-    time: '今天 08:46',
-    account: '交通卡',
-  },
-  {
-    id: 'coffee',
-    title: '咖啡',
-    category: '餐饮',
-    amount: 28,
-    type: 'expense',
-    time: '昨天 15:18',
-    account: '支付宝',
-  },
-  {
-    id: 'salary',
-    title: '工资',
-    category: '工资',
-    amount: 8600,
-    type: 'income',
-    time: '8月10日',
-    account: '银行卡',
-  },
-];
 
 const categoryIconMap = new Map(
   [...expenseCategories, ...incomeCategories].map((category) => [category.label, category.icon]),
@@ -481,7 +451,11 @@ function MonthlyReport({
 }
 
 export function LedgerContent() {
-  const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
+  const ledger = useBuiltinTracker('ledger', { limit: 100 });
+  const entries = useMemo<LedgerEntry[]>(
+    () => ledger.records.map(toLedgerEntry),
+    [ledger.records],
+  );
   const [entryType, setEntryType] = useState<LedgerEntryType>('expense');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -503,9 +477,9 @@ export function LedgerContent() {
   const currentCategoryOptions = entryType === 'expense' ? expenseCategories : incomeCategories;
   const parsedAmount = Number(amount);
   const canSave = Number.isFinite(parsedAmount) && parsedAmount > 0;
+  // 统计只算真实记录，不叠一个编出来的基数。
   const monthExpense = useMemo(
     () =>
-      3160 +
       entries
         .filter((entry) => entry.type === 'expense')
         .reduce((total, entry) => total + entry.amount, 0),
@@ -535,18 +509,16 @@ export function LedgerContent() {
 
   const saveManualEntry = () => {
     if (!canSave) return;
-    setEntries((current) => [
+    ledger.save(
       {
-        id: `${Date.now()}`,
-        title: note.trim() || category,
-        category,
         amount: parsedAmount,
-        type: entryType,
-        time: '刚刚',
-        account: '默认账户',
+        // 收支方向单独存，不用金额正负表达：负数在统计和展示里容易被读错。
+        direction: entryType,
+        category,
+        merchant: note.trim() || undefined,
       },
-      ...current,
-    ]);
+      new Date(),
+    );
     setAmount('');
     setNote('');
     setManualOpen(false);
@@ -555,18 +527,17 @@ export function LedgerContent() {
   const confirmRecognizedEntry = () => {
     const parsedRecognizedAmount = Number(recognizedAmount);
     if (!Number.isFinite(parsedRecognizedAmount) || parsedRecognizedAmount <= 0) return;
-    setEntries((current) => [
+    // 识别结果只是候选：走到这里说明用户已经在确认页看过并点了确认。
+    ledger.save(
       {
-        id: `scan-${Date.now()}`,
-        title: recognizedMerchant.trim() || recognizedCategory,
-        category: recognizedCategory,
         amount: parsedRecognizedAmount,
-        type: 'expense',
-        time: '刚刚',
-        account: '微信支付',
+        direction: 'expense',
+        category: recognizedCategory,
+        merchant: recognizedMerchant.trim() || undefined,
+        payment_method: '微信支付',
       },
-      ...current,
-    ]);
+      new Date(),
+    );
     closeScan();
   };
 
@@ -1352,3 +1323,17 @@ const styles = StyleSheet.create({
     ...typography.meta,
   },
 });
+
+/** 把一条记录映射成展示模型。 */
+function toLedgerEntry(row: TrackerRecord): LedgerEntry {
+  const category = textOf(row, 'category') ?? '其他';
+  return {
+    id: row.id,
+    title: textOf(row, 'merchant') ?? category,
+    category,
+    amount: numberOf(row, 'amount') ?? 0,
+    type: (textOf(row, 'direction') as LedgerEntryType | undefined) ?? 'expense',
+    time: formatRelativeTime(row.timestamp),
+    account: textOf(row, 'payment_method') ?? '默认账户',
+  };
+}

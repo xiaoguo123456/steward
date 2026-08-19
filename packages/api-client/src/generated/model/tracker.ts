@@ -15,6 +15,7 @@
  */
 import type { CreatedBy } from './createdBy';
 import type { ProvenanceRef } from './provenanceRef';
+import type { TrackerBuiltinKey } from './trackerBuiltinKey';
 import type { TrackerColor } from './trackerColor';
 import type { TrackerField } from './trackerField';
 import type { TrackerStatus } from './trackerStatus';
@@ -26,6 +27,7 @@ export interface Tracker {
   description?: string | null;
   /** @minItems 1 */
   fields: TrackerField[];
+  builtin_key?: TrackerBuiltinKey;
   status: TrackerStatus;
   /** @nullable */
   color?: TrackerColor;

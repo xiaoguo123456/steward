@@ -29,6 +29,18 @@ func (h *TrackerAPI) ListTrackers(ctx context.Context, req httpapi.ListTrackersR
 		v := string(*req.Params.Status)
 		status = &v
 	}
+	// 按内置标识查询时顺带创建：用户第一次进运动或记账页面，
+	// 需要的记录项应当就在那里，而不是先让他手工建一个。
+	if req.Params.BuiltinKey != nil {
+		created, err := h.svc.EnsureBuiltin(ctx, userID, string(*req.Params.BuiltinKey))
+		if err != nil {
+			return nil, err
+		}
+		return httpapi.ListTrackers200JSONResponse{
+			Data: []httpapi.Tracker{mapTracker(created)}, Meta: httpx.Meta(ctx),
+		}, nil
+	}
+
 	rows, err := h.svc.ListTrackers(ctx, userID, status)
 	if err != nil {
 		return nil, err
@@ -212,6 +224,7 @@ func mapTracker(t TrackerWithStats) httpapi.Tracker {
 		Description:    row.Description,
 		Fields:         decodeFieldsOrEmpty(row.Fields),
 		Status:         httpapi.TrackerStatus(row.Status),
+		BuiltinKey:     builtinKeyPtr(row.BuiltinKey),
 		RecordCount:    &count,
 		LastRecordAt:   t.Stats.LastRecordAt,
 		Icon:           row.Icon,
@@ -286,4 +299,13 @@ func decodeProvenance(raw []byte) *[]httpapi.ProvenanceRef {
 		return nil
 	}
 	return &refs
+}
+
+// builtinKeyPtr 把存储值映射成契约枚举指针。
+func builtinKeyPtr(raw *string) *httpapi.TrackerBuiltinKey {
+	if raw == nil || *raw == "" {
+		return nil
+	}
+	key := httpapi.TrackerBuiltinKey(*raw)
+	return &key
 }

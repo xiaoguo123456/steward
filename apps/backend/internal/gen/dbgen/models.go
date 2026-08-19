@@ -532,6 +532,7 @@ type Tracker struct {
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
 	Version        int32
+	BuiltinKey     *string
 }
 
 type User struct {

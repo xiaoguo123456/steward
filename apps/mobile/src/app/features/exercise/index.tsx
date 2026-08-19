@@ -10,10 +10,10 @@ import {
   WorkoutSectionTitle,
 } from '@/features/workouts/components/workout-ui';
 import {
-  recentWorkouts,
   workoutAccent,
   workoutModes,
 } from '@/features/workouts/mock-data';
+import { useWorkoutHistory } from '@/features/workouts/use-workout-history';
 import type { WorkoutMode } from '@/features/workouts/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -27,7 +27,8 @@ function getPrepareRoute(mode: WorkoutMode) {
 export default function ExerciseHomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ saved?: string }>();
-  const visibleRecentWorkouts = recentWorkouts.slice(0, 2);
+  // 运动首页只展示最近两条：它的职责是四个入口，不是历史列表。
+  const visibleRecentWorkouts = useWorkoutHistory(2).items;
 
   const openPrepare = (mode: WorkoutMode) => router.push(getPrepareRoute(mode));
   const openHistory = () => router.push('/features/exercise/history' as Href);
