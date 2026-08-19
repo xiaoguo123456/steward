@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,7 +17,8 @@ import (
 //
 //   - gate=hard 的用例直接决定构建成败。它们检验的是「模型乱来时系统怎么办」，
 //     全部走脚本化 Provider，不花一分钱、不依赖网络，因此可以每次提交都跑。
-//   - gate=quality 的用例只汇报，落在 -v 输出里作为基线。
+//   - gate=quality 的用例不判绝对阈值，改判**相对基线有没有退化**：
+//     上次过、这次不过就是失败。基线提交在仓库里，见 baseline.go。
 //
 // 没有数据库时跳过，理由与 RLS 测试一致：这套评测的价值全在真实的
 // 事务、RLS 与确认路径上，用假仓库跑通不证明任何事情。
@@ -39,7 +41,16 @@ func TestEvalSuite(t *testing.T) {
 		t.Fatal("数据集为空")
 	}
 
+	baseline, err := eval.LoadBaseline(dir)
+	if err != nil {
+		t.Fatalf("加载基线失败：%v", err)
+	}
+
 	report := map[string]*tally{}
+	// 结果按用例 ID 收集，跑完统一和基线比对。
+	results := make(map[string]string, len(cases))
+	var mu sync.Mutex
+
 	for _, c := range cases {
 		c := c
 		t.Run(c.ID, func(t *testing.T) {
@@ -52,6 +63,7 @@ func TestEvalSuite(t *testing.T) {
 			}
 			failures := eval.Check(c, result)
 
+			mu.Lock()
 			bucket := report[c.Category]
 			if bucket == nil {
 				bucket = &tally{}
@@ -60,10 +72,16 @@ func TestEvalSuite(t *testing.T) {
 			bucket.total++
 			if len(failures) == 0 {
 				bucket.passed++
+			}
+			results[c.ID] = eval.Outcome(len(failures) == 0)
+			mu.Unlock()
+
+			if len(failures) == 0 {
 				return
 			}
 
-			// 质量用例不判失败：没有基线数据时写绝对阈值只会被调到刚好通过。
+			// 质量用例这里不判失败：绝对阈值写了只会被调到刚好通过。
+			// 它们的退化由下面的基线比对负责。
 			log := t.Errorf
 			if c.Gate == eval.GateQuality {
 				log = t.Logf
@@ -80,6 +98,45 @@ func TestEvalSuite(t *testing.T) {
 	}
 
 	t.Log(format(report))
+
+	if os.Getenv("STEWARD_EVAL_UPDATE_BASELINE") != "" {
+		if err := eval.SaveBaseline(dir, results); err != nil {
+			t.Fatalf("写入基线失败：%v", err)
+		}
+		t.Logf("已把本次结果固化为新基线（%d 条）。提交它，退化才有参照。", len(results))
+		return
+	}
+
+	checkDrift(t, eval.CompareBaseline(baseline, results))
+}
+
+// checkDrift 判定本次结果相对基线的变化。
+//
+// 只有退化判失败。变好、新增、删除都只提示——它们都需要人确认一次
+// 再固化，而不是让测试悄悄接受。
+func checkDrift(t *testing.T, drift eval.Drift) {
+	t.Helper()
+
+	if len(drift.Regressed) > 0 {
+		t.Errorf("相对基线退化了 %d 条：%s\n"+
+			"这些用例上次是通过的。先查为什么，确认是有意为之再跑 make eval-update。",
+			len(drift.Regressed), join(drift.Regressed))
+	}
+	if len(drift.Improved) > 0 {
+		t.Logf("相对基线变好了 %d 条：%s\n跑 make eval-update 固化，才防得住再退回去。",
+			len(drift.Improved), join(drift.Improved))
+	}
+	if len(drift.Added) > 0 {
+		t.Logf("基线里还没有 %d 条新用例：%s\n跑 make eval-update 收进去。",
+			len(drift.Added), join(drift.Added))
+	}
+	if len(drift.Removed) > 0 {
+		t.Logf("基线里有 %d 条用例已经不在数据集里：%s\n跑 make eval-update 清掉。",
+			len(drift.Removed), join(drift.Removed))
+	}
+	if drift.Clean() {
+		t.Log("与基线一致。")
+	}
 }
 
 // TestEvalDatasetShape 检查数据集本身是否可用。

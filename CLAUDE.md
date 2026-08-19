@@ -15,7 +15,7 @@
   项目、打卡项与账号偏好的读写界面也已接通。
 - `packages/ai-contracts/evals` + `internal/platform/ai/eval`：AI 评测套件。
   硬门槛用脚本化 Provider，不依赖真实模型，`make test` 里就会跑；
-  `make eval` 额外打印质量基线。
+  质量用例靠提交在仓库里的 `baseline.json` 判退化。
 
 尚未实现：向量检索与 Embedding（等搜索失败率数据再决定，见下）。
 `STEWARD_AI_PROVIDER=fake` 时使用确定性本地解析，不发起任何外部请求，
@@ -44,7 +44,8 @@ make api         # 启动 HTTP API
 make worker      # 启动 River Worker
 make check       # 提交前必跑：gofmt + go vet + eslint + go test + tsc
 make migrate-test # 把测试库迁到最新；行级安全集成测试需要它，否则会跳过
-make eval        # 跑 AI 评测并打印质量基线（硬门槛已含在 make test 里）
+make eval        # 跑 AI 评测并与基线比对（硬门槛已含在 make test 里）
+make eval-update # 确认过变化后把本次结果固化为新基线，并提交 baseline.json
 make generate    # 契约变更后重新生成 Go Server、sqlc 与 TS Client
 ```
 
@@ -174,6 +175,10 @@ pg_trgm + ILIKE 目前够用。判断该上的信号是**搜索失败率**——
 `packages/ai-contracts/evals/*.jsonl`：那里是这套系统对「什么不许发生」
 的书面记录，`gate: hard` 的用例破了就是构建失败。它们用脚本化 Provider
 精确复现「模型试图越权」「模型编造来源」，不依赖真实模型，因此 CI 里零成本。
+
+`gate: quality` 的用例没有绝对阈值，靠 `evals/baseline.json` 判**退化**：
+上次 pass、这次 fail 就失败。基线只由 `make eval-update` 显式更新——
+自动写回的话，一次退化会把自己写成新基线，下次就再也发现不了。
 
 ## 数据库与安全
 
