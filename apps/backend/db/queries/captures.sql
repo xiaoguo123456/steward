@@ -146,3 +146,11 @@ ORDER BY id;
 
 -- name: CountOpenCaptureQuestions :one
 SELECT count(*)::int FROM capture_questions WHERE status = 'open';
+
+-- name: IgnoreUnprocessedParts :exec
+-- 关闭智能整理时把还没处理的媒体项标为 ignored。
+-- 留在 pending 会让界面一直显示"处理中"，而它们根本不会被处理。
+UPDATE capture_parts SET status = 'ignored'
+WHERE capture_id = sqlc.arg(capture_id)
+  AND revision = sqlc.arg(revision)
+  AND status = 'pending';

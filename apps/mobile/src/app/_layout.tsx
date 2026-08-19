@@ -40,6 +40,7 @@ export default function RootLayout() {
             <Stack.Screen name="focus" />
             <Stack.Screen name="settings/index" />
             <Stack.Screen name="settings/detail" />
+            <Stack.Screen name="settings/ai" />
             <Stack.Screen name="settings/memories" />
             <Stack.Screen name="assistant/threads" />
             <Stack.Screen

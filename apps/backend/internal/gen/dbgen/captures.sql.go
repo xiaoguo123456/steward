@@ -491,6 +491,25 @@ func (q *Queries) GetCaptureQuestion(ctx context.Context, id string) (CaptureQue
 	return i, err
 }
 
+const ignoreUnprocessedParts = `-- name: IgnoreUnprocessedParts :exec
+UPDATE capture_parts SET status = 'ignored'
+WHERE capture_id = $1
+  AND revision = $2
+  AND status = 'pending'
+`
+
+type IgnoreUnprocessedPartsParams struct {
+	CaptureID string
+	Revision  int32
+}
+
+// 关闭智能整理时把还没处理的媒体项标为 ignored。
+// 留在 pending 会让界面一直显示"处理中"，而它们根本不会被处理。
+func (q *Queries) IgnoreUnprocessedParts(ctx context.Context, arg IgnoreUnprocessedPartsParams) error {
+	_, err := q.db.Exec(ctx, ignoreUnprocessedParts, arg.CaptureID, arg.Revision)
+	return err
+}
+
 const listCaptureCandidates = `-- name: ListCaptureCandidates :many
 SELECT id, user_id, capture_id, revision, candidate_type, action, target_id, target_expected_version, selected, payload, field_confidences, source_refs, missing_fields, warnings, duplicate_of, position, created_at FROM capture_candidates
 WHERE capture_id = $1 AND revision = $2

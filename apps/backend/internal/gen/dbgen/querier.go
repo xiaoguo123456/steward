@@ -124,6 +124,9 @@ type Querier interface {
 	// internal/modules/auth/repository.go 用 pgx 直接实现，不在本文件中定义。
 	GetUser(ctx context.Context, id string) (User, error)
 	GetUserPreferences(ctx context.Context, userID string) (UserPreference, error)
+	// 关闭智能整理时把还没处理的媒体项标为 ignored。
+	// 留在 pending 会让界面一直显示"处理中"，而它们根本不会被处理。
+	IgnoreUnprocessedParts(ctx context.Context, arg IgnoreUnprocessedPartsParams) error
 	IncrementVerificationAttempts(ctx context.Context, id string) error
 	IsRelearnBlocked(ctx context.Context, arg IsRelearnBlockedParams) (bool, error)
 	ListActivityBatches(ctx context.Context, arg ListActivityBatchesParams) ([]ActivityBatch, error)

@@ -39,28 +39,6 @@ const sectionConfigs: Record<string, SectionConfig> = {
       },
     ],
   },
-  ai: {
-    title: 'AI 设置与偏好',
-    summary: '关闭某项后不再生成新的对应内容，已有结果仍可查看。',
-    groups: [
-      {
-        title: '主动整理',
-        rows: [
-          { id: 'daily', title: '今日提醒', icon: 'sunny-outline', toggle: true },
-          { id: 'weekly', title: '每周回顾', icon: 'calendar-outline', toggle: true },
-          { id: 'project', title: '项目总结', icon: 'folder-open-outline', toggle: true },
-          { id: 'data-summary', title: '打卡总结', icon: 'analytics-outline', toggle: true },
-        ],
-      },
-      {
-        title: '长期偏好',
-        rows: [
-          { id: 'learning', title: '根据使用习惯学习', subtitle: '推断偏好会标明来源，并可逐条删除', icon: 'sparkles-outline', toggle: true },
-          { id: 'preferences', title: '查看长期偏好', subtitle: '5 项', icon: 'list-outline', value: '管理' },
-        ],
-      },
-    ],
-  },
   notifications: {
     title: '通知设置',
     summary: '系统通知关闭后，提醒仍会保留在产品内。',
@@ -115,11 +93,6 @@ const sectionConfigs: Record<string, SectionConfig> = {
 
 const initiallyEnabled = new Set([
   'weekend',
-  'daily',
-  'weekly',
-  'project',
-  'data-summary',
-  'learning',
   'task-notify',
   'event-notify',
   'review-notify',

@@ -39,6 +39,7 @@ type ListResolver interface {
 // UserProfile 是 users 模块公开的能力。
 type UserProfile interface {
 	Timezone(ctx context.Context, q *dbgen.Queries, userID string) (string, error)
+	AiSettingsInTx(ctx context.Context, q *dbgen.Queries, userID string) (dbgen.UserAiSetting, error)
 }
 
 // ActivityRecorder 是 activity 模块公开的写入能力。
@@ -241,6 +242,9 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 		lists    []ai.ListRef
 		trackers []ai.TrackerRef
 		skip     bool
+		// parseEnabled 为 false 时整轮不调用模型：用户在设置里关掉了智能整理，
+		// 那就只保留原始输入，让他自己填。
+		parseEnabled bool
 	)
 	err := s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
 		if done, err := q.GetProcessedJob(ctx, args.IdempotencyKey); err == nil && done.IdempotencyKey != "" {
@@ -265,6 +269,12 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 			return nil
 		}
 		capture = c
+
+		settings, err := s.users.AiSettingsInTx(ctx, q, args.UserID)
+		if err != nil {
+			return err
+		}
+		parseEnabled = settings.CaptureParseEnabled
 
 		parts, err = q.ListCaptureParts(ctx, dbgen.ListCapturePartsParams{
 			CaptureID: args.CaptureID, Revision: c.Revision,
@@ -306,6 +316,12 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 	})
 	if err != nil || skip {
 		return err
+	}
+
+	// 关掉智能整理时到此为止：不做 OCR、不做转写、不调用解析模型。
+	// Capture 直接进入待确认，用户在确认页手工填写。
+	if !parseEnabled {
+		return s.finishWithoutParse(ctx, args, capture)
 	}
 
 	// 第二步：事务外完成媒体预处理。
@@ -352,6 +368,35 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 			return err
 		}
 		return nil
+	})
+}
+
+// finishWithoutParse 在用户关闭智能整理时收尾。
+//
+// 原始输入照常保留，只是没有候选：确认页会是一张空表单，
+// 用户自己填。这比假装整理过、却给不出任何结果要诚实。
+func (s *Service) finishWithoutParse(ctx context.Context, args CaptureParseArgs,
+	capture dbgen.Capture) error {
+
+	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+		// 媒体项标记为 ignored：它们没有被识别过，界面不该显示成"处理中"。
+		if err := q.IgnoreUnprocessedParts(ctx, dbgen.IgnoreUnprocessedPartsParams{
+			CaptureID: capture.ID, Revision: capture.Revision,
+		}); err != nil {
+			return apperr.Internal(err)
+		}
+		note := "智能整理已关闭，这次输入原样保留，请手动填写。"
+		if _, err := q.UpdateCaptureStatus(ctx, dbgen.UpdateCaptureStatusParams{
+			ID: capture.ID, Status: "needs_confirmation", InstructionNote: &note,
+		}); err != nil {
+			return apperr.Internal(err)
+		}
+		resultRef, _ := json.Marshal(map[string]any{
+			"type":       "capture",
+			"capture_id": capture.ID,
+			"revision":   capture.Revision,
+		})
+		return s.finishOperation(ctx, q, args, "succeeded", nil, resultRef)
 	})
 }
 
