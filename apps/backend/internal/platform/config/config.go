@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -250,17 +251,27 @@ func LoadForTest() Config {
 	}
 }
 
-// findEnvFile 依次向上查找仓库根目录的 .env，便于从 apps/backend 子目录启动。
+// findEnvFile 逐级向上查找仓库根目录的 .env。
+//
+// 不写死几个「../」：go test 的工作目录是被测包所在目录，深度各不相同，
+// 写死几级就会在某些包里悄悄失效——测试不会报错，只会跳过。
 func findEnvFile() []string {
-	candidates := []string{".env", "../../.env", "../.env"}
-	found := make([]string, 0, 1)
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			found = append(found, c)
+	dir, err := os.Getwd()
+	if err != nil {
+		return nil
+	}
+	for i := 0; i < 8; i++ {
+		candidate := filepath.Join(dir, ".env")
+		if _, err := os.Stat(candidate); err == nil {
+			return []string{candidate}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
 			break
 		}
+		dir = parent
 	}
-	return found
+	return nil
 }
 
 func env(key, fallback string) string {

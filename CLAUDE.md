@@ -39,6 +39,7 @@ make seed        # 写入演示数据（用户 13800138000，验证码 123456）
 make api         # 启动 HTTP API
 make worker      # 启动 River Worker
 make check       # 提交前必跑：gofmt + go vet + eslint + go test + tsc
+make migrate-test # 把测试库迁到最新；行级安全集成测试需要它，否则会跳过
 make generate    # 契约变更后重新生成 Go Server、sqlc 与 TS Client
 ```
 
@@ -165,6 +166,11 @@ pg_trgm + ILIKE 目前够用。判断该上的信号是**搜索失败率**——
 
 - **RLS 必须靠 `steward_app` 角色生效**。`FORCE ROW LEVEL SECURITY` 约束不到超级用户，
   用超级用户连接会让所有隔离策略失效。迁移用有 DDL 权限的角色，API 与 Worker 用 `steward_app`。
+- 这三条（表上 ENABLE+FORCE、连接角色 NOSUPERUSER NOBYPASSRLS、事务里
+  `set_config('app.user_id')`）由 `internal/platform/database/rls_test.go` 守着。
+  其中 `TestAllUserTablesForceRLS` 会扫描所有带 `user_id` 的表——
+  **新增一张用户表却忘了写策略，它会直接报出来**。
+  没配 `STEWARD_TEST_DATABASE_URL` 时整组跳过，先跑 `make migrate-test`。
 - 所有用户数据访问都要经过 `database.InTx`：它在事务开始时用 `set_config` 写入 `app.user_id`。
   `SET LOCAL` 不支持绑定参数，不要改回去。
 - 需要 `pgx.Tx` 的平台组件（River 事务内入队）通过 `database.TxFrom(ctx)` 获取；

@@ -36,6 +36,10 @@ generate-client: ## 由 OpenAPI 生成 TypeScript Client 与 Zod 校验器
 migrate: ## 应用数据库迁移
 	cd $(BACKEND) && go run ./cmd/migrate up
 
+.PHONY: migrate-test
+migrate-test: ## 把测试库迁到最新（行级安全集成测试需要）
+	cd $(BACKEND) && STEWARD_MIGRATE_DATABASE_URL="$${STEWARD_TEST_MIGRATE_URL:-postgres://$$USER@localhost:5432/steward_test?sslmode=disable}" go run ./cmd/migrate up
+
 .PHONY: migrate-down
 migrate-down: ## 回滚最后一次迁移
 	cd $(BACKEND) && go run ./cmd/migrate down
