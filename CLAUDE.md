@@ -11,7 +11,11 @@
 - `packages/contracts`：OpenAPI 3.0.3 契约，55 个路径、85 个操作，是前后端唯一事实来源。
 - `apps/backend`：Go 模块化单体，实现全部契约操作；PostgreSQL + RLS + River。
 - `packages/api-client`：Orval 生成的 TypeScript Client、TanStack Query Hooks 与 Zod 校验器。
-- `apps/mobile`：登录、首页、计划、笔记、打卡、日历、任务详情与 Capture 全流程已接真实 API。
+- `apps/mobile`：登录、首页、计划、笔记、打卡、日历、任务详情与 Capture 全流程已接真实 API；
+  项目、打卡项与账号偏好的读写界面也已接通。
+- `packages/ai-contracts/evals` + `internal/platform/ai/eval`：AI 评测套件。
+  硬门槛用脚本化 Provider，不依赖真实模型，`make test` 里就会跑；
+  `make eval` 额外打印质量基线。
 
 尚未实现：向量检索与 Embedding（等搜索失败率数据再决定，见下）。
 `STEWARD_AI_PROVIDER=fake` 时使用确定性本地解析，不发起任何外部请求，
@@ -40,6 +44,7 @@ make api         # 启动 HTTP API
 make worker      # 启动 River Worker
 make check       # 提交前必跑：gofmt + go vet + eslint + go test + tsc
 make migrate-test # 把测试库迁到最新；行级安全集成测试需要它，否则会跳过
+make eval        # 跑 AI 评测并打印质量基线（硬门槛已含在 make test 里）
 make generate    # 契约变更后重新生成 Go Server、sqlc 与 TS Client
 ```
 
@@ -161,6 +166,14 @@ pg_trgm + ILIKE 目前够用。判断该上的信号是**搜索失败率**——
   `assistant.ProposalService.Confirm` 的那一个事务里，并在其中重新读目标、重跑校验。
 - 无来源的结论一律丢弃：复盘建议、Action Proposal 都要求 `source_refs` 非空
   且每个 ID 都出自服务端给出的清单。
+- 高敏记忆（健康、财务、住址、家庭关系）不接受模型推断。
+  能力层与 `memory.UpsertInTx` 两处都拒绝，**不降级重存**——
+  把一条真敏感的事实降成可被检索的普通记忆，比不记更糟。
+
+上面每一条都有对应的评测用例。改这块代码之前先看
+`packages/ai-contracts/evals/*.jsonl`：那里是这套系统对「什么不许发生」
+的书面记录，`gate: hard` 的用例破了就是构建失败。它们用脚本化 Provider
+精确复现「模型试图越权」「模型编造来源」，不依赖真实模型，因此 CI 里零成本。
 
 ## 数据库与安全
 
