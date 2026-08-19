@@ -13,7 +13,7 @@
 - `packages/api-client`：Orval 生成的 TypeScript Client、TanStack Query Hooks 与 Zod 校验器。
 - `apps/mobile`：登录、首页、计划、笔记、打卡、日历、任务详情与 Capture 全流程已接真实 API。
 
-尚未实现：向量检索与 Embedding、SSE 流式回复、Assistant 与记忆的移动端界面。
+尚未实现：向量检索与 Embedding、SSE 流式回复、Assistant 历史会话入口。
 `STEWARD_AI_PROVIDER=fake` 时使用确定性本地解析，不发起任何外部请求，
 此时对话会明确返回"暂时回复不了"而不是伪造一个回答。
 

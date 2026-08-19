@@ -17,7 +17,8 @@ export default function SettingsScreen() {
         <Text accessibilityRole="header" style={styles.sectionTitle}>日常使用</Text>
         <FlatListGroup>
           <FlatListRow icon="time-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'habits' } })} subtitle="工作日 09:00—18:00" title="使用习惯" />
-          <FlatListRow icon="sparkles-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'ai' } })} subtitle="5 项长期偏好" title="AI 设置与偏好" />
+          <FlatListRow icon="sparkles-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'ai' } })} title="AI 设置" />
+          <FlatListRow icon="bookmark-outline" onPress={() => router.push('/settings/memories')} subtitle="系统记住了什么、从哪里来" title="长期偏好" />
           <FlatListRow icon="notifications-outline" onPress={() => router.push({ pathname: '/settings/detail', params: { section: 'notifications' } })} showDivider={false} subtitle="事件前 10 分钟" title="通知设置" />
         </FlatListGroup>
 

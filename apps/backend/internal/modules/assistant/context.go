@@ -49,6 +49,9 @@ type contextSeed struct {
 	EntryResourceID   string
 	// PendingProposals 是尚未处理的建议数。
 	PendingProposals int
+	// SuggestionsEnabled 与 MemoryLearningEnabled 来自用户的 AI 开关。
+	SuggestionsEnabled    bool
+	MemoryLearningEnabled bool
 }
 
 // loadSeed 在一个短事务内把 Turn 标记为运行中并读出最小上下文。
@@ -87,6 +90,13 @@ func (s *Service) loadSeed(ctx context.Context, args RespondArgs) (contextSeed, 
 		if err != nil {
 			return err
 		}
+		// AI 开关决定本轮能拿到哪些能力，必须在组装上下文时就读出来。
+		settings, err := s.users.AiSettingsInTx(ctx, q, args.UserID)
+		if err != nil {
+			return err
+		}
+		seed.SuggestionsEnabled = settings.SuggestionEnabled
+		seed.MemoryLearningEnabled = settings.MemoryLearningEnabled
 		loc := timeutil.LoadLocation(tz)
 		seed.Timezone = tz
 		seed.Now = time.Now().In(loc)

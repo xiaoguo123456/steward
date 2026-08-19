@@ -28,6 +28,7 @@ import (
 // UserProfile 是 users 模块公开的能力。
 type UserProfile interface {
 	Timezone(ctx context.Context, q *dbgen.Queries, userID string) (string, error)
+	AiSettingsInTx(ctx context.Context, q *dbgen.Queries, userID string) (dbgen.UserAiSetting, error)
 }
 
 // JobEnqueuer 在业务事务内登记异步任务。
@@ -422,13 +423,34 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		History:       seed.History,
 		UserText:      seed.UserText,
 		ContextBlocks: seed.ContextBlocks,
-		Capabilities:  s.registry.Allowed(true),
+		Capabilities:  s.allowedFor(seed),
 		Limits:        ai.DefaultRunLimits(),
 		Ctx:           turnCtx,
 	})
 
 	// 第三步：短事务保存结果。
 	return s.saveTurnResult(ctx, args, result, runErr)
+}
+
+// allowedFor 计算本轮交给模型的能力集合。
+//
+// 用户关掉建议开关时，Proposal 能力整体不出现；关掉偏好学习时，
+// 只摘掉记忆建议这一项——他仍然可以让助理帮他改任务，只是不会再被记住习惯。
+//
+// 这里的裁剪是引导手段，不是唯一的安全边界：每次工具调用前仍会重新授权。
+func (s *Service) allowedFor(seed contextSeed) []ai.Capability {
+	all := s.registry.Allowed(seed.SuggestionsEnabled)
+	if seed.MemoryLearningEnabled {
+		return all
+	}
+	out := make([]ai.Capability, 0, len(all))
+	for _, c := range all {
+		if c.Name == "memories.propose_upsert" {
+			continue
+		}
+		out = append(out, c)
+	}
+	return out
 }
 
 // systemPrompt 拼出本轮的 System Policy。

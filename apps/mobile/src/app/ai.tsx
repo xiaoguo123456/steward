@@ -1,64 +1,142 @@
+import {
+  errorMessage,
+  useCreateThread,
+  useCreateTurn,
+  useGetOperation,
+  useListMessages,
+  useListProposals,
+  type ActionProposal,
+  type AssistantMessage,
+} from '@steward/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { AiAssistantAvatar } from '@/components/ui/ai-assistant-avatar';
-import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import { ProposalCard } from '@/features/assistant/proposal-card';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
-type Message = {
-  id: string;
-  role: 'assistant' | 'user';
-  text: string;
-  result?: boolean;
-};
-
-const initialMessages: Message[] = [
-  {
-    id: 'question',
-    role: 'assistant',
-    text: '这次输入里出现了两个时间。产品需求评审应该安排在哪一个？',
-  },
-];
-
-const quickReplies = ['周四 15:00', '周五上午', '稍后补充'];
-
+/**
+ * AI 管家对话面板。
+ *
+ * 权威会话在服务端：这里不做任何本地推断，也不缓存"看起来该有的"回复。
+ * 发送消息返回 202 与 operation_id，回复在 Worker 里生成，
+ * 这里轮询 Operation，完成后重新拉消息列表。
+ *
+ * 助理不能直接改任何数据。它要改东西时会给出一条待确认建议，
+ * 由 ProposalCard 呈现，用户点确认后服务端才执行。
+ */
 export default function AiConversationScreen() {
   const router = useRouter();
-  const messageListRef = useRef<ScrollView>(null);
-  const messageCounterRef = useRef(0);
-  const [messages, setMessages] = useState(initialMessages);
+  const queryClient = useQueryClient();
+  const listRef = useRef<ScrollView>(null);
+
+  const [threadId, setThreadId] = useState('');
+  const [operationId, setOperationId] = useState('');
   const [input, setInput] = useState('');
-  const [answered, setAnswered] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const createThread = useCreateThread({
+    mutation: {
+      onSuccess: (result) => setThreadId(result.data.id),
+      onError: (error) => setFailure(errorMessage(error, '没能打开对话，请稍后再试。')),
+    },
+  });
+
+  // 每次打开面板都开一个新对话：这一版还没有历史会话入口，
+  // 沿用上次的上下文只会让用户困惑于助理"记得"一些他看不到的东西。
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    createThread.mutate({ data: {} });
+    // 只在面板打开时建一次对话，mutation 对象每次渲染都是新引用，不放进依赖。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const messages = useListMessages(
+    threadId,
+    { limit: 50 },
+    { query: { enabled: Boolean(threadId) } },
+  );
+
+  const proposals = useListProposals(
+    { status: ['pending'] },
+    { query: { enabled: Boolean(threadId) } },
+  );
+
+  const operation = useGetOperation(operationId, {
+    query: {
+      enabled: Boolean(operationId),
+      refetchInterval: (query) => {
+        const status = query.state.data?.data.status;
+        return status === 'succeeded' || status === 'failed' || status === 'cancelled'
+          ? false
+          : 900;
+      },
+    },
+  });
+
+  const turnStatus = operation.data?.data.status;
+  const settled =
+    turnStatus === 'succeeded' || turnStatus === 'failed' || turnStatus === 'cancelled';
+  // 状态还没拉回来时也算"正在回复"，否则用户能在同一轮里连发两条。
+  const thinking = Boolean(operationId) && !settled;
+
+  // 这一轮结束就把消息与建议拉一次。
+  // 不清空 operationId：那是渲染期的 setState，而且 Operation 完成后
+  // 轮询本来就会自己停下来。
+  useEffect(() => {
+    if (!operationId || !settled) return;
+    void messages.refetch();
+    void proposals.refetch();
+    // messages 与 proposals 是查询对象，每次渲染都是新引用，不放进依赖。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operationId, settled]);
+
+  // 回复失败的说明由服务端给，直接派生出来展示，不额外存一份状态。
+  const turnFailure =
+    turnStatus === 'failed'
+      ? errorMessage(operation.data?.data.error, '助理这次没能回复，请稍后再试。')
+      : null;
+
+  const createTurn = useCreateTurn({
+    mutation: {
+      onSuccess: (result) => {
+        setOperationId(result.data.operation_id);
+        void messages.refetch();
+      },
+      onError: (error) => setFailure(errorMessage(error, '消息没能发出去。')),
+    },
+  });
+
+  const send = () => {
+    const text = input.trim();
+    if (!text || !threadId || thinking) return;
+    setFailure(null);
+    setInput('');
+    createTurn.mutate({ threadId, data: { text } });
+  };
 
   const scrollToLatest = () => {
-    requestAnimationFrame(() => messageListRef.current?.scrollToEnd({ animated: true }));
+    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   };
 
-  const sendContent = (content: string) => {
-    const normalized = content.trim();
-    if (!normalized) return;
-    messageCounterRef.current += 1;
-    const messageId = messageCounterRef.current.toString();
-    const resultText = normalized === '稍后补充'
-      ? '好的，这个问题会保留。你可以关闭面板，之后再继续。'
-      : `已采用“${normalized}”。我重新整理了这次输入，请查看并确认。`;
-    setMessages((current) => [
-      ...current,
-      { id: `${messageId}-user`, role: 'user', text: normalized },
-      {
-        id: `${messageId}-assistant`,
-        role: 'assistant',
-        text: resultText,
-        result: normalized !== '稍后补充',
-      },
-    ]);
-    setAnswered(true);
-    setInput('');
-    scrollToLatest();
-  };
+  // 契约按 message_seq 倒序返回，展示要按时间正序。
+  const ordered = [...(messages.data?.data ?? [])].reverse();
+  const pending = proposals.data?.data ?? [];
+  const canSend = Boolean(input.trim()) && Boolean(threadId) && !thinking;
 
   return (
     <ModalSheet maxHeight="84%" onClose={() => router.back()}>
@@ -68,7 +146,9 @@ export default function AiConversationScreen() {
         </View>
         <View style={styles.headerCopy}>
           <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
-          <Text style={styles.headerStatus}>{answered ? '这次输入已更新' : '1 个问题待确认'}</Text>
+          <Text style={styles.headerStatus}>
+            {thinking ? '正在查你的数据…' : '问我今天要做什么，或者让我帮你安排'}
+          </Text>
         </View>
         <Pressable
           accessibilityLabel="关闭 AI 管家"
@@ -81,7 +161,7 @@ export default function AiConversationScreen() {
       </View>
 
       <ScrollView
-        ref={messageListRef}
+        ref={listRef}
         accessibilityLabel="与 AI 管家的对话"
         accessibilityLiveRegion="polite"
         contentContainerStyle={styles.messages}
@@ -89,101 +169,72 @@ export default function AiConversationScreen() {
         onContentSizeChange={scrollToLatest}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.sourceCard}>
-          <View style={styles.sourceTopLine}>
-            <AppIcon color={colors.textSecondary} name="document-text-outline" size={17} />
-            <Text style={styles.sourceLabel}>原始输入摘要</Text>
+        {ordered.length === 0 && !messages.isLoading ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>我能帮你看你自己的内容</Text>
+            <Text style={styles.emptyCopy}>
+              比如「这周有什么要做的」「这个月在吃饭上花了多少」。
+              需要改动时我会先给你一条建议，你确认了我才动。
+            </Text>
           </View>
-          <Text numberOfLines={2} style={styles.sourceText}>
-            产品评审调整到本周，图片里有周四和周五两个时间。
-          </Text>
-        </View>
+        ) : null}
 
-        {messages.map((message) => (
-          <View
+        {ordered.map((message) => (
+          <MessageRow
             key={message.id}
-            style={[styles.messageRow, message.role === 'user' && styles.userRow]}
-          >
-            {message.role === 'assistant' ? (
-              <View style={styles.assistantMark}>
-                <AiAssistantAvatar size={30} />
-              </View>
-            ) : null}
-            <View
-              style={[
-                styles.bubble,
-                message.role === 'user' ? styles.userBubble : styles.assistantBubble,
-              ]}
-            >
-              <Text style={[styles.messageText, message.role === 'user' && styles.userText]}>
-                {message.text}
-              </Text>
-              {message.result ? (
-                <AppButton
-                  compact
-                  label="查看并确认"
-                  onPress={() =>
-                    router.replace({
-                      pathname: '/capture/confirm',
-                      params: { draft: '周四 15:00 产品需求评审' },
-                    })
-                  }
-                  style={styles.resultButton}
-                />
-              ) : null}
-            </View>
-          </View>
+            message={message}
+            proposals={pending.filter((p) => message.proposal_ids?.includes(p.id))}
+            onProposalResolved={() => {
+              void proposals.refetch();
+              // 建议执行后会改到任务、日程等正式内容，缓存必须整体失效。
+              void queryClient.invalidateQueries();
+            }}
+          />
         ))}
 
-        {!answered ? (
-          <View style={styles.quickReplies}>
-            {quickReplies.map((reply) => (
-              <Pressable
-                accessibilityRole="button"
-                key={reply}
-                onPress={() => sendContent(reply)}
-                style={({ pressed }) => [styles.quickReply, pressed && styles.quickReplyPressed]}
-              >
-                <Text style={styles.quickReplyText}>{reply}</Text>
-              </Pressable>
-            ))}
+        {thinking ? (
+          <View style={styles.thinkingRow}>
+            <View style={styles.assistantMark}>
+              <AiAssistantAvatar size={30} />
+            </View>
+            <View style={[styles.bubble, styles.assistantBubble, styles.thinkingBubble]}>
+              <ActivityIndicator color={colors.textSecondary} size="small" />
+              <Text style={styles.thinkingText}>正在查…</Text>
+            </View>
           </View>
+        ) : null}
+
+        {failure ?? turnFailure ? (
+          <Text style={styles.failure}>{failure ?? turnFailure}</Text>
         ) : null}
       </ScrollView>
 
       <View style={styles.composerWrap}>
         <View style={styles.composer}>
-          <Pressable
-            accessibilityLabel="使用语音回答"
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.composerButton, pressed && styles.iconPressed]}
-          >
-            <AppIcon color={colors.textSecondary} name="mic-outline" size={21} />
-          </Pressable>
           <TextInput
             accessibilityLabel="输入给 AI 管家的消息"
+            editable={Boolean(threadId)}
+            multiline
             onChangeText={setInput}
-            onSubmitEditing={() => sendContent(input)}
-            placeholder="输入回答…"
+            placeholder={thinking ? '正在回复…' : '说点什么…'}
             placeholderTextColor={colors.textTertiary}
-            returnKeyType="send"
             style={styles.input}
             value={input}
           />
           <Pressable
-            accessibilityLabel="发送回答"
+            accessibilityLabel="发送消息"
             accessibilityRole="button"
-            accessibilityState={{ disabled: !input.trim() }}
-            disabled={!input.trim()}
-            onPress={() => sendContent(input)}
+            accessibilityState={{ disabled: !canSend }}
+            disabled={!canSend}
+            onPress={send}
             style={({ pressed }) => [
               styles.sendButton,
-              !input.trim() && styles.sendDisabled,
-              pressed && input.trim() && styles.sendPressed,
+              !canSend && styles.sendDisabled,
+              pressed && canSend && styles.sendPressed,
             ]}
           >
             <AppIcon
-              color={input.trim() ? colors.background : colors.textSecondary}
+              color={canSend ? colors.background : colors.textSecondary}
               name="arrow-up"
               size={19}
             />
@@ -191,6 +242,37 @@ export default function AiConversationScreen() {
         </View>
       </View>
     </ModalSheet>
+  );
+}
+
+function MessageRow({
+  message,
+  proposals,
+  onProposalResolved,
+}: {
+  message: AssistantMessage;
+  proposals: ActionProposal[];
+  onProposalResolved: () => void;
+}) {
+  const isUser = message.role === 'user';
+
+  return (
+    <View style={styles.messageGroup}>
+      <View style={[styles.messageRow, isUser && styles.userRow]}>
+        {isUser ? null : (
+          <View style={styles.assistantMark}>
+            <AiAssistantAvatar size={30} />
+          </View>
+        )}
+        <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+          <Text style={[styles.messageText, isUser && styles.userText]}>{message.content}</Text>
+        </View>
+      </View>
+
+      {proposals.map((proposal) => (
+        <ProposalCard key={proposal.id} onResolved={onProposalResolved} proposal={proposal} />
+      ))}
+    </View>
   );
 }
 
@@ -240,27 +322,25 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     gap: 16,
   },
-  sourceCard: {
+  emptyCard: {
     padding: 14,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceSubtle,
-  },
-  sourceTopLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 7,
   },
-  sourceLabel: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-    fontWeight: '600',
-  },
-  sourceText: {
-    marginTop: 7,
+  emptyTitle: {
     color: colors.text,
     fontFamily,
     ...typography.body,
+    fontWeight: '600',
+  },
+  emptyCopy: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  messageGroup: {
+    gap: 12,
   },
   messageRow: {
     width: '100%',
@@ -300,31 +380,27 @@ const styles = StyleSheet.create({
   userText: {
     color: colors.background,
   },
-  resultButton: {
-    marginTop: 12,
-  },
-  quickReplies: {
-    marginLeft: 37,
+  thinkingRow: {
+    width: '100%',
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'flex-start',
+    gap: 9,
   },
-  quickReply: {
-    minHeight: 40,
-    paddingHorizontal: 14,
-    borderRadius: radius.pill,
+  thinkingBubble: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
+    gap: 9,
   },
-  quickReplyPressed: {
-    backgroundColor: colors.primaryTrack,
-  },
-  quickReplyText: {
-    color: colors.primaryStrong,
+  thinkingText: {
+    color: colors.textSecondary,
     fontFamily,
-    ...typography.label,
-    fontWeight: '600',
+    ...typography.meta,
+  },
+  failure: {
+    marginLeft: 39,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
   },
   composerWrap: {
     padding: 12,
@@ -334,24 +410,18 @@ const styles = StyleSheet.create({
   },
   composer: {
     minHeight: 54,
-    paddingHorizontal: 4,
+    paddingHorizontal: 14,
+    paddingRight: 4,
     borderRadius: radius.lg,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     backgroundColor: colors.surface,
-  },
-  composerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   input: {
     flex: 1,
     minWidth: 0,
-    height: 48,
-    paddingVertical: 0,
+    maxHeight: 110,
+    paddingVertical: 14,
     color: colors.text,
     fontFamily,
     ...typography.input,
@@ -359,6 +429,7 @@ const styles = StyleSheet.create({
   sendButton: {
     width: 42,
     height: 42,
+    margin: 6,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',

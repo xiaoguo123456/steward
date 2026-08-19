@@ -174,14 +174,26 @@ func (s *Service) UpdatePreferences(ctx context.Context, userID string, body htt
 func (s *Service) AiSettings(ctx context.Context, userID string) (dbgen.UserAiSetting, error) {
 	var out dbgen.UserAiSetting
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		row, err := q.EnsureAiSettings(ctx, userID)
+		row, err := s.AiSettingsInTx(ctx, q, userID)
 		if err != nil {
-			return apperr.Internal(err)
+			return err
 		}
 		out = row
 		return nil
 	})
 	return out, err
+}
+
+// AiSettingsInTx 在调用方的事务内读取 AI 开关。
+//
+// Assistant 组装上下文时需要它来决定本轮能拿到哪些能力，
+// 那已经在一个事务里了，不该为了读三个布尔值再开一个。
+func (s *Service) AiSettingsInTx(ctx context.Context, q *dbgen.Queries, userID string) (dbgen.UserAiSetting, error) {
+	row, err := q.EnsureAiSettings(ctx, userID)
+	if err != nil {
+		return dbgen.UserAiSetting{}, apperr.Internal(err)
+	}
+	return row, nil
 }
 
 // UpdateAiSettings 修改 AI 开关。
