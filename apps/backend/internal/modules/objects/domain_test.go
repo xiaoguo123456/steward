@@ -170,3 +170,91 @@ func TestValidateProjectStatusTransition(t *testing.T) {
 func openapiDateOf(year int, month time.Month, day int) openapi_types.Date {
 	return openapi_types.Date{Time: time.Date(year, month, day, 0, 0, 0, 0, time.UTC)}
 }
+
+func TestResolveProjectStatus(t *testing.T) {
+	completed := "completed"
+	paused := "paused"
+
+	cases := []struct {
+		name string
+		in   projectStatusChange
+		want string
+		// wantErr 为空表示应当成功。
+		wantErr apperr.Code
+	}{
+		{
+			name: "标记完成时有未完成任务要先确认",
+			in: projectStatusChange{
+				From: "active", Requested: "completed", OpenTasks: 2,
+			},
+			wantErr: apperr.CodeProjectHasOpenTasks,
+		},
+		{
+			name: "确认过之后可以完成",
+			in: projectStatusChange{
+				From: "active", Requested: "completed", OpenTasks: 2, Force: true,
+			},
+			want: "completed",
+		},
+		{
+			name: "没有未完成任务时不用确认",
+			in: projectStatusChange{
+				From: "active", Requested: "completed", OpenTasks: 0,
+			},
+			want: "completed",
+		},
+		{
+			// 归档前已完成的项目恢复成进行中，等于替用户改了结论。
+			name: "从归档恢复回到归档前的状态而不是客户端说的那个",
+			in: projectStatusChange{
+				From: "archived", Requested: "active", BeforeArchived: &completed,
+			},
+			want: "completed",
+		},
+		{
+			name: "归档前是暂停就恢复成暂停",
+			in: projectStatusChange{
+				From: "archived", Requested: "active", BeforeArchived: &paused,
+			},
+			want: "paused",
+		},
+		{
+			// 用户点的是「恢复项目」，不该弹出「确认要标记完成吗」。
+			name: "恢复一个归档前已完成的项目不再触发未完成任务确认",
+			in: projectStatusChange{
+				From: "archived", Requested: "active",
+				BeforeArchived: &completed, OpenTasks: 3,
+			},
+			want: "completed",
+		},
+		{
+			name: "没有记录归档前状态时按客户端请求恢复",
+			in:   projectStatusChange{From: "archived", Requested: "active"},
+			want: "active",
+		},
+		{
+			name:    "非法转换直接拒绝",
+			in:      projectStatusChange{From: "completed", Requested: "paused"},
+			wantErr: apperr.CodeTaskStatusInvalid,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolveProjectStatus(tc.in)
+			if tc.wantErr != "" {
+				appErr, ok := apperr.As(err)
+				if !ok || appErr.Code != tc.wantErr {
+					t.Fatalf("期望错误 %s，实际 %v", tc.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("不该出错：%v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("期望写入 %s，实际 %s", tc.want, got)
+			}
+		})
+	}
+}

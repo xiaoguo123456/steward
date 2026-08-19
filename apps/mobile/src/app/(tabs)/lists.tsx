@@ -3,6 +3,7 @@ import {
   useGetToday,
   useListTaskLists,
   useListTasks,
+  type Project,
   type Task,
   type TaskList,
 } from '@steward/api-client';
@@ -24,6 +25,7 @@ import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListManagerSheet } from '@/features/plan/list-manager-sheet';
+import { ProjectScopeBar } from '@/features/projects/project-scope-bar';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { TaskRow } from '@/features/tasks/components/task-row';
@@ -238,17 +240,27 @@ function DetailView({
   onToggle: (task: Task) => void;
 }) {
   const router = useRouter();
+  const [project, setProject] = useState<Project | null>(null);
   const title = view.type === 'list' ? view.list.name : scopeTitles[view.key];
-  const emptyCopy = view.type === 'list' ? '这里还没有任务' : scopeEmptyCopy[view.key];
+
+  // 项目范围是在已加载的任务上再筛一层，不重新发请求：
+  // 这些任务本来就都在手里，为一个筛选再拉一遍只会让列表闪一下。
+  const visible = project ? tasks.filter((task) => task.project_id === project.id) : tasks;
+  const emptyCopy = project
+    ? '这个项目在当前范围内还没有任务'
+    : view.type === 'list'
+      ? '这里还没有任务'
+      : scopeEmptyCopy[view.key];
 
   return (
     <AppScreen includeBottomInset>
       <NavHeader onBack={onBack} title={title} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {tasks.length === 0 ? (
+        <ProjectScopeBar onSelect={setProject} selectedId={project?.id ?? null} />
+        {visible.length === 0 ? (
           <StatePanel icon="checkmark-done-outline" message={emptyCopy} title="暂无内容" />
         ) : (
-          tasks.map((task) => (
+          visible.map((task) => (
             <TaskRow
               key={task.id}
               onOpen={() => router.push({ pathname: '/tasks/[id]', params: { id: task.id } })}

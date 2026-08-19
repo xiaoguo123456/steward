@@ -184,6 +184,48 @@ func validateProjectStatusTransition(from, to string) error {
 		"项目不能从“%s”直接变为“%s”。", from, to)
 }
 
+// projectStatusChange 描述一次 Project 状态变更的输入。
+type projectStatusChange struct {
+	// From 是当前状态，Requested 是客户端请求的目标状态。
+	From      string
+	Requested string
+	// BeforeArchived 是归档前的状态，只在 From 为 archived 时有意义。
+	BeforeArchived *string
+	// Force 表示用户已经在「还有未完成任务」的提示上确认过。
+	Force bool
+	// OpenTasks 是该项目下未完成的任务数。
+	OpenTasks int32
+}
+
+// resolveProjectStatus 算出真正要写入的状态。
+//
+// 两条规则容易在实现里互相绊住，所以放在一起：
+//
+//  1. 从归档恢复时目标一律取归档前的状态，客户端报的那个只表示「想恢复」。
+//     归档前已完成的项目恢复成进行中，等于替用户改了结论。
+//  2. 「还有未完成任务」的确认只拦真正的标记完成。恢复归档不拦——
+//     完成这件事在归档之前就确认过了，再问一次，用户点的是「恢复项目」，
+//     弹出来的却是「确认要标记完成吗」。
+//
+// 顺序不能反：先定下真正要写入的状态，才谈得上判断这是不是一次标记完成。
+func resolveProjectStatus(in projectStatusChange) (string, error) {
+	if err := validateProjectStatusTransition(in.From, in.Requested); err != nil {
+		return "", err
+	}
+
+	next := in.Requested
+	restoring := in.From == "archived" && in.Requested != "archived"
+	if restoring && in.BeforeArchived != nil {
+		next = *in.BeforeArchived
+	}
+
+	if next == "completed" && !restoring && in.OpenTasks > 0 && !in.Force {
+		return "", apperr.Newf(apperr.CodeProjectHasOpenTasks,
+			"项目下还有 %d 项未完成的任务，确认要标记完成吗？", in.OpenTasks)
+	}
+	return next, nil
+}
+
 // dueInput 描述一次截止语义的设置意图。
 type dueInput struct {
 	DueDate  *openapi_types.Date

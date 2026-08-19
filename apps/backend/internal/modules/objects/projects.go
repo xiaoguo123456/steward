@@ -159,22 +159,15 @@ func (s *Service) UpdateProject(ctx context.Context, userID, projectID string, i
 
 		var status *string
 		if body.Status != nil {
-			next := string(*body.Status)
-			if err := validateProjectStatusTransition(current.Status, next); err != nil {
+			next, err := resolveProjectStatus(projectStatusChange{
+				From:           current.Status,
+				Requested:      string(*body.Status),
+				BeforeArchived: current.StatusBeforeArchived,
+				Force:          body.Force != nil && *body.Force,
+				OpenTasks:      counts.Open,
+			})
+			if err != nil {
 				return err
-			}
-			// 标记完成时先提示仍有未完成事项，由用户确认后带 force 重发。
-			if next == "completed" && counts.Open > 0 {
-				force := body.Force != nil && *body.Force
-				if !force {
-					return apperr.Newf(apperr.CodeProjectHasOpenTasks,
-						"项目下还有 %d 项未完成的任务，确认要标记完成吗？", counts.Open)
-				}
-			}
-			// 从归档恢复时回到归档前状态。
-			if current.Status == "archived" && next != "archived" &&
-				current.StatusBeforeArchived != nil && body.Status == nil {
-				next = *current.StatusBeforeArchived
 			}
 			status = &next
 		}
