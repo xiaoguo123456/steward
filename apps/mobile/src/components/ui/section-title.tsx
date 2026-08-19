@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -6,10 +7,12 @@ import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 type SectionTitleProps = {
   title: string;
   count?: string;
+  /** 右侧的次级操作，例如「管理」。 */
+  action?: ReactNode;
   style?: StyleProp<ViewStyle>;
 };
 
-export function SectionTitle({ title, count, style }: SectionTitleProps) {
+export function SectionTitle({ title, count, action, style }: SectionTitleProps) {
   return (
     <View style={[styles.row, style]}>
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>
@@ -18,6 +21,7 @@ export function SectionTitle({ title, count, style }: SectionTitleProps) {
           <Text style={styles.count}>{count}</Text>
         </View>
       ) : null}
+      {action ? <View style={styles.action}>{action}</View> : null}
     </View>
   );
 }
@@ -28,6 +32,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  action: {
+    marginLeft: 'auto',
   },
   title: {
     color: colors.text,

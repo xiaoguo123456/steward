@@ -23,12 +23,13 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { PageHeader } from '@/components/ui/page-header';
+import { ListManagerSheet } from '@/features/plan/list-manager-sheet';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
 import { formatDateParam } from '@/utils/format';
-import { colors, fontFamily, radius } from '@/theme/tokens';
+import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type ScopeKey = 'today' | 'tomorrow' | 'completed' | 'unscheduled';
 
@@ -65,6 +66,7 @@ export default function ListsScreen() {
   const completedTasks = useListTasks({ status: ['done'], limit: 100 });
   const unscheduledTasks = useListTasks({ unscheduled: true, limit: 100 });
   const taskLists = useListTaskLists();
+  const [listManagerVisible, setListManagerVisible] = useState(false);
 
   const counts = {
     today: today.data?.data.counts.total ?? 0,
@@ -178,6 +180,16 @@ export default function ListsScreen() {
             </Pressable>
 
             <SectionTitle
+              action={
+                <Pressable
+                  accessibilityLabel="管理清单"
+                  accessibilityRole="button"
+                  onPress={() => setListManagerVisible(true)}
+                  style={({ pressed }) => [styles.manageButton, pressed && styles.pressed]}
+                >
+                  <Text style={styles.manageText}>管理</Text>
+                </Pressable>
+              }
               count={`${taskLists.data?.data.length ?? 0} 个`}
               style={styles.sectionTitle}
               title="清单"
@@ -204,6 +216,11 @@ export default function ListsScreen() {
         )}
       </ScrollView>
       <AiFab />
+      <ListManagerSheet
+        lists={taskLists.data?.data ?? []}
+        onClose={() => setListManagerVisible(false)}
+        visible={listManagerVisible}
+      />
     </AppScreen>
   );
 }
@@ -271,6 +288,17 @@ function detailTasks(
 }
 
 const styles = StyleSheet.create({
+  manageButton: {
+    minHeight: 36,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+  },
+  manageText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.meta,
+    fontWeight: '600',
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 96,

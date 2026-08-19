@@ -1,4 +1,4 @@
-import { deleteNote, errorMessage, useGetNote } from '@steward/api-client';
+import { deleteNote, errorMessage, updateNote, useGetNote } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
+import { NoteEditor, type NoteDraft } from '@/features/notes/note-editor';
 import { formatRelativeTime } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
@@ -16,9 +17,32 @@ export default function NoteDetailScreen() {
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const noteQuery = useGetNote(id ?? '', { query: { enabled: Boolean(id) } });
   const note = noteQuery.data?.data;
+
+  const save = async (draft: NoteDraft) => {
+    if (!note) return;
+    setSaving(true);
+    setError(null);
+    try {
+      // 带上 version：别处改过之后再保存会被服务端挡住，
+      // 而不是把对方的修改静默覆盖掉。
+      await updateNote(
+        note.id,
+        { title: draft.title || undefined, content: draft.content, tags: draft.tags },
+        { headers: { 'If-Match': String(note.version) } },
+      );
+      await queryClient.invalidateQueries();
+      setEditing(false);
+    } catch (err) {
+      setError(errorMessage(err, '修改没能保存。'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const remove = async () => {
     if (!note) return;
@@ -60,18 +84,47 @@ export default function NoteDetailScreen() {
     );
   }
 
+  if (editing) {
+    return (
+      <AppScreen includeBottomInset>
+        <NavHeader title="编辑笔记" />
+        <NoteEditor
+          failure={error}
+          initial={{ title: note.title, content: note.content, tags: note.tags }}
+          onCancel={() => {
+            setError(null);
+            setEditing(false);
+          }}
+          onSubmit={(draft) => void save(draft)}
+          saving={saving}
+          submitLabel="保存修改"
+        />
+      </AppScreen>
+    );
+  }
+
   return (
     <AppScreen>
       <NavHeader
         right={
-          <Pressable
-            accessibilityLabel="删除笔记"
-            accessibilityRole="button"
-            hitSlop={12}
-            onPress={() => void remove()}
-          >
-            <AppIcon color={colors.danger} name="trash-outline" size={21} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              accessibilityLabel="编辑笔记"
+              accessibilityRole="button"
+              hitSlop={12}
+              onPress={() => setEditing(true)}
+            >
+              <AppIcon color={colors.text} name="create-outline" size={21} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="删除笔记"
+              accessibilityRole="button"
+              hitSlop={12}
+              onPress={() => void remove()}
+            >
+              <AppIcon color={colors.danger} name="trash-outline" size={21} />
+            </Pressable>
+          </View>
         }
       />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -103,6 +156,11 @@ export default function NoteDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 40,

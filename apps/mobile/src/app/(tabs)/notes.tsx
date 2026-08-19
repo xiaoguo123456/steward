@@ -112,18 +112,28 @@ export default function NotesScreen() {
       >
         <PageHeader
           action={
-            <Pressable
-              accessibilityLabel={searchOpen ? '关闭笔记搜索' : '搜索笔记'}
-              accessibilityRole="button"
-              onPress={toggleSearch}
-              style={({ pressed }) => [styles.searchButton, pressed && styles.controlPressed]}
-            >
-              <AppIcon
-                color={searchOpen ? colors.primaryStrong : colors.text}
-                name={searchOpen ? 'close' : 'search-outline'}
-                size={22}
-              />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityLabel={searchOpen ? '关闭笔记搜索' : '搜索笔记'}
+                accessibilityRole="button"
+                onPress={toggleSearch}
+                style={({ pressed }) => [styles.searchButton, pressed && styles.controlPressed]}
+              >
+                <AppIcon
+                  color={searchOpen ? colors.primaryStrong : colors.text}
+                  name={searchOpen ? 'close' : 'search-outline'}
+                  size={22}
+                />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="新建笔记"
+                accessibilityRole="button"
+                onPress={() => router.push('/notes/new')}
+                style={({ pressed }) => [styles.searchButton, pressed && styles.controlPressed]}
+              >
+                <AppIcon color={colors.text} name="add" size={24} />
+              </Pressable>
+            </View>
           }
           subtitle={`${notes.length} 篇内容`}
           title="笔记"
@@ -222,6 +232,11 @@ const cardShadow = Platform.select({
 });
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   loading: {
     paddingVertical: 32,
     alignItems: 'center',
