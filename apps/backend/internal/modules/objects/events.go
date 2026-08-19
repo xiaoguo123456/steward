@@ -170,8 +170,10 @@ func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.C
 			Reminders:        remindersJSON,
 			Recurrence:       recurrence,
 			OriginalMonthDay: originalMonthDay,
-			CreatedBy:        "user",
-			ProvenanceRefs:   emptyJSONArray,
+			// 预设只在重要日上有意义；普通日程带上它会被数据库约束挡住。
+			ImportantDateKind: importantDateKindOf(body.EventKind, body.ImportantDateKind),
+			CreatedBy:         "user",
+			ProvenanceRefs:    emptyJSONArray,
 		})
 		if err != nil {
 			return apperr.Internal(err)
@@ -299,6 +301,7 @@ func (s *Service) UpdateEvent(ctx context.Context, userID, eventID string, in Ev
 			ClearReminders:    clear.Reminders,
 			Recurrence:        optionalString(body.Recurrence != nil, recurrence),
 			OriginalMonthDay:  originalMonthDay,
+			ImportantDateKind: importantDateKindOf(body.EventKind, body.ImportantDateKind),
 		})
 		if err != nil {
 			return apperr.Internal(err)
@@ -430,4 +433,19 @@ func eventUndoState(e dbgen.Event) map[string]any {
 		"deleted":    e.DeletedAt != nil,
 		"version":    e.Version,
 	}
+}
+
+// importantDateKindOf 把重要日预设收敛成可以直接写库的值。
+//
+// 数据库上有一条约束：只有 event_kind=important_date 才允许带预设。
+// 这里提前挡掉，让用户看到校验错误而不是一条数据库约束报错。
+func importantDateKindOf(kind *httpapi.EventKind, preset *httpapi.ImportantDateKind) *string {
+	if preset == nil {
+		return nil
+	}
+	if kind == nil || *kind != httpapi.ImportantDate {
+		return nil
+	}
+	v := string(*preset)
+	return &v
 }

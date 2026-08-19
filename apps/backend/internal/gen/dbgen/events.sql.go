@@ -25,36 +25,38 @@ INSERT INTO events (
     id, user_id, title, event_kind, all_day,
     start_at, end_at, start_date, end_date, timezone,
     location, participants, project_id, note, reminders,
-    recurrence, original_month_day, created_by, provenance_refs
+    recurrence, original_month_day, important_date_kind, created_by, provenance_refs
 ) VALUES (
     $1, $2, $3, $4, $5,
     $6, $7, $8, $9, $10,
     $11, $12, $13, $14, $15,
-    $16, $17, $18, $19
+    $16, $17, $18,
+    $19, $20
 )
-RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind
 `
 
 type CreateEventParams struct {
-	ID               string
-	UserID           string
-	Title            string
-	EventKind        string
-	AllDay           bool
-	StartAt          *time.Time
-	EndAt            *time.Time
-	StartDate        *time.Time
-	EndDate          *time.Time
-	Timezone         string
-	Location         *string
-	Participants     []byte
-	ProjectID        *string
-	Note             *string
-	Reminders        []byte
-	Recurrence       string
-	OriginalMonthDay *string
-	CreatedBy        string
-	ProvenanceRefs   []byte
+	ID                string
+	UserID            string
+	Title             string
+	EventKind         string
+	AllDay            bool
+	StartAt           *time.Time
+	EndAt             *time.Time
+	StartDate         *time.Time
+	EndDate           *time.Time
+	Timezone          string
+	Location          *string
+	Participants      []byte
+	ProjectID         *string
+	Note              *string
+	Reminders         []byte
+	Recurrence        string
+	OriginalMonthDay  *string
+	ImportantDateKind *string
+	CreatedBy         string
+	ProvenanceRefs    []byte
 }
 
 func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event, error) {
@@ -76,6 +78,7 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event
 		arg.Reminders,
 		arg.Recurrence,
 		arg.OriginalMonthDay,
+		arg.ImportantDateKind,
 		arg.CreatedBy,
 		arg.ProvenanceRefs,
 	)
@@ -104,12 +107,13 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ImportantDateKind,
 	)
 	return i, err
 }
 
 const getEvent = `-- name: GetEvent :one
-SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM events WHERE id = $1 AND deleted_at IS NULL
+SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind FROM events WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetEvent(ctx context.Context, id string) (Event, error) {
@@ -139,13 +143,14 @@ func (q *Queries) GetEvent(ctx context.Context, id string) (Event, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ImportantDateKind,
 	)
 	return i, err
 }
 
 const listEvents = `-- name: ListEvents :many
 
-SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM events
+SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind FROM events
 WHERE deleted_at IS NULL
   AND ($1::text IS NULL OR event_kind = $1::text)
   AND ($2::text IS NULL OR project_id = $2::text)
@@ -222,6 +227,7 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Event
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.ImportantDateKind,
 		); err != nil {
 			return nil, err
 		}
@@ -234,7 +240,7 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Event
 }
 
 const listEventsInRange = `-- name: ListEventsInRange :many
-SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM events
+SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind FROM events
 WHERE deleted_at IS NULL
   AND ($1::text IS NULL OR project_id = $1::text)
   AND (
@@ -297,6 +303,7 @@ func (q *Queries) ListEventsInRange(ctx context.Context, arg ListEventsInRangePa
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.ImportantDateKind,
 		); err != nil {
 			return nil, err
 		}
@@ -311,7 +318,7 @@ func (q *Queries) ListEventsInRange(ctx context.Context, arg ListEventsInRangePa
 const restoreEvent = `-- name: RestoreEvent :one
 UPDATE events SET deleted_at = NULL, updated_at = now(), version = version + 1
 WHERE id = $1
-RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind
 `
 
 func (q *Queries) RestoreEvent(ctx context.Context, id string) (Event, error) {
@@ -341,6 +348,7 @@ func (q *Queries) RestoreEvent(ctx context.Context, id string) (Event, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ImportantDateKind,
 	)
 	return i, err
 }
@@ -386,7 +394,7 @@ func (q *Queries) SearchEvents(ctx context.Context, arg SearchEventsParams) ([]S
 const softDeleteEvent = `-- name: SoftDeleteEvent :one
 UPDATE events SET deleted_at = now(), updated_at = now(), version = version + 1
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind
 `
 
 func (q *Queries) SoftDeleteEvent(ctx context.Context, id string) (Event, error) {
@@ -416,6 +424,7 @@ func (q *Queries) SoftDeleteEvent(ctx context.Context, id string) (Event, error)
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ImportantDateKind,
 	)
 	return i, err
 }
@@ -446,10 +455,11 @@ UPDATE events SET
                       ELSE coalesce($22, reminders) END,
     recurrence = coalesce($23, recurrence),
     original_month_day = coalesce($24, original_month_day),
+    important_date_kind = coalesce($25, important_date_kind),
     updated_at = now(),
     version    = version + 1
-WHERE id = $25 AND deleted_at IS NULL
-RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+WHERE id = $26 AND deleted_at IS NULL
+RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind
 `
 
 type UpdateEventParams struct {
@@ -477,6 +487,7 @@ type UpdateEventParams struct {
 	Reminders         []byte
 	Recurrence        *string
 	OriginalMonthDay  *string
+	ImportantDateKind *string
 	ID                string
 }
 
@@ -506,6 +517,7 @@ func (q *Queries) UpdateEvent(ctx context.Context, arg UpdateEventParams) (Event
 		arg.Reminders,
 		arg.Recurrence,
 		arg.OriginalMonthDay,
+		arg.ImportantDateKind,
 		arg.ID,
 	)
 	var i Event
@@ -533,6 +545,7 @@ func (q *Queries) UpdateEvent(ctx context.Context, arg UpdateEventParams) (Event
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ImportantDateKind,
 	)
 	return i, err
 }

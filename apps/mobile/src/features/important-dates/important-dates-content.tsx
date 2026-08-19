@@ -1,3 +1,11 @@
+import {
+  errorMessage,
+  useCreateEvent,
+  useGetImportantDates,
+  type ImportantDateEntry,
+  type Reminder,
+  type ReminderInput,
+} from '@steward/api-client';
 import type { ComponentProps } from 'react';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -20,14 +28,32 @@ type ImportantDateKind = 'birthday' | 'anniversary' | 'expiry' | 'other';
 type ReminderValue = 'seven-days' | 'one-day' | 'same-day';
 type IconName = ComponentProps<typeof AppIcon>['name'];
 
+/**
+ * 展示用的视图模型。
+ *
+ * 它不是网络 DTO：下一次发生日期、剩余天数和排序都由服务端算好
+ * （年度投影、2 月 29 日、时区都在那边），这里只负责渲染。
+ */
 type ImportantDateItem = {
   id: string;
+  version: number;
   title: string;
   kind: ImportantDateKind;
+  /** 原始月日，详情里展示的是它，不是投影后的日期。 */
   date: string;
   repeatYearly: boolean;
   reminders: ReminderValue[];
+  /** 服务端算出的下一次发生日期。 */
+  nextOccurrence: string;
+  /** 服务端算出的剩余天数。今天为 0，已过期为负。 */
+  daysUntil: number;
 };
+
+/** 新增面板产出的草稿。它不是网络 DTO，由上层映射成 Event 请求。 */
+type ImportantDateDraft = Pick<
+  ImportantDateItem,
+  'title' | 'kind' | 'date' | 'repeatYearly' | 'reminders'
+>;
 
 type KindSpec = {
   label: string;
@@ -37,7 +63,6 @@ type KindSpec = {
   placeholder: string;
 };
 
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
 const kindSpecs: Record<ImportantDateKind, KindSpec> = {
@@ -77,32 +102,6 @@ const reminderOptions: { value: ReminderValue; label: string }[] = [
   { value: 'same-day', label: '当天' },
 ];
 
-const initialImportantDates: ImportantDateItem[] = [
-  {
-    id: 'mother',
-    title: '妈妈生日',
-    kind: 'birthday',
-    date: '2026-08-24',
-    repeatYearly: true,
-    reminders: ['seven-days', 'same-day'],
-  },
-  {
-    id: 'anniversary',
-    title: '纪念日',
-    kind: 'anniversary',
-    date: '2026-09-11',
-    repeatYearly: true,
-    reminders: ['seven-days', 'same-day'],
-  },
-  {
-    id: 'passport',
-    title: '护照到期',
-    kind: 'expiry',
-    date: '2027-03-08',
-    repeatYearly: false,
-    reminders: ['seven-days', 'one-day'],
-  },
-];
 
 function startOfToday() {
   const now = new Date();
@@ -127,37 +126,52 @@ function addDays(date: Date, days: number) {
   return result;
 }
 
-function createAnnualOccurrence(year: number, month: number, day: number) {
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  return new Date(year, month, Math.min(day, lastDay));
-}
-
-function getNextOccurrence(item: ImportantDateItem, today = startOfToday()) {
-  const sourceDate = parseDate(item.date);
-  if (!item.repeatYearly) return sourceDate;
-
-  let occurrence = createAnnualOccurrence(
-    today.getFullYear(),
-    sourceDate.getMonth(),
-    sourceDate.getDate(),
-  );
-  if (occurrence < today) {
-    occurrence = createAnnualOccurrence(
-      today.getFullYear() + 1,
-      sourceDate.getMonth(),
-      sourceDate.getDate(),
-    );
-  }
-  return occurrence;
-}
-
-function calendarSerial(date: Date) {
-  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_IN_MS;
-}
-
 function getDaysUntil(item: ImportantDateItem) {
-  const today = startOfToday();
-  return calendarSerial(getNextOccurrence(item, today)) - calendarSerial(today);
+  return item.daysUntil;
+}
+
+/** 把服务端的投影结果映射成展示模型。 */
+function toItem(entry: ImportantDateEntry): ImportantDateItem {
+  const event = entry.event;
+  const date = event.start_date ?? entry.next_occurrence_date;
+  return {
+    id: event.id,
+    version: event.version,
+    title: event.title,
+    kind: event.important_date_kind ?? 'other',
+    date,
+    repeatYearly: event.recurrence === 'yearly',
+    reminders: toReminderValues(event.reminders),
+    nextOccurrence: entry.next_occurrence_date,
+    daysUntil: entry.days_until,
+  };
+}
+
+/** 全天提醒用「提前几天 + 当地时刻」表达，这里还原成三个预设。 */
+function toReminderValues(reminders: Reminder[] | undefined): ReminderValue[] {
+  const out: ReminderValue[] = [];
+  for (const reminder of reminders ?? []) {
+    if (reminder.kind !== 'absolute_local') continue;
+    if (reminder.days_before === 7) out.push('seven-days');
+    else if (reminder.days_before === 1) out.push('one-day');
+    else if (reminder.days_before === 0) out.push('same-day');
+  }
+  return out;
+}
+
+/** 反向映射：预设 → 契约里的提醒输入。 */
+function toReminderInputs(values: ReminderValue[]): ReminderInput[] {
+  const daysBefore: Record<ReminderValue, number> = {
+    'seven-days': 7,
+    'one-day': 1,
+    'same-day': 0,
+  };
+  return values.map((value) => ({
+    kind: 'absolute_local' as const,
+    // 全天提醒必须写明当地触发时刻，交互上固定为 09:00。
+    local_time: '09:00',
+    days_before: daysBefore[value],
+  }));
 }
 
 function formatDateLabel(item: ImportantDateItem) {
@@ -337,7 +351,8 @@ function CreateSheet({
 }: {
   visible: boolean;
   onClose: () => void;
-  onSave: (item: ImportantDateItem) => void;
+  onSave: (draft: ImportantDateDraft) => void;
+  saving: boolean;
 }) {
   const initialDate = useMemo(() => addDays(startOfToday(), 30), []);
   const [kind, setKind] = useState<ImportantDateKind>('birthday');
@@ -369,14 +384,7 @@ function CreateSheet({
   const save = () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) return;
-    onSave({
-      id: `important-date-${Date.now()}`,
-      title: trimmedTitle,
-      kind,
-      date,
-      repeatYearly,
-      reminders,
-    });
+    onSave({ title: trimmedTitle, kind, date, repeatYearly, reminders });
     setTitle('');
   };
 
@@ -608,24 +616,42 @@ export function ImportantDatesContent({
   onCreateVisibleChange: (visible: boolean) => void;
 }) {
   const router = useRouter();
-  const [items, setItems] = useState(initialImportantDates);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
 
-  const sortedItems = useMemo(
-    () =>
-      [...items].sort(
-        (left, right) =>
-          getNextOccurrence(left).getTime() - getNextOccurrence(right).getTime(),
-      ),
-    [items],
-  );
-  const nextItem = sortedItems[0];
-  const laterItems = sortedItems.slice(1);
+  const importantDates = useGetImportantDates();
+
+  const createEvent = useCreateEvent({
+    mutation: {
+      onSuccess: () => {
+        setFailure(null);
+        onCreateVisibleChange(false);
+        void importantDates.refetch();
+      },
+      onError: (error) => setFailure(errorMessage(error, '没能保存这个重要日。')),
+    },
+  });
+
+  // 服务端已经按下一次发生日期升序返回，客户端不重排。
+  const items = (importantDates.data?.data ?? []).map(toItem);
+  const nextItem = items[0];
+  const laterItems = items.slice(1);
   const selectedItem = items.find((item) => item.id === selectedId) ?? null;
 
-  const saveItem = (item: ImportantDateItem) => {
-    setItems((current) => [...current, item]);
-    onCreateVisibleChange(false);
+  const saveItem = (draft: ImportantDateDraft) => {
+    setFailure(null);
+    createEvent.mutate({
+      data: {
+        title: draft.title,
+        event_kind: 'important_date',
+        important_date_kind: draft.kind,
+        // 重要日一律是全天事件。
+        all_day: true,
+        start_date: draft.date,
+        recurrence: draft.repeatYearly ? 'yearly' : 'none',
+        reminders: toReminderInputs(draft.reminders),
+      },
+    });
   };
 
   return (
@@ -684,6 +710,17 @@ export function ImportantDatesContent({
         </Pressable>
       ) : null}
 
+      {!nextItem && !importantDates.isLoading ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>还没有重要日</Text>
+          <Text style={styles.emptyCopy}>
+            用右上角的「＋」记下生日、纪念日或到期日，到点会提醒你。
+          </Text>
+        </View>
+      ) : null}
+
+      {failure ? <Text style={styles.failureText}>{failure}</Text> : null}
+
       <View style={styles.listHeader}>
         <Text accessibilityRole="header" style={styles.sectionTitle}>更多重要日</Text>
         <Text style={styles.listCount}>{laterItems.length} 项</Text>
@@ -701,6 +738,7 @@ export function ImportantDatesContent({
       <CreateSheet
         onClose={() => onCreateVisibleChange(false)}
         onSave={saveItem}
+        saving={createEvent.isPending}
         visible={createVisible}
       />
       <DetailSheet
@@ -729,6 +767,29 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  emptyCard: {
+    padding: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
+    gap: 7,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontFamily,
+    ...typography.body,
+    fontWeight: '600',
+  },
+  emptyCopy: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  failureText: {
+    marginTop: 10,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
   },
   hero: {
     minHeight: 112,

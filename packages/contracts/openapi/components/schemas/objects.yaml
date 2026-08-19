@@ -332,6 +332,15 @@ EventKind:
   type: string
   enum: [schedule, important_date]
 
+ImportantDateKind:
+  type: string
+  description: |
+    重要日的四种预设。它不新增领域类型，只决定图标、表单默认值与
+    默认重复规则；生日与纪念日默认 recurrence=yearly，
+    到期日与其他默认 recurrence=none。
+    只有 event_kind=important_date 时才有意义。
+  enum: [birthday, anniversary, expiry, other]
+
 EventRecurrence:
   type: string
   description: MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。
@@ -393,6 +402,8 @@ Event:
       type: array
       items:
         $ref: './common.yaml#/Reminder'
+    important_date_kind:
+      $ref: '#/ImportantDateKind'
     recurrence:
       $ref: '#/EventRecurrence'
     original_month_day:
@@ -471,6 +482,8 @@ CreateEventRequest:
       type: array
       items:
         $ref: './common.yaml#/ReminderInput'
+    important_date_kind:
+      $ref: '#/ImportantDateKind'
     recurrence:
       $ref: '#/EventRecurrence'
 
@@ -540,6 +553,8 @@ UpdateEventRequest:
       type: array
       items:
         $ref: './common.yaml#/ReminderInput'
+    important_date_kind:
+      $ref: '#/ImportantDateKind'
     recurrence:
       $ref: '#/EventRecurrence'
 

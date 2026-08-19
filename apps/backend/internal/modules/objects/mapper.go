@@ -41,29 +41,30 @@ func MapTask(row dbgen.Task) httpapi.Task {
 // MapEvent 把存储行映射成契约 DTO。
 func MapEvent(row dbgen.Event) httpapi.Event {
 	return httpapi.Event{
-		Id:               row.ID,
-		Type:             httpapi.EventTypeEvent,
-		Title:            row.Title,
-		EventKind:        httpapi.EventKind(row.EventKind),
-		AllDay:           row.AllDay,
-		StartAt:          row.StartAt,
-		EndAt:            row.EndAt,
-		StartDate:        dateOrNil(row.StartDate),
-		EndDate:          dateOrNil(row.EndDate),
-		Timezone:         row.Timezone,
-		Location:         row.Location,
-		Participants:     unmarshalStrings(row.Participants),
-		ProjectId:        row.ProjectID,
-		Note:             row.Note,
-		Reminders:        unmarshalReminders(row.Reminders),
-		Recurrence:       httpapi.EventRecurrence(row.Recurrence),
-		OriginalMonthDay: row.OriginalMonthDay,
-		CreatedBy:        httpapi.CreatedBy(row.CreatedBy),
-		ProvenanceRefs:   unmarshalProvenance(row.ProvenanceRefs),
-		CreatedAt:        row.CreatedAt,
-		UpdatedAt:        row.UpdatedAt,
-		DeletedAt:        row.DeletedAt,
-		Version:          int(row.Version),
+		Id:                row.ID,
+		Type:              httpapi.EventTypeEvent,
+		Title:             row.Title,
+		EventKind:         httpapi.EventKind(row.EventKind),
+		AllDay:            row.AllDay,
+		StartAt:           row.StartAt,
+		EndAt:             row.EndAt,
+		StartDate:         dateOrNil(row.StartDate),
+		EndDate:           dateOrNil(row.EndDate),
+		Timezone:          row.Timezone,
+		Location:          row.Location,
+		Participants:      unmarshalStrings(row.Participants),
+		ProjectId:         row.ProjectID,
+		Note:              row.Note,
+		Reminders:         unmarshalReminders(row.Reminders),
+		Recurrence:        httpapi.EventRecurrence(row.Recurrence),
+		OriginalMonthDay:  row.OriginalMonthDay,
+		ImportantDateKind: importantDateKindPtr(row.ImportantDateKind),
+		CreatedBy:         httpapi.CreatedBy(row.CreatedBy),
+		ProvenanceRefs:    unmarshalProvenance(row.ProvenanceRefs),
+		CreatedAt:         row.CreatedAt,
+		UpdatedAt:         row.UpdatedAt,
+		DeletedAt:         row.DeletedAt,
+		Version:           int(row.Version),
 	}
 }
 
@@ -162,4 +163,13 @@ func intPtr(v *int32) *int {
 	}
 	out := int(*v)
 	return &out
+}
+
+// importantDateKindPtr 把存储值映射成契约枚举指针。
+func importantDateKindPtr(raw *string) *httpapi.ImportantDateKind {
+	if raw == nil || *raw == "" {
+		return nil
+	}
+	kind := httpapi.ImportantDateKind(*raw)
+	return &kind
 }

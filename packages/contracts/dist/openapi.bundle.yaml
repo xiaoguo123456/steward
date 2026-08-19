@@ -2118,6 +2118,36 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/important-dates:
+    get:
+      operationId: getImportantDates
+      summary: 读取重要日及其下一次发生日期
+      description: |
+        重要日复用 event_kind=important_date 的全天 Event，这里只做投影与排序。
+        年度投影、2 月 29 日与时区换算都由服务端确定性代码计算，客户端不得重排。
+        新增与修改仍然走普通的 Event 接口。
+      tags:
+        - views
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: 最多返回多少条，默认 50。
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportantDatesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/reviews/weekly:
     get:
       operationId: getWeeklyReview
@@ -3274,6 +3304,18 @@ components:
       enum:
         - schedule
         - important_date
+    ImportantDateKind:
+      type: string
+      description: |
+        重要日的四种预设。它不新增领域类型，只决定图标、表单默认值与
+        默认重复规则；生日与纪念日默认 recurrence=yearly，
+        到期日与其他默认 recurrence=none。
+        只有 event_kind=important_date 时才有意义。
+      enum:
+        - birthday
+        - anniversary
+        - expiry
+        - other
     EventRecurrence:
       type: string
       description: MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。
@@ -3347,6 +3389,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Reminder'
+        important_date_kind:
+          $ref: '#/components/schemas/ImportantDateKind'
         recurrence:
           $ref: '#/components/schemas/EventRecurrence'
         original_month_day:
@@ -3442,6 +3486,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReminderInput'
+        important_date_kind:
+          $ref: '#/components/schemas/ImportantDateKind'
         recurrence:
           $ref: '#/components/schemas/EventRecurrence'
     EventResponse:
@@ -3521,6 +3567,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReminderInput'
+        important_date_kind:
+          $ref: '#/components/schemas/ImportantDateKind'
         recurrence:
           $ref: '#/components/schemas/EventRecurrence'
     ProjectStatus:
@@ -5844,6 +5892,39 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/CalendarView'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ImportantDateEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - event
+        - next_occurrence_date
+        - days_until
+      properties:
+        event:
+          $ref: '#/components/schemas/Event'
+        next_occurrence_date:
+          type: string
+          format: date
+          description: |
+            下一次发生的当地日期。按年重复时由服务端投影，
+            2 月 29 日在非闰年投影到 2 月 28 日；详情仍展示原始月日。
+        days_until:
+          type: integer
+          description: 距离下一次发生还有几天。今天为 0，已过期且不重复时为负数。
+    ImportantDatesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          description: 按 next_occurrence_date 升序返回，客户端不得重排。
+          items:
+            $ref: '#/components/schemas/ImportantDateEntry'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     ReviewMetric:

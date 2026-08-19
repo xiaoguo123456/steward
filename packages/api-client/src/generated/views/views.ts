@@ -38,7 +38,9 @@ import type {
   CalendarViewResponse,
   GenerateWeeklyReviewBody,
   GetCalendarParams,
+  GetImportantDatesParams,
   GetWeeklyReviewParams,
+  ImportantDatesResponse,
   InternalErrorResponse,
   SearchParams,
   SearchResponse,
@@ -268,6 +270,116 @@ export function useGetCalendar<TData = Awaited<ReturnType<typeof getCalendar>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetCalendarQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetImportantDatesUrl = (params?: GetImportantDatesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/important-dates?${stringifiedParams}` : `/v1/important-dates`
+}
+
+/**
+ * 重要日复用 event_kind=important_date 的全天 Event，这里只做投影与排序。
+ * 年度投影、2 月 29 日与时区换算都由服务端确定性代码计算，客户端不得重排。
+ * 新增与修改仍然走普通的 Event 接口。
+ * @summary 读取重要日及其下一次发生日期
+ */
+export const getImportantDates = async (params?: GetImportantDatesParams, options?: Parameters<typeof stewardFetch>[1]): Promise<ImportantDatesResponse> => {
+
+  return stewardFetch<ImportantDatesResponse>(getGetImportantDatesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetImportantDatesQueryKey = (params?: GetImportantDatesParams,) => {
+    return [
+    `/v1/important-dates`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetImportantDatesQueryOptions = <TData = Awaited<ReturnType<typeof getImportantDates>>, TError = UnauthorizedResponse | InternalErrorResponse>(params?: GetImportantDatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImportantDates>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetImportantDatesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getImportantDates>>> = ({ signal }) => getImportantDates(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getImportantDates>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetImportantDatesQueryResult = NonNullable<Awaited<ReturnType<typeof getImportantDates>>>
+export type GetImportantDatesQueryError = UnauthorizedResponse | InternalErrorResponse
+
+
+export function useGetImportantDates<TData = Awaited<ReturnType<typeof getImportantDates>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+ params: undefined |  GetImportantDatesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImportantDates>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getImportantDates>>,
+          TError,
+          Awaited<ReturnType<typeof getImportantDates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetImportantDates<TData = Awaited<ReturnType<typeof getImportantDates>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetImportantDatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImportantDates>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getImportantDates>>,
+          TError,
+          Awaited<ReturnType<typeof getImportantDates>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetImportantDates<TData = Awaited<ReturnType<typeof getImportantDates>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetImportantDatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImportantDates>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 读取重要日及其下一次发生日期
+ */
+
+export function useGetImportantDates<TData = Awaited<ReturnType<typeof getImportantDates>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetImportantDatesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getImportantDates>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetImportantDatesQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

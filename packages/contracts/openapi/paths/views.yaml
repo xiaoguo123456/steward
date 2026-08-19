@@ -165,3 +165,33 @@ GenerateWeeklyReview:
         $ref: '../components/responses.yaml#/TooManyRequests'
       '500':
         $ref: '../components/responses.yaml#/InternalError'
+
+ImportantDates:
+  get:
+    operationId: getImportantDates
+    summary: 读取重要日及其下一次发生日期
+    description: |
+      重要日复用 event_kind=important_date 的全天 Event，这里只做投影与排序。
+      年度投影、2 月 29 日与时区换算都由服务端确定性代码计算，客户端不得重排。
+      新增与修改仍然走普通的 Event 接口。
+    tags: [views]
+    parameters:
+      - name: limit
+        in: query
+        required: false
+        description: 最多返回多少条，默认 50。
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/ImportantDatesResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

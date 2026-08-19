@@ -45,12 +45,13 @@ INSERT INTO events (
     id, user_id, title, event_kind, all_day,
     start_at, end_at, start_date, end_date, timezone,
     location, participants, project_id, note, reminders,
-    recurrence, original_month_day, created_by, provenance_refs
+    recurrence, original_month_day, important_date_kind, created_by, provenance_refs
 ) VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(title), sqlc.arg(event_kind), sqlc.arg(all_day),
     sqlc.narg(start_at), sqlc.narg(end_at), sqlc.narg(start_date), sqlc.narg(end_date), sqlc.arg(timezone),
     sqlc.narg(location), sqlc.arg(participants), sqlc.narg(project_id), sqlc.narg(note), sqlc.arg(reminders),
-    sqlc.arg(recurrence), sqlc.narg(original_month_day), sqlc.arg(created_by), sqlc.arg(provenance_refs)
+    sqlc.arg(recurrence), sqlc.narg(original_month_day), sqlc.narg(important_date_kind),
+    sqlc.arg(created_by), sqlc.arg(provenance_refs)
 )
 RETURNING *;
 
@@ -80,6 +81,7 @@ UPDATE events SET
                       ELSE coalesce(sqlc.narg(reminders), reminders) END,
     recurrence = coalesce(sqlc.narg(recurrence), recurrence),
     original_month_day = coalesce(sqlc.narg(original_month_day), original_month_day),
+    important_date_kind = coalesce(sqlc.narg(important_date_kind), important_date_kind),
     updated_at = now(),
     version    = version + 1
 WHERE id = sqlc.arg(id) AND deleted_at IS NULL

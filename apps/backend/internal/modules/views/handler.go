@@ -85,6 +85,25 @@ func (h *ViewAPI) GenerateWeeklyReview(ctx context.Context, req httpapi.Generate
 	return resp, nil
 }
 
+// GetImportantDates 读取重要日及其下一次发生日期。
+func (h *ViewAPI) GetImportantDates(ctx context.Context, req httpapi.GetImportantDatesRequestObject) (httpapi.GetImportantDatesResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	limit := int32(0)
+	if req.Params.Limit != nil {
+		limit = int32(*req.Params.Limit)
+	}
+	entries, _, err := h.svc.GetImportantDates(ctx, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.GetImportantDates200JSONResponse{
+		Data: MapImportantDates(entries), Meta: httpx.Meta(ctx),
+	}, nil
+}
+
 // Search 跨实体关键词检索。
 func (h *ViewAPI) Search(ctx context.Context, req httpapi.SearchRequestObject) (httpapi.SearchResponseObject, error) {
 	userID, err := httpx.UserID(ctx)

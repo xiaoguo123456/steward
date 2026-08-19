@@ -17,6 +17,7 @@ import type { CreatedBy } from './createdBy';
 import type { EventKind } from './eventKind';
 import type { EventRecurrence } from './eventRecurrence';
 import type { EventType } from './eventType';
+import type { ImportantDateKind } from './importantDateKind';
 import type { ProvenanceRef } from './provenanceRef';
 import type { Reminder } from './reminder';
 
@@ -52,6 +53,7 @@ export interface Event {
   /** @nullable */
   note?: string | null;
   reminders?: Reminder[];
+  important_date_kind?: ImportantDateKind;
   recurrence: EventRecurrence;
   /**
      * yearly 重复时保留原始月日，格式 MM-DD。

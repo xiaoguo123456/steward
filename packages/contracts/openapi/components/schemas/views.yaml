@@ -342,3 +342,38 @@ SearchResponse:
       $ref: './common.yaml#/PageInfo'
     meta:
       $ref: './common.yaml#/ResponseMeta'
+
+# ---- 重要日 ----
+#
+# 重要日不是新的领域类型：它是 event_kind=important_date 的全天 Event。
+# 这个视图只负责服务端投影与排序，写入仍然走普通的 Event 接口。
+
+ImportantDateEntry:
+  type: object
+  additionalProperties: false
+  required: [event, next_occurrence_date, days_until]
+  properties:
+    event:
+      $ref: './objects.yaml#/Event'
+    next_occurrence_date:
+      type: string
+      format: date
+      description: |
+        下一次发生的当地日期。按年重复时由服务端投影，
+        2 月 29 日在非闰年投影到 2 月 28 日；详情仍展示原始月日。
+    days_until:
+      type: integer
+      description: 距离下一次发生还有几天。今天为 0，已过期且不重复时为负数。
+
+ImportantDatesResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      description: 按 next_occurrence_date 升序返回，客户端不得重排。
+      items:
+        $ref: '#/ImportantDateEntry'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

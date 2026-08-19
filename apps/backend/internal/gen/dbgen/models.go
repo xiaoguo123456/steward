@@ -271,29 +271,30 @@ type CaptureRelationCandidate struct {
 }
 
 type Event struct {
-	ID               string
-	UserID           string
-	Title            string
-	EventKind        string
-	AllDay           bool
-	StartAt          *time.Time
-	EndAt            *time.Time
-	StartDate        *time.Time
-	EndDate          *time.Time
-	Timezone         string
-	Location         *string
-	Participants     []byte
-	ProjectID        *string
-	Note             *string
-	Reminders        []byte
-	Recurrence       string
-	OriginalMonthDay *string
-	CreatedBy        string
-	ProvenanceRefs   []byte
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	DeletedAt        *time.Time
-	Version          int32
+	ID                string
+	UserID            string
+	Title             string
+	EventKind         string
+	AllDay            bool
+	StartAt           *time.Time
+	EndAt             *time.Time
+	StartDate         *time.Time
+	EndDate           *time.Time
+	Timezone          string
+	Location          *string
+	Participants      []byte
+	ProjectID         *string
+	Note              *string
+	Reminders         []byte
+	Recurrence        string
+	OriginalMonthDay  *string
+	CreatedBy         string
+	ProvenanceRefs    []byte
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         *time.Time
+	Version           int32
+	ImportantDateKind *string
 }
 
 type IdempotencyKey struct {
