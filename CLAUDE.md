@@ -8,17 +8,28 @@
 
 对应后端指南第 25 节的**阶段 0～7 的服务端部分已完成**：
 
-- `packages/contracts`：OpenAPI 3.0.3 契约，50 个路径、80 个操作，是前后端唯一事实来源。
-- `apps/backend`：Go 模块化单体，实现全部 80 个契约操作；PostgreSQL + RLS + River。
+- `packages/contracts`：OpenAPI 3.0.3 契约，55 个路径、85 个操作，是前后端唯一事实来源。
+- `apps/backend`：Go 模块化单体，实现全部契约操作；PostgreSQL + RLS + River。
 - `packages/api-client`：Orval 生成的 TypeScript Client、TanStack Query Hooks 与 Zod 校验器。
 - `apps/mobile`：登录、首页、计划、笔记、打卡、日历、任务详情与 Capture 全流程已接真实 API。
 
-尚未实现：向量检索与 Embedding、SSE 流式回复、Assistant 历史会话入口。
+尚未实现：向量检索与 Embedding（等搜索失败率数据再决定，见下）。
 `STEWARD_AI_PROVIDER=fake` 时使用确定性本地解析，不发起任何外部请求，
 此时对话会明确返回"暂时回复不了"而不是伪造一个回答。
 
-仍在本地 Fixture 上的前端场景：运动、食谱、番茄钟、记账、重要日、购物、复盘、行程。
-它们的正式契约尚未设计，详见各自的 `src/features/*/README.md`。
+全部生活场景都已接真实 API，它们复用既有领域而不是新建实体：
+
+| 场景 | 落到哪 |
+|---|---|
+| 重要日 | `event_kind=important_date` 的全天 Event + `/v1/important-dates` 投影视图 |
+| 购物 | `list_kind=shopping` 的 TaskList；数量是自由文本，品类由服务端确定性分类 |
+| 运动／番茄钟／记账 | 三个内置 Tracker（`builtin_key`），按需创建 |
+| 行程 | `project_kind=trip` 的 Project + `/v1/projects/{id}/itinerary` 聚合 |
+| 食谱 | 只读平台内容（`recipes` 表，不受 RLS）；本周菜单与收藏仍是本地原型状态 |
+
+菜谱库里目前是 6 条平台自有占位内容。正式内容接入前必须逐条确定来源、
+作者、图片权利与授权范围——`source_name`、`license`、`content_version` 是
+NOT NULL，且「没有 image_credit 就不许挂 image_url」。
 
 ## 常用命令
 
@@ -88,6 +99,30 @@ apps/backend/
 每个模块的 API 层类型名各不相同（`SessionAPI`、`ObjectAPI`…），
 这样 `bootstrap.Server` 可以直接嵌入它们并依靠 Go 的方法提升；
 `var _ httpapi.StrictServerInterface = (*Server)(nil)` 保证漏实现任何一个操作都编译不过。
+
+## Assistant 的会话与流式
+
+- **空对话不算一次对话**：客户端在用户发出第一条消息时才建 Thread，
+  列表也只返回 `last_message_seq > 0` 的项。打开面板就建会把历史塞满「新对话」。
+- 标题取自首条用户消息；30 分钟内重开面板续用上一次（`ResumeWindow`），
+  `force_new` 用于显式新建。
+- SSE 端点 `/v1/assistant/turns/{id}/stream` **手工挂载**在 `bootstrap/stream.go`：
+  生成的 strict server 给不出可以持续 flush 的写入口，和本地存储的传输端点同理。
+  帧结构仍定义在契约的 `TurnStreamEvent`，因此客户端有类型与校验器。
+- Worker 与 API 是两个进程，进度用 PostgreSQL `LISTEN/NOTIFY` 打通，不引入 Redis。
+- **`delta` 携带的是「到目前为止的全文」而不是增量**：客户端直接替换缓冲区。
+  丢事件不会造成缺字，中途连上来也不需要额外的补齐与去重规则。
+- 每条流独占一个数据库连接（LISTEN 是连接级状态），因此 `streams.NewLimiter`
+  的上限必须明显小于 `database.MaxConns`。
+
+## 向量检索：先不做
+
+pg_trgm + ILIKE 目前够用。判断该上的信号是**搜索失败率**——命中 0 条、
+用户紧接着换个说法再搜的比例超过一成。那时手里有真实失败样本，可以直接
+拿来验召回率（HNSW 在「先按 user_id 过滤再近似检索」下召回会掉，必须实测）。
+
+过早引入的代价是实打实的：每次写入都要调 embedding API（钱、延迟、失败路径），
+模型换代要全量重建。
 
 ## AI 编排的授权边界
 
