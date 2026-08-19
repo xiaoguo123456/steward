@@ -54,6 +54,7 @@ type toolChatRequest struct {
 	ToolChoice          string            `json:"tool_choice,omitempty"`
 	Temperature         float64           `json:"temperature"`
 	MaxCompletionTokens int               `json:"max_completion_tokens,omitempty"`
+	Stream              bool              `json:"stream,omitempty"`
 }
 
 type toolChatResponse struct {

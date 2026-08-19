@@ -1533,6 +1533,7 @@ paths:
     get:
       operationId: listThreads
       summary: 读取对话列表
+      description: 只返回真正说过话的对话；没有消息的空对话不出现在历史里。
       tags:
         - assistant
       parameters:
@@ -1557,7 +1558,11 @@ paths:
           $ref: '#/components/responses/InternalError'
     post:
       operationId: createThread
-      summary: 新建对话
+      summary: 开始一次对话
+      description: |
+        客户端应当在用户真正发出第一条消息时才调用它：
+        打开面板就建对话会在历史里堆一串没有内容的空壳。
+        最近一次对话仍在续用窗口内时直接返回那一次，除非显式要求新建。
       tags:
         - assistant
       parameters:
@@ -1688,6 +1693,11 @@ paths:
       description: |
         同步保存用户消息并返回 202 与 operation_id，回复在 Worker 中异步生成。
         客户端通过 Operation 轮询，完成后读取消息列表。
+
+        想要逐字体验时，可以另外连接
+        `GET /v1/assistant/turns/{turn_id}/stream`（SSE，帧结构见
+        TurnStreamEvent）。它只是传输方式，不是新的权威状态源：
+        连不上或中途断开时退回轮询即可，不会丢内容。
       tags:
         - assistant
       parameters:
@@ -1716,6 +1726,40 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/assistant/turns/{turn_id}/stream:
+    get:
+      operationId: streamTurn
+      summary: 订阅回复的实时进度
+      description: |
+        SSE 长连接。它只是传输方式，不是新的权威状态源：
+        连不上、中途断开或事件丢失都不影响正确性，客户端读 Message
+        与 Operation 就能恢复全貌，也可以完全不用它、只轮询 Operation。
+
+        服务端实现挂在传输层而不是生成的 strict server 上：
+        后者给不出可以持续 flush 的写入口。这一条与本地存储的传输端点同理。
+      tags:
+        - assistant
+      parameters:
+        - $ref: '#/components/parameters/TurnId'
+      responses:
+        '200':
+          description: |
+            事件流。每帧一个 TurnStreamEvent；
+            收到 done 或 error 后连接结束。
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/TurnStreamEvent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: 同时打开的流已达上限，请退回轮询。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/assistant/turns/{turn_id}/cancel:
     post:
       operationId: cancelTurn
@@ -5065,6 +5109,12 @@ components:
       properties:
         title:
           type: string
+        force_new:
+          type: boolean
+          default: false
+          description: |
+            为 true 时一定新建。缺省时若最近一次对话仍在续用窗口内，
+            直接返回那一次，而不是每次打开面板都堆一个新对话。
           nullable: true
           maxLength: 60
     AssistantThreadResponse:
@@ -5217,6 +5267,39 @@ components:
               type: string
         meta:
           $ref: '#/components/schemas/ResponseMeta'
+    TurnStreamEventKind:
+      type: string
+      description: |
+        status 是阶段变化，tool 是正在调用的能力标签，delta 是回复文本增量，
+        proposal 表示一条已经落库的建议，done 表示这一轮结束，error 表示失败。
+      enum:
+        - status
+        - tool
+        - delta
+        - proposal
+        - done
+        - error
+    TurnStreamEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+      properties:
+        kind:
+          $ref: '#/components/schemas/TurnStreamEventKind'
+        text:
+          type: string
+          description: |
+            kind=delta 时是「到目前为止的完整回复文本」，不是增量：
+            客户端直接替换缓冲区。这样丢事件不会造成文字缺失，
+            中途连上来的客户端也不需要额外的补齐与去重规则。
+            kind=status／tool 时是人类可读的短标签。
+            任何情况下都不包含工具参数、工具结果或模型的内部思维过程。
+        proposal_id:
+          type: string
+          description: 只在 kind=proposal 出现。建议此时已经通过完整校验并落库。
+        code:
+          $ref: '#/components/schemas/ErrorCode'
     ProposalStatus:
       type: string
       enum:

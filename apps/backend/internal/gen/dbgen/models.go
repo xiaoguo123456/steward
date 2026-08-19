@@ -146,6 +146,7 @@ type AssistantTurn struct {
 	CompletedAt        *time.Time
 	CreatedAt          time.Time
 	Version            int32
+	DraftContent       string
 }
 
 type AsyncOperation struct {

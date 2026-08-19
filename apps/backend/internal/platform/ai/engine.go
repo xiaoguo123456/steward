@@ -67,6 +67,29 @@ type ChatProvider interface {
 	ModelName() string
 }
 
+// StreamingChatProvider 是可选能力：Provider 支持逐段返回时实现它。
+//
+// 不实现也能正常工作，只是用户要等整段回复生成完才看到内容。
+type StreamingChatProvider interface {
+	ChatProvider
+	// CompleteStream 在生成过程中调用 onDelta 推送文本增量，
+	// 最终仍返回与 Complete 相同的完整结果。
+	CompleteStream(ctx context.Context, req CompletionRequest, onDelta func(string)) (CompletionResult, error)
+}
+
+// TurnSink 接收一次 Turn 的实时进度。
+//
+// 它只用于把已经决定好的内容更快送到屏幕上，不承载任何权威状态：
+// 实现可以丢弃事件，调用方不得依赖它送达。
+type TurnSink interface {
+	// OnStatus 报告阶段变化，文本是给人看的短标签。
+	OnStatus(text string)
+	// OnToolCall 报告正在调用某个能力，只给标签，不给参数与结果。
+	OnToolCall(label string)
+	// OnDelta 报告回复文本增量。
+	OnDelta(text string)
+}
+
 // RunLimits 是一次 Turn 的硬上限。
 //
 // 达到任一上限必须立刻停止，并返回已有证据的降级回答；
@@ -106,6 +129,8 @@ type TurnRequest struct {
 	Capabilities []Capability
 	Limits       RunLimits
 	Ctx          CapabilityContext
+	// Sink 为空时不推送实时进度，客户端退回轮询。
+	Sink TurnSink
 }
 
 // ToolCallRecord 是一次工具调用的审计记录。

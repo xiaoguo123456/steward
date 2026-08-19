@@ -72,10 +72,12 @@ func (h *AssistantAPI) CreateThread(ctx context.Context, req httpapi.CreateThrea
 		return nil, err
 	}
 	var title *string
+	forceNew := false
 	if req.Body != nil {
 		title = req.Body.Title
+		forceNew = req.Body.ForceNew != nil && *req.Body.ForceNew
 	}
-	thread, err := h.svc.CreateThread(ctx, userID, title)
+	thread, err := h.svc.CreateThread(ctx, userID, title, forceNew)
 	if err != nil {
 		return nil, err
 	}

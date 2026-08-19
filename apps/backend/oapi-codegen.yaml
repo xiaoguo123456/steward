@@ -15,3 +15,7 @@ output-options:
   # 生成的类型名直接来自 components.schemas 的键名，不再追加前缀。
   skip-fmt: false
   nullable-type: false
+  # SSE 端点手工挂载：生成的 strict server 给不出可以持续 flush 的写入口。
+  # 契约里仍然完整声明它，客户端因此拿得到 TurnStreamEvent 的类型与校验器。
+  exclude-operation-ids:
+    - streamTurn

@@ -28,7 +28,10 @@ func Open(ctx context.Context, databaseURL string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("解析数据库连接串失败：%w", err)
 	}
-	cfg.MaxConns = 10
+	// SSE 流每条独占一个连接（LISTEN 是连接级状态），
+	// 池子必须明显大于同时允许的流数，否则长连接会把普通请求挤掉。
+	// 与 bootstrap 里的 streams.NewLimiter 上限配套。
+	cfg.MaxConns = 20
 	cfg.MinConns = 1
 	cfg.MaxConnLifetime = time.Hour
 	cfg.MaxConnIdleTime = 30 * time.Minute

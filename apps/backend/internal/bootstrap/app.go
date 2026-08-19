@@ -33,6 +33,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/aliyunoss"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/localfs"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams"
 )
 
 // Server 组合全部模块的 API 层，实现生成的 StrictServerInterface。
@@ -67,6 +68,10 @@ type App struct {
 	Store  storage.ObjectStore
 	// Capabilities 保存全部已登记能力，供健康检查与调试查看。
 	Capabilities []string
+	// Assistant、StreamSubscriber 与 StreamLimiter 供手工挂载的 SSE 端点使用。
+	Assistant        *assistant.Service
+	StreamSubscriber *streams.Subscriber
+	StreamLimiter    *streams.Limiter
 	// LocalStore 只在使用本地存储时非空，供路由挂载传输端点。
 	LocalStore *localfs.Store
 }
@@ -137,7 +142,8 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	chat := newChatProvider(parser)
 	engine := newEngine(chat, logger)
 	assistantSvc := assistant.New(db, engine, registry,
-		usersSvc, enqueuer, proposalSvc, memorySvc, logger)
+		usersSvc, enqueuer, proposalSvc, memorySvc, logger).
+		WithStream(streams.NewPublisher(db.Pool, logger))
 	viewsSvc.WithNarrative(chat, enqueuer, logger)
 
 	runtime, err := jobs.New(db.Pool, jobs.Deps{
@@ -177,6 +183,11 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		Store:        store,
 		LocalStore:   localStore,
 		Capabilities: registry.Names(),
+		Assistant:    assistantSvc,
+		// 每个流独占一个数据库连接（LISTEN 是连接级状态），
+		// 上限必须明显小于连接池，否则长连接会把池占满，普通请求排不上队。
+		StreamSubscriber: streams.NewSubscriber(db.Pool, logger),
+		StreamLimiter:    streams.NewLimiter(6),
 	}, nil
 }
 

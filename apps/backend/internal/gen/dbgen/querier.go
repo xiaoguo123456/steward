@@ -69,6 +69,12 @@ type Querier interface {
 	CreateTracker(ctx context.Context, arg CreateTrackerParams) (Tracker, error)
 	CreateTurn(ctx context.Context, arg CreateTurnParams) (AssistantTurn, error)
 	CreateVerificationCode(ctx context.Context, arg CreateVerificationCodeParams) (AuthVerificationCode, error)
+	// 清理当前用户没说过话的空对话。正常路径下客户端只在发第一条消息时建对话，
+	// 这里兜住「建完之后发送失败」留下的空壳。
+	//
+	// 有意做成用户自己触发、受 RLS 约束：跨用户的定期清理需要维护角色，
+	// 而这点垃圾量不值得为它引入一条绕过 RLS 的路径。
+	DeleteAbandonedThreads(ctx context.Context) error
 	DeleteExpiredIdempotencyRecords(ctx context.Context) error
 	// 同步标记删除，查询立即不可见；派生数据由清理任务处理。
 	DeleteMemory(ctx context.Context, id string) (MemoryItem, error)
@@ -88,6 +94,9 @@ type Querier interface {
 	GetDefaultTaskList(ctx context.Context) (TaskList, error)
 	GetEvent(ctx context.Context, id string) (Event, error)
 	GetIdempotencyRecord(ctx context.Context, arg GetIdempotencyRecordParams) (IdempotencyKey, error)
+	// 面板重新打开时用：最近一次说过话的对话。
+	// 调用方据此决定是续上这一次，还是开一个新的。
+	GetLatestThread(ctx context.Context) (AssistantThread, error)
 	GetLatestVerificationCode(ctx context.Context, arg GetLatestVerificationCodeParams) (AuthVerificationCode, error)
 	GetMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	GetMemory(ctx context.Context, id string) (MemoryItem, error)
@@ -148,6 +157,8 @@ type Querier interface {
 	ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, error)
 	// 日历用：当天截止或当天有计划时间的 Task。
 	ListTasksInRange(ctx context.Context, arg ListTasksInRangeParams) ([]Task, error)
+	// 只返回真正说过话的对话。用户打开面板又直接关掉不算一次对话，
+	// 那种空壳出现在历史里只会让列表全是「新对话」。
 	ListThreads(ctx context.Context, arg ListThreadsParams) ([]AssistantThread, error)
 	// 收录条件与分组顺序来自功能规格 8.3 与 8.4：
 	// 分组依次为已逾期、今天截止、今天有计划时间、手动加入今天；
@@ -193,6 +204,8 @@ type Querier interface {
 	SearchProjects(ctx context.Context, arg SearchProjectsParams) ([]SearchProjectsRow, error)
 	SearchRecords(ctx context.Context, arg SearchRecordsParams) ([]SearchRecordsRow, error)
 	SearchTasks(ctx context.Context, arg SearchTasksParams) ([]SearchTasksRow, error)
+	// 首条消息定标题。只在标题还是默认值时写，用户改过就不再覆盖。
+	SetThreadTitleIfDefault(ctx context.Context, arg SetThreadTitleIfDefaultParams) error
 	SetTurnEngine(ctx context.Context, arg SetTurnEngineParams) error
 	SoftDeleteEvent(ctx context.Context, id string) (Event, error)
 	SoftDeleteMediaAsset(ctx context.Context, id string) (MediaAsset, error)
@@ -232,6 +245,8 @@ type Querier interface {
 	UpdateTaskList(ctx context.Context, arg UpdateTaskListParams) (TaskList, error)
 	UpdateThread(ctx context.Context, arg UpdateThreadParams) (AssistantThread, error)
 	UpdateTracker(ctx context.Context, arg UpdateTrackerParams) (Tracker, error)
+	// 覆盖式更新流式草稿。调用方按固定间隔节流，不是每个增量都写。
+	UpdateTurnDraft(ctx context.Context, arg UpdateTurnDraftParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) (UserPreference, error)
 	// Review 快照。确定性指标始终可用，AI 叙述是可选增强。

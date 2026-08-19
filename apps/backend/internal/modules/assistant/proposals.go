@@ -81,35 +81,35 @@ func NewProposalService(db *database.DB, obj ObjectCommands, lists ListResolver,
 
 // ---- 落库 ----
 
-// SaveDraft 把模型产出的建议落库。
+// SaveDraft 把模型产出的建议落库，返回落库后的建议 ID。
 //
-// 校验不通过的草稿直接丢弃：宁可这一轮没有建议，也不给用户一个
-// 点了会报错或者执行出意外结果的按钮。
+// 校验不通过的草稿直接丢弃并返回空 ID：宁可这一轮没有建议，
+// 也不给用户一个点了会报错或者执行出意外结果的按钮。
 func (s *ProposalService) SaveDraft(ctx context.Context, q *dbgen.Queries,
-	userID, threadID, turnID string, draft ai.ProposalDraft) error {
+	userID, threadID, turnID string, draft ai.ProposalDraft) (string, error) {
 
 	if !isKnownProposalType(draft.Type) {
-		return nil
+		return "", nil
 	}
 	if strings.TrimSpace(draft.Preview.Title) == "" {
-		return nil
+		return "", nil
 	}
 	// 无来源的建议不下发：用户没法判断它凭什么这么建议。
 	if len(draft.SourceRefs) == 0 {
-		return nil
+		return "", nil
 	}
 
 	command, err := json.Marshal(draft.Command)
 	if err != nil {
-		return apperr.Internal(err)
+		return "", apperr.Internal(err)
 	}
 	preview, err := json.Marshal(mapPreviewToContract(draft.Preview, draft.EditableFields))
 	if err != nil {
-		return apperr.Internal(err)
+		return "", apperr.Internal(err)
 	}
 	sources, err := json.Marshal(draft.SourceRefs)
 	if err != nil {
-		return apperr.Internal(err)
+		return "", apperr.Internal(err)
 	}
 
 	proposal, err := q.CreateProposal(ctx, dbgen.CreateProposalParams{
@@ -128,7 +128,7 @@ func (s *ProposalService) SaveDraft(ctx context.Context, q *dbgen.Queries,
 		ExpiresAt:             time.Now().Add(ProposalTTL),
 	})
 	if err != nil {
-		return apperr.Internal(err)
+		return "", apperr.Internal(err)
 	}
 
 	// 同一目标上的旧建议作废：留着两条互相矛盾的建议只会让用户误点。
@@ -138,10 +138,10 @@ func (s *ProposalService) SaveDraft(ctx context.Context, q *dbgen.Queries,
 			TargetID:   nilIfEmpty(draft.TargetID),
 			KeepID:     proposal.ID,
 		}); err != nil {
-			return apperr.Internal(err)
+			return "", apperr.Internal(err)
 		}
 	}
-	return nil
+	return proposal.ID, nil
 }
 
 // ---- 读取 ----

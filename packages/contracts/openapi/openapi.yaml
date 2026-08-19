@@ -129,6 +129,8 @@ paths:
     $ref: './paths/assistant.yaml#/Messages'
   /v1/assistant/threads/{thread_id}/turns:
     $ref: './paths/assistant.yaml#/Turns'
+  /v1/assistant/turns/{turn_id}/stream:
+    $ref: './paths/assistant.yaml#/TurnStream'
   /v1/assistant/turns/{turn_id}/cancel:
     $ref: './paths/assistant.yaml#/CancelTurn'
   /v1/assistant/proposals:

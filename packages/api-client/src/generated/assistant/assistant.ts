@@ -45,6 +45,7 @@ import type {
   CreateThreadRequest,
   CreateTurnRequest,
   EmptyResponse,
+  ErrorResponse,
   InternalErrorResponse,
   ListMessagesParams,
   ListProposalsParams,
@@ -53,6 +54,7 @@ import type {
   NotFoundResponse,
   TooManyRequestsResponse,
   TurnAcceptedResponse,
+  TurnStreamEvent,
   UnauthorizedResponse,
   UpdateThreadRequest
 } from '../model';
@@ -95,6 +97,7 @@ export const getListThreadsUrl = (params?: ListThreadsParams,) => {
 }
 
 /**
+ * 只返回真正说过话的对话；没有消息的空对话不出现在历史里。
  * @summary 读取对话列表
  */
 export const listThreads = async (params?: ListThreadsParams, options?: Parameters<typeof stewardFetch>[1]): Promise<AssistantThreadsResponse> => {
@@ -195,7 +198,10 @@ export const getCreateThreadUrl = () => {
 }
 
 /**
- * @summary 新建对话
+ * 客户端应当在用户真正发出第一条消息时才调用它：
+ * 打开面板就建对话会在历史里堆一串没有内容的空壳。
+ * 最近一次对话仍在续用窗口内时直接返回那一次，除非显式要求新建。
+ * @summary 开始一次对话
  */
 export const createThread = async (createThreadRequest?: CreateThreadRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<AssistantThreadResponse> => {
 
@@ -244,7 +250,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateThreadMutationError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse
 
     /**
- * @summary 新建对话
+ * @summary 开始一次对话
  */
 export const useCreateThread = <TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createThread>>, TError,{data?: CreateThreadRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
@@ -626,6 +632,11 @@ export const getCreateTurnUrl = (threadId: string,) => {
 /**
  * 同步保存用户消息并返回 202 与 operation_id，回复在 Worker 中异步生成。
  * 客户端通过 Operation 轮询，完成后读取消息列表。
+ *
+ * 想要逐字体验时，可以另外连接
+ * `GET /v1/assistant/turns/{turn_id}/stream`（SSE，帧结构见
+ * TurnStreamEvent）。它只是传输方式，不是新的权威状态源：
+ * 连不上或中途断开时退回轮询即可，不会丢内容。
  * @summary 发送一条消息并触发回复
  */
 export const createTurn = async (threadId: string,
@@ -688,7 +699,113 @@ export const useCreateTurn = <TError = BadRequestResponse | UnauthorizedResponse
       > => {
       return useMutation(getCreateTurnMutationOptions(options), queryClient);
     }
-    export const getCancelTurnUrl = (turnId: string,) => {
+    export const getStreamTurnUrl = (turnId: string,) => {
+
+
+
+
+  return `/v1/assistant/turns/${turnId}/stream`
+}
+
+/**
+ * SSE 长连接。它只是传输方式，不是新的权威状态源：
+ * 连不上、中途断开或事件丢失都不影响正确性，客户端读 Message
+ * 与 Operation 就能恢复全貌，也可以完全不用它、只轮询 Operation。
+ *
+ * 服务端实现挂在传输层而不是生成的 strict server 上：
+ * 后者给不出可以持续 flush 的写入口。这一条与本地存储的传输端点同理。
+ * @summary 订阅回复的实时进度
+ */
+export const streamTurn = async (turnId: string, options?: Parameters<typeof stewardFetch>[1]): Promise<TurnStreamEvent> => {
+
+  return stewardFetch<TurnStreamEvent>(getStreamTurnUrl(turnId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getStreamTurnQueryKey = (turnId: string,) => {
+    return [
+    `/v1/assistant/turns/${turnId}/stream`
+    ] as const;
+    }
+
+
+export const getStreamTurnQueryOptions = <TData = Awaited<ReturnType<typeof streamTurn>>, TError = UnauthorizedResponse | NotFoundResponse | ErrorResponse>(turnId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamTurn>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getStreamTurnQueryKey(turnId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof streamTurn>>> = ({ signal }) => streamTurn(turnId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: turnId !== null && turnId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof streamTurn>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type StreamTurnQueryResult = NonNullable<Awaited<ReturnType<typeof streamTurn>>>
+export type StreamTurnQueryError = UnauthorizedResponse | NotFoundResponse | ErrorResponse
+
+
+export function useStreamTurn<TData = Awaited<ReturnType<typeof streamTurn>>, TError = UnauthorizedResponse | NotFoundResponse | ErrorResponse>(
+ turnId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamTurn>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof streamTurn>>,
+          TError,
+          Awaited<ReturnType<typeof streamTurn>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStreamTurn<TData = Awaited<ReturnType<typeof streamTurn>>, TError = UnauthorizedResponse | NotFoundResponse | ErrorResponse>(
+ turnId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamTurn>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof streamTurn>>,
+          TError,
+          Awaited<ReturnType<typeof streamTurn>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStreamTurn<TData = Awaited<ReturnType<typeof streamTurn>>, TError = UnauthorizedResponse | NotFoundResponse | ErrorResponse>(
+ turnId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamTurn>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 订阅回复的实时进度
+ */
+
+export function useStreamTurn<TData = Awaited<ReturnType<typeof streamTurn>>, TError = UnauthorizedResponse | NotFoundResponse | ErrorResponse>(
+ turnId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamTurn>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getStreamTurnQueryOptions(turnId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getCancelTurnUrl = (turnId: string,) => {
 
 
 

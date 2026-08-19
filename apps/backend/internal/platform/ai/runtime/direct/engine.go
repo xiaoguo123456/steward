@@ -84,10 +84,10 @@ func (e *Engine) RunTurn(ctx context.Context, req ai.TurnRequest) (ai.TurnResult
 			break
 		}
 
-		completion, err := e.provider.Complete(runCtx, ai.CompletionRequest{
+		completion, err := e.complete(runCtx, ai.CompletionRequest{
 			Messages: messages,
 			Tools:    tools,
-		})
+		}, req.Sink)
 		if err != nil {
 			// 已经拿到过工具结果时，用已有证据给降级回答；否则整体失败。
 			if len(result.ToolCalls) > 0 {
@@ -142,6 +142,20 @@ func (e *Engine) RunTurn(ctx context.Context, req ai.TurnRequest) (ai.TurnResult
 	return result, nil
 }
 
+// complete 调用模型。
+//
+// Provider 支持流式时逐段推给 Sink，让用户马上看到字在动；
+// 不支持就退回一次性返回，行为完全一致，只是等得久一点。
+func (e *Engine) complete(ctx context.Context, req ai.CompletionRequest,
+	sink ai.TurnSink) (ai.CompletionResult, error) {
+
+	streaming, ok := e.provider.(ai.StreamingChatProvider)
+	if !ok || sink == nil {
+		return e.provider.Complete(ctx, req)
+	}
+	return streaming.CompleteStream(ctx, req, sink.OnDelta)
+}
+
 // callRecord 在审计记录基础上带上本次产生的建议。
 type callRecord struct {
 	ai.ToolCallRecord
@@ -167,6 +181,12 @@ func (e *Engine) executeCall(ctx context.Context, req ai.TurnRequest,
 		record.DurationMS = int(time.Since(started).Milliseconds())
 		return record, ai.Message{
 			Role: ai.RoleTool, ToolCallID: call.ID, Content: message,
+		}
+	}
+
+	if req.Sink != nil {
+		if capability, ok := byName[call.Name]; ok {
+			req.Sink.OnToolCall(capabilityLabel(capability))
 		}
 	}
 
@@ -269,6 +289,34 @@ func callFingerprint(name string, args map[string]any) string {
 	}
 	sum := sha256.Sum256(append([]byte(name+":"), raw...))
 	return string(sum[:])
+}
+
+// capabilityLabel 把能力名转成给用户看的一句话。
+//
+// 界面上不出现工具名与参数：用户关心的是"在查什么"，
+// 而 tasks.search 这种内部标识对他没有意义。
+func capabilityLabel(c ai.Capability) string {
+	switch c.Name {
+	case "tasks.search":
+		return "正在查你的任务"
+	case "calendar.read":
+		return "正在看你的日程"
+	case "objects.get":
+		return "正在读这条内容"
+	case "records.aggregate":
+		return "正在统计你的记录"
+	case "search.hybrid":
+		return "正在搜索你的内容"
+	case "reviews.read":
+		return "正在看这周的数据"
+	case "memories.search":
+		return "正在回忆你的偏好"
+	default:
+		if c.Risk == ai.RiskProposal {
+			return "正在准备一条建议"
+		}
+		return "正在查资料"
+	}
 }
 
 // summarize 生成不含完整正文的结果摘要，用于审计。

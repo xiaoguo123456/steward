@@ -14,13 +14,18 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface CreateThreadRequest {
-  title?: string;
-  /**
-     * 为 true 时一定新建。缺省时若最近一次对话仍在续用窗口内，
-     * 直接返回那一次，而不是每次打开面板都堆一个新对话。
-     * @maxLength 60
-     * @nullable
-     */
-  force_new?: boolean | null;
-}
+/**
+ * status 是阶段变化，tool 是正在调用的能力标签，delta 是回复文本增量，
+ * proposal 表示一条已经落库的建议，done 表示这一轮结束，error 表示失败。
+ */
+export type TurnStreamEventKind = typeof TurnStreamEventKind[keyof typeof TurnStreamEventKind];
+
+
+export const TurnStreamEventKind = {
+  status: 'status',
+  tool: 'tool',
+  delta: 'delta',
+  proposal: 'proposal',
+  done: 'done',
+  error: 'error',
+} as const;

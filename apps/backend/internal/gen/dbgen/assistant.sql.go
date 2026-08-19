@@ -41,7 +41,7 @@ func (q *Queries) AdvanceThreadSeq(ctx context.Context, arg AdvanceThreadSeqPara
 const cancelTurn = `-- name: CancelTurn :one
 UPDATE assistant_turns SET status = 'cancelled', completed_at = now(), version = version + 1
 WHERE id = $1 AND status IN ('queued', 'running')
-RETURNING id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version
+RETURNING id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version, draft_content
 `
 
 func (q *Queries) CancelTurn(ctx context.Context, id string) (AssistantTurn, error) {
@@ -66,6 +66,7 @@ func (q *Queries) CancelTurn(ctx context.Context, id string) (AssistantTurn, err
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.Version,
+		&i.DraftContent,
 	)
 	return i, err
 }
@@ -162,7 +163,7 @@ INSERT INTO assistant_turns (
     $5, $6, 'queued',
     $7, $8
 )
-RETURNING id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version
+RETURNING id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version, draft_content
 `
 
 type CreateTurnParams struct {
@@ -207,8 +208,24 @@ func (q *Queries) CreateTurn(ctx context.Context, arg CreateTurnParams) (Assista
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.Version,
+		&i.DraftContent,
 	)
 	return i, err
+}
+
+const deleteAbandonedThreads = `-- name: DeleteAbandonedThreads :exec
+DELETE FROM assistant_threads
+WHERE last_message_seq = 0 AND created_at < now() - interval '24 hours'
+`
+
+// 清理当前用户没说过话的空对话。正常路径下客户端只在发第一条消息时建对话，
+// 这里兜住「建完之后发送失败」留下的空壳。
+//
+// 有意做成用户自己触发、受 RLS 约束：跨用户的定期清理需要维护角色，
+// 而这点垃圾量不值得为它引入一条绕过 RLS 的路径。
+func (q *Queries) DeleteAbandonedThreads(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteAbandonedThreads)
+	return err
 }
 
 const finishTurn = `-- name: FinishTurn :one
@@ -220,7 +237,7 @@ UPDATE assistant_turns SET
     completed_at         = now(),
     version              = version + 1
 WHERE id = $5
-RETURNING id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version
+RETURNING id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version, draft_content
 `
 
 type FinishTurnParams struct {
@@ -259,6 +276,35 @@ func (q *Queries) FinishTurn(ctx context.Context, arg FinishTurnParams) (Assista
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.Version,
+		&i.DraftContent,
+	)
+	return i, err
+}
+
+const getLatestThread = `-- name: GetLatestThread :one
+SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version FROM assistant_threads
+WHERE deleted_at IS NULL AND status = 'active' AND last_message_seq > 0
+ORDER BY updated_at DESC
+LIMIT 1
+`
+
+// 面板重新打开时用：最近一次说过话的对话。
+// 调用方据此决定是续上这一次，还是开一个新的。
+func (q *Queries) GetLatestThread(ctx context.Context) (AssistantThread, error) {
+	row := q.db.QueryRow(ctx, getLatestThread)
+	var i AssistantThread
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Status,
+		&i.LastMessageSeq,
+		&i.LastTurnSeq,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+		&i.Version,
 	)
 	return i, err
 }
@@ -288,7 +334,7 @@ func (q *Queries) GetThread(ctx context.Context, id string) (AssistantThread, er
 }
 
 const getTurn = `-- name: GetTurn :one
-SELECT id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version FROM assistant_turns WHERE id = $1
+SELECT id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version, draft_content FROM assistant_turns WHERE id = $1
 `
 
 func (q *Queries) GetTurn(ctx context.Context, id string) (AssistantTurn, error) {
@@ -313,6 +359,7 @@ func (q *Queries) GetTurn(ctx context.Context, id string) (AssistantTurn, error)
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.Version,
+		&i.DraftContent,
 	)
 	return i, err
 }
@@ -411,6 +458,7 @@ func (q *Queries) ListRecentMessages(ctx context.Context, arg ListRecentMessages
 const listThreads = `-- name: ListThreads :many
 SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version FROM assistant_threads
 WHERE deleted_at IS NULL
+  AND last_message_seq > 0
   AND ($1::bool OR status = 'active')
   AND ($2::timestamptz IS NULL
        OR (updated_at, id) < ($2::timestamptz, $3::text))
@@ -425,6 +473,8 @@ type ListThreadsParams struct {
 	RowLimit        int32
 }
 
+// 只返回真正说过话的对话。用户打开面板又直接关掉不算一次对话，
+// 那种空壳出现在历史里只会让列表全是「新对话」。
 func (q *Queries) ListThreads(ctx context.Context, arg ListThreadsParams) ([]AssistantThread, error) {
 	rows, err := q.db.Query(ctx, listThreads,
 		arg.IncludeArchived,
@@ -565,6 +615,23 @@ func (q *Queries) SaveTurnEntryContext(ctx context.Context, arg SaveTurnEntryCon
 	return err
 }
 
+const setThreadTitleIfDefault = `-- name: SetThreadTitleIfDefault :exec
+UPDATE assistant_threads SET title = $1, updated_at = now()
+WHERE id = $2 AND title = $3
+`
+
+type SetThreadTitleIfDefaultParams struct {
+	Title        string
+	ID           string
+	DefaultTitle string
+}
+
+// 首条消息定标题。只在标题还是默认值时写，用户改过就不再覆盖。
+func (q *Queries) SetThreadTitleIfDefault(ctx context.Context, arg SetThreadTitleIfDefaultParams) error {
+	_, err := q.db.Exec(ctx, setThreadTitleIfDefault, arg.Title, arg.ID, arg.DefaultTitle)
+	return err
+}
+
 const setTurnEngine = `-- name: SetTurnEngine :exec
 UPDATE assistant_turns SET engine_version = $1 WHERE id = $2
 `
@@ -617,7 +684,7 @@ func (q *Queries) SoftDeleteThread(ctx context.Context, id string) (AssistantThr
 const startTurn = `-- name: StartTurn :one
 UPDATE assistant_turns SET status = 'running', started_at = coalesce(started_at, now()), version = version + 1
 WHERE id = $1 AND status IN ('queued', 'running')
-RETURNING id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version
+RETURNING id, user_id, thread_id, turn_seq, user_message_id, assistant_message_id, operation_id, status, mode, engine_type, engine_version, model_policy, provider_state, error_code, started_at, completed_at, created_at, version, draft_content
 `
 
 // 允许从 running 重新接管：保存结果的事务失败时 Turn 会停在 running，
@@ -644,6 +711,7 @@ func (q *Queries) StartTurn(ctx context.Context, id string) (AssistantTurn, erro
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.Version,
+		&i.DraftContent,
 	)
 	return i, err
 }
@@ -712,4 +780,20 @@ func (q *Queries) UpdateThread(ctx context.Context, arg UpdateThreadParams) (Ass
 		&i.Version,
 	)
 	return i, err
+}
+
+const updateTurnDraft = `-- name: UpdateTurnDraft :exec
+UPDATE assistant_turns SET draft_content = $1
+WHERE id = $2 AND status = 'running'
+`
+
+type UpdateTurnDraftParams struct {
+	DraftContent string
+	ID           string
+}
+
+// 覆盖式更新流式草稿。调用方按固定间隔节流，不是每个增量都写。
+func (q *Queries) UpdateTurnDraft(ctx context.Context, arg UpdateTurnDraftParams) error {
+	_, err := q.db.Exec(ctx, updateTurnDraft, arg.DraftContent, arg.ID)
+	return err
 }

@@ -37,6 +37,10 @@ func (a *App) Router() http.Handler {
 		r.Get(localfs.TransportPrefix+"*", a.localDownloadHandler)
 	}
 
+	// Turn 进度流。同样是长连接传输：生成的 strict server 给不出可以
+	// 持续 flush 的写入口，因此手工挂载。帧结构仍定义在契约的 TurnStreamEvent。
+	r.Get(StreamPath, a.turnStreamHandler)
+
 	strict := httpapi.NewStrictHandlerWithOptions(a.Server, nil, httpapi.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  httpx.RequestErrorHandler,
 		ResponseErrorHandlerFunc: httpx.ResponseErrorHandler(a.Logger),

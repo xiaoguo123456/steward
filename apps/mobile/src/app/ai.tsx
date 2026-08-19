@@ -9,7 +9,7 @@ import {
   type AssistantMessage,
 } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,6 +25,7 @@ import { AiAssistantAvatar } from '@/components/ui/ai-assistant-avatar';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { ProposalCard } from '@/features/assistant/proposal-card';
+import { useTurnStream } from '@/features/assistant/use-turn-stream';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 /**
@@ -42,28 +43,20 @@ export default function AiConversationScreen() {
   const queryClient = useQueryClient();
   const listRef = useRef<ScrollView>(null);
 
-  const [threadId, setThreadId] = useState('');
+  const params = useLocalSearchParams<{ threadId?: string }>();
+  const [threadId, setThreadId] = useState(params.threadId ?? '');
+  const [turnId, setTurnId] = useState('');
   const [operationId, setOperationId] = useState('');
   const [input, setInput] = useState('');
   const [failure, setFailure] = useState<string | null>(null);
 
+  // 对话在用户真正发出第一条消息时才创建：打开面板就建，
+  // 历史里会堆一串没有内容的空壳。服务端在续用窗口内会返回上一次的对话。
   const createThread = useCreateThread({
     mutation: {
-      onSuccess: (result) => setThreadId(result.data.id),
       onError: (error) => setFailure(errorMessage(error, '没能打开对话，请稍后再试。')),
     },
   });
-
-  // 每次打开面板都开一个新对话：这一版还没有历史会话入口，
-  // 沿用上次的上下文只会让用户困惑于助理"记得"一些他看不到的东西。
-  const startedRef = useRef(false);
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    createThread.mutate({ data: {} });
-    // 只在面板打开时建一次对话，mutation 对象每次渲染都是新引用，不放进依赖。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const messages = useListMessages(
     threadId,
@@ -105,6 +98,10 @@ export default function AiConversationScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operationId, settled]);
 
+  // 流只是让文字早点出现。它断了、连不上或者根本没启用都不影响正确性：
+  // 下面的轮询照常推进，done 之后展示的是落库的那条消息。
+  const stream = useTurnStream(thinking ? turnId : '');
+
   // 回复失败的说明由服务端给，直接派生出来展示，不额外存一份状态。
   const turnFailure =
     turnStatus === 'failed'
@@ -114,6 +111,8 @@ export default function AiConversationScreen() {
   const createTurn = useCreateTurn({
     mutation: {
       onSuccess: (result) => {
+        setThreadId(result.data.thread_id);
+        setTurnId(result.data.turn_id);
         setOperationId(result.data.operation_id);
         void messages.refetch();
       },
@@ -121,12 +120,19 @@ export default function AiConversationScreen() {
     },
   });
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
-    if (!text || !threadId || thinking) return;
+    if (!text || thinking || createThread.isPending) return;
     setFailure(null);
     setInput('');
-    createTurn.mutate({ threadId, data: { text } });
+    try {
+      // 还没有对话就先要一个。服务端在续用窗口内会把上一次还给我们。
+      const id = threadId || (await createThread.mutateAsync({ data: {} })).data.id;
+      setThreadId(id);
+      createTurn.mutate({ threadId: id, data: { text } });
+    } catch {
+      // onError 已经写过提示，这里只是别让 Promise 悬着。
+    }
   };
 
   const scrollToLatest = () => {
@@ -136,7 +142,7 @@ export default function AiConversationScreen() {
   // 契约按 message_seq 倒序返回，展示要按时间正序。
   const ordered = [...(messages.data?.data ?? [])].reverse();
   const pending = proposals.data?.data ?? [];
-  const canSend = Boolean(input.trim()) && Boolean(threadId) && !thinking;
+  const canSend = Boolean(input.trim()) && !thinking && !createThread.isPending;
 
   return (
     <ModalSheet maxHeight="84%" onClose={() => router.back()}>
@@ -147,9 +153,19 @@ export default function AiConversationScreen() {
         <View style={styles.headerCopy}>
           <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
           <Text style={styles.headerStatus}>
-            {thinking ? '正在查你的数据…' : '问我今天要做什么，或者让我帮你安排'}
+            {thinking
+              ? stream.label || '正在查你的数据…'
+              : '问我今天要做什么，或者让我帮你安排'}
           </Text>
         </View>
+        <Pressable
+          accessibilityLabel="历史对话"
+          accessibilityRole="button"
+          onPress={() => router.push('/assistant/threads')}
+          style={({ pressed }) => [styles.closeButton, pressed && styles.iconPressed]}
+        >
+          <AppIcon name="time-outline" size={21} />
+        </Pressable>
         <Pressable
           accessibilityLabel="关闭 AI 管家"
           accessibilityRole="button"
@@ -197,9 +213,15 @@ export default function AiConversationScreen() {
             <View style={styles.assistantMark}>
               <AiAssistantAvatar size={30} />
             </View>
-            <View style={[styles.bubble, styles.assistantBubble, styles.thinkingBubble]}>
-              <ActivityIndicator color={colors.textSecondary} size="small" />
-              <Text style={styles.thinkingText}>正在查…</Text>
+            <View style={[styles.bubble, styles.assistantBubble]}>
+              {stream.text ? (
+                <Text style={styles.messageText}>{stream.text}</Text>
+              ) : (
+                <View style={styles.thinkingBubble}>
+                  <ActivityIndicator color={colors.textSecondary} size="small" />
+                  <Text style={styles.thinkingText}>{stream.label || '正在查…'}</Text>
+                </View>
+              )}
             </View>
           </View>
         ) : null}
@@ -213,7 +235,7 @@ export default function AiConversationScreen() {
         <View style={styles.composer}>
           <TextInput
             accessibilityLabel="输入给 AI 管家的消息"
-            editable={Boolean(threadId)}
+            editable
             multiline
             onChangeText={setInput}
             placeholder={thinking ? '正在回复…' : '说点什么…'}

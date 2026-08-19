@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
@@ -23,6 +24,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams"
 )
 
 // UserProfile 是 users 模块公开的能力。
@@ -61,7 +63,23 @@ type Service struct {
 	proposal *ProposalService
 	// memory 为空时本轮不带长期记忆，对话照常进行。
 	memory MemorySearcher
+	// stream 为空时不推送实时进度，客户端退回轮询。
+	stream StreamPublisher
 	logger *slog.Logger
+}
+
+// StreamPublisher 把一次 Turn 的进度推给正在监听的 API 进程。
+//
+// 它是体验增强，不承载权威状态：推送失败、事件丢失都不影响正确性，
+// 客户端读 Message 与 Operation 就能恢复全貌。
+type StreamPublisher interface {
+	Publish(ctx context.Context, turnID string, event streams.Event)
+}
+
+// WithStream 注入实时进度通道。
+func (s *Service) WithStream(publisher StreamPublisher) *Service {
+	s.stream = publisher
+	return s
 }
 
 // New 构造 Service。
@@ -80,14 +98,45 @@ func New(db *database.DB, engine ai.OrchestrationEngine, registry *ai.Registry,
 
 // ---- Thread ----
 
-// CreateThread 新建对话。
-func (s *Service) CreateThread(ctx context.Context, userID string, title *string) (dbgen.AssistantThread, error) {
-	name := "新对话"
+// DefaultThreadTitle 是对话的占位标题。
+//
+// 首条用户消息到达时会用它去比对：还是这个值就换成消息摘要，
+// 用户自己改过就不再覆盖。
+const DefaultThreadTitle = "新对话"
+
+// CreateThread 开始一次对话。
+//
+// 客户端应当在用户真正发出第一条消息时才调用它：打开面板就建对话，
+// 会在历史里堆一串没有内容的空壳。
+//
+// 最近一次对话仍在续用窗口内时直接返回那一次——用户问完出去看一眼任务
+// 再回来，那还是同一次对话。forceNew 用于显式的「开始新对话」。
+func (s *Service) CreateThread(ctx context.Context, userID string,
+	title *string, forceNew bool) (dbgen.AssistantThread, error) {
+
+	name := DefaultThreadTitle
 	if title != nil && strings.TrimSpace(*title) != "" {
 		name = strings.TrimSpace(*title)
 	}
+
 	var out dbgen.AssistantThread
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if !forceNew && (title == nil || strings.TrimSpace(*title) == "") {
+			if thread, err := q.GetLatestThread(ctx); err == nil {
+				if time.Since(thread.UpdatedAt) <= ResumeWindow {
+					out = thread
+					return nil
+				}
+			} else if !database.IsNoRows(err) {
+				return apperr.Internal(err)
+			}
+		}
+
+		// 顺手清掉自己以前留下的空壳。量很小，不值得单开一个维护任务。
+		if err := q.DeleteAbandonedThreads(ctx); err != nil {
+			return apperr.Internal(err)
+		}
+
 		thread, err := q.CreateThread(ctx, dbgen.CreateThreadParams{
 			ID: idgen.New(idgen.PrefixThread), UserID: userID, Title: name,
 		})
@@ -314,6 +363,15 @@ func (s *Service) CreateTurn(ctx context.Context, userID, threadID string,
 			return apperr.Internal(err)
 		}
 
+		// 首条消息定标题。列表里全是「新对话」等于没有历史。
+		if thread.LastMessageSeq == 0 {
+			if err := q.SetThreadTitleIfDefault(ctx, dbgen.SetThreadTitleIfDefaultParams{
+				Title: summarizeTitle(text), ID: thread.ID, DefaultTitle: DefaultThreadTitle,
+			}); err != nil {
+				return apperr.Internal(err)
+			}
+		}
+
 		if err := s.saveEntryContext(ctx, q, turn.ID, body.EntryContext); err != nil {
 			return err
 		}
@@ -358,6 +416,27 @@ func (s *Service) saveEntryContext(ctx context.Context, q *dbgen.Queries,
 		return apperr.Internal(err)
 	}
 	return nil
+}
+
+// TurnForStream 校验这一轮属于当前用户，并返回它的当前状态。
+//
+// SSE 端点手工挂载，不经过生成的 handler，归属校验没有别处可依赖。
+func (s *Service) TurnForStream(ctx context.Context, userID, turnID string) (dbgen.AssistantTurn, error) {
+	var out dbgen.AssistantTurn
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		turn, err := q.GetTurn(ctx, turnID)
+		if err != nil {
+			// RLS 已经挡住跨用户读取，这里统一报"不存在"，
+			// 不通过错误码区分"不存在"和"是别人的"。
+			if database.IsNoRows(err) {
+				return apperr.NotFound("这次回复")
+			}
+			return apperr.Internal(err)
+		}
+		out = turn
+		return nil
+	})
+	return out, err
 }
 
 // CancelTurn 取消仍在执行的回复。
@@ -414,6 +493,9 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		EntryResourceType: seed.EntryResourceType,
 		EntryResourceID:   seed.EntryResourceID,
 	}
+	sink := s.sinkFor(ctx, args.UserID, args.TurnID)
+	sink.OnStatus("正在理解你的问题")
+
 	result, runErr := s.engine.RunTurn(ctx, ai.TurnRequest{
 		RunID:         idgen.New(idgen.PrefixRun),
 		UserID:        args.UserID,
@@ -426,10 +508,16 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		Capabilities:  s.allowedFor(seed),
 		Limits:        ai.DefaultRunLimits(),
 		Ctx:           turnCtx,
+		Sink:          sink,
 	})
 
 	// 第三步：短事务保存结果。
-	return s.saveTurnResult(ctx, args, result, runErr)
+	proposalIDs, saveErr := s.saveTurnResult(ctx, args, result, runErr)
+
+	// 最后才收尾流：客户端看到 done 之后会去读权威消息，
+	// 那时消息必须已经落库，否则它会读到上一轮的内容。
+	s.finishStream(ctx, args.TurnID, result.Text, proposalIDs, runErr, saveErr)
+	return saveErr
 }
 
 // allowedFor 计算本轮交给模型的能力集合。
@@ -453,6 +541,122 @@ func (s *Service) allowedFor(seed contextSeed) []ai.Capability {
 	return out
 }
 
+// sinkFor 构造这一轮的进度通道。没有配置通道时返回一个什么都不做的实现。
+func (s *Service) sinkFor(ctx context.Context, userID, turnID string) ai.TurnSink {
+	if s.stream == nil {
+		return noopSink{}
+	}
+	return &publishSink{
+		ctx: ctx, turnID: turnID, publisher: s.stream, saveDraft: s.draftSaver(userID),
+	}
+}
+
+// draftSaver 返回覆盖式保存流式草稿的函数，供中途连上来的客户端补齐。
+//
+// 失败只记日志：草稿不是权威内容，写不进去最多让那个客户端
+// 从下一次推送开始才看到文字。
+func (s *Service) draftSaver(userID string) func(context.Context, string, string) {
+	return func(ctx context.Context, turnID, draft string) {
+		err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+			return q.UpdateTurnDraft(ctx, dbgen.UpdateTurnDraftParams{
+				DraftContent: draft, ID: turnID,
+			})
+		})
+		if err != nil {
+			s.logger.Debug("保存流式草稿失败", "turn_id", turnID, "error", err)
+		}
+	}
+}
+
+// finishStream 推送这一轮的结束事件。
+func (s *Service) finishStream(ctx context.Context, turnID, finalText string,
+	proposalIDs []string, runErr, saveErr error) {
+
+	if s.stream == nil {
+		return
+	}
+	if runErr != nil || saveErr != nil {
+		code := apperr.CodeAIProviderUnavailable
+		if errors.Is(runErr, ai.ErrRateLimited) {
+			code = apperr.CodeAIProviderRateLimited
+		}
+		s.stream.Publish(ctx, turnID, streams.Event{
+			Kind: streams.KindError, Code: string(code),
+		})
+		return
+	}
+	// 节流会漏掉最后一小段，这里补一次完整文本，
+	// 让流上看到的内容和落库的那条消息完全一致。
+	if finalText != "" {
+		s.stream.Publish(ctx, turnID, streams.Event{
+			Kind: streams.KindDelta, Text: finalText,
+		})
+	}
+
+	// 建议已经通过完整校验并落库，这时才告诉客户端有它。
+	for _, id := range proposalIDs {
+		s.stream.Publish(ctx, turnID, streams.Event{
+			Kind: streams.KindProposal, ProposalID: id,
+		})
+	}
+	s.stream.Publish(ctx, turnID, streams.Event{Kind: streams.KindDone})
+}
+
+// draftInterval 是流式草稿的推送间隔。
+//
+// 逐字推送对屏幕没有意义（人眼看不出 16ms 的差别），却会让每个字都
+// 变成一次 NOTIFY 加一次 UPDATE。按固定间隔推送到目前为止的全文，
+// 既够流畅，也让中途连上来的客户端不需要额外的补齐协议。
+const draftInterval = 120 * time.Millisecond
+
+// publishSink 把引擎的进度回调转成流事件。
+//
+// delta 事件携带的是「到目前为止的完整文本」而不是增量：
+// 客户端直接替换缓冲区，因此不存在丢事件导致文字缺失，
+// 也不需要为中途连上来的客户端设计一套补齐与去重规则。
+type publishSink struct {
+	ctx       context.Context
+	turnID    string
+	publisher StreamPublisher
+	saveDraft func(ctx context.Context, turnID, draft string)
+
+	mu       sync.Mutex
+	text     strings.Builder
+	lastSent time.Time
+}
+
+func (p *publishSink) OnStatus(text string) {
+	p.publisher.Publish(p.ctx, p.turnID, streams.Event{Kind: streams.KindStatus, Text: text})
+}
+
+func (p *publishSink) OnToolCall(label string) {
+	p.publisher.Publish(p.ctx, p.turnID, streams.Event{Kind: streams.KindTool, Text: label})
+}
+
+func (p *publishSink) OnDelta(text string) {
+	p.mu.Lock()
+	p.text.WriteString(text)
+	if time.Since(p.lastSent) < draftInterval {
+		p.mu.Unlock()
+		return
+	}
+	p.lastSent = time.Now()
+	snapshot := p.text.String()
+	p.mu.Unlock()
+
+	p.publisher.Publish(p.ctx, p.turnID, streams.Event{Kind: streams.KindDelta, Text: snapshot})
+	if p.saveDraft != nil {
+		p.saveDraft(p.ctx, p.turnID, snapshot)
+	}
+}
+
+// noopSink 在没有配置流通道时接管，调用方不需要判空。
+type noopSink struct{}
+
+func (noopSink) OnStatus(string)   {}
+func (noopSink) OnToolCall(string) {}
+func (noopSink) OnDelta(string)    {}
+
 // systemPrompt 拼出本轮的 System Policy。
 //
 // 当前时间与时区放在这里而不是让模型自己推断：模型没有时钟，
@@ -469,9 +673,10 @@ func (s *Service) systemPrompt(seed contextSeed) string {
 
 // saveTurnResult 落库回复、工具审计与建议，并完成 Operation。
 func (s *Service) saveTurnResult(ctx context.Context, args RespondArgs,
-	result ai.TurnResult, runErr error) error {
+	result ai.TurnResult, runErr error) ([]string, error) {
 
-	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+	var proposalIDs []string
+	err := s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
 		turn, err := q.GetTurn(ctx, args.TurnID)
 		if err != nil {
 			return apperr.Internal(err)
@@ -518,10 +723,16 @@ func (s *Service) saveTurnResult(ctx context.Context, args RespondArgs,
 
 		// 建议在完整校验后才落库；没有通过校验的直接丢弃，不半成品下发。
 		if s.proposal != nil {
+			// 上一次尝试可能已经落过一批；重试时先清空，避免重复计数。
+			proposalIDs = nil
 			for _, draft := range result.Proposals {
-				if err := s.proposal.SaveDraft(ctx, q, args.UserID,
-					args.ThreadID, args.TurnID, draft); err != nil {
+				id, err := s.proposal.SaveDraft(ctx, q, args.UserID,
+					args.ThreadID, args.TurnID, draft)
+				if err != nil {
 					return err
+				}
+				if id != "" {
+					proposalIDs = append(proposalIDs, id)
 				}
 			}
 		}
@@ -548,6 +759,7 @@ func (s *Service) saveTurnResult(ctx context.Context, args RespondArgs,
 		})
 		return s.finishOperation(ctx, q, args, "succeeded", nil, resultRef)
 	})
+	return proposalIDs, err
 }
 
 // MarkTurnPermanentlyFailed 在队列放弃重试后收尾。
@@ -693,6 +905,22 @@ func inferMode(result ai.TurnResult) string {
 		return "query"
 	}
 	return "conversation"
+}
+
+// ResumeWindow 是「同一次对话」的时间窗。
+//
+// 用户问完出去看一眼任务再回来，那还是同一次；隔了一段时间再打开，
+// 接着上一次的上下文只会让他困惑于助理记得一些他看不见的东西。
+const ResumeWindow = 30 * time.Minute
+
+// summarizeTitle 用首条用户消息生成对话标题。
+func summarizeTitle(text string) string {
+	line := strings.TrimSpace(strings.SplitN(text, "\n", 2)[0])
+	runes := []rune(line)
+	if len(runes) <= 20 {
+		return line
+	}
+	return string(runes[:20]) + "…"
 }
 
 func weekdayName(d time.Weekday) string {

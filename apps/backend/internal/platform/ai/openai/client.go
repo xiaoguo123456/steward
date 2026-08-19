@@ -43,11 +43,14 @@ type Config struct {
 	Logger   *slog.Logger
 }
 
-// Provider 实现 ai.CaptureParser 与 ai.MediaProcessor。
+// Provider 实现 ai.CaptureParser、ai.MediaProcessor 与 ai.StreamingChatProvider。
 type Provider struct {
 	cfg    Config
 	client *http.Client
-	logger *slog.Logger
+	// streamClient 不设整体超时：流式响应本来就要持续几十秒，
+	// 用 client.Timeout 会在读到一半时把连接掐掉。超时由 context 控制。
+	streamClient *http.Client
+	logger       *slog.Logger
 }
 
 // New 构造适配器。
@@ -80,8 +83,9 @@ func New(cfg Config) (*Provider, error) {
 	return &Provider{
 		cfg: cfg,
 		// 单次调用超时由 Config.Timeout 控制；这里再留一点余量给连接建立。
-		client: &http.Client{Timeout: cfg.Timeout + 10*time.Second},
-		logger: cfg.Logger,
+		client:       &http.Client{Timeout: cfg.Timeout + 10*time.Second},
+		streamClient: &http.Client{},
+		logger:       cfg.Logger,
 	}, nil
 }
 

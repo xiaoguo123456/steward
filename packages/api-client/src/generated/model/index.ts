@@ -226,6 +226,8 @@ export * from './trackersResponse';
 export * from './trackerStatus';
 export * from './turnAcceptedResponse';
 export * from './turnAcceptedResponseData';
+export * from './turnStreamEvent';
+export * from './turnStreamEventKind';
 export * from './unauthorizedResponse';
 export * from './undoResponse';
 export * from './undoResponseData';

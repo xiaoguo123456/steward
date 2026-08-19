@@ -10,8 +10,11 @@ SELECT * FROM assistant_threads
 WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
 
 -- name: ListThreads :many
+-- 只返回真正说过话的对话。用户打开面板又直接关掉不算一次对话，
+-- 那种空壳出现在历史里只会让列表全是「新对话」。
 SELECT * FROM assistant_threads
 WHERE deleted_at IS NULL
+  AND last_message_seq > 0
   AND (sqlc.arg(include_archived)::bool OR status = 'active')
   AND (sqlc.narg(cursor_updated_at)::timestamptz IS NULL
        OR (updated_at, id) < (sqlc.narg(cursor_updated_at)::timestamptz, sqlc.narg(cursor_id)::text))
@@ -139,3 +142,30 @@ WHERE id = sqlc.arg(id);
 
 -- name: SetTurnEngine :exec
 UPDATE assistant_turns SET engine_version = sqlc.arg(engine_version) WHERE id = sqlc.arg(id);
+
+-- name: GetLatestThread :one
+-- 面板重新打开时用：最近一次说过话的对话。
+-- 调用方据此决定是续上这一次，还是开一个新的。
+SELECT * FROM assistant_threads
+WHERE deleted_at IS NULL AND status = 'active' AND last_message_seq > 0
+ORDER BY updated_at DESC
+LIMIT 1;
+
+-- name: SetThreadTitleIfDefault :exec
+-- 首条消息定标题。只在标题还是默认值时写，用户改过就不再覆盖。
+UPDATE assistant_threads SET title = sqlc.arg(title), updated_at = now()
+WHERE id = sqlc.arg(id) AND title = sqlc.arg(default_title);
+
+-- name: DeleteAbandonedThreads :exec
+-- 清理当前用户没说过话的空对话。正常路径下客户端只在发第一条消息时建对话，
+-- 这里兜住「建完之后发送失败」留下的空壳。
+--
+-- 有意做成用户自己触发、受 RLS 约束：跨用户的定期清理需要维护角色，
+-- 而这点垃圾量不值得为它引入一条绕过 RLS 的路径。
+DELETE FROM assistant_threads
+WHERE last_message_seq = 0 AND created_at < now() - interval '24 hours';
+
+-- name: UpdateTurnDraft :exec
+-- 覆盖式更新流式草稿。调用方按固定间隔节流，不是每个增量都写。
+UPDATE assistant_turns SET draft_content = sqlc.arg(draft_content)
+WHERE id = sqlc.arg(id) AND status = 'running';
