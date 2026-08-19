@@ -15,6 +15,7 @@
  */
 import type { CursorParameter } from './cursorParameter';
 import type { LimitParameter } from './limitParameter';
+import type { ProjectKind } from './projectKind';
 import type { ProjectStatus } from './projectStatus';
 
 export type ListProjectsParams = {
@@ -32,4 +33,8 @@ limit?: LimitParameter;
  * 不传时默认排除 archived。
  */
 status?: ProjectStatus[];
+/**
+ * 只返回该用途的项目。行程页据此拿到自己的列表。
+ */
+project_kind?: ProjectKind;
 };

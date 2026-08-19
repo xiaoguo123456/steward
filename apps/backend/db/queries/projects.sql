@@ -4,6 +4,7 @@
 SELECT * FROM projects
 WHERE deleted_at IS NULL
   AND (cardinality(sqlc.arg(statuses)::text[]) = 0 OR status = ANY (sqlc.arg(statuses)::text[]))
+  AND (sqlc.narg(project_kind)::text IS NULL OR project_kind = sqlc.narg(project_kind)::text)
   AND (sqlc.narg(cursor_created_at)::timestamptz IS NULL
        OR (created_at, id) < (sqlc.narg(cursor_created_at)::timestamptz, sqlc.narg(cursor_id)::text))
 ORDER BY created_at DESC, id DESC
@@ -15,17 +16,18 @@ SELECT * FROM projects WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
 -- name: CreateProject :one
 INSERT INTO projects (
     id, user_id, title, description, status, start_date, target_date,
-    created_by, provenance_refs
+    project_kind, created_by, provenance_refs
 ) VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(title), sqlc.narg(description),
     sqlc.arg(status), sqlc.narg(start_date), sqlc.narg(target_date),
-    sqlc.arg(created_by), sqlc.arg(provenance_refs)
+    sqlc.arg(project_kind), sqlc.arg(created_by), sqlc.arg(provenance_refs)
 )
 RETURNING *;
 
 -- name: UpdateProject :one
 UPDATE projects SET
-    title       = coalesce(sqlc.narg(title), title),
+    title        = coalesce(sqlc.narg(title), title),
+    project_kind = coalesce(sqlc.narg(project_kind), project_kind),
     description = CASE WHEN sqlc.arg(clear_description)::bool THEN NULL
                        ELSE coalesce(sqlc.narg(description), description) END,
     status      = coalesce(sqlc.narg(status), status),

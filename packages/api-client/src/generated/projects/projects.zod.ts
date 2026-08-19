@@ -27,7 +27,8 @@ export const listProjectsQueryLimitMax = 100;
 export const ListProjectsQueryParams = zod.object({
   "cursor": zod.string().optional().describe('上一页返回的不透明游标。App 不得解析其内容。'),
   "limit": zod.number().int().min(1).max(listProjectsQueryLimitMax).default(listProjectsQueryLimitDefault).describe('单页条数。'),
-  "status": zod.array(zod.enum(['active', 'paused', 'completed', 'archived'])).optional().describe('不传时默认排除 archived。')
+  "status": zod.array(zod.enum(['active', 'paused', 'completed', 'archived'])).optional().describe('不传时默认排除 archived。'),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('只返回该用途的项目。行程页据此拿到自己的列表。')
 })
 
 export const listProjectsResponseDataItemProvenanceRefsItemSourceDeletedDefault = false;
@@ -40,6 +41,7 @@ export const ListProjectsResponse = zod.object({
   "description": zod.string().nullish(),
   "status": zod.enum(['active', 'paused', 'completed', 'archived']),
   "status_before_archived": zod.enum(['active', 'paused', 'completed', 'archived']).optional(),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n'),
   "start_date": zod.string().date().nullish(),
   "target_date": zod.string().date().nullish(),
   "progress": zod.number().nullish().describe('已完成 Task 数 ÷（全部 Task 数 - 已取消 Task 数），由服务端计算且只读。\n没有有效 Task 时为 null，App 显示“暂无有效任务”而不是 0%。\n'),
@@ -88,7 +90,8 @@ export const CreateProjectBody = zod.object({
   "title": zod.string().min(1).max(createProjectBodyTitleMax),
   "description": zod.string().nullish(),
   "start_date": zod.string().date().nullish(),
-  "target_date": zod.string().date().nullish()
+  "target_date": zod.string().date().nullish(),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n')
 })
 
 export const createProjectResponseDataProvenanceRefsItemSourceDeletedDefault = false;
@@ -101,6 +104,7 @@ export const CreateProjectResponse = zod.object({
   "description": zod.string().nullish(),
   "status": zod.enum(['active', 'paused', 'completed', 'archived']),
   "status_before_archived": zod.enum(['active', 'paused', 'completed', 'archived']).optional(),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n'),
   "start_date": zod.string().date().nullish(),
   "target_date": zod.string().date().nullish(),
   "progress": zod.number().nullish().describe('已完成 Task 数 ÷（全部 Task 数 - 已取消 Task 数），由服务端计算且只读。\n没有有效 Task 时为 null，App 显示“暂无有效任务”而不是 0%。\n'),
@@ -142,6 +146,7 @@ export const GetProjectResponse = zod.object({
   "description": zod.string().nullish(),
   "status": zod.enum(['active', 'paused', 'completed', 'archived']),
   "status_before_archived": zod.enum(['active', 'paused', 'completed', 'archived']).optional(),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n'),
   "start_date": zod.string().date().nullish(),
   "target_date": zod.string().date().nullish(),
   "progress": zod.number().nullish().describe('已完成 Task 数 ÷（全部 Task 数 - 已取消 Task 数），由服务端计算且只读。\n没有有效 Task 时为 null，App 显示“暂无有效任务”而不是 0%。\n'),
@@ -201,6 +206,7 @@ export const UpdateProjectResponse = zod.object({
   "description": zod.string().nullish(),
   "status": zod.enum(['active', 'paused', 'completed', 'archived']),
   "status_before_archived": zod.enum(['active', 'paused', 'completed', 'archived']).optional(),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n'),
   "start_date": zod.string().date().nullish(),
   "target_date": zod.string().date().nullish(),
   "progress": zod.number().nullish().describe('已完成 Task 数 ÷（全部 Task 数 - 已取消 Task 数），由服务端计算且只读。\n没有有效 Task 时为 null，App 显示“暂无有效任务”而不是 0%。\n'),

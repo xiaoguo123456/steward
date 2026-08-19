@@ -114,11 +114,20 @@ function ChecklistRow({
   );
 }
 
-export function TripDetail({ trip }: { trip: TripPlan }) {
+export function TripDetail({
+  trip,
+  onToggleChecklistItem,
+}: {
+  trip: TripPlan;
+  onToggleChecklistItem?: (taskId: string, completed: boolean) => void;
+}) {
   const [activeTab, setActiveTab] = useState<DetailTab>('schedule');
   const [selectedDayId, setSelectedDayId] = useState(trip.days[0]?.id ?? '');
-  const [completedChecklistIds, setCompletedChecklistIds] = useState(
+  // 完成状态直接来自 Task：清单项就是挂在这个项目下的普通任务，
+  // 本地再存一份只会和别处看到的状态对不上。
+  const completedChecklistIds = useMemo(
     () => new Set(trip.checklist.filter((item) => item.completed).map((item) => item.id)),
+    [trip.checklist],
   );
   const selectedDay = trip.days.find((day) => day.id === selectedDayId) ?? trip.days[0];
   const completedCount = completedChecklistIds.size;
@@ -134,12 +143,7 @@ export function TripDetail({ trip }: { trip: TripPlan }) {
   );
 
   const toggleChecklist = (itemId: string) => {
-    setCompletedChecklistIds((current) => {
-      const next = new Set(current);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
+    onToggleChecklistItem?.(itemId, !completedChecklistIds.has(itemId));
   };
 
   return (

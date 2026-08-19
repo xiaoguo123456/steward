@@ -285,6 +285,7 @@ func (s *Service) CreateProjectInTx(ctx context.Context, q *dbgen.Queries, userI
 		Status:         "active",
 		StartDate:      cmd.StartDate,
 		TargetDate:     cmd.TargetDate,
+		ProjectKind:    "general",
 		CreatedBy:      createdBy,
 		ProvenanceRefs: provJSON,
 	})

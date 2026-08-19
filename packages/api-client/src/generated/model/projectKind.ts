@@ -13,19 +13,16 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { ProjectKind } from './projectKind';
 
-export interface CreateProjectRequest {
-  /**
-     * @minLength 1
-     * @maxLength 120
-     */
-  title: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  start_date?: string | null;
-  /** @nullable */
-  target_date?: string | null;
-  project_kind?: ProjectKind;
-}
+/**
+ * 项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、
+ * 行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，
+ * 不创建 Trip 对象，也没有平行数据表。
+ */
+export type ProjectKind = typeof ProjectKind[keyof typeof ProjectKind];
+
+
+export const ProjectKind = {
+  general: 'general',
+  trip: 'trip',
+} as const;

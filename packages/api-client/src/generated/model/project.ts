@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { CreatedBy } from './createdBy';
+import type { ProjectKind } from './projectKind';
 import type { ProjectStatus } from './projectStatus';
 import type { ProjectType } from './projectType';
 import type { ProvenanceRef } from './provenanceRef';
@@ -26,6 +27,7 @@ export interface Project {
   description?: string | null;
   status: ProjectStatus;
   status_before_archived?: ProjectStatus;
+  project_kind?: ProjectKind;
   /** @nullable */
   start_date?: string | null;
   /** @nullable */

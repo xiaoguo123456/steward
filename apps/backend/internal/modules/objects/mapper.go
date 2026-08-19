@@ -80,6 +80,7 @@ func MapProject(p ProjectWithProgress) httpapi.Project {
 		Title:          p.Row.Title,
 		Description:    p.Row.Description,
 		Status:         httpapi.ProjectStatus(p.Row.Status),
+		ProjectKind:    projectKindPtr(p.Row.ProjectKind),
 		StartDate:      dateOrNil(p.Row.StartDate),
 		TargetDate:     dateOrNil(p.Row.TargetDate),
 		Progress:       p.Progress(),
@@ -183,4 +184,10 @@ func shoppingCategoryPtr(raw *string) *httpapi.ShoppingCategory {
 	}
 	category := httpapi.ShoppingCategory(*raw)
 	return &category
+}
+
+// projectKindPtr 把存储值映射成契约枚举指针。
+func projectKindPtr(raw string) *httpapi.ProjectKind {
+	kind := httpapi.ProjectKind(raw)
+	return &kind
 }

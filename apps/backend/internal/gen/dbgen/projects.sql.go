@@ -13,13 +13,13 @@ import (
 const createProject = `-- name: CreateProject :one
 INSERT INTO projects (
     id, user_id, title, description, status, start_date, target_date,
-    created_by, provenance_refs
+    project_kind, created_by, provenance_refs
 ) VALUES (
     $1, $2, $3, $4,
     $5, $6, $7,
-    $8, $9
+    $8, $9, $10
 )
-RETURNING id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version, project_kind
 `
 
 type CreateProjectParams struct {
@@ -30,6 +30,7 @@ type CreateProjectParams struct {
 	Status         string
 	StartDate      *time.Time
 	TargetDate     *time.Time
+	ProjectKind    string
 	CreatedBy      string
 	ProvenanceRefs []byte
 }
@@ -43,6 +44,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		arg.Status,
 		arg.StartDate,
 		arg.TargetDate,
+		arg.ProjectKind,
 		arg.CreatedBy,
 		arg.ProvenanceRefs,
 	)
@@ -62,12 +64,13 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ProjectKind,
 	)
 	return i, err
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM projects WHERE id = $1 AND deleted_at IS NULL
+SELECT id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version, project_kind FROM projects WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
@@ -88,23 +91,26 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ProjectKind,
 	)
 	return i, err
 }
 
 const listProjects = `-- name: ListProjects :many
 
-SELECT id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM projects
+SELECT id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version, project_kind FROM projects
 WHERE deleted_at IS NULL
   AND (cardinality($1::text[]) = 0 OR status = ANY ($1::text[]))
-  AND ($2::timestamptz IS NULL
-       OR (created_at, id) < ($2::timestamptz, $3::text))
+  AND ($2::text IS NULL OR project_kind = $2::text)
+  AND ($3::timestamptz IS NULL
+       OR (created_at, id) < ($3::timestamptz, $4::text))
 ORDER BY created_at DESC, id DESC
-LIMIT $4
+LIMIT $5
 `
 
 type ListProjectsParams struct {
 	Statuses        []string
+	ProjectKind     *string
 	CursorCreatedAt *time.Time
 	CursorID        *string
 	RowLimit        int32
@@ -114,6 +120,7 @@ type ListProjectsParams struct {
 func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]Project, error) {
 	rows, err := q.db.Query(ctx, listProjects,
 		arg.Statuses,
+		arg.ProjectKind,
 		arg.CursorCreatedAt,
 		arg.CursorID,
 		arg.RowLimit,
@@ -140,6 +147,7 @@ func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]P
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.ProjectKind,
 		); err != nil {
 			return nil, err
 		}
@@ -192,7 +200,7 @@ func (q *Queries) SearchProjects(ctx context.Context, arg SearchProjectsParams) 
 const softDeleteProject = `-- name: SoftDeleteProject :one
 UPDATE projects SET deleted_at = now(), updated_at = now(), version = version + 1
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version, project_kind
 `
 
 func (q *Queries) SoftDeleteProject(ctx context.Context, id string) (Project, error) {
@@ -213,33 +221,36 @@ func (q *Queries) SoftDeleteProject(ctx context.Context, id string) (Project, er
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ProjectKind,
 	)
 	return i, err
 }
 
 const updateProject = `-- name: UpdateProject :one
 UPDATE projects SET
-    title       = coalesce($1, title),
-    description = CASE WHEN $2::bool THEN NULL
-                       ELSE coalesce($3, description) END,
-    status      = coalesce($4, status),
+    title        = coalesce($1, title),
+    project_kind = coalesce($2, project_kind),
+    description = CASE WHEN $3::bool THEN NULL
+                       ELSE coalesce($4, description) END,
+    status      = coalesce($5, status),
     -- 归档时记录归档前状态，恢复时用它还原。
     status_before_archived = CASE
-        WHEN $4::text = 'archived' AND status <> 'archived' THEN status
-        WHEN $4::text IS NOT NULL AND $4::text <> 'archived' THEN NULL
+        WHEN $5::text = 'archived' AND status <> 'archived' THEN status
+        WHEN $5::text IS NOT NULL AND $5::text <> 'archived' THEN NULL
         ELSE status_before_archived END,
-    start_date  = CASE WHEN $5::bool THEN NULL
-                       ELSE coalesce($6, start_date) END,
-    target_date = CASE WHEN $7::bool THEN NULL
-                       ELSE coalesce($8, target_date) END,
+    start_date  = CASE WHEN $6::bool THEN NULL
+                       ELSE coalesce($7, start_date) END,
+    target_date = CASE WHEN $8::bool THEN NULL
+                       ELSE coalesce($9, target_date) END,
     updated_at  = now(),
     version     = version + 1
-WHERE id = $9 AND deleted_at IS NULL
-RETURNING id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+WHERE id = $10 AND deleted_at IS NULL
+RETURNING id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version, project_kind
 `
 
 type UpdateProjectParams struct {
 	Title            *string
+	ProjectKind      *string
 	ClearDescription bool
 	Description      *string
 	Status           *string
@@ -253,6 +264,7 @@ type UpdateProjectParams struct {
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error) {
 	row := q.db.QueryRow(ctx, updateProject,
 		arg.Title,
+		arg.ProjectKind,
 		arg.ClearDescription,
 		arg.Description,
 		arg.Status,
@@ -278,6 +290,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.ProjectKind,
 	)
 	return i, err
 }

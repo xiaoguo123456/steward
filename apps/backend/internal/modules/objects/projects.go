@@ -33,7 +33,7 @@ func (p ProjectWithProgress) Progress() *float32 {
 
 // ListProjects 查询 Project。
 func (s *Service) ListProjects(ctx context.Context, userID string, statuses []string,
-	cursorTime *time.Time, cursorID *string, limit int32) ([]ProjectWithProgress, error) {
+	projectKind *string, cursorTime *time.Time, cursorID *string, limit int32) ([]ProjectWithProgress, error) {
 	if len(statuses) == 0 {
 		// 契约约定：不传 status 时默认排除已归档项目。
 		statuses = []string{"active", "paused", "completed"}
@@ -43,6 +43,7 @@ func (s *Service) ListProjects(ctx context.Context, userID string, statuses []st
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		rows, err := q.ListProjects(ctx, dbgen.ListProjectsParams{
 			Statuses:        statuses,
+			ProjectKind:     projectKind,
 			CursorCreatedAt: cursorTime,
 			CursorID:        cursorID,
 			RowLimit:        limit,
@@ -104,6 +105,7 @@ func (s *Service) CreateProject(ctx context.Context, userID string, body httpapi
 			Title:          title,
 			Description:    body.Description,
 			Status:         "active",
+			ProjectKind:    projectKindOr(body.ProjectKind),
 			StartDate:      timePtrOfDate(body.StartDate),
 			TargetDate:     timePtrOfDate(body.TargetDate),
 			CreatedBy:      "user",
@@ -274,4 +276,12 @@ func projectClearFlagsOf(clear *[]httpapi.UpdateProjectRequestClear) projectClea
 		}
 	}
 	return f
+}
+
+// projectKindOr 把项目用途收敛到已知取值，未知一律当普通项目。
+func projectKindOr(kind *httpapi.ProjectKind) string {
+	if kind != nil && *kind == httpapi.Trip {
+		return "trip"
+	}
+	return "general"
 }

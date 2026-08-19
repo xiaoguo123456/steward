@@ -6,7 +6,8 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
-import { tripPlans, type TripPlan } from './trip-data';
+import type { TripPlan } from './trip-data';
+import { useTripsOverview } from './use-trips';
 
 function SectionHeading({ title, count }: { title: string; count: number }) {
   return (
@@ -77,8 +78,7 @@ function CompletedTripRow({ trip, onPress }: { trip: TripPlan; onPress: () => vo
 
 export function TripsHome() {
   const router = useRouter();
-  const upcomingTrips = tripPlans.filter((trip) => trip.status === 'upcoming');
-  const completedTrips = tripPlans.filter((trip) => trip.status === 'completed');
+  const { upcoming: upcomingTrips, completed: completedTrips, loading } = useTripsOverview();
   const openTrip = (trip: TripPlan) => {
     router.push({ pathname: '/trips/[id]', params: { id: trip.id } });
   };
@@ -88,6 +88,15 @@ export function TripsHome() {
       <NavHeader title="行程" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <SectionHeading count={upcomingTrips.length} title="近期行程" />
+        {!loading && upcomingTrips.length === 0 && completedTrips.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>还没有行程</Text>
+            <Text style={styles.emptyCopy}>
+              行程用项目来组织：把交通、住宿和活动记成日程，把要带的东西记成任务，
+              它们就会出现在这里。
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.upcomingList}>
           {upcomingTrips.map((trip) => (
             <TripCard key={trip.id} onPress={() => openTrip(trip)} trip={trip} />
@@ -111,6 +120,23 @@ export function TripsHome() {
 }
 
 const styles = StyleSheet.create({
+  emptyCard: {
+    padding: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
+    gap: 7,
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontFamily,
+    ...typography.body,
+    fontWeight: '600',
+  },
+  emptyCopy: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 96,

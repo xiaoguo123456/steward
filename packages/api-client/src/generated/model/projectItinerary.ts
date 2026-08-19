@@ -13,19 +13,27 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { ProjectKind } from './projectKind';
+import type { ItineraryDay } from './itineraryDay';
+import type { Note } from './note';
+import type { Project } from './project';
+import type { Task } from './task';
 
-export interface CreateProjectRequest {
+export interface ProjectItinerary {
+  project: Project;
   /**
-     * @minLength 1
-     * @maxLength 120
+     * 最早一条日程的当地日期。没有日程时为 null。
+     * @nullable
      */
-  title: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
   start_date?: string | null;
   /** @nullable */
-  target_date?: string | null;
-  project_kind?: ProjectKind;
+  end_date?: string | null;
+  /**
+     * 按天分组的安排。只包含有内容的日期，
+     * 中间的空当由客户端按 start_date 与 end_date 补齐。
+     */
+  days: ItineraryDay[];
+  /** 行前准备清单。就是挂在这个 Project 下的普通 Task。 */
+  tasks: Task[];
+  /** 预订资料等笔记。 */
+  notes: Note[];
 }

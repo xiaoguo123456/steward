@@ -18,6 +18,12 @@ Collection:
             $ref: '../components/schemas/objects.yaml#/ProjectStatus'
         style: form
         explode: false
+      - name: project_kind
+        in: query
+        required: false
+        description: 只返回该用途的项目。行程页据此拿到自己的列表。
+        schema:
+          $ref: '../components/schemas/objects.yaml#/ProjectKind'
     responses:
       '200':
         description: 成功。

@@ -609,6 +609,14 @@ ProjectStatus:
   type: string
   enum: [active, paused, completed, archived]
 
+ProjectKind:
+  type: string
+  description: |
+    项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、
+    行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，
+    不创建 Trip 对象，也没有平行数据表。
+  enum: [general, trip]
+
 Project:
   type: object
   additionalProperties: false
@@ -629,6 +637,8 @@ Project:
       $ref: '#/ProjectStatus'
     status_before_archived:
       $ref: '#/ProjectStatus'
+    project_kind:
+      $ref: '#/ProjectKind'
     start_date:
       type: string
       format: date
@@ -688,6 +698,8 @@ CreateProjectRequest:
       type: string
       format: date
       nullable: true
+    project_kind:
+      $ref: '#/ProjectKind'
 
 UpdateProjectRequest:
   type: object

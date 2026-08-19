@@ -104,6 +104,21 @@ func (h *ViewAPI) GetImportantDates(ctx context.Context, req httpapi.GetImportan
 	}, nil
 }
 
+// GetProjectItinerary 读取一个项目的行程聚合。
+func (h *ViewAPI) GetProjectItinerary(ctx context.Context, req httpapi.GetProjectItineraryRequestObject) (httpapi.GetProjectItineraryResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	itinerary, err := h.svc.GetProjectItinerary(ctx, userID, req.ProjectId)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.GetProjectItinerary200JSONResponse{
+		Data: MapItinerary(itinerary), Meta: httpx.Meta(ctx),
+	}, nil
+}
+
 // Search 跨实体关键词检索。
 func (h *ViewAPI) Search(ctx context.Context, req httpapi.SearchRequestObject) (httpapi.SearchResponseObject, error) {
 	userID, err := httpx.UserID(ctx)

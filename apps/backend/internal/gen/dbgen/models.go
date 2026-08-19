@@ -423,6 +423,7 @@ type Project struct {
 	UpdatedAt            time.Time
 	DeletedAt            *time.Time
 	Version              int32
+	ProjectKind          string
 }
 
 type Record struct {

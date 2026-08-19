@@ -238,6 +238,171 @@ export const GetCalendarResponse = zod.object({
 })
 
 /**
+ * 行程复用 Project 组织 Event、Task 与 Note，不创建新的 Trip 对象。
+ * 按天分组与日期范围由服务端按用户时区计算，客户端不重排。
+ * @summary 读取一个项目的行程聚合
+ */
+export const GetProjectItineraryParams = zod.object({
+  "project_id": zod.string()
+})
+
+export const getProjectItineraryResponseDataProjectProvenanceRefsItemSourceDeletedDefault = false;
+export const getProjectItineraryResponseDataDaysItemEventsItemProvenanceRefsItemSourceDeletedDefault = false;
+export const getProjectItineraryResponseDataTasksItemQuantityTextMax = 40;
+
+export const getProjectItineraryResponseDataTasksItemProvenanceRefsItemSourceDeletedDefault = false;
+export const getProjectItineraryResponseDataNotesItemProvenanceRefsItemSourceDeletedDefault = false;
+
+export const GetProjectItineraryResponse = zod.object({
+  "data": zod.object({
+  "project": zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['project']),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['active', 'paused', 'completed', 'archived']),
+  "status_before_archived": zod.enum(['active', 'paused', 'completed', 'archived']).optional(),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n'),
+  "start_date": zod.string().date().nullish(),
+  "target_date": zod.string().date().nullish(),
+  "progress": zod.number().nullish().describe('已完成 Task 数 ÷（全部 Task 数 - 已取消 Task 数），由服务端计算且只读。\n没有有效 Task 时为 null，App 显示“暂无有效任务”而不是 0%。\n'),
+  "task_total": zod.number().int().optional().describe('未取消且未删除的 Task 总数。'),
+  "task_done": zod.number().int().optional(),
+  "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
+  "provenance_refs": zod.array(zod.object({
+  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_id": zod.string(),
+  "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
+  "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
+  "action": zod.enum(['created_from', 'derived_from', 'updated_from']),
+  "source_deleted": zod.boolean().default(getProjectItineraryResponseDataProjectProvenanceRefsItemSourceDeletedDefault).describe('来源已删除时为 true，此时不再保留原始内容。')
+})).optional(),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "deleted_at": zod.string().datetime({"offset":true}).nullish(),
+  "version": zod.number().int()
+}),
+  "start_date": zod.string().date().nullish().describe('最早一条日程的当地日期。没有日程时为 null。'),
+  "end_date": zod.string().date().nullish(),
+  "days": zod.array(zod.object({
+  "date": zod.string().date(),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['event']),
+  "title": zod.string(),
+  "event_kind": zod.enum(['schedule', 'important_date']),
+  "all_day": zod.boolean(),
+  "start_at": zod.string().datetime({"offset":true}).nullish().describe('all_day=false 时必填。'),
+  "end_at": zod.string().datetime({"offset":true}).nullish(),
+  "start_date": zod.string().date().nullish().describe('all_day=true 时必填。'),
+  "end_date": zod.string().date().nullish().describe('包含该日；单日事件可为空。'),
+  "timezone": zod.string(),
+  "location": zod.string().nullish(),
+  "participants": zod.array(zod.string()).optional(),
+  "project_id": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "reminders": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['relative', 'absolute_local']).describe('relative 表示相对开始时间的偏移，仅用于定时 Event 与带 due_at 的 Task；\nabsolute_local 表示明确的当地触发时间，全天 Event 与 due_date 必须使用它。\n'),
+  "offset_minutes": zod.number().int().nullish().describe('kind=relative 时必填，表示开始前的分钟数。'),
+  "local_time": zod.string().nullish().describe('kind=absolute_local 时必填，格式 HH:MM。'),
+  "days_before": zod.number().int().nullish().describe('kind=absolute_local 时提前的天数，0 表示当天。')
+})).optional(),
+  "important_date_kind": zod.enum(['birthday', 'anniversary', 'expiry', 'other']).optional().describe('重要日的四种预设。它不新增领域类型，只决定图标、表单默认值与\n默认重复规则；生日与纪念日默认 recurrence=yearly，\n到期日与其他默认 recurrence=none。\n只有 event_kind=important_date 时才有意义。\n'),
+  "recurrence": zod.enum(['none', 'yearly']).describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。'),
+  "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
+  "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
+  "provenance_refs": zod.array(zod.object({
+  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_id": zod.string(),
+  "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
+  "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
+  "action": zod.enum(['created_from', 'derived_from', 'updated_from']),
+  "source_deleted": zod.boolean().default(getProjectItineraryResponseDataDaysItemEventsItemProvenanceRefsItemSourceDeletedDefault).describe('来源已删除时为 true，此时不再保留原始内容。')
+})).optional(),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "deleted_at": zod.string().datetime({"offset":true}).nullish(),
+  "version": zod.number().int()
+})).describe('当天的交通、住宿、活动与会议，按开始时间升序。')
+})).describe('按天分组的安排。只包含有内容的日期，\n中间的空当由客户端按 start_date 与 end_date 补齐。\n'),
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['task']),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['todo', 'doing', 'done', 'cancelled']),
+  "priority": zod.enum(['low', 'normal', 'high']),
+  "due_date": zod.string().date().nullish().describe('只有日期没有时刻的截止日；与 due_at 互斥。'),
+  "due_at": zod.string().datetime({"offset":true}).nullish().describe('有明确日期与时刻的截止时间；与 due_date 互斥。'),
+  "due_timezone": zod.string().nullish().describe('设置 due_date 或 due_at 时必填，保存截止语义所属时区。'),
+  "scheduled_start_at": zod.string().datetime({"offset":true}).nullish(),
+  "scheduled_end_at": zod.string().datetime({"offset":true}).nullish(),
+  "scheduled_timezone": zod.string().nullish(),
+  "estimated_minutes": zod.number().int().min(1).nullish(),
+  "quantity_text": zod.string().max(getProjectItineraryResponseDataTasksItemQuantityTextMax).nullish().describe('数量与规格，例如「4 个」「300 克」。自由文本，不维护独立单位：\n用户写「一把」时不该被迫拆成数字加单位。只在购物清单里使用。\n'),
+  "shopping_category": zod.enum(['produce', 'protein', 'staple', 'beverage', 'other']).optional().describe('购物清单的品类。由服务端确定性分类，客户端不维护这套规则，\n分不出来时归入 other。它只在 list_kind=shopping 的清单里有意义。\n'),
+  "focus_date": zod.string().date().nullish().describe('用户明确指定在哪一天关注该任务。'),
+  "list_id": zod.string(),
+  "project_id": zod.string().nullish(),
+  "reminders": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['relative', 'absolute_local']).describe('relative 表示相对开始时间的偏移，仅用于定时 Event 与带 due_at 的 Task；\nabsolute_local 表示明确的当地触发时间，全天 Event 与 due_date 必须使用它。\n'),
+  "offset_minutes": zod.number().int().nullish().describe('kind=relative 时必填，表示开始前的分钟数。'),
+  "local_time": zod.string().nullish().describe('kind=absolute_local 时必填，格式 HH:MM。'),
+  "days_before": zod.number().int().nullish().describe('kind=absolute_local 时提前的天数，0 表示当天。')
+})).optional(),
+  "completed_at": zod.string().datetime({"offset":true}).nullish(),
+  "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
+  "provenance_refs": zod.array(zod.object({
+  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_id": zod.string(),
+  "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
+  "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
+  "action": zod.enum(['created_from', 'derived_from', 'updated_from']),
+  "source_deleted": zod.boolean().default(getProjectItineraryResponseDataTasksItemProvenanceRefsItemSourceDeletedDefault).describe('来源已删除时为 true，此时不再保留原始内容。')
+})).optional(),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "deleted_at": zod.string().datetime({"offset":true}).nullish(),
+  "version": zod.number().int()
+})).describe('行前准备清单。就是挂在这个 Project 下的普通 Task。'),
+  "notes": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['note']),
+  "title": zod.string(),
+  "content": zod.string().describe('MVP 保存为纯文本；富文本块结构在后续版本扩展。'),
+  "attachments": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['image']),
+  "url": zod.string().describe('有效期受限的私有访问地址，不可长期缓存。'),
+  "width": zod.number().int().nullish(),
+  "height": zod.number().int().nullish()
+})).optional(),
+  "tags": zod.array(zod.string()),
+  "pinned_at": zod.string().datetime({"offset":true}).nullish(),
+  "project_id": zod.string().nullish(),
+  "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
+  "provenance_refs": zod.array(zod.object({
+  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_id": zod.string(),
+  "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
+  "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
+  "action": zod.enum(['created_from', 'derived_from', 'updated_from']),
+  "source_deleted": zod.boolean().default(getProjectItineraryResponseDataNotesItemProvenanceRefsItemSourceDeletedDefault).describe('来源已删除时为 true，此时不再保留原始内容。')
+})).optional(),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "deleted_at": zod.string().datetime({"offset":true}).nullish(),
+  "version": zod.number().int()
+})).describe('预订资料等笔记。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
  * 重要日复用 event_kind=important_date 的全天 Event，这里只做投影与排序。
  * 年度投影、2 月 29 日与时区换算都由服务端确定性代码计算，客户端不得重排。
  * 新增与修改仍然走普通的 Event 接口。

@@ -13,19 +13,10 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { ProjectKind } from './projectKind';
+import type { Event } from './event';
 
-export interface CreateProjectRequest {
-  /**
-     * @minLength 1
-     * @maxLength 120
-     */
-  title: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  start_date?: string | null;
-  /** @nullable */
-  target_date?: string | null;
-  project_kind?: ProjectKind;
+export interface ItineraryDay {
+  date: string;
+  /** 当天的交通、住宿、活动与会议，按开始时间升序。 */
+  events: Event[];
 }

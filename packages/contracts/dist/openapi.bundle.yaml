@@ -730,6 +730,12 @@ paths:
               $ref: '#/components/schemas/ProjectStatus'
           style: form
           explode: false
+        - name: project_kind
+          in: query
+          required: false
+          description: 只返回该用途的项目。行程页据此拿到自己的列表。
+          schema:
+            $ref: '#/components/schemas/ProjectKind'
       responses:
         '200':
           description: 成功。
@@ -2122,6 +2128,30 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/projects/{project_id}/itinerary:
+    get:
+      operationId: getProjectItinerary
+      summary: 读取一个项目的行程聚合
+      description: |
+        行程复用 Project 组织 Event、Task 与 Note，不创建新的 Trip 对象。
+        按天分组与日期范围由服务端按用户时区计算，客户端不重排。
+      tags:
+        - views
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectItineraryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/important-dates:
@@ -3636,6 +3666,15 @@ components:
         - paused
         - completed
         - archived
+    ProjectKind:
+      type: string
+      description: |
+        项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、
+        行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，
+        不创建 Trip 对象，也没有平行数据表。
+      enum:
+        - general
+        - trip
     Project:
       type: object
       additionalProperties: false
@@ -3665,6 +3704,8 @@ components:
           $ref: '#/components/schemas/ProjectStatus'
         status_before_archived:
           $ref: '#/components/schemas/ProjectStatus'
+        project_kind:
+          $ref: '#/components/schemas/ProjectKind'
         start_date:
           type: string
           format: date
@@ -3740,6 +3781,8 @@ components:
           type: string
           format: date
           nullable: true
+        project_kind:
+          $ref: '#/components/schemas/ProjectKind'
     ProjectResponse:
       type: object
       additionalProperties: false
@@ -5962,6 +6005,69 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/CalendarView'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ItineraryDay:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - events
+      properties:
+        date:
+          type: string
+          format: date
+        events:
+          type: array
+          description: 当天的交通、住宿、活动与会议，按开始时间升序。
+          items:
+            $ref: '#/components/schemas/Event'
+    ProjectItinerary:
+      type: object
+      additionalProperties: false
+      required:
+        - project
+        - days
+        - tasks
+        - notes
+      properties:
+        project:
+          $ref: '#/components/schemas/Project'
+        start_date:
+          type: string
+          format: date
+          nullable: true
+          description: 最早一条日程的当地日期。没有日程时为 null。
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        days:
+          type: array
+          description: |
+            按天分组的安排。只包含有内容的日期，
+            中间的空当由客户端按 start_date 与 end_date 补齐。
+          items:
+            $ref: '#/components/schemas/ItineraryDay'
+        tasks:
+          type: array
+          description: 行前准备清单。就是挂在这个 Project 下的普通 Task。
+          items:
+            $ref: '#/components/schemas/Task'
+        notes:
+          type: array
+          description: 预订资料等笔记。
+          items:
+            $ref: '#/components/schemas/Note'
+    ProjectItineraryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/ProjectItinerary'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     ImportantDateEntry:

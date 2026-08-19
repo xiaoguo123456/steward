@@ -308,7 +308,13 @@ func (h *ObjectAPI) ListProjects(ctx context.Context, req httpapi.ListProjectsRe
 		cursorID = &cursor.ID
 	}
 
-	rows, err := h.svc.ListProjects(ctx, userID, statuses, cursorTime, cursorID, limit+1)
+	var projectKind *string
+	if req.Params.ProjectKind != nil {
+		kind := string(*req.Params.ProjectKind)
+		projectKind = &kind
+	}
+
+	rows, err := h.svc.ListProjects(ctx, userID, statuses, projectKind, cursorTime, cursorID, limit+1)
 	if err != nil {
 		return nil, err
 	}

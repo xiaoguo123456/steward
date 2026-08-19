@@ -195,3 +195,27 @@ ImportantDates:
         $ref: '../components/responses.yaml#/Unauthorized'
       '500':
         $ref: '../components/responses.yaml#/InternalError'
+
+ProjectItinerary:
+  get:
+    operationId: getProjectItinerary
+    summary: 读取一个项目的行程聚合
+    description: |
+      行程复用 Project 组织 Event、Task 与 Note，不创建新的 Trip 对象。
+      按天分组与日期范围由服务端按用户时区计算，客户端不重排。
+    tags: [views]
+    parameters:
+      - $ref: '../components/parameters.yaml#/ProjectId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/ProjectItineraryResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

@@ -42,6 +42,8 @@ import type {
   GetWeeklyReviewParams,
   ImportantDatesResponse,
   InternalErrorResponse,
+  NotFoundResponse,
+  ProjectItineraryResponse,
   SearchParams,
   SearchResponse,
   TodayViewResponse,
@@ -270,6 +272,108 @@ export function useGetCalendar<TData = Awaited<ReturnType<typeof getCalendar>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetCalendarQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetProjectItineraryUrl = (projectId: string,) => {
+
+
+
+
+  return `/v1/projects/${projectId}/itinerary`
+}
+
+/**
+ * 行程复用 Project 组织 Event、Task 与 Note，不创建新的 Trip 对象。
+ * 按天分组与日期范围由服务端按用户时区计算，客户端不重排。
+ * @summary 读取一个项目的行程聚合
+ */
+export const getProjectItinerary = async (projectId: string, options?: Parameters<typeof stewardFetch>[1]): Promise<ProjectItineraryResponse> => {
+
+  return stewardFetch<ProjectItineraryResponse>(getGetProjectItineraryUrl(projectId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProjectItineraryQueryKey = (projectId: string,) => {
+    return [
+    `/v1/projects/${projectId}/itinerary`
+    ] as const;
+    }
+
+
+export const getGetProjectItineraryQueryOptions = <TData = Awaited<ReturnType<typeof getProjectItinerary>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectItinerary>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProjectItineraryQueryKey(projectId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectItinerary>>> = ({ signal }) => getProjectItinerary(projectId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: projectId !== null && projectId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProjectItinerary>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetProjectItineraryQueryResult = NonNullable<Awaited<ReturnType<typeof getProjectItinerary>>>
+export type GetProjectItineraryQueryError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse
+
+
+export function useGetProjectItinerary<TData = Awaited<ReturnType<typeof getProjectItinerary>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
+ projectId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectItinerary>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getProjectItinerary>>,
+          TError,
+          Awaited<ReturnType<typeof getProjectItinerary>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetProjectItinerary<TData = Awaited<ReturnType<typeof getProjectItinerary>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
+ projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectItinerary>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getProjectItinerary>>,
+          TError,
+          Awaited<ReturnType<typeof getProjectItinerary>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetProjectItinerary<TData = Awaited<ReturnType<typeof getProjectItinerary>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
+ projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectItinerary>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 读取一个项目的行程聚合
+ */
+
+export function useGetProjectItinerary<TData = Awaited<ReturnType<typeof getProjectItinerary>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
+ projectId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProjectItinerary>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetProjectItineraryQueryOptions(projectId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -155,6 +155,8 @@ paths:
     $ref: './paths/views.yaml#/Today'
   /v1/calendar:
     $ref: './paths/views.yaml#/Calendar'
+  /v1/projects/{project_id}/itinerary:
+    $ref: './paths/views.yaml#/ProjectItinerary'
   /v1/important-dates:
     $ref: './paths/views.yaml#/ImportantDates'
   /v1/reviews/weekly:

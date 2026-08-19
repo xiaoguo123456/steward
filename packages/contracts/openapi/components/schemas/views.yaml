@@ -377,3 +377,67 @@ ImportantDatesResponse:
         $ref: '#/ImportantDateEntry'
     meta:
       $ref: './common.yaml#/ResponseMeta'
+
+# ---- 行程 ----
+#
+# 行程不是新的领域类型：它是一个 Project，把 Event、Task 和 Note 组织在一起。
+# 这个视图只做服务端该做的事——按用户时区把日程分到天、算出行程日期范围，
+# 以及把准备清单的完成进度算好。不创建 Trip 对象，也没有平行数据表。
+
+ItineraryDay:
+  type: object
+  additionalProperties: false
+  required: [date, events]
+  properties:
+    date:
+      type: string
+      format: date
+    events:
+      type: array
+      description: 当天的交通、住宿、活动与会议，按开始时间升序。
+      items:
+        $ref: './objects.yaml#/Event'
+
+ProjectItinerary:
+  type: object
+  additionalProperties: false
+  required: [project, days, tasks, notes]
+  properties:
+    project:
+      $ref: './objects.yaml#/Project'
+    start_date:
+      type: string
+      format: date
+      nullable: true
+      description: 最早一条日程的当地日期。没有日程时为 null。
+    end_date:
+      type: string
+      format: date
+      nullable: true
+    days:
+      type: array
+      description: |
+        按天分组的安排。只包含有内容的日期，
+        中间的空当由客户端按 start_date 与 end_date 补齐。
+      items:
+        $ref: '#/ItineraryDay'
+    tasks:
+      type: array
+      description: 行前准备清单。就是挂在这个 Project 下的普通 Task。
+      items:
+        $ref: './objects.yaml#/Task'
+    notes:
+      type: array
+      description: 预订资料等笔记。
+      items:
+        $ref: './objects.yaml#/Note'
+
+ProjectItineraryResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/ProjectItinerary'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
