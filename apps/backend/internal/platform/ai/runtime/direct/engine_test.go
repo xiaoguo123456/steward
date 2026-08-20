@@ -40,6 +40,8 @@ func (p *scriptedProvider) Complete(_ context.Context, req ai.CompletionRequest)
 	return step, nil
 }
 
+func (p *scriptedProvider) Name() string { return "scripted" }
+
 func (p *scriptedProvider) ModelName() string { return "scripted" }
 
 func quietLogger() *slog.Logger {

@@ -30,6 +30,8 @@ func (s stubChat) Complete(context.Context, ai.CompletionRequest) (ai.Completion
 	return ai.CompletionResult{Content: s.content}, nil
 }
 
+func (stubChat) Name() string { return "stub" }
+
 func (stubChat) ModelName() string { return "stub" }
 
 func sampleReview() httpapi.WeeklyReview {
