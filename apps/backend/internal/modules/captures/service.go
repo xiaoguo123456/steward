@@ -132,6 +132,10 @@ func (s *Service) Create(ctx context.Context, userID string, body httpapi.Create
 		if body.Timezone != nil && strings.TrimSpace(*body.Timezone) != "" {
 			tz = *body.Timezone
 		}
+		// 解析「明天」「下周三」全靠这个时区，坏值会让相对时间整体偏一天。
+		if err := timeutil.ValidateLocation(tz); err != nil {
+			return apperr.Validation(apperr.Field("timezone", "时区名称不合法。"))
+		}
 
 		origin := "home"
 		if body.Origin != nil {

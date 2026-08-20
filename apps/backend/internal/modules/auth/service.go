@@ -174,6 +174,11 @@ func (s *Service) Login(ctx context.Context, phone, code, timezone string) (Logi
 	if timezone == "" {
 		timezone = timeutil.DefaultTimezone
 	}
+	// 首次登录写下的时区会跟着账号一辈子，之后每一次日期计算都用它。
+	// 这里不拦，坏值就再也没有第二次机会被发现。
+	if err := timeutil.ValidateLocation(timezone); err != nil {
+		return LoginResult{}, apperr.Validation(apperr.Field("timezone", "时区名称不合法。"))
+	}
 
 	now := time.Now()
 	var result LoginResult

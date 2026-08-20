@@ -258,3 +258,50 @@ func TestResolveProjectStatus(t *testing.T) {
 		})
 	}
 }
+
+// 客户端传来的时区必须在写入前拒绝。
+//
+// 这条不是理论风险：`timeutil.LoadLocation` 遇到坏值会静默回退到默认时区，
+// 所以坏值一旦存下来，提醒与 Today 收录都在按一个用户没选过的时区算，
+// 全程不报错。伦敦用户存进一个坏值，提醒就会按上海时间响。
+func TestResolveDueRejectsInvalidTimezone(t *testing.T) {
+	date := openapi_types.Date{Time: time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)}
+	bad := "这不是时区"
+	_, _, _, err := resolveDue(dueInput{DueDate: &date, Timezone: &bad}, "Asia/Shanghai")
+	if err == nil {
+		t.Fatal("非法 due_timezone 应当被拒绝")
+	}
+	appErr, ok := apperr.As(err)
+	if !ok || len(appErr.Fields) == 0 || appErr.Fields[0].Field != "due_timezone" {
+		t.Fatalf("错误应指向 due_timezone 字段，实际：%+v", err)
+	}
+}
+
+// 用户资料里的时区同样不可信：它是上一次登录时客户端写进去的。
+func TestResolveDueRejectsInvalidUserTimezone(t *testing.T) {
+	date := openapi_types.Date{Time: time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)}
+	if _, _, _, err := resolveDue(dueInput{DueDate: &date}, "评测用户"); err == nil {
+		t.Fatal("用户资料里的非法时区也应当被拒绝")
+	}
+}
+
+func TestResolveScheduleRejectsInvalidTimezone(t *testing.T) {
+	start := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	bad := "Not/A_Zone"
+	if _, _, _, err := resolveSchedule(&start, &end, &bad, "Asia/Shanghai"); err == nil {
+		t.Fatal("非法 scheduled_timezone 应当被拒绝")
+	}
+}
+
+// 合法时区不能被误伤——包括不在中国的那些，
+// 夏令时切换正是必须存真实时区名而不是偏移量的原因。
+func TestResolveDueAcceptsRealZones(t *testing.T) {
+	date := openapi_types.Date{Time: time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC)}
+	for _, zone := range []string{"Europe/London", "America/New_York", "America/Los_Angeles", "UTC"} {
+		z := zone
+		if _, _, _, err := resolveDue(dueInput{DueDate: &date, Timezone: &z}, "Asia/Shanghai"); err != nil {
+			t.Errorf("%s 应当通过，实际：%v", zone, err)
+		}
+	}
+}

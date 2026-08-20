@@ -14,8 +14,27 @@ import (
 // DefaultTimezone 是用户未设置时区时的兜底值。
 const DefaultTimezone = "Asia/Shanghai"
 
-// LoadLocation 解析 IANA 时区名，非法值回退到默认时区。
-// 用户资料里的时区来自客户端，属于不可信输入，因此不允许因此让请求失败。
+// ValidateLocation 校验 IANA 时区名，**写入前**用它。
+//
+// 不要拿 LoadLocation 做校验：它的错误路径是回退而不是报错，
+// 所以用它写出来的校验一个坏值都拦不住，而且看上去完全正常。
+// 这里踩过一次——`LoadLocation(bad)` 返回上海，再拿去 ParseDate 当然成功，
+// 于是任意字符串都能被当成时区存进用户资料，之后每次日期计算
+// 都在用回退时区，不报错，只是算错。
+//
+// 空字符串表示「跟随默认」，是合法的省略。
+func ValidateLocation(name string) error {
+	if name == "" {
+		return nil
+	}
+	if _, err := time.LoadLocation(name); err != nil {
+		return fmt.Errorf("时区名称不合法：%w", err)
+	}
+	return nil
+}
+
+// LoadLocation 解析 IANA 时区名，非法值回退到默认时区。**读取时**用它。
+// 库里存量数据可能有坏值，读路径不能因此让请求失败。
 func LoadLocation(name string) *time.Location {
 	if name == "" {
 		name = DefaultTimezone

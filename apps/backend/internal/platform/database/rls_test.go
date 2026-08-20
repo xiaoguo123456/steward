@@ -61,7 +61,7 @@ func seedUser(t *testing.T, db *database.DB, phone string) (userID, taskID strin
 		// 直接 SELECT 函数名拿到的是一整个 record。
 		return tx.QueryRow(ctx,
 			`SELECT id FROM auth_create_user($1, $2, $3, $4)`,
-			idgen.New(idgen.PrefixUser), phone, "Asia/Shanghai", "测试用户",
+			idgen.New(idgen.PrefixUser), phone, "测试用户", "Asia/Shanghai",
 		).Scan(&userID)
 	})
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
 
 // TaskFilter 是 Task 列表查询条件。
@@ -285,6 +286,9 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 		if body.DueTimezone != nil && strings.TrimSpace(*body.DueTimezone) != "" {
 			zone = *body.DueTimezone
 		}
+		if err := timeutil.ValidateLocation(zone); err != nil {
+			return fail(apperr.Validation(apperr.Field("due_timezone", "时区名称不合法。")))
+		}
 		dueTZ = &zone
 	}
 
@@ -307,6 +311,9 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 		zone := tz
 		if body.ScheduledTimezone != nil && strings.TrimSpace(*body.ScheduledTimezone) != "" {
 			zone = *body.ScheduledTimezone
+		}
+		if err := timeutil.ValidateLocation(zone); err != nil {
+			return fail(apperr.Validation(apperr.Field("scheduled_timezone", "时区名称不合法。")))
 		}
 		schedTZ = &zone
 	}

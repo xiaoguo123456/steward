@@ -41,7 +41,7 @@ func (s *Stack) seedUser(ctx context.Context) (string, error) {
 		// 与登录路径完全一致。
 		return tx.QueryRow(ctx,
 			`SELECT id FROM auth_create_user($1, $2, $3, $4)`,
-			id, phone, "Asia/Shanghai", "评测用户").Scan(&userID)
+			id, phone, "评测用户", "Asia/Shanghai").Scan(&userID)
 	})
 	if err != nil {
 		return "", fmtErr("创建评测用户", err)

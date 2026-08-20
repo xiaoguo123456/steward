@@ -124,6 +124,9 @@ func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.C
 		if body.Timezone != nil && strings.TrimSpace(*body.Timezone) != "" {
 			tz = *body.Timezone
 		}
+		if err := timeutil.ValidateLocation(tz); err != nil {
+			return apperr.Validation(apperr.Field("timezone", "时区名称不合法。"))
+		}
 
 		if body.ProjectId != nil {
 			if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {

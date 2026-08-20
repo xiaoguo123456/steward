@@ -253,6 +253,12 @@ func resolveDue(in dueInput, userTimezone string) (*time.Time, *time.Time, *stri
 	if tz == "" {
 		tz = timeutil.DefaultTimezone
 	}
+	// 客户端传来的时区不可信。存进去之后提醒与 Today 收录都按它算，
+	// 坏值会静默回退成默认时区——不报错，只是在错误的钟点响。
+	if err := timeutil.ValidateLocation(tz); err != nil {
+		return nil, nil, nil, apperr.Validation(apperr.Field(
+			"due_timezone", "时区名称不合法。"))
+	}
 
 	if in.DueDate != nil {
 		d := in.DueDate.Time
@@ -282,6 +288,10 @@ func resolveSchedule(start, end *time.Time, tz *string, userTimezone string) (*t
 	}
 	if zone == "" {
 		zone = timeutil.DefaultTimezone
+	}
+	if err := timeutil.ValidateLocation(zone); err != nil {
+		return nil, nil, nil, apperr.Validation(apperr.Field(
+			"scheduled_timezone", "时区名称不合法。"))
 	}
 	return start, end, &zone, nil
 }

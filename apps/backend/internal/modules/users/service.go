@@ -85,7 +85,9 @@ func (s *Service) Get(ctx context.Context, userID string) (dbgen.User, error) {
 func (s *Service) Update(ctx context.Context, userID string, body httpapi.UpdateUserRequest) (dbgen.User, error) {
 	if body.Timezone != nil {
 		// 非法时区会让全部日期语义失去意义，必须在写入前拒绝。
-		if _, err := timeutil.ParseDate("2000-01-01", timeutil.LoadLocation(*body.Timezone)); err != nil {
+		// 用 ValidateLocation 而不是 LoadLocation——后者的错误路径是回退，
+		// 拿它做校验等于没校验（timeutil/validate_test.go 守着这条）。
+		if err := timeutil.ValidateLocation(*body.Timezone); err != nil {
 			return dbgen.User{}, apperr.Validation(apperr.Field("timezone", "时区名称不合法。"))
 		}
 	}
