@@ -1,0 +1,250 @@
+AdminUserSummary:
+  type: object
+  additionalProperties: false
+  description: |
+    用户列表里的一行。
+
+    **不含任何用户正文**：没有笔记、没有会话消息、没有记忆、
+    没有 OCR 结果。能看到的是状态、数量和标识。
+  required: [id, masked_phone, account_status, initialized, created_at,
+             active_days_30d, ai_cost_30d, version]
+  properties:
+    id: { type: string }
+    masked_phone:
+      type: string
+      description: 服务端脱敏，形如 138****8000。**完整号码不出现在任何响应里。**
+      example: "138****8000"
+    display_name: { type: string }
+    account_status:
+      $ref: '#/AccountStatus'
+    initialized: { type: boolean }
+    created_at: { type: string, format: date-time }
+    last_active_at:
+      type: string
+      format: date-time
+      nullable: true
+    active_days_30d: { type: integer }
+    ai_cost_30d:
+      $ref: './common.yaml#/MoneyAmount'
+    latest_error_code:
+      type: string
+      nullable: true
+      description: 稳定错误码，不是错误正文——正文里常带用户输入的片段。
+    version:
+      type: integer
+      description: 管理操作要带它做乐观锁，避免两个人同时改出互相覆盖的结果。
+
+AccountStatus:
+  type: string
+  enum: [active, suspended]
+
+AdminUserListResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, freshness, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/AdminUserSummary' }
+    page: { $ref: './common.yaml#/PageInfo' }
+    freshness: { $ref: './common.yaml#/DataFreshness' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+AdminUserDetail:
+  type: object
+  additionalProperties: false
+  description: |
+    用户概览。**只返回状态、数量和标识**，不返回 Note、Message、Memory、
+    OCR、转写或媒体正文。后台能知道「这个人有多少条笔记」，
+    但看不到笔记写了什么。
+  required: [id, masked_phone, account_status, initialized, timezone,
+             created_at, counts, version]
+  properties:
+    id: { type: string }
+    masked_phone: { type: string }
+    display_name: { type: string }
+    account_status: { $ref: '#/AccountStatus' }
+    initialized: { type: boolean }
+    timezone: { type: string }
+    created_at: { type: string, format: date-time }
+    last_active_at:
+      type: string
+      format: date-time
+      nullable: true
+    suspended_at:
+      type: string
+      format: date-time
+      nullable: true
+    suspension_expires_at:
+      type: string
+      format: date-time
+      nullable: true
+    active_sessions: { type: integer }
+    counts: { $ref: '#/UserCounts' }
+    ai_budget:
+      nullable: true
+      allOf:
+        - $ref: '#/AIBudget'
+    version: { type: integer }
+
+UserCounts:
+  type: object
+  additionalProperties: false
+  required: [tasks, events, projects, notes, captures, assistant_threads]
+  properties:
+    tasks: { type: integer }
+    events: { type: integer }
+    projects: { type: integer }
+    notes: { type: integer }
+    captures: { type: integer }
+    assistant_threads: { type: integer }
+
+AIBudget:
+  type: object
+  additionalProperties: false
+  required: [daily_calls, monthly_calls]
+  properties:
+    daily_calls:
+      type: integer
+      nullable: true
+    monthly_calls:
+      type: integer
+      nullable: true
+    effective_from:
+      type: string
+      format: date-time
+      nullable: true
+    effective_until:
+      type: string
+      format: date-time
+      nullable: true
+
+AdminUserDetailResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data: { $ref: '#/AdminUserDetail' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+UserUsagePoint:
+  type: object
+  additionalProperties: false
+  required: [date, active, capture_submitted, capture_confirmed, task_completed,
+             assistant_turns, proposal_executed, review_generated]
+  properties:
+    date: { type: string, format: date }
+    active: { type: boolean }
+    capture_submitted: { type: integer }
+    capture_confirmed: { type: integer }
+    task_completed: { type: integer }
+    assistant_turns: { type: integer }
+    proposal_executed: { type: integer }
+    review_generated: { type: integer }
+
+UserUsageResponse:
+  type: object
+  additionalProperties: false
+  required: [data, freshness, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/UserUsagePoint' }
+    freshness: { $ref: './common.yaml#/DataFreshness' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+UserCostRow:
+  type: object
+  additionalProperties: false
+  required: [date, feature, provider, model, input_tokens, cached_input_tokens,
+             output_tokens, calls, cost]
+  properties:
+    date: { type: string, format: date }
+    feature: { type: string }
+    provider: { type: string }
+    model: { type: string }
+    input_tokens: { type: integer }
+    cached_input_tokens: { type: integer }
+    output_tokens: { type: integer }
+    calls: { type: integer }
+    cost: { $ref: './common.yaml#/MoneyAmount' }
+    pricing_missing_calls: { type: integer }
+
+UserCostResponse:
+  type: object
+  additionalProperties: false
+  required: [data, total, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/UserCostRow' }
+    total: { $ref: './common.yaml#/MoneyAmount' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+AdminOperation:
+  type: object
+  additionalProperties: false
+  description: 异步操作。只含标识、状态与错误码，不含请求或结果正文。
+  required: [id, kind, status, created_at]
+  properties:
+    id: { type: string }
+    kind: { type: string }
+    status: { type: string }
+    created_at: { type: string, format: date-time }
+    updated_at: { type: string, format: date-time }
+    resource_id:
+      type: string
+      nullable: true
+    error_code:
+      type: string
+      nullable: true
+    retryable:
+      type: boolean
+      nullable: true
+
+AdminOperationListResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/AdminOperation' }
+    page: { $ref: './common.yaml#/PageInfo' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+AdminAuditEntry:
+  type: object
+  additionalProperties: false
+  required: [id, occurred_at, action, outcome, request_id]
+  properties:
+    id: { type: string }
+    occurred_at: { type: string, format: date-time }
+    action: { type: string }
+    outcome:
+      type: string
+      enum: [succeeded, failed]
+    target_type:
+      type: string
+      nullable: true
+    target_id:
+      type: string
+      nullable: true
+    reason_code:
+      type: string
+      nullable: true
+    reason_text:
+      type: string
+      nullable: true
+    request_id: { type: string }
+
+AdminAuditListResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/AdminAuditEntry' }
+    page: { $ref: './common.yaml#/PageInfo' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }

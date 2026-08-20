@@ -1,0 +1,260 @@
+QueueStatus:
+  type: object
+  additionalProperties: false
+  required: [queue, available, running, scheduled, retryable, discarded]
+  properties:
+    queue: { type: string }
+    available: { type: integer }
+    running: { type: integer }
+    scheduled: { type: integer }
+    retryable: { type: integer }
+    discarded: { type: integer }
+    oldest_available_age_seconds:
+      type: integer
+      nullable: true
+      description: |
+        最老的待执行任务等了多久。**这是队列健康最直接的指标**——
+        任务数不高但等了两小时，说明消费侧停了。
+
+QueueStatusResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/QueueStatus' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+ProviderStatus:
+  type: object
+  additionalProperties: false
+  required: [name, kind, calls_24h, success_rate, error_rate, rate_limited_rate]
+  properties:
+    name: { type: string }
+    kind:
+      type: string
+      enum: [ai, storage, sms]
+    calls_24h: { type: integer }
+    success_rate:
+      type: number
+      format: double
+      nullable: true
+    error_rate:
+      type: number
+      format: double
+      nullable: true
+    rate_limited_rate:
+      type: number
+      format: double
+      nullable: true
+    p95_latency_ms:
+      type: integer
+      nullable: true
+    last_success_at:
+      type: string
+      format: date-time
+      nullable: true
+    last_failure_at:
+      type: string
+      format: date-time
+      nullable: true
+
+ProviderStatusResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/ProviderStatus' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+AICostSummary:
+  type: object
+  additionalProperties: false
+  required: [range, calls, success_rate, input_tokens, cached_input_tokens,
+             output_tokens, cost, failed_cost, pricing_missing_calls, latency]
+  properties:
+    range: { $ref: './dashboard.yaml#/DateRange' }
+    calls: { type: integer }
+    success_rate:
+      type: number
+      format: double
+      nullable: true
+    input_tokens: { type: integer }
+    cached_input_tokens: { type: integer }
+    output_tokens: { type: integer }
+    cost: { $ref: './common.yaml#/MoneyAmount' }
+    failed_cost:
+      description: |
+        失败调用产生的成本。**失败也可能花钱**——模型先算了一半才报错，
+        这部分照样计费，不单列出来会以为失败是免费的。
+      allOf:
+        - $ref: './common.yaml#/MoneyAmount'
+    pricing_missing_calls: { type: integer }
+    latency: { $ref: '#/LatencyPercentiles' }
+
+LatencyPercentiles:
+  type: object
+  additionalProperties: false
+  required: [p50, p95, p99]
+  properties:
+    p50: { type: integer, nullable: true }
+    p95: { type: integer, nullable: true }
+    p99: { type: integer, nullable: true }
+
+AICostSummaryResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data: { $ref: '#/AICostSummary' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+AICostBreakdownRow:
+  type: object
+  additionalProperties: false
+  required: [group_key, calls, input_tokens, output_tokens, cost, pricing_missing_calls]
+  properties:
+    group_key:
+      type: string
+      description: 分组键，取值随 group_by 变化（日期、feature、provider、模型）。
+    calls: { type: integer }
+    input_tokens: { type: integer }
+    cached_input_tokens: { type: integer }
+    output_tokens: { type: integer }
+    cost: { $ref: './common.yaml#/MoneyAmount' }
+    pricing_missing_calls: { type: integer }
+
+AICostBreakdownResponse:
+  type: object
+  additionalProperties: false
+  required: [data, group_by, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/AICostBreakdownRow' }
+    group_by: { type: string }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+AIPrice:
+  type: object
+  additionalProperties: false
+  required: [id, provider, model, usage_unit, unit_size, unit_price_usd, effective_from]
+  properties:
+    id: { type: string }
+    provider: { type: string }
+    model: { type: string }
+    usage_unit: { $ref: '#/UsageUnit' }
+    unit_size:
+      type: string
+      description: 单价对应的用量。**用字符串传 decimal**，JSON number 会漂。
+    unit_price_usd: { type: string }
+    effective_from: { type: string, format: date-time }
+    effective_until:
+      type: string
+      format: date-time
+      nullable: true
+
+UsageUnit:
+  type: string
+  enum: [input_token, cached_input_token, output_token, audio_second, image, request]
+
+AIPriceListResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/AIPrice' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+CreateAIPriceRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    新增一个价格版本。**不覆盖旧值**——覆盖会让上个月的报表这个月一看
+    变了数，那份报表就没有任何意义了。
+  required: [provider, model, usage_unit, unit_size, unit_price_usd, effective_from]
+  properties:
+    provider: { type: string, minLength: 1 }
+    model: { type: string, minLength: 1 }
+    usage_unit: { $ref: '#/UsageUnit' }
+    unit_size: { type: string }
+    unit_price_usd: { type: string }
+    effective_from: { type: string, format: date-time }
+    effective_until:
+      type: string
+      format: date-time
+      nullable: true
+
+AIPriceResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data: { $ref: '#/AIPrice' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+FunnelStep:
+  type: object
+  additionalProperties: false
+  required: [name, users, events]
+  properties:
+    name: { type: string }
+    users: { type: integer }
+    events: { type: integer }
+    conversion_from_previous:
+      type: number
+      format: double
+      nullable: true
+      description: 分母为 0 时为空，界面显示“—”而不是 0%。
+    conversion_from_start:
+      type: number
+      format: double
+      nullable: true
+
+FunnelResponse:
+  type: object
+  additionalProperties: false
+  required: [funnel, data, freshness, meta]
+  properties:
+    funnel: { type: string }
+    data:
+      type: array
+      items: { $ref: '#/FunnelStep' }
+    freshness: { $ref: './common.yaml#/DataFreshness' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+UsageOverview:
+  type: object
+  additionalProperties: false
+  required: [range, dau, wau, mau, feature_usage]
+  properties:
+    range: { $ref: './dashboard.yaml#/DateRange' }
+    dau: { type: integer }
+    wau: { type: integer }
+    mau: { type: integer }
+    feature_usage:
+      type: array
+      items: { $ref: '#/FeatureUsage' }
+
+FeatureUsage:
+  type: object
+  additionalProperties: false
+  required: [feature, users, events]
+  properties:
+    feature: { type: string }
+    users: { type: integer }
+    events: { type: integer }
+
+UsageOverviewResponse:
+  type: object
+  additionalProperties: false
+  required: [data, freshness, meta]
+  properties:
+    data: { $ref: '#/UsageOverview' }
+    freshness: { $ref: './common.yaml#/DataFreshness' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }

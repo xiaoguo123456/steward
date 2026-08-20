@@ -27,6 +27,30 @@ security:
 tags:
   - name: admin-auth
     description: 登录与会话
+  - name: admin-dashboard
+    description: 总览
+  - name: admin-users
+    description: 用户查询与管理
+  - name: admin-usage
+    description: 使用分析
+  - name: admin-costs
+    description: AI 成本
+  - name: admin-ops
+    description: 运行中心
+  - name: admin-audit
+    description: 操作审计
+  - name: admin-dashboard
+    description: 总览
+  - name: admin-users
+    description: 用户查询与管理
+  - name: admin-usage
+    description: 使用分析
+  - name: admin-costs
+    description: AI 成本
+  - name: admin-ops
+    description: 运行中心
+  - name: admin-audit
+    description: 操作审计
 paths:
   /admin/v1/login:
     post:
@@ -101,6 +125,407 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/dashboard/summary:
+    get:
+      operationId: adminDashboardSummary
+      summary: 总览
+      description: |
+        各模块独立取数。**某个数据源失败时保留其他模块**并在 failed_sections 里标出来——
+        一个模块查不出来，不该让运营连用户数都看不到。
+      tags:
+        - admin-dashboard
+      parameters:
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/dashboard/trends:
+    get:
+      operationId: adminDashboardTrends
+      summary: 总览趋势
+      tags:
+        - admin-dashboard
+      parameters:
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardTrendsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users:
+    get:
+      operationId: adminListUsers
+      summary: 用户列表
+      description: |
+        读的是脱敏读模型，不是业务表。**手机号只能精确查，不支持模糊搜索**：
+        模糊搜索等于给了一个把号码一位位试出来的接口。
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/UserStatusFilter'
+        - $ref: '#/components/parameters/InitializedFilter'
+        - $ref: '#/components/parameters/UserIDFilter'
+        - $ref: '#/components/parameters/PhoneFilter'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}:
+    get:
+      operationId: adminGetUser
+      summary: 用户概览
+      description: |
+        只返回状态、数量与标识。**不返回笔记、会话消息、记忆、OCR 结果或媒体正文。**
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}/usage:
+    get:
+      operationId: adminGetUserUsage
+      summary: 用户使用情况
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUsageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}/costs:
+    get:
+      operationId: adminGetUserCosts
+      summary: 用户 AI 成本
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCostResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}/operations:
+    get:
+      operationId: adminGetUserOperations
+      summary: 用户 Operation
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOperationListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}/admin-actions:
+    get:
+      operationId: adminGetUserAdminActions
+      summary: 用户管理记录
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/usage/overview:
+    get:
+      operationId: adminUsageOverview
+      summary: 使用概览
+      tags:
+        - admin-usage
+      parameters:
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageOverviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/usage/funnels/{funnel}:
+    get:
+      operationId: adminGetFunnel
+      summary: 漏斗
+      description: |
+        分母为 0 时转化率返回空，界面显示“—”**而不是 0%**：
+        没有样本和转化率为零是两回事。
+      tags:
+        - admin-usage
+      parameters:
+        - $ref: '#/components/parameters/FunnelName'
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunnelResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/ai-costs/summary:
+    get:
+      operationId: adminAICostSummary
+      summary: AI 成本汇总
+      tags:
+        - admin-costs
+      parameters:
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AICostSummaryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/ai-costs/breakdown:
+    get:
+      operationId: adminAICostBreakdown
+      summary: AI 成本分组
+      tags:
+        - admin-costs
+      parameters:
+        - $ref: '#/components/parameters/RangeFrom'
+        - $ref: '#/components/parameters/RangeTo'
+        - $ref: '#/components/parameters/GroupBy'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AICostBreakdownResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/queues:
+    get:
+      operationId: adminGetQueues
+      summary: Queue 状态
+      tags:
+        - admin-ops
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueStatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/providers:
+    get:
+      operationId: adminGetProviders
+      summary: Provider 状态
+      tags:
+        - admin-ops
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderStatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/operations:
+    get:
+      operationId: adminListOperations
+      summary: Operation 列表
+      tags:
+        - admin-ops
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/OperationStatusFilter'
+        - $ref: '#/components/parameters/UserIDFilter'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOperationListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/audit-logs:
+    get:
+      operationId: adminListAuditLogs
+      summary: 操作审计
+      tags:
+        - admin-audit
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/ActionFilter'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
 components:
@@ -256,6 +681,940 @@ components:
       properties:
         meta:
           $ref: '#/components/schemas/ResponseMeta'
+    DateRange:
+      type: object
+      additionalProperties: false
+      required:
+        - from
+        - to
+        - timezone
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        timezone:
+          type: string
+          description: 报表时区。所有日期按它切日，界面上也按它显示。
+    UserMetrics:
+      type: object
+      additionalProperties: false
+      required:
+        - total
+        - new_users
+        - initialized
+        - dau
+        - wau
+        - mau
+      properties:
+        total:
+          type: integer
+        new_users:
+          type: integer
+        initialized:
+          type: integer
+        dau:
+          type: integer
+        wau:
+          type: integer
+        mau:
+          type: integer
+    UsageMetrics:
+      type: object
+      additionalProperties: false
+      required:
+        - capture_submitted
+        - capture_confirmed
+        - assistant_turns
+        - task_completed
+      properties:
+        capture_submitted:
+          type: integer
+        capture_confirmed:
+          type: integer
+        assistant_turns:
+          type: integer
+        task_completed:
+          type: integer
+    CostStatus:
+      type: string
+      enum:
+        - calculated
+        - partial
+        - pricing_missing
+        - pending
+        - not_applicable
+        - no_usage
+    MoneyAmount:
+      type: object
+      additionalProperties: false
+      description: |
+        金额。**用字符串传 decimal**，不用 number——
+        JSON 的 number 是 IEEE754 双精度，累加会漂。
+
+        status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+        「不知道多少钱」和「不花钱」是完全不同的两件事，
+        显示成 0 会让人以为这条链路免费。
+      required:
+        - amount
+        - currency
+        - status
+      properties:
+        amount:
+          type: string
+          nullable: true
+          example: '2.381245'
+        currency:
+          type: string
+          enum:
+            - USD
+        status:
+          $ref: '#/components/schemas/CostStatus'
+    AIMetrics:
+      type: object
+      additionalProperties: false
+      required:
+        - calls
+        - success_rate
+        - p95_latency_ms
+        - cost
+        - input_tokens
+        - output_tokens
+        - pricing_missing_calls
+      properties:
+        calls:
+          type: integer
+        success_rate:
+          type: number
+          format: double
+          nullable: true
+          description: 分母为 0 时为空，界面显示“—”而不是 0%。
+        p95_latency_ms:
+          type: integer
+          nullable: true
+        cost:
+          $ref: '#/components/schemas/MoneyAmount'
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        pricing_missing_calls:
+          type: integer
+          description: 有用量但匹配不到价格的调用数。它不为 0 时，成本一定是偏低的。
+    RuntimeMetrics:
+      type: object
+      additionalProperties: false
+      required:
+        - failed_operations
+        - queue_available
+        - queue_running
+        - queue_retryable
+        - discarded_jobs
+      properties:
+        failed_operations:
+          type: integer
+        queue_available:
+          type: integer
+        queue_running:
+          type: integer
+        queue_retryable:
+          type: integer
+        discarded_jobs:
+          type: integer
+    DataFreshness:
+      type: object
+      additionalProperties: false
+      description: |
+        读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+        因此**必须把「这份数据算到什么时候」告诉使用者**——
+        不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+      required:
+        - data_as_of
+        - aggregation_status
+      properties:
+        data_as_of:
+          type: string
+          format: date-time
+          nullable: true
+        aggregation_status:
+          type: string
+          enum:
+            - fresh
+            - stale
+            - pending
+            - failed
+    DashboardSummary:
+      type: object
+      additionalProperties: false
+      description: |
+        总览。每个模块各自带新鲜度：**部分数据源失败时保留其他模块**，
+        而不是整页报错——一个模块查不出来不该让运营连用户数都看不到。
+      required:
+        - range
+        - users
+        - usage
+        - ai
+        - runtime
+        - freshness
+      properties:
+        range:
+          $ref: '#/components/schemas/DateRange'
+        users:
+          $ref: '#/components/schemas/UserMetrics'
+        usage:
+          $ref: '#/components/schemas/UsageMetrics'
+        ai:
+          $ref: '#/components/schemas/AIMetrics'
+        runtime:
+          $ref: '#/components/schemas/RuntimeMetrics'
+        freshness:
+          $ref: '#/components/schemas/DataFreshness'
+        failed_sections:
+          type: array
+          description: 取不到的模块名。空数组表示全部正常。
+          items:
+            type: string
+    DashboardSummaryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/DashboardSummary'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    TrendPoint:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - active_users
+        - capture_submitted
+        - assistant_turns
+        - ai_calls
+      properties:
+        date:
+          type: string
+          format: date
+        active_users:
+          type: integer
+        capture_submitted:
+          type: integer
+        assistant_turns:
+          type: integer
+        ai_calls:
+          type: integer
+        ai_cost:
+          $ref: '#/components/schemas/MoneyAmount'
+    DashboardTrendsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - freshness
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendPoint'
+        freshness:
+          $ref: '#/components/schemas/DataFreshness'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    AccountStatus:
+      type: string
+      enum:
+        - active
+        - suspended
+    AdminUserSummary:
+      type: object
+      additionalProperties: false
+      description: |
+        用户列表里的一行。
+
+        **不含任何用户正文**：没有笔记、没有会话消息、没有记忆、
+        没有 OCR 结果。能看到的是状态、数量和标识。
+      required:
+        - id
+        - masked_phone
+        - account_status
+        - initialized
+        - created_at
+        - active_days_30d
+        - ai_cost_30d
+        - version
+      properties:
+        id:
+          type: string
+        masked_phone:
+          type: string
+          description: 服务端脱敏，形如 138****8000。**完整号码不出现在任何响应里。**
+          example: 138****8000
+        display_name:
+          type: string
+        account_status:
+          $ref: '#/components/schemas/AccountStatus'
+        initialized:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_active_at:
+          type: string
+          format: date-time
+          nullable: true
+        active_days_30d:
+          type: integer
+        ai_cost_30d:
+          $ref: '#/components/schemas/MoneyAmount'
+        latest_error_code:
+          type: string
+          nullable: true
+          description: 稳定错误码，不是错误正文——正文里常带用户输入的片段。
+        version:
+          type: integer
+          description: 管理操作要带它做乐观锁，避免两个人同时改出互相覆盖的结果。
+    PageInfo:
+      type: object
+      additionalProperties: false
+      required:
+        - next_cursor
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+          description: 为空表示没有下一页。游标不透明，客户端不得解析。
+    AdminUserListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - freshness
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserSummary'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        freshness:
+          $ref: '#/components/schemas/DataFreshness'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UserCounts:
+      type: object
+      additionalProperties: false
+      required:
+        - tasks
+        - events
+        - projects
+        - notes
+        - captures
+        - assistant_threads
+      properties:
+        tasks:
+          type: integer
+        events:
+          type: integer
+        projects:
+          type: integer
+        notes:
+          type: integer
+        captures:
+          type: integer
+        assistant_threads:
+          type: integer
+    AIBudget:
+      type: object
+      additionalProperties: false
+      required:
+        - daily_calls
+        - monthly_calls
+      properties:
+        daily_calls:
+          type: integer
+          nullable: true
+        monthly_calls:
+          type: integer
+          nullable: true
+        effective_from:
+          type: string
+          format: date-time
+          nullable: true
+        effective_until:
+          type: string
+          format: date-time
+          nullable: true
+    AdminUserDetail:
+      type: object
+      additionalProperties: false
+      description: |
+        用户概览。**只返回状态、数量和标识**，不返回 Note、Message、Memory、
+        OCR、转写或媒体正文。后台能知道「这个人有多少条笔记」，
+        但看不到笔记写了什么。
+      required:
+        - id
+        - masked_phone
+        - account_status
+        - initialized
+        - timezone
+        - created_at
+        - counts
+        - version
+      properties:
+        id:
+          type: string
+        masked_phone:
+          type: string
+        display_name:
+          type: string
+        account_status:
+          $ref: '#/components/schemas/AccountStatus'
+        initialized:
+          type: boolean
+        timezone:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_active_at:
+          type: string
+          format: date-time
+          nullable: true
+        suspended_at:
+          type: string
+          format: date-time
+          nullable: true
+        suspension_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        active_sessions:
+          type: integer
+        counts:
+          $ref: '#/components/schemas/UserCounts'
+        ai_budget:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AIBudget'
+        version:
+          type: integer
+    AdminUserDetailResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/AdminUserDetail'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UserUsagePoint:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - active
+        - capture_submitted
+        - capture_confirmed
+        - task_completed
+        - assistant_turns
+        - proposal_executed
+        - review_generated
+      properties:
+        date:
+          type: string
+          format: date
+        active:
+          type: boolean
+        capture_submitted:
+          type: integer
+        capture_confirmed:
+          type: integer
+        task_completed:
+          type: integer
+        assistant_turns:
+          type: integer
+        proposal_executed:
+          type: integer
+        review_generated:
+          type: integer
+    UserUsageResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - freshness
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserUsagePoint'
+        freshness:
+          $ref: '#/components/schemas/DataFreshness'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UserCostRow:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - feature
+        - provider
+        - model
+        - input_tokens
+        - cached_input_tokens
+        - output_tokens
+        - calls
+        - cost
+      properties:
+        date:
+          type: string
+          format: date
+        feature:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+        input_tokens:
+          type: integer
+        cached_input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        calls:
+          type: integer
+        cost:
+          $ref: '#/components/schemas/MoneyAmount'
+        pricing_missing_calls:
+          type: integer
+    UserCostResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - total
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserCostRow'
+        total:
+          $ref: '#/components/schemas/MoneyAmount'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    AdminOperation:
+      type: object
+      additionalProperties: false
+      description: 异步操作。只含标识、状态与错误码，不含请求或结果正文。
+      required:
+        - id
+        - kind
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        resource_id:
+          type: string
+          nullable: true
+        error_code:
+          type: string
+          nullable: true
+        retryable:
+          type: boolean
+          nullable: true
+    AdminOperationListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOperation'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    AdminAuditEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - occurred_at
+        - action
+        - outcome
+        - request_id
+      properties:
+        id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        action:
+          type: string
+        outcome:
+          type: string
+          enum:
+            - succeeded
+            - failed
+        target_type:
+          type: string
+          nullable: true
+        target_id:
+          type: string
+          nullable: true
+        reason_code:
+          type: string
+          nullable: true
+        reason_text:
+          type: string
+          nullable: true
+        request_id:
+          type: string
+    AdminAuditListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAuditEntry'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    FeatureUsage:
+      type: object
+      additionalProperties: false
+      required:
+        - feature
+        - users
+        - events
+      properties:
+        feature:
+          type: string
+        users:
+          type: integer
+        events:
+          type: integer
+    UsageOverview:
+      type: object
+      additionalProperties: false
+      required:
+        - range
+        - dau
+        - wau
+        - mau
+        - feature_usage
+      properties:
+        range:
+          $ref: '#/components/schemas/DateRange'
+        dau:
+          type: integer
+        wau:
+          type: integer
+        mau:
+          type: integer
+        feature_usage:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureUsage'
+    UsageOverviewResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - freshness
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/UsageOverview'
+        freshness:
+          $ref: '#/components/schemas/DataFreshness'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    FunnelStep:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - users
+        - events
+      properties:
+        name:
+          type: string
+        users:
+          type: integer
+        events:
+          type: integer
+        conversion_from_previous:
+          type: number
+          format: double
+          nullable: true
+          description: 分母为 0 时为空，界面显示“—”而不是 0%。
+        conversion_from_start:
+          type: number
+          format: double
+          nullable: true
+    FunnelResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - funnel
+        - data
+        - freshness
+        - meta
+      properties:
+        funnel:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunnelStep'
+        freshness:
+          $ref: '#/components/schemas/DataFreshness'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    LatencyPercentiles:
+      type: object
+      additionalProperties: false
+      required:
+        - p50
+        - p95
+        - p99
+      properties:
+        p50:
+          type: integer
+          nullable: true
+        p95:
+          type: integer
+          nullable: true
+        p99:
+          type: integer
+          nullable: true
+    AICostSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - range
+        - calls
+        - success_rate
+        - input_tokens
+        - cached_input_tokens
+        - output_tokens
+        - cost
+        - failed_cost
+        - pricing_missing_calls
+        - latency
+      properties:
+        range:
+          $ref: '#/components/schemas/DateRange'
+        calls:
+          type: integer
+        success_rate:
+          type: number
+          format: double
+          nullable: true
+        input_tokens:
+          type: integer
+        cached_input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cost:
+          $ref: '#/components/schemas/MoneyAmount'
+        failed_cost:
+          description: |
+            失败调用产生的成本。**失败也可能花钱**——模型先算了一半才报错，
+            这部分照样计费，不单列出来会以为失败是免费的。
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        pricing_missing_calls:
+          type: integer
+        latency:
+          $ref: '#/components/schemas/LatencyPercentiles'
+    AICostSummaryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/AICostSummary'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    AICostBreakdownRow:
+      type: object
+      additionalProperties: false
+      required:
+        - group_key
+        - calls
+        - input_tokens
+        - output_tokens
+        - cost
+        - pricing_missing_calls
+      properties:
+        group_key:
+          type: string
+          description: 分组键，取值随 group_by 变化（日期、feature、provider、模型）。
+        calls:
+          type: integer
+        input_tokens:
+          type: integer
+        cached_input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cost:
+          $ref: '#/components/schemas/MoneyAmount'
+        pricing_missing_calls:
+          type: integer
+    AICostBreakdownResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - group_by
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AICostBreakdownRow'
+        group_by:
+          type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    QueueStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - queue
+        - available
+        - running
+        - scheduled
+        - retryable
+        - discarded
+      properties:
+        queue:
+          type: string
+        available:
+          type: integer
+        running:
+          type: integer
+        scheduled:
+          type: integer
+        retryable:
+          type: integer
+        discarded:
+          type: integer
+        oldest_available_age_seconds:
+          type: integer
+          nullable: true
+          description: |
+            最老的待执行任务等了多久。**这是队列健康最直接的指标**——
+            任务数不高但等了两小时，说明消费侧停了。
+    QueueStatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueueStatus'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ProviderStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - kind
+        - calls_24h
+        - success_rate
+        - error_rate
+        - rate_limited_rate
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+            - ai
+            - storage
+            - sms
+        calls_24h:
+          type: integer
+        success_rate:
+          type: number
+          format: double
+          nullable: true
+        error_rate:
+          type: number
+          format: double
+          nullable: true
+        rate_limited_rate:
+          type: number
+          format: double
+          nullable: true
+        p95_latency_ms:
+          type: integer
+          nullable: true
+        last_success_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_failure_at:
+          type: string
+          format: date-time
+          nullable: true
+    ProviderStatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderStatus'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
   responses:
     BadRequest:
       description: 参数不合法。
@@ -291,11 +1650,120 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: 目标不存在。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   parameters:
     CSRFToken:
       name: X-Admin-CSRF
       in: header
       required: true
       description: 登录时下发，写操作必带。与 Origin 校验一起用，单靠任何一个都不够。
+      schema:
+        type: string
+    RangeFrom:
+      name: from
+      in: query
+      required: false
+      description: 统计区间起始日（含），按后台报表时区切日。
+      schema:
+        type: string
+        format: date
+    RangeTo:
+      name: to
+      in: query
+      required: false
+      description: 统计区间结束日（含）。
+      schema:
+        type: string
+        format: date
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: 上一页返回的 next_cursor，不透明。
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: 每页条数，默认 20，最大 100。
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    UserStatusFilter:
+      name: account_status
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/AccountStatus'
+    InitializedFilter:
+      name: initialized
+      in: query
+      required: false
+      schema:
+        type: boolean
+    UserIDFilter:
+      name: user_id
+      in: query
+      required: false
+      description: 精确匹配用户 ID。
+      schema:
+        type: string
+    PhoneFilter:
+      name: phone
+      in: query
+      required: false
+      description: |
+        **精确**匹配手机号。服务端用版本化 HMAC 比对，库里没有明文。
+
+        只支持精确匹配，不支持前缀或模糊——模糊搜索等于提供了一个
+        把号码一位一位试出来的接口。
+      schema:
+        type: string
+    UserID:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+    FunnelName:
+      name: funnel
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - onboarding
+          - capture
+          - assistant
+    GroupBy:
+      name: group_by
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - date
+          - feature
+          - provider
+          - model
+        default: date
+    OperationStatusFilter:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+    ActionFilter:
+      name: action
+      in: query
+      required: false
       schema:
         type: string

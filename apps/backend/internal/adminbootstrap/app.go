@@ -14,6 +14,7 @@ import (
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/adminapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/auth"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/readapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/httpx"
@@ -35,7 +36,8 @@ type App struct {
 // 各模块的 API 类型名各不相同，因此可以直接嵌入并靠 Go 的方法提升；
 // 下面那行编译期断言保证漏实现任何一个操作都编译不过。
 type Server struct {
-	*auth.API
+	*auth.SessionAPI
+	*readapi.ReadAPI
 }
 
 var _ adminapi.StrictServerInterface = (*Server)(nil)
@@ -51,6 +53,12 @@ func New(ctx context.Context, cfg config.AdminConfig, logger *slog.Logger) (*App
 		return nil, nil, err
 	}
 
+	// 手机号查询散列的密钥。**和会话密钥分开**：它的轮换会让所有已存散列
+	// 失效，不该被别的用途牵着走。这里暂时复用 CSRF 密钥的值——
+	// 聚合任务用的是主配置里的 MemoryFingerprintKey，两边必须一致，
+	// 否则查询算出来的散列和入库时的对不上，精确查询永远查不到。
+	phoneKey := []byte(cfg.PhoneLookupKey)
+
 	sessions := auth.NewService(db, cfg)
 	middleware := auth.NewMiddleware(sessions, cfg, logger)
 	limiter := auth.NewLoginLimiter()
@@ -60,7 +68,10 @@ func New(ctx context.Context, cfg config.AdminConfig, logger *slog.Logger) (*App
 		Logger: logger,
 		DB:     db,
 		Server: &Server{
-			API: auth.NewAPI(sessions, middleware, limiter, cfg, logger),
+			SessionAPI: auth.NewSessionAPI(sessions, middleware, limiter, cfg, logger),
+			// 手机号查询用的 HMAC 密钥必须和聚合时用的是同一把，
+			// 否则算出来的散列对不上，精确查询永远查不到。
+			ReadAPI: readapi.NewReadAPI(db, cfg, phoneKey, logger),
 		},
 	}
 	app.middleware = middleware

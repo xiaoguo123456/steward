@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -19,7 +20,98 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+// Defines values for AccountStatus.
+const (
+	Active    AccountStatus = "active"
+	Suspended AccountStatus = "suspended"
+)
+
+// Valid indicates whether the value is a known member of the AccountStatus enum.
+func (e AccountStatus) Valid() bool {
+	switch e {
+	case Active:
+		return true
+	case Suspended:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminAuditEntryOutcome.
+const (
+	AdminAuditEntryOutcomeFailed    AdminAuditEntryOutcome = "failed"
+	AdminAuditEntryOutcomeSucceeded AdminAuditEntryOutcome = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the AdminAuditEntryOutcome enum.
+func (e AdminAuditEntryOutcome) Valid() bool {
+	switch e {
+	case AdminAuditEntryOutcomeFailed:
+		return true
+	case AdminAuditEntryOutcomeSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CostStatus.
+const (
+	CostStatusCalculated     CostStatus = "calculated"
+	CostStatusNoUsage        CostStatus = "no_usage"
+	CostStatusNotApplicable  CostStatus = "not_applicable"
+	CostStatusPartial        CostStatus = "partial"
+	CostStatusPending        CostStatus = "pending"
+	CostStatusPricingMissing CostStatus = "pricing_missing"
+)
+
+// Valid indicates whether the value is a known member of the CostStatus enum.
+func (e CostStatus) Valid() bool {
+	switch e {
+	case CostStatusCalculated:
+		return true
+	case CostStatusNoUsage:
+		return true
+	case CostStatusNotApplicable:
+		return true
+	case CostStatusPartial:
+		return true
+	case CostStatusPending:
+		return true
+	case CostStatusPricingMissing:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DataFreshnessAggregationStatus.
+const (
+	DataFreshnessAggregationStatusFailed  DataFreshnessAggregationStatus = "failed"
+	DataFreshnessAggregationStatusFresh   DataFreshnessAggregationStatus = "fresh"
+	DataFreshnessAggregationStatusPending DataFreshnessAggregationStatus = "pending"
+	DataFreshnessAggregationStatusStale   DataFreshnessAggregationStatus = "stale"
+)
+
+// Valid indicates whether the value is a known member of the DataFreshnessAggregationStatus enum.
+func (e DataFreshnessAggregationStatus) Valid() bool {
+	switch e {
+	case DataFreshnessAggregationStatusFailed:
+		return true
+	case DataFreshnessAggregationStatusFresh:
+		return true
+	case DataFreshnessAggregationStatusPending:
+		return true
+	case DataFreshnessAggregationStatusStale:
+		return true
+	default:
+		return false
+	}
+}
 
 // Defines values for ErrorCode.
 const (
@@ -78,6 +170,264 @@ func (e ErrorCode) Valid() bool {
 	}
 }
 
+// Defines values for MoneyAmountCurrency.
+const (
+	USD MoneyAmountCurrency = "USD"
+)
+
+// Valid indicates whether the value is a known member of the MoneyAmountCurrency enum.
+func (e MoneyAmountCurrency) Valid() bool {
+	switch e {
+	case USD:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProviderStatusKind.
+const (
+	Ai      ProviderStatusKind = "ai"
+	Sms     ProviderStatusKind = "sms"
+	Storage ProviderStatusKind = "storage"
+)
+
+// Valid indicates whether the value is a known member of the ProviderStatusKind enum.
+func (e ProviderStatusKind) Valid() bool {
+	switch e {
+	case Ai:
+		return true
+	case Sms:
+		return true
+	case Storage:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FunnelName.
+const (
+	FunnelNameAssistant  FunnelName = "assistant"
+	FunnelNameCapture    FunnelName = "capture"
+	FunnelNameOnboarding FunnelName = "onboarding"
+)
+
+// Valid indicates whether the value is a known member of the FunnelName enum.
+func (e FunnelName) Valid() bool {
+	switch e {
+	case FunnelNameAssistant:
+		return true
+	case FunnelNameCapture:
+		return true
+	case FunnelNameOnboarding:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GroupBy.
+const (
+	GroupByDate     GroupBy = "date"
+	GroupByFeature  GroupBy = "feature"
+	GroupByModel    GroupBy = "model"
+	GroupByProvider GroupBy = "provider"
+)
+
+// Valid indicates whether the value is a known member of the GroupBy enum.
+func (e GroupBy) Valid() bool {
+	switch e {
+	case GroupByDate:
+		return true
+	case GroupByFeature:
+		return true
+	case GroupByModel:
+		return true
+	case GroupByProvider:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminAICostBreakdownParamsGroupBy.
+const (
+	AdminAICostBreakdownParamsGroupByDate     AdminAICostBreakdownParamsGroupBy = "date"
+	AdminAICostBreakdownParamsGroupByFeature  AdminAICostBreakdownParamsGroupBy = "feature"
+	AdminAICostBreakdownParamsGroupByModel    AdminAICostBreakdownParamsGroupBy = "model"
+	AdminAICostBreakdownParamsGroupByProvider AdminAICostBreakdownParamsGroupBy = "provider"
+)
+
+// Valid indicates whether the value is a known member of the AdminAICostBreakdownParamsGroupBy enum.
+func (e AdminAICostBreakdownParamsGroupBy) Valid() bool {
+	switch e {
+	case AdminAICostBreakdownParamsGroupByDate:
+		return true
+	case AdminAICostBreakdownParamsGroupByFeature:
+		return true
+	case AdminAICostBreakdownParamsGroupByModel:
+		return true
+	case AdminAICostBreakdownParamsGroupByProvider:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminGetFunnelParamsFunnel.
+const (
+	AdminGetFunnelParamsFunnelAssistant  AdminGetFunnelParamsFunnel = "assistant"
+	AdminGetFunnelParamsFunnelCapture    AdminGetFunnelParamsFunnel = "capture"
+	AdminGetFunnelParamsFunnelOnboarding AdminGetFunnelParamsFunnel = "onboarding"
+)
+
+// Valid indicates whether the value is a known member of the AdminGetFunnelParamsFunnel enum.
+func (e AdminGetFunnelParamsFunnel) Valid() bool {
+	switch e {
+	case AdminGetFunnelParamsFunnelAssistant:
+		return true
+	case AdminGetFunnelParamsFunnelCapture:
+		return true
+	case AdminGetFunnelParamsFunnelOnboarding:
+		return true
+	default:
+		return false
+	}
+}
+
+// AIBudget defines model for AIBudget.
+type AIBudget struct {
+	DailyCalls     *int       `json:"daily_calls"`
+	EffectiveFrom  *time.Time `json:"effective_from,omitempty"`
+	EffectiveUntil *time.Time `json:"effective_until,omitempty"`
+	MonthlyCalls   *int       `json:"monthly_calls"`
+}
+
+// AICostBreakdownResponse defines model for AICostBreakdownResponse.
+type AICostBreakdownResponse struct {
+	Data    []AICostBreakdownRow `json:"data"`
+	GroupBy string               `json:"group_by"`
+	Meta    ResponseMeta         `json:"meta"`
+}
+
+// AICostBreakdownRow defines model for AICostBreakdownRow.
+type AICostBreakdownRow struct {
+	CachedInputTokens *int `json:"cached_input_tokens,omitempty"`
+	Calls             int  `json:"calls"`
+
+	// Cost 金额。**用字符串传 decimal**，不用 number——
+	// JSON 的 number 是 IEEE754 双精度，累加会漂。
+	//
+	// status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+	// 「不知道多少钱」和「不花钱」是完全不同的两件事，
+	// 显示成 0 会让人以为这条链路免费。
+	Cost MoneyAmount `json:"cost"`
+
+	// GroupKey 分组键，取值随 group_by 变化（日期、feature、provider、模型）。
+	GroupKey            string `json:"group_key"`
+	InputTokens         int    `json:"input_tokens"`
+	OutputTokens        int    `json:"output_tokens"`
+	PricingMissingCalls int    `json:"pricing_missing_calls"`
+}
+
+// AICostSummary defines model for AICostSummary.
+type AICostSummary struct {
+	CachedInputTokens int `json:"cached_input_tokens"`
+	Calls             int `json:"calls"`
+
+	// Cost 金额。**用字符串传 decimal**，不用 number——
+	// JSON 的 number 是 IEEE754 双精度，累加会漂。
+	//
+	// status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+	// 「不知道多少钱」和「不花钱」是完全不同的两件事，
+	// 显示成 0 会让人以为这条链路免费。
+	Cost MoneyAmount `json:"cost"`
+
+	// FailedCost 失败调用产生的成本。**失败也可能花钱**——模型先算了一半才报错，
+	// 这部分照样计费，不单列出来会以为失败是免费的。
+	FailedCost          MoneyAmount        `json:"failed_cost"`
+	InputTokens         int                `json:"input_tokens"`
+	Latency             LatencyPercentiles `json:"latency"`
+	OutputTokens        int                `json:"output_tokens"`
+	PricingMissingCalls int                `json:"pricing_missing_calls"`
+	Range               DateRange          `json:"range"`
+	SuccessRate         *float64           `json:"success_rate"`
+}
+
+// AICostSummaryResponse defines model for AICostSummaryResponse.
+type AICostSummaryResponse struct {
+	Data AICostSummary `json:"data"`
+	Meta ResponseMeta  `json:"meta"`
+}
+
+// AIMetrics defines model for AIMetrics.
+type AIMetrics struct {
+	Calls int `json:"calls"`
+
+	// Cost 金额。**用字符串传 decimal**，不用 number——
+	// JSON 的 number 是 IEEE754 双精度，累加会漂。
+	//
+	// status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+	// 「不知道多少钱」和「不花钱」是完全不同的两件事，
+	// 显示成 0 会让人以为这条链路免费。
+	Cost         MoneyAmount `json:"cost"`
+	InputTokens  int         `json:"input_tokens"`
+	OutputTokens int         `json:"output_tokens"`
+	P95LatencyMs *int        `json:"p95_latency_ms"`
+
+	// PricingMissingCalls 有用量但匹配不到价格的调用数。它不为 0 时，成本一定是偏低的。
+	PricingMissingCalls int `json:"pricing_missing_calls"`
+
+	// SuccessRate 分母为 0 时为空，界面显示“—”而不是 0%。
+	SuccessRate *float64 `json:"success_rate"`
+}
+
+// AccountStatus defines model for AccountStatus.
+type AccountStatus string
+
+// AdminAuditEntry defines model for AdminAuditEntry.
+type AdminAuditEntry struct {
+	Action     string                 `json:"action"`
+	Id         string                 `json:"id"`
+	OccurredAt time.Time              `json:"occurred_at"`
+	Outcome    AdminAuditEntryOutcome `json:"outcome"`
+	ReasonCode *string                `json:"reason_code,omitempty"`
+	ReasonText *string                `json:"reason_text,omitempty"`
+	RequestId  string                 `json:"request_id"`
+	TargetId   *string                `json:"target_id,omitempty"`
+	TargetType *string                `json:"target_type,omitempty"`
+}
+
+// AdminAuditEntryOutcome defines model for AdminAuditEntry.Outcome.
+type AdminAuditEntryOutcome string
+
+// AdminAuditListResponse defines model for AdminAuditListResponse.
+type AdminAuditListResponse struct {
+	Data []AdminAuditEntry `json:"data"`
+	Meta ResponseMeta      `json:"meta"`
+	Page PageInfo          `json:"page"`
+}
+
+// AdminOperation 异步操作。只含标识、状态与错误码，不含请求或结果正文。
+type AdminOperation struct {
+	CreatedAt  time.Time  `json:"created_at"`
+	ErrorCode  *string    `json:"error_code,omitempty"`
+	Id         string     `json:"id"`
+	Kind       string     `json:"kind"`
+	ResourceId *string    `json:"resource_id,omitempty"`
+	Retryable  *bool      `json:"retryable,omitempty"`
+	Status     string     `json:"status"`
+	UpdatedAt  *time.Time `json:"updated_at,omitempty"`
+}
+
+// AdminOperationListResponse defines model for AdminOperationListResponse.
+type AdminOperationListResponse struct {
+	Data []AdminOperation `json:"data"`
+	Meta ResponseMeta     `json:"meta"`
+	Page PageInfo         `json:"page"`
+}
+
 // AdminSession 当前会话。**Session Token 不在这里**——它只走 HttpOnly Cookie，
 // 任何能被 JavaScript 读到的地方都不放，否则一次 XSS 就等于拿到后台。
 //
@@ -99,6 +449,140 @@ type AdminSession struct {
 	Username          string `json:"username"`
 }
 
+// AdminUserDetail 用户概览。**只返回状态、数量和标识**，不返回 Note、Message、Memory、
+// OCR、转写或媒体正文。后台能知道「这个人有多少条笔记」，
+// 但看不到笔记写了什么。
+type AdminUserDetail struct {
+	AccountStatus       AccountStatus `json:"account_status"`
+	ActiveSessions      *int          `json:"active_sessions,omitempty"`
+	AiBudget            *AIBudget     `json:"ai_budget,omitempty"`
+	Counts              UserCounts    `json:"counts"`
+	CreatedAt           time.Time     `json:"created_at"`
+	DisplayName         *string       `json:"display_name,omitempty"`
+	Id                  string        `json:"id"`
+	Initialized         bool          `json:"initialized"`
+	LastActiveAt        *time.Time    `json:"last_active_at,omitempty"`
+	MaskedPhone         string        `json:"masked_phone"`
+	SuspendedAt         *time.Time    `json:"suspended_at,omitempty"`
+	SuspensionExpiresAt *time.Time    `json:"suspension_expires_at,omitempty"`
+	Timezone            string        `json:"timezone"`
+	Version             int           `json:"version"`
+}
+
+// AdminUserDetailResponse defines model for AdminUserDetailResponse.
+type AdminUserDetailResponse struct {
+	// Data 用户概览。**只返回状态、数量和标识**，不返回 Note、Message、Memory、
+	// OCR、转写或媒体正文。后台能知道「这个人有多少条笔记」，
+	// 但看不到笔记写了什么。
+	Data AdminUserDetail `json:"data"`
+	Meta ResponseMeta    `json:"meta"`
+}
+
+// AdminUserListResponse defines model for AdminUserListResponse.
+type AdminUserListResponse struct {
+	Data []AdminUserSummary `json:"data"`
+
+	// Freshness 读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+	// 因此**必须把「这份数据算到什么时候」告诉使用者**——
+	// 不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+	Freshness DataFreshness `json:"freshness"`
+	Meta      ResponseMeta  `json:"meta"`
+	Page      PageInfo      `json:"page"`
+}
+
+// AdminUserSummary 用户列表里的一行。
+//
+// **不含任何用户正文**：没有笔记、没有会话消息、没有记忆、
+// 没有 OCR 结果。能看到的是状态、数量和标识。
+type AdminUserSummary struct {
+	AccountStatus AccountStatus `json:"account_status"`
+	ActiveDays30d int           `json:"active_days_30d"`
+
+	// AiCost30d 金额。**用字符串传 decimal**，不用 number——
+	// JSON 的 number 是 IEEE754 双精度，累加会漂。
+	//
+	// status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+	// 「不知道多少钱」和「不花钱」是完全不同的两件事，
+	// 显示成 0 会让人以为这条链路免费。
+	AiCost30d    MoneyAmount `json:"ai_cost_30d"`
+	CreatedAt    time.Time   `json:"created_at"`
+	DisplayName  *string     `json:"display_name,omitempty"`
+	Id           string      `json:"id"`
+	Initialized  bool        `json:"initialized"`
+	LastActiveAt *time.Time  `json:"last_active_at,omitempty"`
+
+	// LatestErrorCode 稳定错误码，不是错误正文——正文里常带用户输入的片段。
+	LatestErrorCode *string `json:"latest_error_code,omitempty"`
+
+	// MaskedPhone 服务端脱敏，形如 138****8000。**完整号码不出现在任何响应里。**
+	//
+	// Example: 138****8000
+	MaskedPhone string `json:"masked_phone"`
+
+	// Version 管理操作要带它做乐观锁，避免两个人同时改出互相覆盖的结果。
+	Version int `json:"version"`
+}
+
+// CostStatus defines model for CostStatus.
+type CostStatus string
+
+// DashboardSummary 总览。每个模块各自带新鲜度：**部分数据源失败时保留其他模块**，
+// 而不是整页报错——一个模块查不出来不该让运营连用户数都看不到。
+type DashboardSummary struct {
+	Ai AIMetrics `json:"ai"`
+
+	// FailedSections 取不到的模块名。空数组表示全部正常。
+	FailedSections *[]string `json:"failed_sections,omitempty"`
+
+	// Freshness 读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+	// 因此**必须把「这份数据算到什么时候」告诉使用者**——
+	// 不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+	Freshness DataFreshness  `json:"freshness"`
+	Range     DateRange      `json:"range"`
+	Runtime   RuntimeMetrics `json:"runtime"`
+	Usage     UsageMetrics   `json:"usage"`
+	Users     UserMetrics    `json:"users"`
+}
+
+// DashboardSummaryResponse defines model for DashboardSummaryResponse.
+type DashboardSummaryResponse struct {
+	// Data 总览。每个模块各自带新鲜度：**部分数据源失败时保留其他模块**，
+	// 而不是整页报错——一个模块查不出来不该让运营连用户数都看不到。
+	Data DashboardSummary `json:"data"`
+	Meta ResponseMeta     `json:"meta"`
+}
+
+// DashboardTrendsResponse defines model for DashboardTrendsResponse.
+type DashboardTrendsResponse struct {
+	Data []TrendPoint `json:"data"`
+
+	// Freshness 读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+	// 因此**必须把「这份数据算到什么时候」告诉使用者**——
+	// 不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+	Freshness DataFreshness `json:"freshness"`
+	Meta      ResponseMeta  `json:"meta"`
+}
+
+// DataFreshness 读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+// 因此**必须把「这份数据算到什么时候」告诉使用者**——
+// 不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+type DataFreshness struct {
+	AggregationStatus DataFreshnessAggregationStatus `json:"aggregation_status"`
+	DataAsOf          *time.Time                     `json:"data_as_of"`
+}
+
+// DataFreshnessAggregationStatus defines model for DataFreshness.AggregationStatus.
+type DataFreshnessAggregationStatus string
+
+// DateRange defines model for DateRange.
+type DateRange struct {
+	From openapi_types.Date `json:"from"`
+
+	// Timezone 报表时区。所有日期按它切日，界面上也按它显示。
+	Timezone string             `json:"timezone"`
+	To       openapi_types.Date `json:"to"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Code    ErrorCode `json:"code"`
@@ -116,6 +600,42 @@ type ErrorCode string
 type ErrorResponse struct {
 	Error Error        `json:"error"`
 	Meta  ResponseMeta `json:"meta"`
+}
+
+// FeatureUsage defines model for FeatureUsage.
+type FeatureUsage struct {
+	Events  int    `json:"events"`
+	Feature string `json:"feature"`
+	Users   int    `json:"users"`
+}
+
+// FunnelResponse defines model for FunnelResponse.
+type FunnelResponse struct {
+	Data []FunnelStep `json:"data"`
+
+	// Freshness 读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+	// 因此**必须把「这份数据算到什么时候」告诉使用者**——
+	// 不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+	Freshness DataFreshness `json:"freshness"`
+	Funnel    string        `json:"funnel"`
+	Meta      ResponseMeta  `json:"meta"`
+}
+
+// FunnelStep defines model for FunnelStep.
+type FunnelStep struct {
+	// ConversionFromPrevious 分母为 0 时为空，界面显示“—”而不是 0%。
+	ConversionFromPrevious *float64 `json:"conversion_from_previous,omitempty"`
+	ConversionFromStart    *float64 `json:"conversion_from_start,omitempty"`
+	Events                 int      `json:"events"`
+	Name                   string   `json:"name"`
+	Users                  int      `json:"users"`
+}
+
+// LatencyPercentiles defines model for LatencyPercentiles.
+type LatencyPercentiles struct {
+	P50 *int `json:"p50"`
+	P95 *int `json:"p95"`
+	P99 *int `json:"p99"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -140,10 +660,83 @@ type LogoutResponse struct {
 	Meta ResponseMeta `json:"meta"`
 }
 
+// MoneyAmount 金额。**用字符串传 decimal**，不用 number——
+// JSON 的 number 是 IEEE754 双精度，累加会漂。
+//
+// status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+// 「不知道多少钱」和「不花钱」是完全不同的两件事，
+// 显示成 0 会让人以为这条链路免费。
+type MoneyAmount struct {
+	// Amount Example: 2.381245
+	Amount   *string             `json:"amount"`
+	Currency MoneyAmountCurrency `json:"currency"`
+	Status   CostStatus          `json:"status"`
+}
+
+// MoneyAmountCurrency defines model for MoneyAmount.Currency.
+type MoneyAmountCurrency string
+
+// PageInfo defines model for PageInfo.
+type PageInfo struct {
+	// NextCursor 为空表示没有下一页。游标不透明，客户端不得解析。
+	NextCursor *string `json:"next_cursor"`
+}
+
+// ProviderStatus defines model for ProviderStatus.
+type ProviderStatus struct {
+	Calls24h        int                `json:"calls_24h"`
+	ErrorRate       *float64           `json:"error_rate"`
+	Kind            ProviderStatusKind `json:"kind"`
+	LastFailureAt   *time.Time         `json:"last_failure_at,omitempty"`
+	LastSuccessAt   *time.Time         `json:"last_success_at,omitempty"`
+	Name            string             `json:"name"`
+	P95LatencyMs    *int               `json:"p95_latency_ms,omitempty"`
+	RateLimitedRate *float64           `json:"rate_limited_rate"`
+	SuccessRate     *float64           `json:"success_rate"`
+}
+
+// ProviderStatusKind defines model for ProviderStatus.Kind.
+type ProviderStatusKind string
+
+// ProviderStatusResponse defines model for ProviderStatusResponse.
+type ProviderStatusResponse struct {
+	Data []ProviderStatus `json:"data"`
+	Meta ResponseMeta     `json:"meta"`
+}
+
+// QueueStatus defines model for QueueStatus.
+type QueueStatus struct {
+	Available int `json:"available"`
+	Discarded int `json:"discarded"`
+
+	// OldestAvailableAgeSeconds 最老的待执行任务等了多久。**这是队列健康最直接的指标**——
+	// 任务数不高但等了两小时，说明消费侧停了。
+	OldestAvailableAgeSeconds *int   `json:"oldest_available_age_seconds,omitempty"`
+	Queue                     string `json:"queue"`
+	Retryable                 int    `json:"retryable"`
+	Running                   int    `json:"running"`
+	Scheduled                 int    `json:"scheduled"`
+}
+
+// QueueStatusResponse defines model for QueueStatusResponse.
+type QueueStatusResponse struct {
+	Data []QueueStatus `json:"data"`
+	Meta ResponseMeta  `json:"meta"`
+}
+
 // ResponseMeta defines model for ResponseMeta.
 type ResponseMeta struct {
 	// RequestId 出错时报给用户的定位依据，日志里按它能查到整条调用链。
 	RequestId string `json:"request_id"`
+}
+
+// RuntimeMetrics defines model for RuntimeMetrics.
+type RuntimeMetrics struct {
+	DiscardedJobs    int `json:"discarded_jobs"`
+	FailedOperations int `json:"failed_operations"`
+	QueueAvailable   int `json:"queue_available"`
+	QueueRetryable   int `json:"queue_retryable"`
+	QueueRunning     int `json:"queue_running"`
 }
 
 // SessionResponse defines model for SessionResponse.
@@ -157,8 +750,170 @@ type SessionResponse struct {
 	Meta ResponseMeta `json:"meta"`
 }
 
+// TrendPoint defines model for TrendPoint.
+type TrendPoint struct {
+	ActiveUsers int `json:"active_users"`
+	AiCalls     int `json:"ai_calls"`
+
+	// AiCost 金额。**用字符串传 decimal**，不用 number——
+	// JSON 的 number 是 IEEE754 双精度，累加会漂。
+	//
+	// status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+	// 「不知道多少钱」和「不花钱」是完全不同的两件事，
+	// 显示成 0 会让人以为这条链路免费。
+	AiCost           *MoneyAmount       `json:"ai_cost,omitempty"`
+	AssistantTurns   int                `json:"assistant_turns"`
+	CaptureSubmitted int                `json:"capture_submitted"`
+	Date             openapi_types.Date `json:"date"`
+}
+
+// UsageMetrics defines model for UsageMetrics.
+type UsageMetrics struct {
+	AssistantTurns   int `json:"assistant_turns"`
+	CaptureConfirmed int `json:"capture_confirmed"`
+	CaptureSubmitted int `json:"capture_submitted"`
+	TaskCompleted    int `json:"task_completed"`
+}
+
+// UsageOverview defines model for UsageOverview.
+type UsageOverview struct {
+	Dau          int            `json:"dau"`
+	FeatureUsage []FeatureUsage `json:"feature_usage"`
+	Mau          int            `json:"mau"`
+	Range        DateRange      `json:"range"`
+	Wau          int            `json:"wau"`
+}
+
+// UsageOverviewResponse defines model for UsageOverviewResponse.
+type UsageOverviewResponse struct {
+	Data UsageOverview `json:"data"`
+
+	// Freshness 读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+	// 因此**必须把「这份数据算到什么时候」告诉使用者**——
+	// 不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+	Freshness DataFreshness `json:"freshness"`
+	Meta      ResponseMeta  `json:"meta"`
+}
+
+// UserCostResponse defines model for UserCostResponse.
+type UserCostResponse struct {
+	Data []UserCostRow `json:"data"`
+	Meta ResponseMeta  `json:"meta"`
+
+	// Total 金额。**用字符串传 decimal**，不用 number——
+	// JSON 的 number 是 IEEE754 双精度，累加会漂。
+	//
+	// status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+	// 「不知道多少钱」和「不花钱」是完全不同的两件事，
+	// 显示成 0 会让人以为这条链路免费。
+	Total MoneyAmount `json:"total"`
+}
+
+// UserCostRow defines model for UserCostRow.
+type UserCostRow struct {
+	CachedInputTokens int `json:"cached_input_tokens"`
+	Calls             int `json:"calls"`
+
+	// Cost 金额。**用字符串传 decimal**，不用 number——
+	// JSON 的 number 是 IEEE754 双精度，累加会漂。
+	//
+	// status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+	// 「不知道多少钱」和「不花钱」是完全不同的两件事，
+	// 显示成 0 会让人以为这条链路免费。
+	Cost                MoneyAmount        `json:"cost"`
+	Date                openapi_types.Date `json:"date"`
+	Feature             string             `json:"feature"`
+	InputTokens         int                `json:"input_tokens"`
+	Model               string             `json:"model"`
+	OutputTokens        int                `json:"output_tokens"`
+	PricingMissingCalls *int               `json:"pricing_missing_calls,omitempty"`
+	Provider            string             `json:"provider"`
+}
+
+// UserCounts defines model for UserCounts.
+type UserCounts struct {
+	AssistantThreads int `json:"assistant_threads"`
+	Captures         int `json:"captures"`
+	Events           int `json:"events"`
+	Notes            int `json:"notes"`
+	Projects         int `json:"projects"`
+	Tasks            int `json:"tasks"`
+}
+
+// UserMetrics defines model for UserMetrics.
+type UserMetrics struct {
+	Dau         int `json:"dau"`
+	Initialized int `json:"initialized"`
+	Mau         int `json:"mau"`
+	NewUsers    int `json:"new_users"`
+	Total       int `json:"total"`
+	Wau         int `json:"wau"`
+}
+
+// UserUsagePoint defines model for UserUsagePoint.
+type UserUsagePoint struct {
+	Active           bool               `json:"active"`
+	AssistantTurns   int                `json:"assistant_turns"`
+	CaptureConfirmed int                `json:"capture_confirmed"`
+	CaptureSubmitted int                `json:"capture_submitted"`
+	Date             openapi_types.Date `json:"date"`
+	ProposalExecuted int                `json:"proposal_executed"`
+	ReviewGenerated  int                `json:"review_generated"`
+	TaskCompleted    int                `json:"task_completed"`
+}
+
+// UserUsageResponse defines model for UserUsageResponse.
+type UserUsageResponse struct {
+	Data []UserUsagePoint `json:"data"`
+
+	// Freshness 读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+	// 因此**必须把「这份数据算到什么时候」告诉使用者**——
+	// 不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+	Freshness DataFreshness `json:"freshness"`
+	Meta      ResponseMeta  `json:"meta"`
+}
+
+// ActionFilter defines model for ActionFilter.
+type ActionFilter = string
+
 // CSRFToken defines model for CSRFToken.
 type CSRFToken = string
+
+// Cursor defines model for Cursor.
+type Cursor = string
+
+// FunnelName defines model for FunnelName.
+type FunnelName string
+
+// GroupBy defines model for GroupBy.
+type GroupBy string
+
+// InitializedFilter defines model for InitializedFilter.
+type InitializedFilter = bool
+
+// Limit defines model for Limit.
+type Limit = int
+
+// OperationStatusFilter defines model for OperationStatusFilter.
+type OperationStatusFilter = string
+
+// PhoneFilter defines model for PhoneFilter.
+type PhoneFilter = string
+
+// RangeFrom defines model for RangeFrom.
+type RangeFrom = openapi_types.Date
+
+// RangeTo defines model for RangeTo.
+type RangeTo = openapi_types.Date
+
+// UserID defines model for UserID.
+type UserID = string
+
+// UserIDFilter defines model for UserIDFilter.
+type UserIDFilter = string
+
+// UserStatusFilter defines model for UserStatusFilter.
+type UserStatusFilter = AccountStatus
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ErrorResponse
@@ -169,11 +924,64 @@ type Forbidden = ErrorResponse
 // InternalError defines model for InternalError.
 type InternalError = ErrorResponse
 
+// NotFound defines model for NotFound.
+type NotFound = ErrorResponse
+
 // RateLimited defines model for RateLimited.
 type RateLimited = ErrorResponse
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ErrorResponse
+
+// AdminAICostBreakdownParams defines parameters for AdminAICostBreakdown.
+type AdminAICostBreakdownParams struct {
+	// From 统计区间起始日（含），按后台报表时区切日。
+	From *RangeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 统计区间结束日（含）。
+	To      *RangeTo                           `form:"to,omitempty" json:"to,omitempty"`
+	GroupBy *AdminAICostBreakdownParamsGroupBy `form:"group_by,omitempty" json:"group_by,omitempty"`
+}
+
+// AdminAICostBreakdownParamsGroupBy defines parameters for AdminAICostBreakdown.
+type AdminAICostBreakdownParamsGroupBy string
+
+// AdminAICostSummaryParams defines parameters for AdminAICostSummary.
+type AdminAICostSummaryParams struct {
+	// From 统计区间起始日（含），按后台报表时区切日。
+	From *RangeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 统计区间结束日（含）。
+	To *RangeTo `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// AdminListAuditLogsParams defines parameters for AdminListAuditLogs.
+type AdminListAuditLogsParams struct {
+	// Cursor 上一页返回的 next_cursor，不透明。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 每页条数，默认 20，最大 100。
+	Limit  *Limit        `form:"limit,omitempty" json:"limit,omitempty"`
+	Action *ActionFilter `form:"action,omitempty" json:"action,omitempty"`
+}
+
+// AdminDashboardSummaryParams defines parameters for AdminDashboardSummary.
+type AdminDashboardSummaryParams struct {
+	// From 统计区间起始日（含），按后台报表时区切日。
+	From *RangeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 统计区间结束日（含）。
+	To *RangeTo `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// AdminDashboardTrendsParams defines parameters for AdminDashboardTrends.
+type AdminDashboardTrendsParams struct {
+	// From 统计区间起始日（含），按后台报表时区切日。
+	From *RangeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 统计区间结束日（含）。
+	To *RangeTo `form:"to,omitempty" json:"to,omitempty"`
+}
 
 // AdminLogoutParams defines parameters for AdminLogout.
 type AdminLogoutParams struct {
@@ -181,25 +989,193 @@ type AdminLogoutParams struct {
 	XAdminCSRF CSRFToken `json:"X-Admin-CSRF"`
 }
 
+// AdminListOperationsParams defines parameters for AdminListOperations.
+type AdminListOperationsParams struct {
+	// Cursor 上一页返回的 next_cursor，不透明。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 每页条数，默认 20，最大 100。
+	Limit  *Limit                 `form:"limit,omitempty" json:"limit,omitempty"`
+	Status *OperationStatusFilter `form:"status,omitempty" json:"status,omitempty"`
+
+	// UserId 精确匹配用户 ID。
+	UserId *UserIDFilter `form:"user_id,omitempty" json:"user_id,omitempty"`
+}
+
+// AdminGetFunnelParams defines parameters for AdminGetFunnel.
+type AdminGetFunnelParams struct {
+	// From 统计区间起始日（含），按后台报表时区切日。
+	From *RangeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 统计区间结束日（含）。
+	To *RangeTo `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// AdminGetFunnelParamsFunnel defines parameters for AdminGetFunnel.
+type AdminGetFunnelParamsFunnel string
+
+// AdminUsageOverviewParams defines parameters for AdminUsageOverview.
+type AdminUsageOverviewParams struct {
+	// From 统计区间起始日（含），按后台报表时区切日。
+	From *RangeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 统计区间结束日（含）。
+	To *RangeTo `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// AdminListUsersParams defines parameters for AdminListUsers.
+type AdminListUsersParams struct {
+	// Cursor 上一页返回的 next_cursor，不透明。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 每页条数，默认 20，最大 100。
+	Limit         *Limit             `form:"limit,omitempty" json:"limit,omitempty"`
+	AccountStatus *UserStatusFilter  `form:"account_status,omitempty" json:"account_status,omitempty"`
+	Initialized   *InitializedFilter `form:"initialized,omitempty" json:"initialized,omitempty"`
+
+	// UserId 精确匹配用户 ID。
+	UserId *UserIDFilter `form:"user_id,omitempty" json:"user_id,omitempty"`
+
+	// Phone **精确**匹配手机号。服务端用版本化 HMAC 比对，库里没有明文。
+	//
+	// 只支持精确匹配，不支持前缀或模糊——模糊搜索等于提供了一个
+	// 把号码一位一位试出来的接口。
+	Phone *PhoneFilter `form:"phone,omitempty" json:"phone,omitempty"`
+}
+
+// AdminGetUserAdminActionsParams defines parameters for AdminGetUserAdminActions.
+type AdminGetUserAdminActionsParams struct {
+	// Cursor 上一页返回的 next_cursor，不透明。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 每页条数，默认 20，最大 100。
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// AdminGetUserCostsParams defines parameters for AdminGetUserCosts.
+type AdminGetUserCostsParams struct {
+	// From 统计区间起始日（含），按后台报表时区切日。
+	From *RangeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 统计区间结束日（含）。
+	To *RangeTo `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// AdminGetUserOperationsParams defines parameters for AdminGetUserOperations.
+type AdminGetUserOperationsParams struct {
+	// Cursor 上一页返回的 next_cursor，不透明。
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit 每页条数，默认 20，最大 100。
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// AdminGetUserUsageParams defines parameters for AdminGetUserUsage.
+type AdminGetUserUsageParams struct {
+	// From 统计区间起始日（含），按后台报表时区切日。
+	From *RangeFrom `form:"from,omitempty" json:"from,omitempty"`
+
+	// To 统计区间结束日（含）。
+	To *RangeTo `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // AdminLoginJSONRequestBody defines body for AdminLogin for application/json ContentType.
 type AdminLoginJSONRequestBody = LoginRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// AdminAICostBreakdown AI 成本分组
+	// (GET /admin/v1/ai-costs/breakdown)
+	AdminAICostBreakdown(w http.ResponseWriter, r *http.Request, params AdminAICostBreakdownParams)
+	// AdminAICostSummary AI 成本汇总
+	// (GET /admin/v1/ai-costs/summary)
+	AdminAICostSummary(w http.ResponseWriter, r *http.Request, params AdminAICostSummaryParams)
+	// AdminListAuditLogs 操作审计
+	// (GET /admin/v1/audit-logs)
+	AdminListAuditLogs(w http.ResponseWriter, r *http.Request, params AdminListAuditLogsParams)
+	// AdminDashboardSummary 总览
+	// (GET /admin/v1/dashboard/summary)
+	AdminDashboardSummary(w http.ResponseWriter, r *http.Request, params AdminDashboardSummaryParams)
+	// AdminDashboardTrends 总览趋势
+	// (GET /admin/v1/dashboard/trends)
+	AdminDashboardTrends(w http.ResponseWriter, r *http.Request, params AdminDashboardTrendsParams)
 	// AdminLogin 管理员登录
 	// (POST /admin/v1/login)
 	AdminLogin(w http.ResponseWriter, r *http.Request)
 	// AdminLogout 退出并撤销会话
 	// (POST /admin/v1/logout)
 	AdminLogout(w http.ResponseWriter, r *http.Request, params AdminLogoutParams)
+	// AdminListOperations Operation 列表
+	// (GET /admin/v1/operations)
+	AdminListOperations(w http.ResponseWriter, r *http.Request, params AdminListOperationsParams)
+	// AdminGetProviders Provider 状态
+	// (GET /admin/v1/providers)
+	AdminGetProviders(w http.ResponseWriter, r *http.Request)
+	// AdminGetQueues Queue 状态
+	// (GET /admin/v1/queues)
+	AdminGetQueues(w http.ResponseWriter, r *http.Request)
 	// AdminGetSession 读取当前会话
 	// (GET /admin/v1/session)
 	AdminGetSession(w http.ResponseWriter, r *http.Request)
+	// AdminGetFunnel 漏斗
+	// (GET /admin/v1/usage/funnels/{funnel})
+	AdminGetFunnel(w http.ResponseWriter, r *http.Request, funnel AdminGetFunnelParamsFunnel, params AdminGetFunnelParams)
+	// AdminUsageOverview 使用概览
+	// (GET /admin/v1/usage/overview)
+	AdminUsageOverview(w http.ResponseWriter, r *http.Request, params AdminUsageOverviewParams)
+	// AdminListUsers 用户列表
+	// (GET /admin/v1/users)
+	AdminListUsers(w http.ResponseWriter, r *http.Request, params AdminListUsersParams)
+	// AdminGetUser 用户概览
+	// (GET /admin/v1/users/{user_id})
+	AdminGetUser(w http.ResponseWriter, r *http.Request, userId UserID)
+	// AdminGetUserAdminActions 用户管理记录
+	// (GET /admin/v1/users/{user_id}/admin-actions)
+	AdminGetUserAdminActions(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserAdminActionsParams)
+	// AdminGetUserCosts 用户 AI 成本
+	// (GET /admin/v1/users/{user_id}/costs)
+	AdminGetUserCosts(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserCostsParams)
+	// AdminGetUserOperations 用户 Operation
+	// (GET /admin/v1/users/{user_id}/operations)
+	AdminGetUserOperations(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserOperationsParams)
+	// AdminGetUserUsage 用户使用情况
+	// (GET /admin/v1/users/{user_id}/usage)
+	AdminGetUserUsage(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserUsageParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// AdminAICostBreakdown AI 成本分组
+// (GET /admin/v1/ai-costs/breakdown)
+func (_ Unimplemented) AdminAICostBreakdown(w http.ResponseWriter, r *http.Request, params AdminAICostBreakdownParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminAICostSummary AI 成本汇总
+// (GET /admin/v1/ai-costs/summary)
+func (_ Unimplemented) AdminAICostSummary(w http.ResponseWriter, r *http.Request, params AdminAICostSummaryParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminListAuditLogs 操作审计
+// (GET /admin/v1/audit-logs)
+func (_ Unimplemented) AdminListAuditLogs(w http.ResponseWriter, r *http.Request, params AdminListAuditLogsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminDashboardSummary 总览
+// (GET /admin/v1/dashboard/summary)
+func (_ Unimplemented) AdminDashboardSummary(w http.ResponseWriter, r *http.Request, params AdminDashboardSummaryParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminDashboardTrends 总览趋势
+// (GET /admin/v1/dashboard/trends)
+func (_ Unimplemented) AdminDashboardTrends(w http.ResponseWriter, r *http.Request, params AdminDashboardTrendsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // AdminLogin 管理员登录
 // (POST /admin/v1/login)
@@ -213,9 +1189,75 @@ func (_ Unimplemented) AdminLogout(w http.ResponseWriter, r *http.Request, param
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// AdminListOperations Operation 列表
+// (GET /admin/v1/operations)
+func (_ Unimplemented) AdminListOperations(w http.ResponseWriter, r *http.Request, params AdminListOperationsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminGetProviders Provider 状态
+// (GET /admin/v1/providers)
+func (_ Unimplemented) AdminGetProviders(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminGetQueues Queue 状态
+// (GET /admin/v1/queues)
+func (_ Unimplemented) AdminGetQueues(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // AdminGetSession 读取当前会话
 // (GET /admin/v1/session)
 func (_ Unimplemented) AdminGetSession(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminGetFunnel 漏斗
+// (GET /admin/v1/usage/funnels/{funnel})
+func (_ Unimplemented) AdminGetFunnel(w http.ResponseWriter, r *http.Request, funnel AdminGetFunnelParamsFunnel, params AdminGetFunnelParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminUsageOverview 使用概览
+// (GET /admin/v1/usage/overview)
+func (_ Unimplemented) AdminUsageOverview(w http.ResponseWriter, r *http.Request, params AdminUsageOverviewParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminListUsers 用户列表
+// (GET /admin/v1/users)
+func (_ Unimplemented) AdminListUsers(w http.ResponseWriter, r *http.Request, params AdminListUsersParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminGetUser 用户概览
+// (GET /admin/v1/users/{user_id})
+func (_ Unimplemented) AdminGetUser(w http.ResponseWriter, r *http.Request, userId UserID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminGetUserAdminActions 用户管理记录
+// (GET /admin/v1/users/{user_id}/admin-actions)
+func (_ Unimplemented) AdminGetUserAdminActions(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserAdminActionsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminGetUserCosts 用户 AI 成本
+// (GET /admin/v1/users/{user_id}/costs)
+func (_ Unimplemented) AdminGetUserCosts(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserCostsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminGetUserOperations 用户 Operation
+// (GET /admin/v1/users/{user_id}/operations)
+func (_ Unimplemented) AdminGetUserOperations(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserOperationsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AdminGetUserUsage 用户使用情况
+// (GET /admin/v1/users/{user_id}/usage)
+func (_ Unimplemented) AdminGetUserUsage(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserUsageParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -227,6 +1269,262 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// AdminAICostBreakdown operation middleware
+func (siw *ServerInterfaceWrapper) AdminAICostBreakdown(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminAICostBreakdownParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "group_by" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "group_by", r.URL.Query(), &params.GroupBy, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "group_by"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "group_by", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminAICostBreakdown(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminAICostSummary operation middleware
+func (siw *ServerInterfaceWrapper) AdminAICostSummary(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminAICostSummaryParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminAICostSummary(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminListAuditLogs operation middleware
+func (siw *ServerInterfaceWrapper) AdminListAuditLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminListAuditLogsParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "action" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "action", r.URL.Query(), &params.Action, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "action"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "action", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminListAuditLogs(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminDashboardSummary operation middleware
+func (siw *ServerInterfaceWrapper) AdminDashboardSummary(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminDashboardSummaryParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminDashboardSummary(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminDashboardTrends operation middleware
+func (siw *ServerInterfaceWrapper) AdminDashboardTrends(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminDashboardTrendsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminDashboardTrends(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // AdminLogin operation middleware
 func (siw *ServerInterfaceWrapper) AdminLogin(w http.ResponseWriter, r *http.Request) {
@@ -287,11 +1585,556 @@ func (siw *ServerInterfaceWrapper) AdminLogout(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// AdminListOperations operation middleware
+func (siw *ServerInterfaceWrapper) AdminListOperations(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminListOperationsParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "user_id", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "user_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminListOperations(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminGetProviders operation middleware
+func (siw *ServerInterfaceWrapper) AdminGetProviders(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminGetProviders(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminGetQueues operation middleware
+func (siw *ServerInterfaceWrapper) AdminGetQueues(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminGetQueues(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AdminGetSession operation middleware
 func (siw *ServerInterfaceWrapper) AdminGetSession(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AdminGetSession(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminGetFunnel operation middleware
+func (siw *ServerInterfaceWrapper) AdminGetFunnel(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "funnel" -------------
+	var funnel AdminGetFunnelParamsFunnel
+
+	err = runtime.BindStyledParameterWithOptions("simple", "funnel", chi.URLParam(r, "funnel"), &funnel, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "funnel", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminGetFunnelParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminGetFunnel(w, r, funnel, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminUsageOverview operation middleware
+func (siw *ServerInterfaceWrapper) AdminUsageOverview(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminUsageOverviewParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminUsageOverview(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminListUsers operation middleware
+func (siw *ServerInterfaceWrapper) AdminListUsers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminListUsersParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "account_status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "account_status", r.URL.Query(), &params.AccountStatus, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "account_status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "account_status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "initialized" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "initialized", r.URL.Query(), &params.Initialized, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "initialized"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "initialized", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "user_id", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "user_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "phone" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "phone", r.URL.Query(), &params.Phone, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "phone"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "phone", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminListUsers(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminGetUser operation middleware
+func (siw *ServerInterfaceWrapper) AdminGetUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId UserID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminGetUser(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminGetUserAdminActions operation middleware
+func (siw *ServerInterfaceWrapper) AdminGetUserAdminActions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId UserID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminGetUserAdminActionsParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminGetUserAdminActions(w, r, userId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminGetUserCosts operation middleware
+func (siw *ServerInterfaceWrapper) AdminGetUserCosts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId UserID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminGetUserCostsParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminGetUserCosts(w, r, userId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminGetUserOperations operation middleware
+func (siw *ServerInterfaceWrapper) AdminGetUserOperations(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId UserID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminGetUserOperationsParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminGetUserOperations(w, r, userId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AdminGetUserUsage operation middleware
+func (siw *ServerInterfaceWrapper) AdminGetUserUsage(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "user_id" -------------
+	var userId UserID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", chi.URLParam(r, "user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AdminGetUserUsageParams
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AdminGetUserUsage(w, r, userId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -423,6 +2266,54 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/admin/v1/logout", wrapper.AdminLogout)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/dashboard/summary", wrapper.AdminDashboardSummary)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/dashboard/trends", wrapper.AdminDashboardTrends)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/users", wrapper.AdminListUsers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/users/{user_id}", wrapper.AdminGetUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/users/{user_id}/usage", wrapper.AdminGetUserUsage)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/users/{user_id}/costs", wrapper.AdminGetUserCosts)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/users/{user_id}/operations", wrapper.AdminGetUserOperations)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/users/{user_id}/admin-actions", wrapper.AdminGetUserAdminActions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/usage/overview", wrapper.AdminUsageOverview)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/usage/funnels/{funnel}", wrapper.AdminGetFunnel)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/ai-costs/summary", wrapper.AdminAICostSummary)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/ai-costs/breakdown", wrapper.AdminAICostBreakdown)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/queues", wrapper.AdminGetQueues)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/providers", wrapper.AdminGetProviders)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/operations", wrapper.AdminListOperations)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/v1/audit-logs", wrapper.AdminListAuditLogs)
+	})
 
 	return r
 }
@@ -433,9 +2324,401 @@ type ForbiddenJSONResponse ErrorResponse
 
 type InternalErrorJSONResponse ErrorResponse
 
+type NotFoundJSONResponse ErrorResponse
+
 type RateLimitedJSONResponse ErrorResponse
 
 type UnauthorizedJSONResponse ErrorResponse
+
+type AdminAICostBreakdownRequestObject struct {
+	Params AdminAICostBreakdownParams
+}
+
+type AdminAICostBreakdownResponseObject interface {
+	VisitAdminAICostBreakdownResponse(w http.ResponseWriter) error
+}
+
+type AdminAICostBreakdown200JSONResponse AICostBreakdownResponse
+
+func (response AdminAICostBreakdown200JSONResponse) VisitAdminAICostBreakdownResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostBreakdown400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminAICostBreakdown400JSONResponse) VisitAdminAICostBreakdownResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostBreakdown401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminAICostBreakdown401JSONResponse) VisitAdminAICostBreakdownResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostBreakdown404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminAICostBreakdown404JSONResponse) VisitAdminAICostBreakdownResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostBreakdown500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminAICostBreakdown500JSONResponse) VisitAdminAICostBreakdownResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostSummaryRequestObject struct {
+	Params AdminAICostSummaryParams
+}
+
+type AdminAICostSummaryResponseObject interface {
+	VisitAdminAICostSummaryResponse(w http.ResponseWriter) error
+}
+
+type AdminAICostSummary200JSONResponse AICostSummaryResponse
+
+func (response AdminAICostSummary200JSONResponse) VisitAdminAICostSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostSummary400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminAICostSummary400JSONResponse) VisitAdminAICostSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostSummary401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminAICostSummary401JSONResponse) VisitAdminAICostSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostSummary404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminAICostSummary404JSONResponse) VisitAdminAICostSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminAICostSummary500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminAICostSummary500JSONResponse) VisitAdminAICostSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListAuditLogsRequestObject struct {
+	Params AdminListAuditLogsParams
+}
+
+type AdminListAuditLogsResponseObject interface {
+	VisitAdminListAuditLogsResponse(w http.ResponseWriter) error
+}
+
+type AdminListAuditLogs200JSONResponse AdminAuditListResponse
+
+func (response AdminListAuditLogs200JSONResponse) VisitAdminListAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListAuditLogs400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminListAuditLogs400JSONResponse) VisitAdminListAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListAuditLogs401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminListAuditLogs401JSONResponse) VisitAdminListAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListAuditLogs404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminListAuditLogs404JSONResponse) VisitAdminListAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListAuditLogs500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminListAuditLogs500JSONResponse) VisitAdminListAuditLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardSummaryRequestObject struct {
+	Params AdminDashboardSummaryParams
+}
+
+type AdminDashboardSummaryResponseObject interface {
+	VisitAdminDashboardSummaryResponse(w http.ResponseWriter) error
+}
+
+type AdminDashboardSummary200JSONResponse DashboardSummaryResponse
+
+func (response AdminDashboardSummary200JSONResponse) VisitAdminDashboardSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardSummary400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminDashboardSummary400JSONResponse) VisitAdminDashboardSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardSummary401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminDashboardSummary401JSONResponse) VisitAdminDashboardSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardSummary404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminDashboardSummary404JSONResponse) VisitAdminDashboardSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardSummary500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminDashboardSummary500JSONResponse) VisitAdminDashboardSummaryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardTrendsRequestObject struct {
+	Params AdminDashboardTrendsParams
+}
+
+type AdminDashboardTrendsResponseObject interface {
+	VisitAdminDashboardTrendsResponse(w http.ResponseWriter) error
+}
+
+type AdminDashboardTrends200JSONResponse DashboardTrendsResponse
+
+func (response AdminDashboardTrends200JSONResponse) VisitAdminDashboardTrendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardTrends400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminDashboardTrends400JSONResponse) VisitAdminDashboardTrendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardTrends401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminDashboardTrends401JSONResponse) VisitAdminDashboardTrendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardTrends404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminDashboardTrends404JSONResponse) VisitAdminDashboardTrendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminDashboardTrends500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminDashboardTrends500JSONResponse) VisitAdminDashboardTrendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type AdminLoginRequestObject struct {
 	Body *AdminLoginJSONRequestBody
@@ -593,6 +2876,238 @@ func (response AdminLogout500JSONResponse) VisitAdminLogoutResponse(w http.Respo
 	return err
 }
 
+type AdminListOperationsRequestObject struct {
+	Params AdminListOperationsParams
+}
+
+type AdminListOperationsResponseObject interface {
+	VisitAdminListOperationsResponse(w http.ResponseWriter) error
+}
+
+type AdminListOperations200JSONResponse AdminOperationListResponse
+
+func (response AdminListOperations200JSONResponse) VisitAdminListOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListOperations400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminListOperations400JSONResponse) VisitAdminListOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListOperations401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminListOperations401JSONResponse) VisitAdminListOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListOperations404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminListOperations404JSONResponse) VisitAdminListOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListOperations500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminListOperations500JSONResponse) VisitAdminListOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetProvidersRequestObject struct {
+}
+
+type AdminGetProvidersResponseObject interface {
+	VisitAdminGetProvidersResponse(w http.ResponseWriter) error
+}
+
+type AdminGetProviders200JSONResponse ProviderStatusResponse
+
+func (response AdminGetProviders200JSONResponse) VisitAdminGetProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetProviders400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminGetProviders400JSONResponse) VisitAdminGetProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetProviders401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminGetProviders401JSONResponse) VisitAdminGetProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetProviders404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminGetProviders404JSONResponse) VisitAdminGetProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetProviders500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminGetProviders500JSONResponse) VisitAdminGetProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetQueuesRequestObject struct {
+}
+
+type AdminGetQueuesResponseObject interface {
+	VisitAdminGetQueuesResponse(w http.ResponseWriter) error
+}
+
+type AdminGetQueues200JSONResponse QueueStatusResponse
+
+func (response AdminGetQueues200JSONResponse) VisitAdminGetQueuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetQueues400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminGetQueues400JSONResponse) VisitAdminGetQueuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetQueues401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminGetQueues401JSONResponse) VisitAdminGetQueuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetQueues404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminGetQueues404JSONResponse) VisitAdminGetQueuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetQueues500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminGetQueues500JSONResponse) VisitAdminGetQueuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type AdminGetSessionRequestObject struct {
 }
 
@@ -642,17 +3157,694 @@ func (response AdminGetSession500JSONResponse) VisitAdminGetSessionResponse(w ht
 	return err
 }
 
+type AdminGetFunnelRequestObject struct {
+	Funnel AdminGetFunnelParamsFunnel `json:"funnel"`
+	Params AdminGetFunnelParams
+}
+
+type AdminGetFunnelResponseObject interface {
+	VisitAdminGetFunnelResponse(w http.ResponseWriter) error
+}
+
+type AdminGetFunnel200JSONResponse FunnelResponse
+
+func (response AdminGetFunnel200JSONResponse) VisitAdminGetFunnelResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetFunnel400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminGetFunnel400JSONResponse) VisitAdminGetFunnelResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetFunnel401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminGetFunnel401JSONResponse) VisitAdminGetFunnelResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetFunnel404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminGetFunnel404JSONResponse) VisitAdminGetFunnelResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetFunnel500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminGetFunnel500JSONResponse) VisitAdminGetFunnelResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminUsageOverviewRequestObject struct {
+	Params AdminUsageOverviewParams
+}
+
+type AdminUsageOverviewResponseObject interface {
+	VisitAdminUsageOverviewResponse(w http.ResponseWriter) error
+}
+
+type AdminUsageOverview200JSONResponse UsageOverviewResponse
+
+func (response AdminUsageOverview200JSONResponse) VisitAdminUsageOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminUsageOverview400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminUsageOverview400JSONResponse) VisitAdminUsageOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminUsageOverview401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminUsageOverview401JSONResponse) VisitAdminUsageOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminUsageOverview404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminUsageOverview404JSONResponse) VisitAdminUsageOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminUsageOverview500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminUsageOverview500JSONResponse) VisitAdminUsageOverviewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListUsersRequestObject struct {
+	Params AdminListUsersParams
+}
+
+type AdminListUsersResponseObject interface {
+	VisitAdminListUsersResponse(w http.ResponseWriter) error
+}
+
+type AdminListUsers200JSONResponse AdminUserListResponse
+
+func (response AdminListUsers200JSONResponse) VisitAdminListUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListUsers400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminListUsers400JSONResponse) VisitAdminListUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListUsers401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminListUsers401JSONResponse) VisitAdminListUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListUsers404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminListUsers404JSONResponse) VisitAdminListUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminListUsers500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminListUsers500JSONResponse) VisitAdminListUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserRequestObject struct {
+	UserId UserID `json:"user_id"`
+}
+
+type AdminGetUserResponseObject interface {
+	VisitAdminGetUserResponse(w http.ResponseWriter) error
+}
+
+type AdminGetUser200JSONResponse AdminUserDetailResponse
+
+func (response AdminGetUser200JSONResponse) VisitAdminGetUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUser400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminGetUser400JSONResponse) VisitAdminGetUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUser401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminGetUser401JSONResponse) VisitAdminGetUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUser404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminGetUser404JSONResponse) VisitAdminGetUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUser500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminGetUser500JSONResponse) VisitAdminGetUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserAdminActionsRequestObject struct {
+	UserId UserID `json:"user_id"`
+	Params AdminGetUserAdminActionsParams
+}
+
+type AdminGetUserAdminActionsResponseObject interface {
+	VisitAdminGetUserAdminActionsResponse(w http.ResponseWriter) error
+}
+
+type AdminGetUserAdminActions200JSONResponse AdminAuditListResponse
+
+func (response AdminGetUserAdminActions200JSONResponse) VisitAdminGetUserAdminActionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserAdminActions400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminGetUserAdminActions400JSONResponse) VisitAdminGetUserAdminActionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserAdminActions401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminGetUserAdminActions401JSONResponse) VisitAdminGetUserAdminActionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserAdminActions404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminGetUserAdminActions404JSONResponse) VisitAdminGetUserAdminActionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserAdminActions500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminGetUserAdminActions500JSONResponse) VisitAdminGetUserAdminActionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserCostsRequestObject struct {
+	UserId UserID `json:"user_id"`
+	Params AdminGetUserCostsParams
+}
+
+type AdminGetUserCostsResponseObject interface {
+	VisitAdminGetUserCostsResponse(w http.ResponseWriter) error
+}
+
+type AdminGetUserCosts200JSONResponse UserCostResponse
+
+func (response AdminGetUserCosts200JSONResponse) VisitAdminGetUserCostsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserCosts400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminGetUserCosts400JSONResponse) VisitAdminGetUserCostsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserCosts401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminGetUserCosts401JSONResponse) VisitAdminGetUserCostsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserCosts404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminGetUserCosts404JSONResponse) VisitAdminGetUserCostsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserCosts500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminGetUserCosts500JSONResponse) VisitAdminGetUserCostsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserOperationsRequestObject struct {
+	UserId UserID `json:"user_id"`
+	Params AdminGetUserOperationsParams
+}
+
+type AdminGetUserOperationsResponseObject interface {
+	VisitAdminGetUserOperationsResponse(w http.ResponseWriter) error
+}
+
+type AdminGetUserOperations200JSONResponse AdminOperationListResponse
+
+func (response AdminGetUserOperations200JSONResponse) VisitAdminGetUserOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserOperations400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminGetUserOperations400JSONResponse) VisitAdminGetUserOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserOperations401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminGetUserOperations401JSONResponse) VisitAdminGetUserOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserOperations404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminGetUserOperations404JSONResponse) VisitAdminGetUserOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserOperations500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminGetUserOperations500JSONResponse) VisitAdminGetUserOperationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserUsageRequestObject struct {
+	UserId UserID `json:"user_id"`
+	Params AdminGetUserUsageParams
+}
+
+type AdminGetUserUsageResponseObject interface {
+	VisitAdminGetUserUsageResponse(w http.ResponseWriter) error
+}
+
+type AdminGetUserUsage200JSONResponse UserUsageResponse
+
+func (response AdminGetUserUsage200JSONResponse) VisitAdminGetUserUsageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserUsage400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AdminGetUserUsage400JSONResponse) VisitAdminGetUserUsageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserUsage401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AdminGetUserUsage401JSONResponse) VisitAdminGetUserUsageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserUsage404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AdminGetUserUsage404JSONResponse) VisitAdminGetUserUsageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AdminGetUserUsage500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AdminGetUserUsage500JSONResponse) VisitAdminGetUserUsageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// AdminAICostBreakdown AI 成本分组
+	// (GET /admin/v1/ai-costs/breakdown)
+	AdminAICostBreakdown(ctx context.Context, request AdminAICostBreakdownRequestObject) (AdminAICostBreakdownResponseObject, error)
+	// AdminAICostSummary AI 成本汇总
+	// (GET /admin/v1/ai-costs/summary)
+	AdminAICostSummary(ctx context.Context, request AdminAICostSummaryRequestObject) (AdminAICostSummaryResponseObject, error)
+	// AdminListAuditLogs 操作审计
+	// (GET /admin/v1/audit-logs)
+	AdminListAuditLogs(ctx context.Context, request AdminListAuditLogsRequestObject) (AdminListAuditLogsResponseObject, error)
+	// AdminDashboardSummary 总览
+	// (GET /admin/v1/dashboard/summary)
+	AdminDashboardSummary(ctx context.Context, request AdminDashboardSummaryRequestObject) (AdminDashboardSummaryResponseObject, error)
+	// AdminDashboardTrends 总览趋势
+	// (GET /admin/v1/dashboard/trends)
+	AdminDashboardTrends(ctx context.Context, request AdminDashboardTrendsRequestObject) (AdminDashboardTrendsResponseObject, error)
 	// AdminLogin 管理员登录
 	// (POST /admin/v1/login)
 	AdminLogin(ctx context.Context, request AdminLoginRequestObject) (AdminLoginResponseObject, error)
 	// AdminLogout 退出并撤销会话
 	// (POST /admin/v1/logout)
 	AdminLogout(ctx context.Context, request AdminLogoutRequestObject) (AdminLogoutResponseObject, error)
+	// AdminListOperations Operation 列表
+	// (GET /admin/v1/operations)
+	AdminListOperations(ctx context.Context, request AdminListOperationsRequestObject) (AdminListOperationsResponseObject, error)
+	// AdminGetProviders Provider 状态
+	// (GET /admin/v1/providers)
+	AdminGetProviders(ctx context.Context, request AdminGetProvidersRequestObject) (AdminGetProvidersResponseObject, error)
+	// AdminGetQueues Queue 状态
+	// (GET /admin/v1/queues)
+	AdminGetQueues(ctx context.Context, request AdminGetQueuesRequestObject) (AdminGetQueuesResponseObject, error)
 	// AdminGetSession 读取当前会话
 	// (GET /admin/v1/session)
 	AdminGetSession(ctx context.Context, request AdminGetSessionRequestObject) (AdminGetSessionResponseObject, error)
+	// AdminGetFunnel 漏斗
+	// (GET /admin/v1/usage/funnels/{funnel})
+	AdminGetFunnel(ctx context.Context, request AdminGetFunnelRequestObject) (AdminGetFunnelResponseObject, error)
+	// AdminUsageOverview 使用概览
+	// (GET /admin/v1/usage/overview)
+	AdminUsageOverview(ctx context.Context, request AdminUsageOverviewRequestObject) (AdminUsageOverviewResponseObject, error)
+	// AdminListUsers 用户列表
+	// (GET /admin/v1/users)
+	AdminListUsers(ctx context.Context, request AdminListUsersRequestObject) (AdminListUsersResponseObject, error)
+	// AdminGetUser 用户概览
+	// (GET /admin/v1/users/{user_id})
+	AdminGetUser(ctx context.Context, request AdminGetUserRequestObject) (AdminGetUserResponseObject, error)
+	// AdminGetUserAdminActions 用户管理记录
+	// (GET /admin/v1/users/{user_id}/admin-actions)
+	AdminGetUserAdminActions(ctx context.Context, request AdminGetUserAdminActionsRequestObject) (AdminGetUserAdminActionsResponseObject, error)
+	// AdminGetUserCosts 用户 AI 成本
+	// (GET /admin/v1/users/{user_id}/costs)
+	AdminGetUserCosts(ctx context.Context, request AdminGetUserCostsRequestObject) (AdminGetUserCostsResponseObject, error)
+	// AdminGetUserOperations 用户 Operation
+	// (GET /admin/v1/users/{user_id}/operations)
+	AdminGetUserOperations(ctx context.Context, request AdminGetUserOperationsRequestObject) (AdminGetUserOperationsResponseObject, error)
+	// AdminGetUserUsage 用户使用情况
+	// (GET /admin/v1/users/{user_id}/usage)
+	AdminGetUserUsage(ctx context.Context, request AdminGetUserUsageRequestObject) (AdminGetUserUsageResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -692,6 +3884,136 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// AdminAICostBreakdown operation middleware
+func (sh *strictHandler) AdminAICostBreakdown(w http.ResponseWriter, r *http.Request, params AdminAICostBreakdownParams) {
+	var request AdminAICostBreakdownRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminAICostBreakdown(ctx, request.(AdminAICostBreakdownRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminAICostBreakdown")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminAICostBreakdownResponseObject); ok {
+		if err := validResponse.VisitAdminAICostBreakdownResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminAICostSummary operation middleware
+func (sh *strictHandler) AdminAICostSummary(w http.ResponseWriter, r *http.Request, params AdminAICostSummaryParams) {
+	var request AdminAICostSummaryRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminAICostSummary(ctx, request.(AdminAICostSummaryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminAICostSummary")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminAICostSummaryResponseObject); ok {
+		if err := validResponse.VisitAdminAICostSummaryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminListAuditLogs operation middleware
+func (sh *strictHandler) AdminListAuditLogs(w http.ResponseWriter, r *http.Request, params AdminListAuditLogsParams) {
+	var request AdminListAuditLogsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminListAuditLogs(ctx, request.(AdminListAuditLogsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminListAuditLogs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminListAuditLogsResponseObject); ok {
+		if err := validResponse.VisitAdminListAuditLogsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminDashboardSummary operation middleware
+func (sh *strictHandler) AdminDashboardSummary(w http.ResponseWriter, r *http.Request, params AdminDashboardSummaryParams) {
+	var request AdminDashboardSummaryRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminDashboardSummary(ctx, request.(AdminDashboardSummaryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminDashboardSummary")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminDashboardSummaryResponseObject); ok {
+		if err := validResponse.VisitAdminDashboardSummaryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminDashboardTrends operation middleware
+func (sh *strictHandler) AdminDashboardTrends(w http.ResponseWriter, r *http.Request, params AdminDashboardTrendsParams) {
+	var request AdminDashboardTrendsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminDashboardTrends(ctx, request.(AdminDashboardTrendsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminDashboardTrends")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminDashboardTrendsResponseObject); ok {
+		if err := validResponse.VisitAdminDashboardTrendsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // AdminLogin operation middleware
@@ -751,6 +4073,80 @@ func (sh *strictHandler) AdminLogout(w http.ResponseWriter, r *http.Request, par
 	}
 }
 
+// AdminListOperations operation middleware
+func (sh *strictHandler) AdminListOperations(w http.ResponseWriter, r *http.Request, params AdminListOperationsParams) {
+	var request AdminListOperationsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminListOperations(ctx, request.(AdminListOperationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminListOperations")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminListOperationsResponseObject); ok {
+		if err := validResponse.VisitAdminListOperationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminGetProviders operation middleware
+func (sh *strictHandler) AdminGetProviders(w http.ResponseWriter, r *http.Request) {
+	var request AdminGetProvidersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminGetProviders(ctx, request.(AdminGetProvidersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminGetProviders")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminGetProvidersResponseObject); ok {
+		if err := validResponse.VisitAdminGetProvidersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminGetQueues operation middleware
+func (sh *strictHandler) AdminGetQueues(w http.ResponseWriter, r *http.Request) {
+	var request AdminGetQueuesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminGetQueues(ctx, request.(AdminGetQueuesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminGetQueues")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminGetQueuesResponseObject); ok {
+		if err := validResponse.VisitAdminGetQueuesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // AdminGetSession operation middleware
 func (sh *strictHandler) AdminGetSession(w http.ResponseWriter, r *http.Request) {
 	var request AdminGetSessionRequestObject
@@ -775,60 +4171,353 @@ func (sh *strictHandler) AdminGetSession(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// AdminGetFunnel operation middleware
+func (sh *strictHandler) AdminGetFunnel(w http.ResponseWriter, r *http.Request, funnel AdminGetFunnelParamsFunnel, params AdminGetFunnelParams) {
+	var request AdminGetFunnelRequestObject
+
+	request.Funnel = funnel
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminGetFunnel(ctx, request.(AdminGetFunnelRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminGetFunnel")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminGetFunnelResponseObject); ok {
+		if err := validResponse.VisitAdminGetFunnelResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminUsageOverview operation middleware
+func (sh *strictHandler) AdminUsageOverview(w http.ResponseWriter, r *http.Request, params AdminUsageOverviewParams) {
+	var request AdminUsageOverviewRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminUsageOverview(ctx, request.(AdminUsageOverviewRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminUsageOverview")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminUsageOverviewResponseObject); ok {
+		if err := validResponse.VisitAdminUsageOverviewResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminListUsers operation middleware
+func (sh *strictHandler) AdminListUsers(w http.ResponseWriter, r *http.Request, params AdminListUsersParams) {
+	var request AdminListUsersRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminListUsers(ctx, request.(AdminListUsersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminListUsers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminListUsersResponseObject); ok {
+		if err := validResponse.VisitAdminListUsersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminGetUser operation middleware
+func (sh *strictHandler) AdminGetUser(w http.ResponseWriter, r *http.Request, userId UserID) {
+	var request AdminGetUserRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminGetUser(ctx, request.(AdminGetUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminGetUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminGetUserResponseObject); ok {
+		if err := validResponse.VisitAdminGetUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminGetUserAdminActions operation middleware
+func (sh *strictHandler) AdminGetUserAdminActions(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserAdminActionsParams) {
+	var request AdminGetUserAdminActionsRequestObject
+
+	request.UserId = userId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminGetUserAdminActions(ctx, request.(AdminGetUserAdminActionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminGetUserAdminActions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminGetUserAdminActionsResponseObject); ok {
+		if err := validResponse.VisitAdminGetUserAdminActionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminGetUserCosts operation middleware
+func (sh *strictHandler) AdminGetUserCosts(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserCostsParams) {
+	var request AdminGetUserCostsRequestObject
+
+	request.UserId = userId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminGetUserCosts(ctx, request.(AdminGetUserCostsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminGetUserCosts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminGetUserCostsResponseObject); ok {
+		if err := validResponse.VisitAdminGetUserCostsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminGetUserOperations operation middleware
+func (sh *strictHandler) AdminGetUserOperations(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserOperationsParams) {
+	var request AdminGetUserOperationsRequestObject
+
+	request.UserId = userId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminGetUserOperations(ctx, request.(AdminGetUserOperationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminGetUserOperations")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminGetUserOperationsResponseObject); ok {
+		if err := validResponse.VisitAdminGetUserOperationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AdminGetUserUsage operation middleware
+func (sh *strictHandler) AdminGetUserUsage(w http.ResponseWriter, r *http.Request, userId UserID, params AdminGetUserUsageParams) {
+	var request AdminGetUserUsageRequestObject
+
+	request.UserId = userId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AdminGetUserUsage(ctx, request.(AdminGetUserUsageRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AdminGetUserUsage")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AdminGetUserUsageResponseObject); ok {
+		if err := validResponse.VisitAdminGetUserUsageResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"3wAAAP//",
+	"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",
+	"bn2HC9q9YckTtSDOr7kofsPcmTD33YP/CwAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

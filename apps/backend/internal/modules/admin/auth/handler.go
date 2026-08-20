@@ -12,8 +12,8 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/httpx"
 )
 
-// API 实现 adminapi 里与登录相关的操作。
-type API struct {
+// SessionAPI 实现 adminapi 里与登录相关的操作。
+type SessionAPI struct {
 	svc     *Service
 	mw      *Middleware
 	limiter *LoginLimiter
@@ -21,13 +21,13 @@ type API struct {
 	logger  *slog.Logger
 }
 
-// NewAPI 构造登录 API。
-func NewAPI(svc *Service, mw *Middleware, limiter *LoginLimiter,
-	cfg config.AdminConfig, logger *slog.Logger) *API {
+// NewAPI 构造登录 SessionAPI。
+func NewSessionAPI(svc *Service, mw *Middleware, limiter *LoginLimiter,
+	cfg config.AdminConfig, logger *slog.Logger) *SessionAPI {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &API{svc: svc, mw: mw, limiter: limiter, cfg: cfg, logger: logger}
+	return &SessionAPI{svc: svc, mw: mw, limiter: limiter, cfg: cfg, logger: logger}
 }
 
 // loginSuccess 在写 JSON 之前把会话 Cookie 塞进去。
@@ -59,7 +59,7 @@ func (r logoutSuccess) VisitAdminLogoutResponse(w http.ResponseWriter) error {
 }
 
 // AdminLogin 处理登录。
-func (a *API) AdminLogin(ctx context.Context,
+func (a *SessionAPI) AdminLogin(ctx context.Context,
 	req adminapi.AdminLoginRequestObject) (adminapi.AdminLoginResponseObject, error) {
 
 	r := httpx.RequestFrom(ctx)
@@ -110,7 +110,7 @@ func (a *API) AdminLogin(ctx context.Context,
 }
 
 // AdminGetSession 返回当前会话。
-func (a *API) AdminGetSession(ctx context.Context,
+func (a *SessionAPI) AdminGetSession(ctx context.Context,
 	_ adminapi.AdminGetSessionRequestObject) (adminapi.AdminGetSessionResponseObject, error) {
 
 	session, ok := SessionFrom(ctx)
@@ -126,7 +126,7 @@ func (a *API) AdminGetSession(ctx context.Context,
 }
 
 // AdminLogout 撤销会话。
-func (a *API) AdminLogout(ctx context.Context,
+func (a *SessionAPI) AdminLogout(ctx context.Context,
 	_ adminapi.AdminLogoutRequestObject) (adminapi.AdminLogoutResponseObject, error) {
 
 	session, ok := SessionFrom(ctx)
@@ -142,7 +142,7 @@ func (a *API) AdminLogout(ctx context.Context,
 	return logoutSuccess{body: adminapi.LogoutResponse{Meta: a.meta(ctx)}, mw: a.mw}, nil
 }
 
-func (a *API) sessionDTO(s Session) adminapi.AdminSession {
+func (a *SessionAPI) sessionDTO(s Session) adminapi.AdminSession {
 	return adminapi.AdminSession{
 		Username:          a.cfg.Username,
 		CsrfToken:         s.CSRFToken,
@@ -153,11 +153,11 @@ func (a *API) sessionDTO(s Session) adminapi.AdminSession {
 	}
 }
 
-func (a *API) meta(ctx context.Context) adminapi.ResponseMeta {
+func (a *SessionAPI) meta(ctx context.Context) adminapi.ResponseMeta {
 	return adminapi.ResponseMeta{RequestId: httpx.RequestID(ctx)}
 }
 
-func (a *API) errorBody(ctx context.Context, code adminapi.ErrorCode, message string) adminapi.ErrorResponse {
+func (a *SessionAPI) errorBody(ctx context.Context, code adminapi.ErrorCode, message string) adminapi.ErrorResponse {
 	return adminapi.ErrorResponse{
 		Error: adminapi.Error{Code: code, Message: message},
 		Meta:  a.meta(ctx),

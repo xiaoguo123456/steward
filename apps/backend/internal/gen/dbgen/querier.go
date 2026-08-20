@@ -10,6 +10,30 @@ import (
 )
 
 type Querier interface {
+	// AI 口径。
+	//
+	// 成本只汇总算得出来的部分，另外单列「有多少次调用缺价」——
+	// 这个数不为 0 时，上面那个金额一定是偏低的，界面必须让人看见这一点。
+	AdminDashboardAI(ctx context.Context, arg AdminDashboardAIParams) (AdminDashboardAIRow, error)
+	AdminDashboardTrends(ctx context.Context, arg AdminDashboardTrendsParams) ([]AdminDashboardTrendsRow, error)
+	AdminDashboardUsage(ctx context.Context, arg AdminDashboardUsageParams) (AdminDashboardUsageRow, error)
+	// 用户口径。DAU/WAU/MAU 都从日聚合里数去重用户，
+	// **不从登录或轮询算**——那会把一个开着页面的客户端算成活跃。
+	AdminDashboardUsers(ctx context.Context, arg AdminDashboardUsersParams) (AdminDashboardUsersRow, error)
+	AdminGetUserIndex(ctx context.Context, userID string) (AdminGetUserIndexRow, error)
+	AdminLatestAggregation(ctx context.Context, kind string) (AdminLatestAggregationRow, error)
+	// 注：队列状态查 river_job，那张表由 River 在运行时自建、不在迁移里，
+	// sqlc 不认识它。因此在 modules/admin/ops 里用 pgx 手写。
+	AdminListAuditLogs(ctx context.Context, arg AdminListAuditLogsParams) ([]AdminListAuditLogsRow, error)
+	// 后台只读查询。
+	//
+	// 跨用户的部分**全部读 admin schema 的脱敏读模型**，一行业务表都不碰：
+	// 业务表受 RLS 约束，没有身份读不出来；有身份又只能看一个人。
+	// 读模型正是为这个矛盾存在的。
+	// 用户列表。游标是 (created_at, user_id) 的复合序——
+	// 只按 created_at 排的话，同一毫秒注册的两个用户翻页时会重复或漏掉。
+	AdminListUsers(ctx context.Context, arg AdminListUsersParams) ([]AdminListUsersRow, error)
+	AdminUserDailyUsage(ctx context.Context, arg AdminUserDailyUsageParams) ([]AdminUserDailyUsageRow, error)
 	// 在同一事务内原子分配消息与 Turn 序号，避免并发下产生重复序号。
 	AdvanceThreadSeq(ctx context.Context, arg AdvanceThreadSeqParams) (AdvanceThreadSeqRow, error)
 	// records.aggregate 能力用：由 SQL 完成计数、求和、平均与范围，

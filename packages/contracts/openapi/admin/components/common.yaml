@@ -12,7 +12,7 @@ ResponseMeta:
       type: string
       description: 出错时报给用户的定位依据，日志里按它能查到整条调用链。
 
-Cursor:
+PageInfo:
   type: object
   additionalProperties: false
   required: [next_cursor]

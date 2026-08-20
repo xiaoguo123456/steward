@@ -61,3 +61,68 @@ CSRFToken:
   description: 登录时下发，写操作必带。与 Origin 校验一起用，单靠任何一个都不够。
   schema:
     type: string
+
+UserStatusFilter:
+  name: account_status
+  in: query
+  required: false
+  schema:
+    $ref: './users.yaml#/AccountStatus'
+
+InitializedFilter:
+  name: initialized
+  in: query
+  required: false
+  schema:
+    type: boolean
+
+UserIDFilter:
+  name: user_id
+  in: query
+  required: false
+  description: 精确匹配用户 ID。
+  schema:
+    type: string
+
+PhoneFilter:
+  name: phone
+  in: query
+  required: false
+  description: |
+    **精确**匹配手机号。服务端用版本化 HMAC 比对，库里没有明文。
+
+    只支持精确匹配，不支持前缀或模糊——模糊搜索等于提供了一个
+    把号码一位一位试出来的接口。
+  schema:
+    type: string
+
+OperationStatusFilter:
+  name: status
+  in: query
+  required: false
+  schema:
+    type: string
+
+ActionFilter:
+  name: action
+  in: query
+  required: false
+  schema:
+    type: string
+
+FunnelName:
+  name: funnel
+  in: path
+  required: true
+  schema:
+    type: string
+    enum: [onboarding, capture, assistant]
+
+GroupBy:
+  name: group_by
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [date, feature, provider, model]
+    default: date

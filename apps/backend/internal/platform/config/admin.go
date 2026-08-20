@@ -48,6 +48,16 @@ type AdminConfig struct {
 
 	// CookieSecure 只在本地明文调试时才允许关掉。
 	CookieSecure bool
+
+	// PhoneLookupKey 是手机号查询散列的密钥。
+	//
+	// **必须和聚合任务用的是同一把**——聚合在 Worker 进程里算散列入库，
+	// 后台在这里算散列去比对，两边不一致的话精确查询永远查不到，
+	// 而且不会报错，只会安静地返回空列表。
+	//
+	// 复用 STEWARD_MEMORY_FINGERPRINT_KEY：它已经是「服务端内部、
+	// 轮换会让历史散列失效」的同一类密钥，两个进程都读得到。
+	PhoneLookupKey string
 }
 
 // LoadAdmin 读取后台配置。
@@ -69,6 +79,7 @@ func LoadAdmin() (AdminConfig, error) {
 		ReportingTimezone: env("STEWARD_ADMIN_REPORTING_TIMEZONE", "Asia/Shanghai"),
 		Environment:       env("STEWARD_ENVIRONMENT", "development"),
 		CookieSecure:      env("STEWARD_ADMIN_COOKIE_SECURE", "true") != "false",
+		PhoneLookupKey:    env("STEWARD_MEMORY_FINGERPRINT_KEY", ""),
 	}
 
 	// 缺任何一项都直接拒绝启动。

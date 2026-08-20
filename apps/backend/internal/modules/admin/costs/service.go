@@ -13,6 +13,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/big"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -187,4 +189,27 @@ func NumericString(n pgtype.Numeric) string {
 		return s
 	}
 	return fmt.Sprint(value)
+}
+
+// SumAmounts 精确累加一组十进制金额字符串。
+//
+// **不经过 float64。** 累加是后台唯一在 Go 里做的金额运算，
+// 而 0.1 + 0.2 在 float64 下等于 0.30000000000000004——
+// 一份对不上的账单比没有账单更糟，因为你会先怀疑别的地方。
+//
+// 任何一项解析不出来就返回 false，让调用方报「算不出来」而不是报一个错的数。
+func SumAmounts(values []string) (string, bool) {
+	if len(values) == 0 {
+		return "", false
+	}
+	total := new(big.Rat)
+	for _, v := range values {
+		parsed, ok := new(big.Rat).SetString(strings.TrimSpace(v))
+		if !ok {
+			return "", false
+		}
+		total.Add(total, parsed)
+	}
+	// 保留 8 位小数，和库里 numeric(20,8) 的精度一致。
+	return total.FloatString(8), true
 }

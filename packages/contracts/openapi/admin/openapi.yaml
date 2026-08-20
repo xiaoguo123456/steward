@@ -28,6 +28,30 @@ servers:
 tags:
   - name: admin-auth
     description: 登录与会话
+  - name: admin-dashboard
+    description: 总览
+  - name: admin-users
+    description: 用户查询与管理
+  - name: admin-usage
+    description: 使用分析
+  - name: admin-costs
+    description: AI 成本
+  - name: admin-ops
+    description: 运行中心
+  - name: admin-audit
+    description: 操作审计
+  - name: admin-dashboard
+    description: 总览
+  - name: admin-users
+    description: 用户查询与管理
+  - name: admin-usage
+    description: 使用分析
+  - name: admin-costs
+    description: AI 成本
+  - name: admin-ops
+    description: 运行中心
+  - name: admin-audit
+    description: 操作审计
 
 security:
   - adminSession: []
@@ -49,3 +73,35 @@ paths:
     $ref: './paths/auth.yaml#/Session'
   /admin/v1/logout:
     $ref: './paths/auth.yaml#/Logout'
+  /admin/v1/dashboard/summary:
+    $ref: './paths/read.yaml#/DashboardSummary'
+  /admin/v1/dashboard/trends:
+    $ref: './paths/read.yaml#/DashboardTrends'
+  /admin/v1/users:
+    $ref: './paths/read.yaml#/Users'
+  /admin/v1/users/{user_id}:
+    $ref: './paths/read.yaml#/UserDetail'
+  /admin/v1/users/{user_id}/usage:
+    $ref: './paths/read.yaml#/UserUsage'
+  /admin/v1/users/{user_id}/costs:
+    $ref: './paths/read.yaml#/UserCosts'
+  /admin/v1/users/{user_id}/operations:
+    $ref: './paths/read.yaml#/UserOperations'
+  /admin/v1/users/{user_id}/admin-actions:
+    $ref: './paths/read.yaml#/UserAdminActions'
+  /admin/v1/usage/overview:
+    $ref: './paths/read.yaml#/UsageOverview'
+  /admin/v1/usage/funnels/{funnel}:
+    $ref: './paths/read.yaml#/Funnel'
+  /admin/v1/ai-costs/summary:
+    $ref: './paths/read.yaml#/AICostSummary'
+  /admin/v1/ai-costs/breakdown:
+    $ref: './paths/read.yaml#/AICostBreakdown'
+  /admin/v1/queues:
+    $ref: './paths/read.yaml#/Queues'
+  /admin/v1/providers:
+    $ref: './paths/read.yaml#/Providers'
+  /admin/v1/operations:
+    $ref: './paths/read.yaml#/Operations'
+  /admin/v1/audit-logs:
+    $ref: './paths/read.yaml#/AuditLogs'

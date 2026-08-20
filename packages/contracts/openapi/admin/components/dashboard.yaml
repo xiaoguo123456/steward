@@ -1,0 +1,123 @@
+DashboardSummary:
+  type: object
+  additionalProperties: false
+  description: |
+    总览。每个模块各自带新鲜度：**部分数据源失败时保留其他模块**，
+    而不是整页报错——一个模块查不出来不该让运营连用户数都看不到。
+  required: [range, users, usage, ai, runtime, freshness]
+  properties:
+    range:
+      $ref: '#/DateRange'
+    users:
+      $ref: '#/UserMetrics'
+    usage:
+      $ref: '#/UsageMetrics'
+    ai:
+      $ref: '#/AIMetrics'
+    runtime:
+      $ref: '#/RuntimeMetrics'
+    freshness:
+      $ref: './common.yaml#/DataFreshness'
+    failed_sections:
+      type: array
+      description: 取不到的模块名。空数组表示全部正常。
+      items:
+        type: string
+
+DateRange:
+  type: object
+  additionalProperties: false
+  required: [from, to, timezone]
+  properties:
+    from: { type: string, format: date }
+    to: { type: string, format: date }
+    timezone:
+      type: string
+      description: 报表时区。所有日期按它切日，界面上也按它显示。
+
+UserMetrics:
+  type: object
+  additionalProperties: false
+  required: [total, new_users, initialized, dau, wau, mau]
+  properties:
+    total: { type: integer }
+    new_users: { type: integer }
+    initialized: { type: integer }
+    dau: { type: integer }
+    wau: { type: integer }
+    mau: { type: integer }
+
+UsageMetrics:
+  type: object
+  additionalProperties: false
+  required: [capture_submitted, capture_confirmed, assistant_turns, task_completed]
+  properties:
+    capture_submitted: { type: integer }
+    capture_confirmed: { type: integer }
+    assistant_turns: { type: integer }
+    task_completed: { type: integer }
+
+AIMetrics:
+  type: object
+  additionalProperties: false
+  required: [calls, success_rate, p95_latency_ms, cost, input_tokens, output_tokens, pricing_missing_calls]
+  properties:
+    calls: { type: integer }
+    success_rate:
+      type: number
+      format: double
+      nullable: true
+      description: 分母为 0 时为空，界面显示“—”而不是 0%。
+    p95_latency_ms:
+      type: integer
+      nullable: true
+    cost:
+      $ref: './common.yaml#/MoneyAmount'
+    input_tokens: { type: integer }
+    output_tokens: { type: integer }
+    pricing_missing_calls:
+      type: integer
+      description: 有用量但匹配不到价格的调用数。它不为 0 时，成本一定是偏低的。
+
+RuntimeMetrics:
+  type: object
+  additionalProperties: false
+  required: [failed_operations, queue_available, queue_running, queue_retryable, discarded_jobs]
+  properties:
+    failed_operations: { type: integer }
+    queue_available: { type: integer }
+    queue_running: { type: integer }
+    queue_retryable: { type: integer }
+    discarded_jobs: { type: integer }
+
+DashboardSummaryResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data: { $ref: '#/DashboardSummary' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+TrendPoint:
+  type: object
+  additionalProperties: false
+  required: [date, active_users, capture_submitted, assistant_turns, ai_calls]
+  properties:
+    date: { type: string, format: date }
+    active_users: { type: integer }
+    capture_submitted: { type: integer }
+    assistant_turns: { type: integer }
+    ai_calls: { type: integer }
+    ai_cost:
+      $ref: './common.yaml#/MoneyAmount'
+
+DashboardTrendsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, freshness, meta]
+  properties:
+    data:
+      type: array
+      items: { $ref: '#/TrendPoint' }
+    freshness: { $ref: './common.yaml#/DataFreshness' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
