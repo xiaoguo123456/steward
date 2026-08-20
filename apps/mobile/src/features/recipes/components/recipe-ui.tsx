@@ -6,11 +6,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '@/components/ui/icon';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
-import { weekDays } from '../mock-data';
 import {
   mealSlotLabels,
   type MealSlot,
   type Recipe,
+  type WeekDay,
   type WeekDayId,
 } from '../model';
 import { recipeColors } from '../theme';
@@ -70,15 +70,18 @@ export function RecipeTabs({
 }
 
 export function WeekDateSelector({
+  days,
   selectedDayId,
   onSelect,
 }: {
+  /** 本周七天，由服务端给出的周起始日推出，不在组件里算。 */
+  days: WeekDay[];
   selectedDayId: WeekDayId;
   onSelect: (dayId: WeekDayId) => void;
 }) {
   return (
     <View accessibilityRole="tablist" style={styles.dateSelector}>
-      {weekDays.map((day) => {
+      {days.map((day) => {
         const selected = day.id === selectedDayId;
         return (
           <Pressable

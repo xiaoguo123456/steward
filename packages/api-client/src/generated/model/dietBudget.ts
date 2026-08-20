@@ -14,11 +14,11 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type GetMealPlanShoppingDraftParams = {
-week_start?: string;
-/**
- * 只算某一天的食材。不传时算整周。
- * 合并仍然在服务端做——客户端自己合并会和「创建清单」那一步不一致。
- */
-date?: string;
-};
+export type DietBudget = typeof DietBudget[keyof typeof DietBudget];
+
+
+export const DietBudget = {
+  economy: 'economy',
+  standard: 'standard',
+  flexible: 'flexible',
+} as const;

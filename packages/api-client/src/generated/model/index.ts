@@ -104,6 +104,7 @@ export * from './deleteMemoryResponse';
 export * from './deleteMemoryResponseData';
 export * from './deleteTaskListRequest';
 export * from './dietActivityLevel';
+export * from './dietBudget';
 export * from './dietGoal';
 export * from './dietProfile';
 export * from './dietProfileResponse';

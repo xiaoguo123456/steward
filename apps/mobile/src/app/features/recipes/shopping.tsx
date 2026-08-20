@@ -1,5 +1,5 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
@@ -9,130 +9,40 @@ import {
   InlineNotice,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
+import { useShoppingDraft } from '@/features/recipes/use-shopping-draft';
 import { recipeColors } from '@/features/recipes/theme';
 import { useClientReady } from '@/hooks/use-client-ready';
 import {
   ingredientGroupLabels,
-  mealSlotOrder,
   type IngredientGroup,
   type Recipe,
-  type ShoppingItem,
 } from '@/features/recipes/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 const groupOrder: IngredientGroup[] = ['produce', 'protein', 'staple', 'seasoning'];
-
-function parseAmount(amount: string) {
-  const fractionMatch = amount.match(/^(半|四分之一)(个|根)$/);
-  if (fractionMatch) {
-    return {
-      value: fractionMatch[1] === '半' ? 0.5 : 0.25,
-      unit: fractionMatch[2],
-    };
-  }
-
-  const numericMatch = amount.match(/^(\d+(?:\.\d+)?)\s*(克|个|片|根|茶匙|汤匙)$/);
-  if (!numericMatch) return null;
-  const value = Number(numericMatch[1]);
-  const unit = numericMatch[2];
-  if (unit === '汤匙') return { value: value * 3, unit: '茶匙' };
-  return { value, unit };
-}
-
-function formatTotal(value: number, unit: string) {
-  if (unit === '茶匙' && value >= 3 && value % 3 === 0) {
-    return `${value / 3} 汤匙`;
-  }
-  if (unit === '个' && value === 0.5) return '半个';
-  if (unit === '根' && value === 0.5) return '半根';
-  const rounded = Number.isInteger(value) ? value : Number(value.toFixed(1));
-  return `${rounded} ${unit}`;
-}
-
-function mergeAmounts(amountCounts: Map<string, number>) {
-  const entries = Array.from(amountCounts.entries());
-  if (entries.every(([amount]) => amount === '少许')) return '适量';
-
-  const parsed = entries.map(([amount, count]) => {
-    const result = parseAmount(amount);
-    return result ? { ...result, value: result.value * count } : null;
-  });
-
-  if (parsed.every((item) => item !== null)) {
-    const units = new Set(parsed.map((item) => item.unit));
-    if (units.size === 1) {
-      const unit = parsed[0].unit;
-      const total = parsed.reduce((sum, item) => sum + item.value, 0);
-      return formatTotal(total, unit);
-    }
-  }
-
-  return entries
-    .map(([amount, count]) => (count > 1 ? `${amount} × ${count}` : amount))
-    .join(' + ');
-}
-
-function buildShoppingItems(
-  recipeIds: string[],
-  getRecipe: (recipeId: string) => Recipe | undefined,
-): ShoppingItem[] {
-  const items = new Map<
-    string,
-    ShoppingItem & { amountCounts: Map<string, number> }
-  >();
-
-  recipeIds.forEach((recipeId) => {
-    const recipe = getRecipe(recipeId);
-    if (!recipe) return;
-    recipe.ingredients.forEach((ingredient) => {
-      const key = `${ingredient.group}-${ingredient.name}`;
-      const current = items.get(key) ?? {
-        id: key,
-        name: ingredient.name,
-        amount: ingredient.amount,
-        group: ingredient.group,
-        sources: [],
-        amountCounts: new Map<string, number>(),
-      };
-      current.amountCounts.set(
-        ingredient.amount,
-        (current.amountCounts.get(ingredient.amount) ?? 0) + 1,
-      );
-      if (!current.sources.includes(recipe.title)) current.sources.push(recipe.title);
-      items.set(key, current);
-    });
-  });
-
-  return Array.from(items.values()).map((item) => ({
-    id: item.id,
-    name: item.name,
-    group: item.group,
-    sources: item.sources,
-    amount: mergeAmounts(item.amountCounts),
-  }));
-}
 
 export default function RecipeShoppingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ scope?: string }>();
   const clientReady = useClientReady();
   const scope = clientReady && params.scope === 'week' ? 'week' : 'day';
-  const { plan, selectedDayId, hasPendingPlan, getRecipe } = useRecipePrototype();
-  const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set(['seasoning-低盐生抽']));
-  const [created, setCreated] = useState(false);
+  const { weekStart, selectedDayId, hasPendingPlan, getRecipe } = useRecipePrototype();
+  // 「家里已有」由用户自己勾。别预置任何一项——他没勾过的东西不该是勾上的。
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set());
 
-  const recipeIds = useMemo(() => {
-    const dayIds = scope === 'week' ? weekDays.map((day) => day.id) : [selectedDayId];
-    return dayIds.flatMap((dayId) => mealSlotOrder.map((meal) => plan[dayId][meal]));
-  }, [plan, scope, selectedDayId]);
+  const draft = useShoppingDraft({
+    weekStart,
+    date: scope === 'week' ? undefined : selectedDayId,
+  });
+  const items = draft.items;
+  const [createdCount, setCreatedCount] = useState<number | null>(null);
+  const selectedCount = items.filter((item) => !ownedIds.has(item.id)).length;
 
-  const items = useMemo(
-    () => buildShoppingItems(recipeIds, getRecipe),
-    [getRecipe, recipeIds],
-  );
-  const selectedCount = items.length - ownedIds.size;
+  const submit = async () => {
+    const count = selectedCount;
+    if (await draft.create(ownedIds)) setCreatedCount(count);
+  };
 
   const toggleOwned = (itemId: string) => {
     setOwnedIds((current) => {
@@ -143,7 +53,7 @@ export default function RecipeShoppingScreen() {
     });
   };
 
-  if (created) {
+  if (createdCount !== null) {
     return (
       <AppScreen backgroundColor={recipeColors.background} includeBottomInset>
         <NavHeader title="购物清单" />
@@ -151,9 +61,9 @@ export default function RecipeShoppingScreen() {
           <View style={styles.successIcon}>
             <AppIcon color={colors.background} name="checkmark" size={34} />
           </View>
-          <Text accessibilityRole="header" style={styles.successTitle}>购物清单已准备好</Text>
+          <Text accessibilityRole="header" style={styles.successTitle}>购物清单已创建</Text>
           <Text style={styles.successCopy}>
-            已准备好 {selectedCount} 项食材，可前往购物清单继续调整。
+            已创建 {createdCount} 项待购买，可前往购物清单继续调整。
           </Text>
           <RecipePrimaryButton
             icon="cart-outline"
@@ -220,8 +130,7 @@ export default function RecipeShoppingScreen() {
                       <View style={styles.itemCopy}>
                         <Text style={[styles.itemName, owned && styles.itemNameOwned]}>{item.name}</Text>
                         <Text numberOfLines={1} style={styles.itemSource}>
-                          来自 {item.sources.slice(0, 2).join('、')}
-                          {item.sources.length > 2 ? ` 等 ${item.sources.length} 道菜` : ''}
+                          {describeSources(item.recipeIds, getRecipe)}
                         </Text>
                       </View>
                       <Text style={[styles.itemAmount, owned && styles.itemAmountOwned]}>{item.amount}</Text>
@@ -235,18 +144,39 @@ export default function RecipeShoppingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
+        {draft.failure ? <Text style={styles.failure}>{draft.failure}</Text> : null}
         <RecipePrimaryButton
-          disabled={hasPendingPlan || selectedCount <= 0}
+          disabled={hasPendingPlan || selectedCount <= 0 || draft.creating}
           icon="checkmark-circle-outline"
-          label={`确认创建 ${selectedCount} 项`}
-          onPress={() => setCreated(true)}
+          label={draft.creating ? '正在创建…' : `确认创建 ${selectedCount} 项`}
+          onPress={() => void submit()}
         />
       </View>
     </AppScreen>
   );
 }
 
+/** 「来自 番茄炒蛋、菌菇汤」。查不到名字的菜谱不显示，不摆一个 ID 给用户看。 */
+function describeSources(
+  recipeIds: string[],
+  getRecipe: (recipeId: string) => Recipe | undefined,
+): string {
+  const titles = recipeIds
+    .map((id) => getRecipe(id)?.title)
+    .filter((title): title is string => Boolean(title));
+  if (titles.length === 0) return '';
+  const shown = titles.slice(0, 2).join('、');
+  return titles.length > 2 ? `来自 ${shown} 等 ${titles.length} 道菜` : `来自 ${shown}`;
+}
+
 const styles = StyleSheet.create({
+  failure: {
+    marginBottom: 8,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 126,

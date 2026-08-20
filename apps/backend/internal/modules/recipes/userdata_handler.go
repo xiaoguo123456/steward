@@ -164,7 +164,11 @@ func (h *RecipeAPI) GetMealPlanShoppingDraft(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	items, err := h.svc.ShoppingDraft(ctx, userID, weekStart)
+	var onlyDate *time.Time
+	if req.Params.Date != nil {
+		onlyDate = &req.Params.Date.Time
+	}
+	items, err := h.svc.ShoppingDraft(ctx, userID, weekStart, onlyDate)
 	if err != nil {
 		return nil, err
 	}
@@ -233,15 +237,22 @@ func mapDietProfile(row dbgen.RecipeDietProfile) httpapi.DietProfile {
 	activity := httpapi.DietActivityLevel(row.ActivityLevel)
 	completed := row.Completed
 
+	budget := httpapi.DietBudget(row.Budget)
+	diagnosed := row.DiagnosedCondition
+
 	out := httpapi.DietProfile{
-		Goal:          goal,
-		Sex:           &sex,
-		ActivityLevel: &activity,
-		Allergens:     row.Allergens,
-		Dislikes:      row.Dislikes,
-		Servings:      int(row.Servings),
-		Completed:     &completed,
-		UpdatedAt:     row.UpdatedAt,
+		Goal:               goal,
+		Sex:                &sex,
+		ActivityLevel:      &activity,
+		Allergens:          row.Allergens,
+		Dislikes:           row.Dislikes,
+		Servings:           int(row.Servings),
+		Completed:          &completed,
+		Budget:             &budget,
+		Tastes:             &row.Tastes,
+		Equipment:          &row.Equipment,
+		DiagnosedCondition: &diagnosed,
+		UpdatedAt:          row.UpdatedAt,
 	}
 	if row.Age != nil {
 		age := int(*row.Age)

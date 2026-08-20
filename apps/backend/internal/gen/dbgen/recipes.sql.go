@@ -99,7 +99,7 @@ func (q *Queries) FavoriteRecipe(ctx context.Context, arg FavoriteRecipeParams) 
 
 const getDietProfile = `-- name: GetDietProfile :one
 
-SELECT user_id, goal, age, sex, height_cm, weight_kg, target_weight_kg, activity_level, allergens, dislikes, servings, max_cook_minutes, completed, created_at, updated_at FROM recipe_diet_profiles WHERE user_id = $1
+SELECT user_id, goal, age, sex, height_cm, weight_kg, target_weight_kg, activity_level, allergens, dislikes, servings, max_cook_minutes, completed, created_at, updated_at, budget, tastes, equipment, diagnosed_condition FROM recipe_diet_profiles WHERE user_id = $1
 `
 
 // ---- 用户自己的食谱数据 ----
@@ -125,6 +125,10 @@ func (q *Queries) GetDietProfile(ctx context.Context, userID string) (RecipeDiet
 		&i.Completed,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Budget,
+		&i.Tastes,
+		&i.Equipment,
+		&i.DiagnosedCondition,
 	)
 	return i, err
 }
@@ -454,7 +458,8 @@ const upsertDietProfile = `-- name: UpsertDietProfile :one
 INSERT INTO recipe_diet_profiles (
     user_id, goal, sex, activity_level,
     age, height_cm, weight_kg, target_weight_kg, max_cook_minutes,
-    allergens, dislikes, servings, completed
+    allergens, dislikes, servings, completed,
+    budget, tastes, equipment, diagnosed_condition
 ) VALUES (
     $1,
     coalesce($2, 'balanced'),
@@ -465,51 +470,64 @@ INSERT INTO recipe_diet_profiles (
     coalesce($10::text[], '{}'),
     coalesce($11::text[], '{}'),
     coalesce($12, 2),
-    coalesce($13, false)
+    coalesce($13, false),
+    coalesce($14, 'standard'),
+    coalesce($15::text[], '{}'),
+    coalesce($16::text[], '{}'),
+    coalesce($17, false)
 )
 ON CONFLICT (user_id) DO UPDATE SET
     goal           = coalesce($2, recipe_diet_profiles.goal),
     sex            = coalesce($3, recipe_diet_profiles.sex),
     activity_level = coalesce($4, recipe_diet_profiles.activity_level),
-    age = CASE WHEN $14::bool THEN NULL
+    age = CASE WHEN $18::bool THEN NULL
                ELSE coalesce($5, recipe_diet_profiles.age) END,
-    height_cm = CASE WHEN $15::bool THEN NULL
+    height_cm = CASE WHEN $19::bool THEN NULL
                      ELSE coalesce($6, recipe_diet_profiles.height_cm) END,
-    weight_kg = CASE WHEN $16::bool THEN NULL
+    weight_kg = CASE WHEN $20::bool THEN NULL
                      ELSE coalesce($7, recipe_diet_profiles.weight_kg) END,
-    target_weight_kg = CASE WHEN $17::bool THEN NULL
+    target_weight_kg = CASE WHEN $21::bool THEN NULL
                             ELSE coalesce($8,
                                           recipe_diet_profiles.target_weight_kg) END,
-    max_cook_minutes = CASE WHEN $18::bool THEN NULL
+    max_cook_minutes = CASE WHEN $22::bool THEN NULL
                             ELSE coalesce($9,
                                           recipe_diet_profiles.max_cook_minutes) END,
     allergens  = coalesce($10::text[], recipe_diet_profiles.allergens),
     dislikes   = coalesce($11::text[], recipe_diet_profiles.dislikes),
     servings   = coalesce($12, recipe_diet_profiles.servings),
     completed  = coalesce($13, recipe_diet_profiles.completed),
+    budget     = coalesce($14, recipe_diet_profiles.budget),
+    tastes     = coalesce($15::text[], recipe_diet_profiles.tastes),
+    equipment  = coalesce($16::text[], recipe_diet_profiles.equipment),
+    diagnosed_condition = coalesce($17,
+                                   recipe_diet_profiles.diagnosed_condition),
     updated_at = now()
-RETURNING user_id, goal, age, sex, height_cm, weight_kg, target_weight_kg, activity_level, allergens, dislikes, servings, max_cook_minutes, completed, created_at, updated_at
+RETURNING user_id, goal, age, sex, height_cm, weight_kg, target_weight_kg, activity_level, allergens, dislikes, servings, max_cook_minutes, completed, created_at, updated_at, budget, tastes, equipment, diagnosed_condition
 `
 
 type UpsertDietProfileParams struct {
-	UserID            string
-	Goal              interface{}
-	Sex               interface{}
-	ActivityLevel     interface{}
-	Age               *int32
-	HeightCm          *float64
-	WeightKg          *float64
-	TargetWeightKg    *float64
-	MaxCookMinutes    *int32
-	Allergens         []string
-	Dislikes          []string
-	Servings          interface{}
-	Completed         interface{}
-	ClearAge          bool
-	ClearHeight       bool
-	ClearWeight       bool
-	ClearTargetWeight bool
-	ClearCookMinutes  bool
+	UserID             string
+	Goal               interface{}
+	Sex                interface{}
+	ActivityLevel      interface{}
+	Age                *int32
+	HeightCm           *float64
+	WeightKg           *float64
+	TargetWeightKg     *float64
+	MaxCookMinutes     *int32
+	Allergens          []string
+	Dislikes           []string
+	Servings           interface{}
+	Completed          interface{}
+	Budget             interface{}
+	Tastes             []string
+	Equipment          []string
+	DiagnosedCondition interface{}
+	ClearAge           bool
+	ClearHeight        bool
+	ClearWeight        bool
+	ClearTargetWeight  bool
+	ClearCookMinutes   bool
 }
 
 // 第一次修改时顺带建行：客户端不需要先「创建档案」再改。
@@ -532,6 +550,10 @@ func (q *Queries) UpsertDietProfile(ctx context.Context, arg UpsertDietProfilePa
 		arg.Dislikes,
 		arg.Servings,
 		arg.Completed,
+		arg.Budget,
+		arg.Tastes,
+		arg.Equipment,
+		arg.DiagnosedCondition,
 		arg.ClearAge,
 		arg.ClearHeight,
 		arg.ClearWeight,
@@ -555,6 +577,10 @@ func (q *Queries) UpsertDietProfile(ctx context.Context, arg UpsertDietProfilePa
 		&i.Completed,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Budget,
+		&i.Tastes,
+		&i.Equipment,
+		&i.DiagnosedCondition,
 	)
 	return i, err
 }

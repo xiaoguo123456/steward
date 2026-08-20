@@ -23,10 +23,7 @@ import {
   RecipeTabs,
   WeekDateSelector,
 } from '@/features/recipes/components/recipe-ui';
-import {
-  categoryOptions,
-  weekDays,
-} from '@/features/recipes/mock-data';
+import { categoryOptions } from '@/features/recipes/category-options';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { useClientReady } from '@/hooks/use-client-ready';
 import {
@@ -46,6 +43,7 @@ function WeekHome() {
   const router = useRouter();
   const {
     profile,
+    days,
     selectedDayId,
     setSelectedDayId,
     plan,
@@ -53,26 +51,31 @@ function WeekHome() {
     swapRecipe,
     getRecipe,
   } = useRecipePrototype();
-  const selectedDay = weekDays.find((day) => day.id === selectedDayId) ?? weekDays[0];
+  const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
   const dayRecipes = mealSlotOrder
-    .map((meal) => getRecipe(plan[selectedDayId][meal]))
+    .map((meal) => getRecipe(plan[selectedDayId]?.[meal] ?? ''))
     .filter((recipe): recipe is Recipe => Boolean(recipe));
 
   return (
     <>
-      <Pressable
-        accessibilityLabel={`当前目标，${goalLabels[profile.goal]}，打开饮食档案`}
-        accessibilityRole="button"
-        onPress={() => router.push('/features/recipes/questionnaire' as Href)}
-        style={({ pressed }) => [styles.goalContext, pressed && styles.pressed]}
-      >
-        <View style={styles.goalCopy}>
-          <Text style={styles.goalTitle}>{goalLabels[profile.goal]}</Text>
-          <Text style={styles.goalMeta}>每日约 1850 千卡</Text>
-        </View>
-        <Text style={styles.goalAction}>饮食档案</Text>
-        <AppIcon color={recipeColors.muted} name="chevron-forward" size={18} />
-      </Pressable>
+      {/* 档案还在加载时不显示：先摆一个用户没选过的目标比空着更糟。 */}
+      {profile ? (
+        <Pressable
+          accessibilityLabel={`当前目标，${goalLabels[profile.goal]}，打开饮食档案`}
+          accessibilityRole="button"
+          onPress={() => router.push('/features/recipes/questionnaire' as Href)}
+          style={({ pressed }) => [styles.goalContext, pressed && styles.pressed]}
+        >
+          <View style={styles.goalCopy}>
+            <Text style={styles.goalTitle}>{goalLabels[profile.goal]}</Text>
+            <Text style={styles.goalMeta}>
+              {profile.people} 人份 · 最多 {profile.maxCookingMinutes} 分钟
+            </Text>
+          </View>
+          <Text style={styles.goalAction}>饮食档案</Text>
+          <AppIcon color={recipeColors.muted} name="chevron-forward" size={18} />
+        </Pressable>
+      ) : null}
 
       {hasPendingPlan ? (
         <View style={styles.pendingNotice}>
@@ -83,7 +86,7 @@ function WeekHome() {
       ) : null}
 
       <View style={styles.dateBlock}>
-        <WeekDateSelector onSelect={setSelectedDayId} selectedDayId={selectedDayId} />
+        <WeekDateSelector days={days} onSelect={setSelectedDayId} selectedDayId={selectedDayId} />
       </View>
 
       <RecipeSectionTitle
@@ -146,7 +149,8 @@ function DiscoverHome() {
     return recipes.filter((recipe) => {
       const matchesCategory =
         category === 'recommended'
-          ? recipe.goals.includes(profile.goal) || recipe.categories.includes('recommended')
+          ? (profile ? recipe.goals.includes(profile.goal) : false) ||
+            recipe.categories.includes('recommended')
           : recipe.categories.includes(category);
       const haystack = [
         recipe.title,
@@ -158,7 +162,7 @@ function DiscoverHome() {
         .toLowerCase();
       return matchesCategory && (!normalizedSearch || haystack.includes(normalizedSearch));
     });
-  }, [category, normalizedSearch, profile.goal, recipes]);
+  }, [category, normalizedSearch, profile, recipes]);
 
   // 头图取当前筛选下的第一条：内容来自服务端，不该在客户端写死某个 ID。
   const featured = visibleRecipes[0] ?? recipes[0];

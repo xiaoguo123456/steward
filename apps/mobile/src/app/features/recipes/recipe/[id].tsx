@@ -19,7 +19,6 @@ import {
   RecipePrimaryButton,
   RecipeSectionTitle,
 } from '@/features/recipes/components/recipe-ui';
-import { weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
 import { useClientReady } from '@/hooks/use-client-ready';
@@ -53,6 +52,7 @@ export default function RecipeDetailScreen() {
   const recipeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const clientReady = useClientReady();
   const {
+    days,
     favoriteIds,
     toggleFavorite,
     cookedIds,
@@ -307,7 +307,7 @@ export default function RecipeDetailScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
             >
-              {weekDays.map((day) => {
+              {days.map((day) => {
                 const selected = selectedDayId === day.id;
                 return (
                   <Pressable
@@ -352,7 +352,7 @@ export default function RecipeDetailScreen() {
 
             <RecipePrimaryButton
               icon="add-circle-outline"
-              label={`加入${weekDays.find((day) => day.id === selectedDayId)?.label ?? ''}${mealSlotLabels[pickedMeal]}`}
+              label={`加入${days.find((day) => day.id === selectedDayId)?.label ?? ''}${mealSlotLabels[pickedMeal]}`}
               onPress={addToPlan}
             />
           </View>

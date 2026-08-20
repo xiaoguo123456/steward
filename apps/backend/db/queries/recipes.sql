@@ -73,7 +73,8 @@ SELECT * FROM recipe_diet_profiles WHERE user_id = sqlc.arg(user_id);
 INSERT INTO recipe_diet_profiles (
     user_id, goal, sex, activity_level,
     age, height_cm, weight_kg, target_weight_kg, max_cook_minutes,
-    allergens, dislikes, servings, completed
+    allergens, dislikes, servings, completed,
+    budget, tastes, equipment, diagnosed_condition
 ) VALUES (
     sqlc.arg(user_id),
     coalesce(sqlc.narg(goal), 'balanced'),
@@ -84,7 +85,11 @@ INSERT INTO recipe_diet_profiles (
     coalesce(sqlc.narg(allergens)::text[], '{}'),
     coalesce(sqlc.narg(dislikes)::text[], '{}'),
     coalesce(sqlc.narg(servings), 2),
-    coalesce(sqlc.narg(completed), false)
+    coalesce(sqlc.narg(completed), false),
+    coalesce(sqlc.narg(budget), 'standard'),
+    coalesce(sqlc.narg(tastes)::text[], '{}'),
+    coalesce(sqlc.narg(equipment)::text[], '{}'),
+    coalesce(sqlc.narg(diagnosed_condition), false)
 )
 ON CONFLICT (user_id) DO UPDATE SET
     goal           = coalesce(sqlc.narg(goal), recipe_diet_profiles.goal),
@@ -106,6 +111,11 @@ ON CONFLICT (user_id) DO UPDATE SET
     dislikes   = coalesce(sqlc.narg(dislikes)::text[], recipe_diet_profiles.dislikes),
     servings   = coalesce(sqlc.narg(servings), recipe_diet_profiles.servings),
     completed  = coalesce(sqlc.narg(completed), recipe_diet_profiles.completed),
+    budget     = coalesce(sqlc.narg(budget), recipe_diet_profiles.budget),
+    tastes     = coalesce(sqlc.narg(tastes)::text[], recipe_diet_profiles.tastes),
+    equipment  = coalesce(sqlc.narg(equipment)::text[], recipe_diet_profiles.equipment),
+    diagnosed_condition = coalesce(sqlc.narg(diagnosed_condition),
+                                   recipe_diet_profiles.diagnosed_condition),
     updated_at = now()
 RETURNING *;
 

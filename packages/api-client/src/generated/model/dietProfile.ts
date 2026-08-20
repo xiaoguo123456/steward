@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { DietActivityLevel } from './dietActivityLevel';
+import type { DietBudget } from './dietBudget';
 import type { DietGoal } from './dietGoal';
 import type { DietSex } from './dietSex';
 
@@ -66,6 +67,17 @@ export interface DietProfile {
      * @nullable
      */
   max_cook_minutes?: number | null;
+  budget?: DietBudget;
+  /** 口味偏好，例如「清淡」「辣」。用于排序，不是硬过滤。 */
+  tastes?: string[];
+  /** 家里有的厨具。缺少某道菜需要的厨具时降低它的优先级。 */
+  equipment?: string[];
+  /**
+     * 用户自述已确诊相关疾病或正在用药。**只接受用户明确勾选**，不接受任何推断。
+     * 为 true 时不生成治疗型菜单，并提示结合医生或营养师建议——
+     * 这个产品不提供诊断、治疗承诺或用药建议。
+     */
+  diagnosed_condition?: boolean;
   /** 是否完成过问卷。false 时客户端引导填写，但不阻止浏览菜谱。 */
   completed?: boolean;
   updated_at: string;

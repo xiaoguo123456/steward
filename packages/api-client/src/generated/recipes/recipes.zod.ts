@@ -340,6 +340,10 @@ export const GetDietProfileResponse = zod.object({
   "dislikes": zod.array(zod.string()).describe('忌口。与过敏原同样是硬过滤，只是后果不同。'),
   "servings": zod.number().int().min(1).max(getDietProfileResponseDataServingsMax).describe('常规用餐人数，用于换算食材份量。'),
   "max_cook_minutes": zod.number().int().min(1).nullish(),
+  "budget": zod.enum(['economy', 'standard', 'flexible']).optional(),
+  "tastes": zod.array(zod.string()).optional().describe('口味偏好，例如「清淡」「辣」。用于排序，不是硬过滤。'),
+  "equipment": zod.array(zod.string()).optional().describe('家里有的厨具。缺少某道菜需要的厨具时降低它的优先级。'),
+  "diagnosed_condition": zod.boolean().optional().describe('用户自述已确诊相关疾病或正在用药。\*\*只接受用户明确勾选\*\*，不接受任何推断。\n为 true 时不生成治疗型菜单，并提示结合医生或营养师建议——\n这个产品不提供诊断、治疗承诺或用药建议。\n'),
   "completed": zod.boolean().optional().describe('是否完成过问卷。false 时客户端引导填写，但不阻止浏览菜谱。'),
   "updated_at": zod.string().datetime({"offset":true})
 }).describe('饮食档案。\*\*身体数据属于高敏信息\*\*：只允许用户自己填写与修改，\n不接受任何推断，也不得写入日志、埋点、Prompt 快照或测试 Fixture。\n\nallergens 与 dislikes 是确定性硬过滤条件，排序与推荐都不得覆盖它们。\n'),
@@ -381,6 +385,10 @@ export const UpdateDietProfileBody = zod.object({
   "dislikes": zod.array(zod.string()).optional(),
   "servings": zod.number().int().min(1).max(updateDietProfileBodyServingsMax).optional(),
   "max_cook_minutes": zod.number().int().min(1).nullish(),
+  "budget": zod.enum(['economy', 'standard', 'flexible']).optional(),
+  "tastes": zod.array(zod.string()).optional(),
+  "equipment": zod.array(zod.string()).optional(),
+  "diagnosed_condition": zod.boolean().optional().describe('只接受用户明确勾选，不接受任何推断。'),
   "completed": zod.boolean().optional()
 }).describe('只提交需要修改的字段；不传表示保持原值。\n清空一个可空字段必须把字段名放进 clear 数组，\n因为生成的 Go 类型无法区分“不传”与“传 null”。\n')
 
@@ -413,6 +421,10 @@ export const UpdateDietProfileResponse = zod.object({
   "dislikes": zod.array(zod.string()).describe('忌口。与过敏原同样是硬过滤，只是后果不同。'),
   "servings": zod.number().int().min(1).max(updateDietProfileResponseDataServingsMax).describe('常规用餐人数，用于换算食材份量。'),
   "max_cook_minutes": zod.number().int().min(1).nullish(),
+  "budget": zod.enum(['economy', 'standard', 'flexible']).optional(),
+  "tastes": zod.array(zod.string()).optional().describe('口味偏好，例如「清淡」「辣」。用于排序，不是硬过滤。'),
+  "equipment": zod.array(zod.string()).optional().describe('家里有的厨具。缺少某道菜需要的厨具时降低它的优先级。'),
+  "diagnosed_condition": zod.boolean().optional().describe('用户自述已确诊相关疾病或正在用药。\*\*只接受用户明确勾选\*\*，不接受任何推断。\n为 true 时不生成治疗型菜单，并提示结合医生或营养师建议——\n这个产品不提供诊断、治疗承诺或用药建议。\n'),
   "completed": zod.boolean().optional().describe('是否完成过问卷。false 时客户端引导填写，但不阻止浏览菜谱。'),
   "updated_at": zod.string().datetime({"offset":true})
 }).describe('饮食档案。\*\*身体数据属于高敏信息\*\*：只允许用户自己填写与修改，\n不接受任何推断，也不得写入日志、埋点、Prompt 快照或测试 Fixture。\n\nallergens 与 dislikes 是确定性硬过滤条件，排序与推荐都不得覆盖它们。\n'),
@@ -598,7 +610,8 @@ export const ConfirmMealPlanResponse = zod.object({
  * @summary 按已确认菜单合并出待采购食材
  */
 export const GetMealPlanShoppingDraftQueryParams = zod.object({
-  "week_start": zod.string().date().optional()
+  "week_start": zod.string().date().optional(),
+  "date": zod.string().date().optional().describe('只算某一天的食材。不传时算整周。\n合并仍然在服务端做——客户端自己合并会和「创建清单」那一步不一致。\n')
 })
 
 export const GetMealPlanShoppingDraftResponse = zod.object({

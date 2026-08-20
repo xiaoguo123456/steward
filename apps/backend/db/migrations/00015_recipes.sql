@@ -2,8 +2,7 @@
 -- 菜谱是只读的平台内容，不是用户数据。
 --
 -- 因此它不带 user_id、不启用行级安全，也没有写接口：所有用户看到同一份内容。
--- 用户自己的东西是「本周菜单」（Note/Task）和「实际摄入」（Record），
--- 那些仍然在各自的用户表里，照常受 RLS 约束。
+-- 用户自己的东西在 00016：饮食档案、收藏、做过与本周菜单，那些照常受 RLS 约束。
 CREATE TABLE recipes (
     id               text PRIMARY KEY,
     title            text        NOT NULL,

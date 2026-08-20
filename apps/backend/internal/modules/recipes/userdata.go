@@ -66,6 +66,9 @@ func defaultDietProfile(userID string) dbgen.RecipeDietProfile {
 		Dislikes:      []string{},
 		Servings:      2,
 		Completed:     false,
+		Budget:        "standard",
+		Tastes:        []string{},
+		Equipment:     []string{},
 		UpdatedAt:     time.Now(),
 	}
 }
@@ -103,6 +106,11 @@ func (s *Service) UpdateDietProfile(ctx context.Context, userID string,
 			Dislikes:          trimmedList(body.Dislikes),
 			Servings:          int32PtrOf(body.Servings),
 			Completed:         body.Completed,
+			Budget:            stringPtrOf(body.Budget),
+			Tastes:            trimmedList(body.Tastes),
+			Equipment:         trimmedList(body.Equipment),
+			// 疾病自述只接受用户明确勾选，服务端不做任何推断。
+			DiagnosedCondition: body.DiagnosedCondition,
 		})
 		if err != nil {
 			return apperr.Internal(err)
@@ -417,12 +425,30 @@ type ShoppingItem struct {
 //
 // 只读，不创建任何东西：用户要先在这个基础上排除家中已有的，
 // 确认之后才走创建接口。
-func (s *Service) ShoppingDraft(ctx context.Context, userID string, weekStart time.Time) ([]ShoppingItem, error) {
+func (s *Service) ShoppingDraft(ctx context.Context, userID string,
+	weekStart time.Time, onlyDate *time.Time) ([]ShoppingItem, error) {
+
 	plan, err := s.GetMealPlan(ctx, userID, weekStart)
 	if err != nil {
 		return nil, err
 	}
-	return mergeIngredients(plan.Entries), nil
+	entries := plan.Entries
+	if onlyDate != nil {
+		entries = entriesOnDay(entries, *onlyDate)
+	}
+	return mergeIngredients(entries), nil
+}
+
+// entriesOnDay 只留某一天的条目。
+func entriesOnDay(entries []dbgen.ListMealPlanEntriesRow, day time.Time) []dbgen.ListMealPlanEntriesRow {
+	want := timeutil.FormatDate(day)
+	out := make([]dbgen.ListMealPlanEntriesRow, 0, 3)
+	for _, entry := range entries {
+		if timeutil.FormatDate(entry.EntryDate) == want {
+			out = append(out, entry)
+		}
+	}
+	return out
 }
 
 // mergeIngredients 合并重复食材。

@@ -10,7 +10,6 @@ import {
   RecipeImage,
   RecipePrimaryButton,
 } from '@/features/recipes/components/recipe-ui';
-import { weekDays } from '@/features/recipes/mock-data';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
 import { mealSlotLabels, mealSlotOrder } from '@/features/recipes/model';
@@ -19,8 +18,11 @@ import { colors, fontFamily, radius } from '@/theme/tokens';
 export default function WeekMenuScreen() {
   const router = useRouter();
   const {
+    days,
     plan,
     hasPendingPlan,
+    planSaving,
+    planFailure,
     swapRecipe,
     regenerateWeek,
     confirmPlan,
@@ -30,9 +32,10 @@ export default function WeekMenuScreen() {
   } = useRecipePrototype();
   const [savedMessage, setSavedMessage] = useState(false);
 
-  const confirm = () => {
-    confirmPlan();
-    setSavedMessage(true);
+  // 采用菜单要等服务端确认成功才提示已保存：
+  // 先弹「已采用」再失败，用户会以为存住了。
+  const confirm = async () => {
+    if (await confirmPlan()) setSavedMessage(true);
   };
 
   const discard = () => {
@@ -79,7 +82,7 @@ export default function WeekMenuScreen() {
         ) : null}
 
         <View style={styles.weekList}>
-          {weekDays.map((day) => (
+          {days.map((day) => (
             <View key={day.id} style={styles.daySection}>
               <Pressable
                 accessibilityLabel={`${day.fullDate}${day.isToday ? '，今天' : ''}，回到当天菜单`}
@@ -101,7 +104,7 @@ export default function WeekMenuScreen() {
 
               <View style={styles.dayMeals}>
                 {mealSlotOrder.map((meal) => {
-                  const recipe = getRecipe(plan[day.id][meal]);
+                  const recipe = getRecipe(plan[day.id]?.[meal] ?? '');
                   if (!recipe) return null;
                   return (
                     <View key={`${day.id}-${meal}`} style={styles.dayMealRow}>
@@ -145,6 +148,8 @@ export default function WeekMenuScreen() {
         </View>
       </ScrollView>
 
+      {planFailure ? <Text style={styles.failure}>{planFailure}</Text> : null}
+
       <View style={styles.footer}>
         {hasPendingPlan ? (
           <>
@@ -155,9 +160,10 @@ export default function WeekMenuScreen() {
               tone="secondary"
             />
             <RecipePrimaryButton
+              disabled={planSaving}
               icon="checkmark-circle-outline"
-              label="采用本周菜单"
-              onPress={confirm}
+              label={planSaving ? '正在保存…' : '采用本周菜单'}
+              onPress={() => void confirm()}
               style={styles.footerPrimary}
             />
           </>
@@ -175,6 +181,14 @@ export default function WeekMenuScreen() {
 }
 
 const styles = StyleSheet.create({
+  failure: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 130,

@@ -1,8 +1,10 @@
 # 菜谱是只读内容，不是用户数据。
 #
 # 它由平台提供、所有用户共享，因此不受行级安全约束，也没有创建与修改接口。
-# 用户自己的东西是「本周菜单」（Note/Task）和「实际摄入」（Record），
-# 那些仍然走各自的领域接口。
+#
+# 用户自己的东西在本文件后半段：饮食档案、收藏、做过与本周菜单，
+# 每一样都带 user_id 并受行级安全约束。「实际摄入」不在这里——
+# 那是 Record，走记录项接口。
 #
 # 任何一条正式菜谱进库之前，来源、作者、授权范围与版本必须齐全：
 # 没有这些字段就等于不知道自己有没有权利展示它。
@@ -215,6 +217,10 @@ DietActivityLevel:
   type: string
   enum: [sedentary, light, moderate, active]
 
+DietBudget:
+  type: string
+  enum: [economy, standard, flexible]
+
 DietSex:
   type: string
   description: 仅用于能量估算。用户可以不填。
@@ -278,6 +284,24 @@ DietProfile:
       type: integer
       nullable: true
       minimum: 1
+    budget:
+      $ref: '#/DietBudget'
+    tastes:
+      type: array
+      description: 口味偏好，例如「清淡」「辣」。用于排序，不是硬过滤。
+      items:
+        type: string
+    equipment:
+      type: array
+      description: 家里有的厨具。缺少某道菜需要的厨具时降低它的优先级。
+      items:
+        type: string
+    diagnosed_condition:
+      type: boolean
+      description: |
+        用户自述已确诊相关疾病或正在用药。**只接受用户明确勾选**，不接受任何推断。
+        为 true 时不生成治疗型菜单，并提示结合医生或营养师建议——
+        这个产品不提供诊断、治疗承诺或用药建议。
     completed:
       type: boolean
       description: 是否完成过问卷。false 时客户端引导填写，但不阻止浏览菜谱。
@@ -343,6 +367,19 @@ UpdateDietProfileRequest:
       type: integer
       nullable: true
       minimum: 1
+    budget:
+      $ref: '#/DietBudget'
+    tastes:
+      type: array
+      items:
+        type: string
+    equipment:
+      type: array
+      items:
+        type: string
+    diagnosed_condition:
+      type: boolean
+      description: 只接受用户明确勾选，不接受任何推断。
     completed:
       type: boolean
 

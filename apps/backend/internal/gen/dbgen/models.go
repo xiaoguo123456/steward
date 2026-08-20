@@ -484,21 +484,25 @@ type RecipeCookLog struct {
 }
 
 type RecipeDietProfile struct {
-	UserID         string
-	Goal           string
-	Age            *int32
-	Sex            string
-	HeightCm       *float64
-	WeightKg       *float64
-	TargetWeightKg *float64
-	ActivityLevel  string
-	Allergens      []string
-	Dislikes       []string
-	Servings       int32
-	MaxCookMinutes *int32
-	Completed      bool
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	UserID             string
+	Goal               string
+	Age                *int32
+	Sex                string
+	HeightCm           *float64
+	WeightKg           *float64
+	TargetWeightKg     *float64
+	ActivityLevel      string
+	Allergens          []string
+	Dislikes           []string
+	Servings           int32
+	MaxCookMinutes     *int32
+	Completed          bool
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	Budget             string
+	Tastes             []string
+	Equipment          []string
+	DiagnosedCondition bool
 }
 
 type RecipeFavorite struct {

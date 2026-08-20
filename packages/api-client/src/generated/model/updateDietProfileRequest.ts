@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { DietActivityLevel } from './dietActivityLevel';
+import type { DietBudget } from './dietBudget';
 import type { DietGoal } from './dietGoal';
 import type { DietSex } from './dietSex';
 import type { UpdateDietProfileRequestClearItem } from './updateDietProfileRequestClearItem';
@@ -64,5 +65,10 @@ export interface UpdateDietProfileRequest {
      * @nullable
      */
   max_cook_minutes?: number | null;
+  budget?: DietBudget;
+  tastes?: string[];
+  equipment?: string[];
+  /** 只接受用户明确勾选，不接受任何推断。 */
+  diagnosed_condition?: boolean;
   completed?: boolean;
 }

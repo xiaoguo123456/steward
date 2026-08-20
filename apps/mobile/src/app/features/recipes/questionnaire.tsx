@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -436,13 +437,32 @@ function CookingStep({
 
 export default function RecipeQuestionnaireScreen() {
   const router = useRouter();
-  const { profile, setProfile } = useRecipePrototype();
+  const { profile, profileSaving, profileFailure, saveProfile } = useRecipePrototype();
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<RecipeProfile>(profile);
+  const [edited, setEdited] = useState<RecipeProfile | null>(null);
 
-  const save = () => {
-    setProfile(draft);
-    router.back();
+  // 档案还没读回来之前不渲染表单：拿一份猜的默认值当初值，
+  // 用户改了两项再点保存，会把没看见的那几项一起写成猜的值。
+  if (!profile) {
+    return (
+      <AppScreen backgroundColor={recipeColors.background} includeBottomInset>
+        <NavHeader title="饮食档案" />
+        <View style={styles.loading}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </AppScreen>
+    );
+  }
+
+  const draft = edited ?? profile;
+  const setDraft: Dispatch<SetStateAction<RecipeProfile>> = (update) => {
+    setEdited((current) =>
+      typeof update === 'function' ? update(current ?? profile) : update,
+    );
+  };
+
+  const save = async () => {
+    if (await saveProfile(draft)) router.back();
   };
 
   return (
@@ -471,6 +491,8 @@ export default function RecipeQuestionnaireScreen() {
           {step === 3 ? <CookingStep draft={draft} setDraft={setDraft} /> : null}
         </ScrollView>
 
+        {profileFailure ? <Text style={styles.failure}>{profileFailure}</Text> : null}
+
         <View style={styles.footer}>
           {step > 0 ? (
             <RecipePrimaryButton
@@ -482,8 +504,8 @@ export default function RecipeQuestionnaireScreen() {
           ) : null}
           <RecipePrimaryButton
             icon={step === 3 ? 'checkmark-circle-outline' : 'arrow-forward'}
-            label={step === 3 ? '保存饮食档案' : '下一步'}
-            onPress={() => (step === 3 ? save() : setStep((current) => current + 1))}
+            label={step === 3 ? (profileSaving ? '正在保存…' : '保存饮食档案') : '下一步'}
+            onPress={() => (step === 3 ? void save() : setStep((current) => current + 1))}
             style={styles.footerPrimary}
           />
         </View>
@@ -495,6 +517,18 @@ export default function RecipeQuestionnaireScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  loading: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  failure: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
   },
   progressHeader: {
     paddingHorizontal: 16,

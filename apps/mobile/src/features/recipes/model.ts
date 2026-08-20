@@ -2,7 +2,13 @@ export type RecipeGoal = 'balanced' | 'fat-loss' | 'muscle-gain' | 'steady-sugar
 
 export type MealSlot = 'breakfast' | 'lunch' | 'dinner';
 
-export type WeekDayId = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+/**
+ * 一天的标识，就是它的日期（`2026-08-17`）。
+ *
+ * 不用「周几」：跨周和跨时区时「周三」是哪天并不唯一，
+ * 而且周从周一还是周日开始是用户设置，只有服务端算得准。
+ */
+export type WeekDayId = string;
 
 export type RecipeCategory =
   | 'recommended'
@@ -56,10 +62,15 @@ export type Recipe = {
 };
 
 export type WeekDay = {
+  /** 该天的日期，同时也是它的标识。 */
   id: WeekDayId;
+  /** 「一」「二」……用于日期条上的一行小字。 */
   weekday: string;
+  /** 「周一」。 */
   label: string;
+  /** 「17」，日期条上的大字。 */
   date: string;
+  /** 「8月17日」。 */
   fullDate: string;
   isToday?: boolean;
 };
@@ -92,6 +103,14 @@ export type ShoppingItem = {
   amount: string;
   group: IngredientGroup;
   sources: string[];
+};
+
+/** 整周的计划摄入估算。它是「打算吃多少」，不是用户已经记录的实际摄入。 */
+export type RecipeNutrition = {
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fiber_g: number;
 };
 
 export const mealSlotOrder: MealSlot[] = ['breakfast', 'lunch', 'dinner'];
