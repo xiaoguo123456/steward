@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { workoutAccent } from '@/features/workouts/mock-data';
+import { workoutAccent } from '@/features/workouts/workout-content';
 
 export default function ExerciseLayout() {
   return (

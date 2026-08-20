@@ -14,7 +14,7 @@ import {
   strengthExercises,
   workoutAccent,
   workoutModes,
-} from '@/features/workouts/mock-data';
+} from '@/features/workouts/workout-content';
 import {
   formatWorkoutDuration,
   getWorkoutMode,

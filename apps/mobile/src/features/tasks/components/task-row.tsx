@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/ui/icon';
-import type { TaskItem } from '@/mocks/data';
+import type { TaskItem } from '@/features/tasks/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type TaskRowProps = {

@@ -1,3 +1,11 @@
+// 运动模块的界面内容与配色。
+//
+// 这里的东西不是假数据：四种运动方式、目标选项、力量动作库都是产品内容，
+// 和用户数据无关，所有人看到同一份。真正的运动记录是内置「运动」Tracker
+// 下的 Record，见 use-workout-history.ts。
+//
+// （这个文件原来叫 mock-data.ts，名字会让人以为里面是待替换的占位数据。）
+
 import type { ComponentProps } from 'react';
 
 import { AppIcon } from '@/components/ui/icon';

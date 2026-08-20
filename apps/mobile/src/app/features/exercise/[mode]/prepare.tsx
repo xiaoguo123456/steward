@@ -23,7 +23,7 @@ import {
   workoutAccent,
   workoutModes,
   type WorkoutModeDefinition,
-} from '@/features/workouts/mock-data';
+} from '@/features/workouts/workout-content';
 import {
   getWorkoutMode,
   isOutdoorWorkoutMode,

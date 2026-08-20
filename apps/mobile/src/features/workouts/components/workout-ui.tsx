@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/icon';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
-import { workoutAccent } from '../mock-data';
+import { workoutAccent } from '../workout-content';
 
 type PrimaryButtonProps = {
   label: string;

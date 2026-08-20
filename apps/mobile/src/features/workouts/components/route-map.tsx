@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '@/components/ui/icon';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
-import { workoutAccent } from '../mock-data';
+import { workoutAccent } from '../workout-content';
 
 type RouteMapProps = {
   compact?: boolean;

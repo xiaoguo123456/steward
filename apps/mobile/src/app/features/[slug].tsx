@@ -18,8 +18,9 @@ import { ReviewContent } from '@/features/review/review-content';
 import { ShoppingContent } from '@/features/shopping/shopping-content';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
+// 食谱不在这里：它有自己的静态路由 features/recipes/，
+// 静态路由优先于动态段，这个 slug 永远匹配不到。
 type FeatureSlug =
-  | 'recipes'
   | 'ledger'
   | 'important-dates'
   | 'shopping'
@@ -35,13 +36,6 @@ type FeatureMeta = {
 };
 
 const featureMeta: Record<FeatureSlug, FeatureMeta> = {
-  recipes: {
-    title: '食谱',
-    summary: '从今天吃什么开始，选好菜单后可以直接生成购物清单。',
-    icon: 'restaurant-outline',
-    color: '#D56C28',
-    soft: '#FFF1E7',
-  },
   ledger: {
     title: '记账',
     summary: '快速记下一笔收入或支出，后续可用图片识别票据信息。',
@@ -79,12 +73,6 @@ const featureMeta: Record<FeatureSlug, FeatureMeta> = {
   },
 };
 
-const recipes = [
-  { id: 'pasta', title: '番茄牛肉意面', meta: '30 分钟 · 约 620 千卡' },
-  { id: 'salad', title: '鸡胸肉藜麦沙拉', meta: '25 分钟 · 高蛋白' },
-  { id: 'rice', title: '菌菇鸡肉焖饭', meta: '40 分钟 · 一锅完成' },
-];
-
 function isFeatureSlug(value: string): value is FeatureSlug {
   return value in featureMeta;
 }
@@ -97,32 +85,6 @@ function SectionTitle({ title, aside }: { title: string; aside?: string }) {
       </Text>
       {aside ? <Text style={styles.sectionAside}>{aside}</Text> : null}
     </View>
-  );
-}
-
-function PrimaryButton({
-  label,
-  onPress,
-  disabled = false,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.primaryButton,
-        disabled && styles.primaryButtonDisabled,
-        pressed && !disabled && styles.primaryButtonPressed,
-      ]}
-    >
-      <Text style={styles.primaryButtonText}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -157,55 +119,6 @@ function LinkRow({
       </View>
       <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
     </Pressable>
-  );
-}
-
-function RecipesContent() {
-  const router = useRouter();
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
-  const selectedRecipe = recipes.find((recipe) => recipe.id === selectedRecipeId);
-
-  return (
-    <>
-      <SectionTitle aside="3 个推荐" title="今天吃什么" />
-      <View style={styles.rows}>
-        {recipes.map((recipe) => {
-          const selected = selectedRecipeId === recipe.id;
-          return (
-            <Pressable
-              accessibilityLabel={`${selected ? '取消选择' : '选择'}${recipe.title}`}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              key={recipe.id}
-              onPress={() => setSelectedRecipeId(selected ? null : recipe.id)}
-              style={({ pressed }) => [styles.choiceRow, pressed && styles.rowPressed]}
-            >
-              <View style={styles.rowCopy}>
-                <Text style={styles.rowTitle}>{recipe.title}</Text>
-                <Text style={styles.rowMeta}>{recipe.meta}</Text>
-              </View>
-              <View style={[styles.radioCircle, selected && styles.radioCircleSelected]}>
-                {selected ? <View style={styles.radioDot} /> : null}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-      {selectedRecipe ? (
-        <View style={styles.selectionPanel}>
-          <Text style={styles.selectionTitle}>已加入今日菜单</Text>
-          <Text style={styles.selectionCopy}>{selectedRecipe.title} · 晚餐</Text>
-          <PrimaryButton
-            label="生成购物清单"
-            onPress={() =>
-              router.push({ pathname: '/features/[slug]', params: { slug: 'shopping' } })
-            }
-          />
-        </View>
-      ) : (
-        <Text style={styles.emptyHint}>选择一道菜后，可以把缺少的食材加入购物清单。</Text>
-      )}
-    </>
   );
 }
 
@@ -263,7 +176,6 @@ function FeatureContent({
   shoppingCreateVisible: boolean;
   onShoppingCreateVisibleChange: (visible: boolean) => void;
 }) {
-  if (slug === 'recipes') return <RecipesContent />;
   if (slug === 'ledger') return <LedgerContent />;
   if (slug === 'important-dates') {
     return (

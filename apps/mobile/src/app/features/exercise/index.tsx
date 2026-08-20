@@ -12,7 +12,7 @@ import {
 import {
   workoutAccent,
   workoutModes,
-} from '@/features/workouts/mock-data';
+} from '@/features/workouts/workout-content';
 import { useWorkoutHistory } from '@/features/workouts/use-workout-history';
 import type { WorkoutMode } from '@/features/workouts/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';

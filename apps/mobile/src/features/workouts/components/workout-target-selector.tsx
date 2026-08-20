@@ -8,7 +8,7 @@ import {
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 import type { OutdoorWorkoutTarget } from '../model';
-import { workoutAccent } from '../mock-data';
+import { workoutAccent } from '../workout-content';
 
 type WorkoutTargetSelectorProps = {
   targets: OutdoorWorkoutTarget[];

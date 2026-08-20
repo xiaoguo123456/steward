@@ -11,7 +11,7 @@ import {
   WorkoutPrimaryButton,
   WorkoutSectionTitle,
 } from '@/features/workouts/components/workout-ui';
-import { workoutAccent, workoutModes } from '@/features/workouts/mock-data';
+import { workoutAccent, workoutModes } from '@/features/workouts/workout-content';
 import {
   formatWorkoutDuration,
   getWorkoutMode,

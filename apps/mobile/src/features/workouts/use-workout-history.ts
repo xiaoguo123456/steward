@@ -7,7 +7,7 @@ import {
 } from '@/features/trackers/use-builtin-tracker';
 import { formatRelativeTime } from '@/utils/format';
 
-import type { WorkoutHistoryItem } from './mock-data';
+import type { WorkoutHistoryItem } from './workout-content';
 import { getWorkoutMode, type WorkoutMode } from './model';
 
 /**
