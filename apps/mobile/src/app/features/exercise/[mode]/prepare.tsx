@@ -18,12 +18,16 @@ import {
 } from '@/features/workouts/components/workout-target-selector';
 import {
   outdoorWorkoutTargets,
-  strengthExercises,
-  strengthWorkoutGoals,
   workoutAccent,
   workoutModes,
   type WorkoutModeDefinition,
 } from '@/features/workouts/workout-content';
+import {
+  describeVolume,
+  getPlan,
+  planExercises,
+  strengthPlans,
+} from '@/features/workouts/strength-library';
 import {
   getWorkoutMode,
   isOutdoorWorkoutMode,
@@ -155,20 +159,19 @@ function StrengthWorkoutPrepare({
   modeDefinition: WorkoutModeDefinition;
 }) {
   const router = useRouter();
-  const [selectedGoalId, setSelectedGoalId] = useState(strengthWorkoutGoals[0].id);
-  const selectedGoal = useMemo(
-    () =>
-      strengthWorkoutGoals.find((goal) => goal.id === selectedGoalId) ??
-      strengthWorkoutGoals[0],
-    [selectedGoalId],
-  );
+  const [selectedPlanId, setSelectedPlanId] = useState(strengthPlans[0].id);
+  const plan = useMemo(() => getPlan(selectedPlanId), [selectedPlanId]);
+  const exercises = useMemo(() => planExercises(plan), [plan]);
 
   const startWorkout = () => {
     router.push({
       pathname: '/features/exercise/[mode]/active',
       params: {
         mode: 'strength',
-        goal: selectedGoal.value,
+        // 传计划 id 而不是时长文本：训练页要据此决定练哪几个动作。
+        // 之前传的是「25 分钟」这样的展示文本，那边根本用不了，
+        // 于是四个计划练的是同一套。
+        plan: plan.id,
         voice: '0',
       },
     } as Href);
@@ -190,15 +193,15 @@ function StrengthWorkoutPrepare({
 
         <WorkoutSectionTitle title="训练计划" />
         <View accessibilityRole="radiogroup" style={styles.goalGrid}>
-          {strengthWorkoutGoals.map((goal) => {
-            const selected = goal.id === selectedGoalId;
+          {strengthPlans.map((goal) => {
+            const selected = goal.id === selectedPlanId;
             return (
               <Pressable
-                accessibilityLabel={`${goal.label}，${goal.value}`}
+                accessibilityLabel={`${goal.label}，${goal.duration}，${goal.summary}`}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
                 key={goal.id}
-                onPress={() => setSelectedGoalId(goal.id)}
+                onPress={() => setSelectedPlanId(goal.id)}
                 style={({ pressed }) => [
                   styles.goalOption,
                   selected && styles.goalOptionSelected,
@@ -213,38 +216,51 @@ function StrengthWorkoutPrepare({
                     {selected ? <View style={styles.radioCenter} /> : null}
                   </View>
                 </View>
-                <Text style={styles.goalValue}>{goal.value}</Text>
+                <Text style={styles.goalValue}>{goal.duration}</Text>
               </Pressable>
             );
           })}
         </View>
 
-        <WorkoutSectionTitle aside="共 6 个动作" title="动作预览" />
+        <Text style={styles.planSummary}>{plan.summary}</Text>
+
+        <WorkoutSectionTitle aside={`共 ${exercises.length} 个动作`} title="动作预览" />
         <View style={styles.exercisePreview}>
-          {strengthExercises.slice(0, 3).map((exercise, index) => (
+          {/* 全部列出来而不是只显示前三个：用户要在开始前就知道自己要做什么，
+              尤其是有伤病的人需要提前判断能不能做。 */}
+          {exercises.map((exercise, index) => (
             <View key={exercise.id} style={styles.exerciseRow}>
               <View style={styles.exerciseIndex}>
                 <Text style={styles.exerciseIndexText}>{index + 1}</Text>
               </View>
               <View style={styles.exerciseCopy}>
-                <Text style={styles.exerciseTitle}>{exercise.title}</Text>
-                <Text style={styles.exerciseMeta}>
-                  {exercise.sets} 组 × {exercise.reps} 次
+                <Text style={styles.exerciseTitle}>
+                  {exercise.title}
+                  {exercise.level === 'intermediate' ? (
+                    <Text style={styles.exerciseLevel}>　进阶</Text>
+                  ) : null}
                 </Text>
+                <Text style={styles.exerciseMeta}>{describeVolume(exercise)}</Text>
               </View>
               <AppIcon color={colors.primaryStrong} name={exercise.icon} size={21} />
             </View>
           ))}
-          <Text style={styles.moreExercises}>随后还有臀桥、俯身划船和平板支撑</Text>
         </View>
         <WorkoutNotice icon="home-outline" tone="mint">
           这套计划不需要器械，留出一块能伸展手臂的空间即可。
+        </WorkoutNotice>
+        {/* 与食谱那边「不提供诊断与治疗承诺」的立场对齐：
+            这里给的是通用建议，不是针对某个人的训练处方。 */}
+        <WorkoutNotice icon="information-circle-outline" tone="neutral">
+          组数与次数是通用建议，不是针对你的训练计划。量力而行，
+          做不动就减量或改做更轻的替代动作；有伤病、不适或正在康复期，
+          先咨询专业人士。
         </WorkoutNotice>
 
         <View style={styles.footerAction}>
           <WorkoutPrimaryButton
             icon="play"
-            label={`开始${selectedGoal.label}`}
+            label={`开始${plan.label}`}
             onPress={startWorkout}
           />
           <Text style={styles.footerHint}>训练中可以随时暂停或提前结束</Text>
@@ -307,6 +323,17 @@ function ToggleRow({
 }
 
 const styles = StyleSheet.create({
+  planSummary: {
+    marginTop: 10,
+    color: workoutAccent.muted,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  exerciseLevel: {
+    color: workoutAccent.muted,
+    fontSize: 12,
+  },
   scroll: {
     flex: 1,
   },

@@ -1,20 +1,19 @@
 // 运动模块的界面内容与配色。
 //
-// 这里的东西不是假数据：四种运动方式、目标选项、力量动作库都是产品内容，
+// 这里的东西不是假数据：四种运动方式、户外目标选项、配色都是产品内容，
 // 和用户数据无关，所有人看到同一份。真正的运动记录是内置「运动」Tracker
 // 下的 Record，见 use-workout-history.ts。
 //
+// 力量训练的动作库与训练计划在 strength-library.ts——它需要目标肌群、
+// 难度、常见错误这些字段，和这里的界面配置不是一类东西。
+//
 // （这个文件原来叫 mock-data.ts，名字会让人以为里面是待替换的占位数据。）
 
-import type { ComponentProps } from 'react';
-
-import { AppIcon } from '@/components/ui/icon';
 import { colors } from '@/theme/tokens';
 
 import type {
   OutdoorWorkoutMode,
   OutdoorWorkoutTarget,
-  WorkoutGoal,
   WorkoutMode,
 } from './model';
 
@@ -34,15 +33,6 @@ export type WorkoutHistoryItem = {
   primary: string;
   secondary: string;
   duration: string;
-};
-
-export type StrengthExercise = {
-  id: string;
-  title: string;
-  cue: string;
-  sets: number;
-  reps: number;
-  icon: ComponentProps<typeof AppIcon>['name'];
 };
 
 export const workoutModes: WorkoutModeDefinition[] = [
@@ -179,64 +169,6 @@ export const outdoorWorkoutTargets: Record<OutdoorWorkoutMode, OutdoorWorkoutTar
     },
   ],
 };
-
-export const strengthWorkoutGoals: WorkoutGoal[] = [
-  { id: 'beginner', label: '全身入门', value: '25 分钟' },
-  { id: 'upper', label: '上肢激活', value: '20 分钟' },
-  { id: 'lower', label: '下肢基础', value: '25 分钟' },
-  { id: 'open', label: '自由训练', value: '自己安排' },
-];
-
-export const strengthExercises: StrengthExercise[] = [
-  {
-    id: 'squat',
-    title: '深蹲',
-    cue: '膝盖朝脚尖方向，保持背部挺直',
-    sets: 3,
-    reps: 12,
-    icon: 'body-outline',
-  },
-  {
-    id: 'push-up',
-    title: '俯卧撑',
-    cue: '身体保持一条直线，慢慢下放',
-    sets: 3,
-    reps: 10,
-    icon: 'fitness-outline',
-  },
-  {
-    id: 'lunge',
-    title: '弓步蹲',
-    cue: '前脚踩稳，后膝缓慢靠近地面',
-    sets: 3,
-    reps: 10,
-    icon: 'accessibility-outline',
-  },
-  {
-    id: 'bridge',
-    title: '臀桥',
-    cue: '收紧核心，把髋部抬到自然高度',
-    sets: 3,
-    reps: 12,
-    icon: 'trending-up-outline',
-  },
-  {
-    id: 'row',
-    title: '俯身划船',
-    cue: '肩胛向后收，手肘贴近身体',
-    sets: 3,
-    reps: 12,
-    icon: 'barbell-outline',
-  },
-  {
-    id: 'plank',
-    title: '平板支撑',
-    cue: '收紧腹部，不要塌腰',
-    sets: 3,
-    reps: 30,
-    icon: 'remove-outline',
-  },
-];
 
 
 export const workoutAccent = {

@@ -11,10 +11,16 @@ import {
   WorkoutPrimaryButton,
 } from '@/features/workouts/components/workout-ui';
 import {
-  strengthExercises,
   workoutAccent,
   workoutModes,
 } from '@/features/workouts/workout-content';
+import {
+  describeMeasure,
+  describeVolume,
+  getPlan,
+  planExercises,
+  type StrengthExercise,
+} from '@/features/workouts/strength-library';
 import {
   formatWorkoutDuration,
   getWorkoutMode,
@@ -30,6 +36,7 @@ export default function ActiveWorkoutScreen() {
   const params = useLocalSearchParams<{
     mode?: string | string[];
     goal?: string | string[];
+    plan?: string | string[];
     voice?: string | string[];
   }>();
   const rawMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
@@ -39,7 +46,8 @@ export default function ActiveWorkoutScreen() {
     return <OutdoorActiveWorkout mode={mode} params={params} />;
   }
 
-  return <StrengthActiveWorkout />;
+  const planId = Array.isArray(params.plan) ? params.plan[0] : params.plan;
+  return <StrengthActiveWorkout planId={planId} />;
 }
 
 function OutdoorActiveWorkout({
@@ -161,8 +169,10 @@ function OutdoorActiveWorkout({
   );
 }
 
-function StrengthActiveWorkout() {
+function StrengthActiveWorkout({ planId }: { planId?: string }) {
   const router = useRouter();
+  const plan = getPlan(planId);
+  const strengthExercises = planExercises(plan);
   const [status, setStatus] = useState<ActiveStatus>('active');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [exerciseIndex, setExerciseIndex] = useState(0);
@@ -172,7 +182,10 @@ function StrengthActiveWorkout() {
   const currentExercise = strengthExercises[exerciseIndex];
   const nextExercise = strengthExercises[exerciseIndex + 1];
   const completedTotal = exerciseIndex * 3 + completedSets;
-  const totalSets = strengthExercises.length * 3;
+  const totalSets = strengthExercises.reduce(
+    (sum: number, item: StrengthExercise) => sum + item.sets,
+    0,
+  );
   const progress = Math.min(1, completedTotal / totalSets);
 
   useEffect(() => {
@@ -272,6 +285,12 @@ function StrengthActiveWorkout() {
               </View>
             </View>
             <Text style={styles.activeExerciseCue}>{currentExercise.cue}</Text>
+            {/* 常见错误比动作要领更重要：姿势错造成的损伤是练几周后才疼的，
+                那时用户根本不会把它和这个 App 联系起来。 */}
+            <View style={styles.mistakeRow}>
+              <AppIcon color={workoutAccent.coral} name="alert-circle-outline" size={14} />
+              <Text style={styles.mistakeText}>{currentExercise.mistake}</Text>
+            </View>
           </View>
           <View style={styles.exerciseFigure}>
             <AppIcon color={colors.primaryStrong} name={currentExercise.icon} size={74} />
@@ -284,8 +303,10 @@ function StrengthActiveWorkout() {
         <View style={styles.setTable}>
           <View style={styles.setTableHeader}>
             <Text style={[styles.tableHeaderText, styles.setColumn]}>组数</Text>
-            <Text style={styles.tableHeaderText}>次数</Text>
-            <Text style={styles.tableHeaderText}>重量</Text>
+            <Text style={styles.tableHeaderText}>
+              {currentExercise.measure.kind === 'reps' ? '次数' : '时长'}
+            </Text>
+            <Text style={styles.tableHeaderText}>负重</Text>
             <Text style={[styles.tableHeaderText, styles.statusColumn]}>状态</Text>
           </View>
           {Array.from({ length: currentExercise.sets }).map((_, index) => {
@@ -310,7 +331,7 @@ function StrengthActiveWorkout() {
                     {index + 1}
                   </Text>
                 </View>
-                <Text style={styles.setCell}>{currentExercise.reps}</Text>
+                <Text style={styles.setCell}>{describeMeasure(currentExercise.measure)}</Text>
                 <Text style={styles.setCell}>自重</Text>
                 <View style={styles.setStatusCell}>
                   {completed ? (
@@ -357,7 +378,7 @@ function StrengthActiveWorkout() {
               {nextExercise?.title ?? currentExercise.title}
               <Text style={styles.nextMeta}>
                 {' · '}
-                {(nextExercise ?? currentExercise).sets} 组 × {(nextExercise ?? currentExercise).reps} 次
+                {describeVolume(nextExercise ?? currentExercise)}
               </Text>
             </Text>
           </View>
@@ -408,6 +429,19 @@ function EndWorkoutSheet({
 }
 
 const styles = StyleSheet.create({
+  mistakeRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  mistakeText: {
+    flex: 1,
+    color: workoutAccent.muted,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 19,
+  },
   lockButton: {
     width: 44,
     height: 44,
