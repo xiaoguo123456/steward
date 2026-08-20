@@ -612,6 +612,94 @@ export const ConfirmMealPlanResponse = zod.object({
 })
 
 /**
+ * 只读：算出一份建议并返回，不写入任何东西。用户确认后走 confirmMealPlan。
+ *
+ * 选菜是确定性的 Go 代码，不调用模型：同样的档案与 seed 必然得到同样的菜单。
+ * 过敏原与忌口是硬过滤，可选菜再少也不会为了填满一周而放宽——
+ * 填不满就留空并在 notes 里说明。
+ * @summary 按饮食档案生成一周菜单建议
+ */
+export const getMealPlanSuggestionQuerySeedMin = 0;
+
+
+
+export const GetMealPlanSuggestionQueryParams = zod.object({
+  "week_start": zod.string().date().optional(),
+  "seed": zod.number().int().min(getMealPlanSuggestionQuerySeedMin).optional().describe('换一批时递增。不传按 0 处理。')
+})
+
+
+
+
+
+
+
+export const GetMealPlanSuggestionResponse = zod.object({
+  "data": zod.object({
+  "week_start": zod.string().date(),
+  "seed": zod.number().int().describe('本次生成用的种子。原样回传，客户端「换一批」时提交 seed + 1。\n'),
+  "entries": zod.array(zod.object({
+  "date": zod.string().date().describe('该餐所在日期。用真实日期而不是“周几”，跨周与跨时区才不会含糊。'),
+  "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']),
+  "recipe_id": zod.string(),
+  "recipe": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n\n它是当前分发方式下的地址。稳定标识是 image_key——\n换域名或改成签名分发时，URL 会变而键不变。\n'),
+  "servings": zod.number().int().min(1),
+  "duration_minutes": zod.number().int().min(1),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein_g": zod.number(),
+  "carbs_g": zod.number(),
+  "fat_g": zod.number().nullish(),
+  "fiber_g": zod.number().nullish()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
+  "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
+  "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
+  "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
+  "tags": zod.array(zod.string()),
+  "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
+  "ingredients": zod.array(zod.object({
+  "name": zod.string(),
+  "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+})).min(1),
+  "steps": zod.array(zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
+})).min(1),
+  "source": zod.object({
+  "name": zod.string().describe('内容提供方。'),
+  "author": zod.string().nullish(),
+  "url": zod.string().nullish().describe('原始出处。'),
+  "license": zod.string().describe('授权范围，例如 CC-BY-4.0、平台自有内容。'),
+  "license_url": zod.string().nullish(),
+  "image_credit": zod.string().nullish().describe('图片的权利说明。没有明确权利的图片不下发 image_url。'),
+  "content_version": zod.string().describe('内容版本。来源更新时递增，客户端据此判断缓存是否过期。')
+}).describe('内容来源与授权。字段不全的菜谱不允许进库：\n不知道来源和授权范围，就等于不知道自己有没有权利展示它。\n')
+}).optional().describe('展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。')
+})),
+  "candidates": zod.object({
+  "breakfast": zod.number().int(),
+  "lunch": zod.number().int(),
+  "dinner": zod.number().int()
+}).describe('硬过滤后各时段还剩多少道可选。\n这个数字是给客户端判断「菜少是因为筛得狠」而不是「接口坏了」用的。\n'),
+  "notes": zod.array(zod.object({
+  "kind": zod.enum(['cook_time_relaxed', 'slot_unfilled', 'pool_repeats']).describe('- cook_time_relaxed：可选菜太少，放宽了「最长烹饪时间」。\n  \*\*过敏原与忌口永远不会被放宽\*\*，没有对应的 kind。\n- slot_unfilled：这一格实在没有可选的菜，留空了。\n- pool_repeats：可选菜不足一周的餐数，出现了重复。\n'),
+  "message": zod.string().describe('直接展示给用户的中文说明。'),
+  "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']).optional()
+})).describe('本次生成中做了什么妥协。\*\*空数组表示没有妥协\*\*。\n不把妥协说出来的话，用户看到的就是一份莫名其妙的菜单。\n')
+}).describe('一份\*\*还没确认\*\*的周菜单建议。\n\n它不落库。用户点「采用本周菜单」后走 confirmMealPlan 才算数，\n和 MealPlan 的说明是同一条规则：预览只是预览。\n\n生成是确定性的：同一个 seed 必然给出同一份结果。\n客户端切走再切回来不该换菜——那会让人以为自己刚才看到的菜没了。\n换一批就递增 seed。\n'),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
  * 只读：合并重复食材与份量并按品类分组，不创建任何东西。
  * 用户在此基础上排除家中已有食材，再调用创建接口。
  * @summary 按已确认菜单合并出待采购食材

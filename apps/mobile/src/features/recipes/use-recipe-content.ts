@@ -17,11 +17,18 @@ import type {
  * 菜谱是平台提供的只读内容，不是用户数据：所有人看到同一份，
  * 因此这里只读不写。用户自己的东西是本周菜单和实际摄入，那些走别的接口。
  *
- * 当前库里是几条占位内容。正式菜谱接入前必须先确定来源、作者、
- * 图片权利与授权范围——契约里的 source 字段就是为此存在的。
+ * **必须把用户的过敏原传下去。** 契约里 exclude_allergens 是硬过滤，
+ * 服务端也实现了，但不传就等于没填：一个填了花生过敏的人照样会在
+ * 浏览列表里看到含花生的菜。这是过滤链上最容易漏掉的一环——
+ * 漏了不会报错，只会安静地失效。
  */
-export function useRecipeContent() {
-  const query = useListRecipes({ limit: 100 });
+export function useRecipeContent(allergens: string[] = []) {
+  const query = useListRecipes({
+    limit: 100,
+    // 空数组不要传：orval 会把它序列化成 exclude_allergens=，
+    // 让服务端收到一个含空串的数组。
+    ...(allergens.length > 0 ? { exclude_allergens: allergens } : {}),
+  });
 
   const recipes = useMemo(
     () => (query.data?.data ?? []).map(toRecipe),
@@ -51,7 +58,7 @@ function toLocalKey(value: string) {
   return value.replace(/_/g, '-');
 }
 
-function toRecipe(recipe: ApiRecipe): Recipe {
+export function toRecipe(recipe: ApiRecipe): Recipe {
   return {
     id: recipe.id,
     title: recipe.title,

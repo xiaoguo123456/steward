@@ -277,6 +277,45 @@ MealPlan:
       '500':
         $ref: '../components/responses.yaml#/InternalError'
 
+MealPlanSuggestion:
+  get:
+    operationId: getMealPlanSuggestion
+    summary: 按饮食档案生成一周菜单建议
+    description: |
+      只读：算出一份建议并返回，不写入任何东西。用户确认后走 confirmMealPlan。
+
+      选菜是确定性的 Go 代码，不调用模型：同样的档案与 seed 必然得到同样的菜单。
+      过敏原与忌口是硬过滤，可选菜再少也不会为了填满一周而放宽——
+      填不满就留空并在 notes 里说明。
+    tags: [recipes]
+    parameters:
+      - name: week_start
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: seed
+        in: query
+        required: false
+        description: 换一批时递增。不传按 0 处理。
+        schema:
+          type: integer
+          minimum: 0
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/MealPlanSuggestionResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
 ShoppingDraft:
   get:
     operationId: getMealPlanShoppingDraft

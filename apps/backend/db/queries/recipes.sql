@@ -176,3 +176,31 @@ WHERE e.meal_plan_id = sqlc.arg(meal_plan_id)
 -- 按用餐顺序而不是字母序：字母序会排成早餐、晚餐、午餐。
 ORDER BY e.entry_date,
     CASE e.meal_slot WHEN 'breakfast' THEN 0 WHEN 'lunch' THEN 1 ELSE 2 END;
+
+-- name: ListRecipeCandidates :many
+-- 生成周菜单用的候选集。
+--
+-- 只取打分需要的列，**不取 ingredients 与 steps**：候选集是几千行，
+-- 带上 JSON 正文就是几十兆，而选菜阶段根本用不到它们。
+-- 选定之后再按 id 取完整菜谱。
+--
+-- 过敏原与忌口在这里就滤掉，不留给上层——漏一层就是一次事故。
+-- 忌口要连食材一起看：用户忌香菜，菜名里没有但配料里有，一样得排除。
+SELECT id, title, duration_minutes, difficulty, calories, protein_g, carbs_g,
+       fiber_g, fat_g, meal_slots, categories, tags
+FROM recipes
+WHERE sqlc.arg(meal_slot)::text = ANY (meal_slots)
+  AND NOT (allergens && sqlc.arg(exclude_allergens)::text[])
+  AND NOT EXISTS (
+        SELECT 1 FROM unnest(sqlc.arg(dislikes)::text[]) AS d
+        WHERE d <> ''
+          AND (title ILIKE '%' || d || '%'
+               OR EXISTS (
+                    SELECT 1 FROM jsonb_array_elements(ingredients) AS ing
+                    WHERE ing ->> 'name' ILIKE '%' || d || '%')))
+  AND (sqlc.narg(max_minutes)::int IS NULL OR duration_minutes <= sqlc.narg(max_minutes)::int)
+ORDER BY id;
+
+-- name: ListRecipesByIDs :many
+-- 选定之后再取完整菜谱（含食材与步骤）。候选阶段刻意不取这些列。
+SELECT * FROM recipes WHERE id = ANY(sqlc.arg(ids)::text[]);

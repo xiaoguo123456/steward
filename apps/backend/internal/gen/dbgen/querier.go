@@ -190,8 +190,19 @@ type Querier interface {
 	ListProposalsForTurn(ctx context.Context, turnID *string) ([]ActionProposal, error)
 	// Context Builder 用：按序取最近若干轮原始消息。
 	ListRecentMessages(ctx context.Context, arg ListRecentMessagesParams) ([]AssistantMessage, error)
+	// 生成周菜单用的候选集。
+	//
+	// 只取打分需要的列，**不取 ingredients 与 steps**：候选集是几千行，
+	// 带上 JSON 正文就是几十兆，而选菜阶段根本用不到它们。
+	// 选定之后再按 id 取完整菜谱。
+	//
+	// 过敏原与忌口在这里就滤掉，不留给上层——漏一层就是一次事故。
+	// 忌口要连食材一起看：用户忌香菜，菜名里没有但配料里有，一样得排除。
+	ListRecipeCandidates(ctx context.Context, arg ListRecipeCandidatesParams) ([]ListRecipeCandidatesRow, error)
 	// 菜谱只读查询。它是平台内容，没有写接口。
 	ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Recipe, error)
+	// 选定之后再取完整菜谱（含食材与步骤）。候选阶段刻意不取这些列。
+	ListRecipesByIDs(ctx context.Context, ids []string) ([]Recipe, error)
 	ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error)
 	ListRelearnBlocks(ctx context.Context, rowLimit int32) ([]MemoryRelearnBlock, error)
 	// 用户消掉过的提醒。只查窗口内的：更早的那些已经超出过期窗口，

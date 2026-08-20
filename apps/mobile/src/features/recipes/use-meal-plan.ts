@@ -7,7 +7,8 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
-import type { MealSlot, WeekDay, WeekDayId, WeekPlan } from './model';
+import { toRecipe } from './use-recipe-content';
+import type { MealSlot, Recipe, WeekDay, WeekDayId, WeekPlan } from './model';
 
 /**
  * 本周菜单。
@@ -31,6 +32,16 @@ export function useMealPlan() {
 
   const days = useMemo(() => weekDaysFrom(weekStart), [weekStart]);
   const confirmed = useMemo(() => toWeekPlan(plan, days), [plan, days]);
+
+  // 已确认菜单里的菜谱多半不在浏览列表的前 100 条里。
+  // 条目自带展开的 recipe，用它建索引，否则格子只有 ID 渲染不出名字。
+  const recipes = useMemo(() => {
+    const out = new Map<string, Recipe>();
+    for (const entry of plan?.entries ?? []) {
+      if (entry.recipe) out.set(entry.recipe_id, toRecipe(entry.recipe));
+    }
+    return out;
+  }, [plan]);
 
   const confirm = async () => {
     if (!draft || !weekStart) return false;
@@ -69,6 +80,7 @@ export function useMealPlan() {
     saving,
     failure,
     plannedNutrition: plan?.planned_nutrition,
+    recipes,
 
     setRecipeForMeal: (dayId: WeekDayId, meal: MealSlot, recipeId: string) => {
       setDraft((current) => {

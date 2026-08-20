@@ -291,3 +291,77 @@ func mapMealPlan(weekStart time.Time, plan MealPlan) httpapi.MealPlan {
 	}
 	return out
 }
+
+// GetMealPlanSuggestion 按饮食档案生成一周菜单建议。
+//
+// 只读：算完就返回，不写库。用户点「采用本周菜单」才走 ConfirmMealPlan。
+func (h *RecipeAPI) GetMealPlanSuggestion(ctx context.Context,
+	req httpapi.GetMealPlanSuggestionRequestObject) (httpapi.GetMealPlanSuggestionResponseObject, error) {
+
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	weekStart, err := h.resolveWeekStart(ctx, userID, req.Params.WeekStart)
+	if err != nil {
+		return nil, err
+	}
+	seed := 0
+	if req.Params.Seed != nil {
+		seed = *req.Params.Seed
+	}
+
+	suggestion, err := h.svc.SuggestMealPlan(ctx, userID, weekStart, seed)
+	if err != nil {
+		return nil, err
+	}
+	recipes, err := h.svc.RecipesByIDs(ctx, userID, suggestion.RecipeIDs())
+	if err != nil {
+		return nil, err
+	}
+
+	return httpapi.GetMealPlanSuggestion200JSONResponse{
+		Data: mapSuggestion(suggestion, recipes), Meta: httpx.Meta(ctx),
+	}, nil
+}
+
+func mapSuggestion(s Suggestion, recipes map[string]dbgen.Recipe) httpapi.MealPlanSuggestion {
+	entries := make([]httpapi.MealPlanEntry, 0, len(s.Entries))
+	for _, item := range s.Entries {
+		entry := httpapi.MealPlanEntry{
+			Date:     openapi_types.Date{Time: item.Date},
+			MealSlot: httpapi.RecipeMealSlot(item.MealSlot),
+			RecipeId: item.RecipeID,
+		}
+		if row, ok := recipes[item.RecipeID]; ok {
+			recipe := MapRecipe(row)
+			entry.Recipe = &recipe
+		}
+		entries = append(entries, entry)
+	}
+
+	notes := make([]httpapi.MealPlanSuggestionNote, 0, len(s.Notes))
+	for _, note := range s.Notes {
+		mapped := httpapi.MealPlanSuggestionNote{
+			Kind:    httpapi.MealPlanSuggestionNoteKind(note.Kind),
+			Message: note.Message,
+		}
+		if note.MealSlot != "" {
+			slot := httpapi.RecipeMealSlot(note.MealSlot)
+			mapped.MealSlot = &slot
+		}
+		notes = append(notes, mapped)
+	}
+
+	return httpapi.MealPlanSuggestion{
+		WeekStart: openapi_types.Date{Time: s.WeekStart},
+		Seed:      s.Seed,
+		Entries:   entries,
+		Candidates: httpapi.MealPlanCandidateCounts{
+			Breakfast: s.Candidates["breakfast"],
+			Lunch:     s.Candidates["lunch"],
+			Dinner:    s.Candidates["dinner"],
+		},
+		Notes: notes,
+	}
+}

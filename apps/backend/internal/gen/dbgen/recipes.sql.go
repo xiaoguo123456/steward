@@ -369,6 +369,91 @@ func (q *Queries) ListMealPlanEntries(ctx context.Context, mealPlanID string) ([
 	return items, nil
 }
 
+const listRecipeCandidates = `-- name: ListRecipeCandidates :many
+SELECT id, title, duration_minutes, difficulty, calories, protein_g, carbs_g,
+       fiber_g, fat_g, meal_slots, categories, tags
+FROM recipes
+WHERE $1::text = ANY (meal_slots)
+  AND NOT (allergens && $2::text[])
+  AND NOT EXISTS (
+        SELECT 1 FROM unnest($3::text[]) AS d
+        WHERE d <> ''
+          AND (title ILIKE '%' || d || '%'
+               OR EXISTS (
+                    SELECT 1 FROM jsonb_array_elements(ingredients) AS ing
+                    WHERE ing ->> 'name' ILIKE '%' || d || '%')))
+  AND ($4::int IS NULL OR duration_minutes <= $4::int)
+ORDER BY id
+`
+
+type ListRecipeCandidatesParams struct {
+	MealSlot         string
+	ExcludeAllergens []string
+	Dislikes         []string
+	MaxMinutes       *int32
+}
+
+type ListRecipeCandidatesRow struct {
+	ID              string
+	Title           string
+	DurationMinutes int32
+	Difficulty      string
+	Calories        float64
+	ProteinG        float64
+	CarbsG          float64
+	FiberG          *float64
+	FatG            *float64
+	MealSlots       []string
+	Categories      []string
+	Tags            []string
+}
+
+// 生成周菜单用的候选集。
+//
+// 只取打分需要的列，**不取 ingredients 与 steps**：候选集是几千行，
+// 带上 JSON 正文就是几十兆，而选菜阶段根本用不到它们。
+// 选定之后再按 id 取完整菜谱。
+//
+// 过敏原与忌口在这里就滤掉，不留给上层——漏一层就是一次事故。
+// 忌口要连食材一起看：用户忌香菜，菜名里没有但配料里有，一样得排除。
+func (q *Queries) ListRecipeCandidates(ctx context.Context, arg ListRecipeCandidatesParams) ([]ListRecipeCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listRecipeCandidates,
+		arg.MealSlot,
+		arg.ExcludeAllergens,
+		arg.Dislikes,
+		arg.MaxMinutes,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRecipeCandidatesRow{}
+	for rows.Next() {
+		var i ListRecipeCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.DurationMinutes,
+			&i.Difficulty,
+			&i.Calories,
+			&i.ProteinG,
+			&i.CarbsG,
+			&i.FiberG,
+			&i.FatG,
+			&i.MealSlots,
+			&i.Categories,
+			&i.Tags,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRecipes = `-- name: ListRecipes :many
 
 SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key FROM recipes
@@ -405,6 +490,61 @@ func (q *Queries) ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Rec
 		arg.ExcludeAllergens,
 		arg.RowLimit,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Recipe{}
+	for rows.Next() {
+		var i Recipe
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Summary,
+			&i.ImageUrl,
+			&i.Servings,
+			&i.DurationMinutes,
+			&i.Difficulty,
+			&i.Calories,
+			&i.ProteinG,
+			&i.CarbsG,
+			&i.FiberG,
+			&i.MealSlots,
+			&i.Categories,
+			&i.Goals,
+			&i.Tags,
+			&i.Allergens,
+			&i.Ingredients,
+			&i.Steps,
+			&i.SourceName,
+			&i.SourceAuthor,
+			&i.SourceUrl,
+			&i.License,
+			&i.LicenseUrl,
+			&i.ImageCredit,
+			&i.ContentVersion,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.FatG,
+			&i.ImageKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecipesByIDs = `-- name: ListRecipesByIDs :many
+SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key FROM recipes WHERE id = ANY($1::text[])
+`
+
+// 选定之后再取完整菜谱（含食材与步骤）。候选阶段刻意不取这些列。
+func (q *Queries) ListRecipesByIDs(ctx context.Context, ids []string) ([]Recipe, error) {
+	rows, err := q.db.Query(ctx, listRecipesByIDs, ids)
 	if err != nil {
 		return nil, err
 	}

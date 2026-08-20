@@ -179,6 +179,8 @@ paths:
     $ref: './paths/recipes.yaml#/DietProfile'
   /v1/meal-plans:
     $ref: './paths/recipes.yaml#/MealPlan'
+  /v1/meal-plans/suggestion:
+    $ref: './paths/recipes.yaml#/MealPlanSuggestion'
   /v1/meal-plans/shopping-draft:
     $ref: './paths/recipes.yaml#/ShoppingDraft'
   /v1/important-dates:

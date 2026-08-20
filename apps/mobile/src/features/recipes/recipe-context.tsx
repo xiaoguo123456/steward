@@ -2,10 +2,12 @@ import { createContext, type PropsWithChildren, useContext, useMemo, useState } 
 
 import { useDietProfile } from './use-diet-profile';
 import { useMealPlan } from './use-meal-plan';
+import { useMealPlanSuggestion } from './use-meal-plan-suggestion';
 import { useRecipeContent } from './use-recipe-content';
 import { useRecipeMarks } from './use-recipe-marks';
+import type { MealPlanSuggestionNote } from '@steward/api-client';
+
 import {
-  mealSlotOrder,
   type MealSlot,
   type Recipe,
   type RecipeNutrition,
@@ -45,7 +47,14 @@ type RecipeContextValue = {
   plannedNutrition?: RecipeNutrition;
   swapRecipe: (dayId: WeekDayId, meal: MealSlot) => void;
   setRecipeForMeal: (dayId: WeekDayId, meal: MealSlot, recipeId: string) => void;
-  regenerateWeek: () => void;
+  /** 首次生成本周菜单。 */
+  generateWeek: () => Promise<void>;
+  /** 换一批：同一份档案下换另一组菜。 */
+  regenerateWeek: () => Promise<void>;
+  /** 正在向服务端要一份菜单。 */
+  planGenerating: boolean;
+  /** 本次生成做了什么妥协（过敏原筛太狠、时间放宽了等）。空数组表示没有。 */
+  planNotes: MealPlanSuggestionNote[];
   confirmPlan: () => Promise<boolean>;
   discardPlan: () => void;
 
@@ -63,7 +72,13 @@ type RecipeContextValue = {
 
 const RecipeContext = createContext<RecipeContextValue | null>(null);
 
-/** 在同一餐位的候选里往后挑一道，用于「换一道」。 */
+/**
+ * 在同一餐位的候选里往后挑一道，用于单格的「换一道」。
+ *
+ * 只在**已经取回来的**菜谱里换，是刻意的：换单格要立刻有反应，
+ * 为一格去服务端跑一次整周生成不值得。整周「换一批」走服务端，
+ * 因为那时过敏原过滤与目标匹配都要看全库。
+ */
 function nextRecipeId(recipes: Recipe[], currentId: string, meal: MealSlot, offset = 1) {
   const candidates = recipes.filter((recipe) => recipe.mealSlots.includes(meal));
   if (candidates.length === 0) return currentId;
@@ -75,9 +90,11 @@ function nextRecipeId(recipes: Recipe[], currentId: string, meal: MealSlot, offs
 }
 
 export function RecipePrototypeProvider({ children }: PropsWithChildren) {
-  const content = useRecipeContent();
-  const mealPlan = useMealPlan();
+  // 先读档案：浏览列表要按用户的过敏原过滤，不传就等于没填。
   const diet = useDietProfile();
+  const content = useRecipeContent(diet.profile?.allergies ?? []);
+  const mealPlan = useMealPlan();
+  const suggestion = useMealPlanSuggestion();
   const marks = useRecipeMarks();
 
   const [pickedDayId, setPickedDayId] = useState<WeekDayId | null>(null);
@@ -95,7 +112,12 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
     () => ({
       recipes: content.recipes,
       recipesLoading: content.loading,
-      getRecipe: content.getRecipe,
+      // 菜单里的菜谱不一定在浏览列表的前 100 条里，
+      // 已确认菜单与建议各自带回了自己的那些，合起来查。
+      getRecipe: (recipeId: string) =>
+        content.getRecipe(recipeId) ??
+        suggestion.recipes.get(recipeId) ??
+        mealPlan.recipes.get(recipeId),
 
       days: mealPlan.days,
       weekStart: mealPlan.weekStart,
@@ -106,7 +128,7 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
       planLoading: mealPlan.loading,
       hasPendingPlan: mealPlan.hasPendingPlan,
       planSaving: mealPlan.saving,
-      planFailure: mealPlan.failure,
+      planFailure: mealPlan.failure ?? suggestion.failure,
       plannedNutrition: mealPlan.plannedNutrition,
 
       setRecipeForMeal: mealPlan.setRecipeForMeal,
@@ -114,27 +136,20 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
         const current = mealPlan.plan[dayId]?.[meal] ?? '';
         mealPlan.setRecipeForMeal(dayId, meal, nextRecipeId(content.recipes, current, meal));
       },
-      regenerateWeek: () => {
-        const next: WeekPlan = {};
-        mealPlan.days.forEach((day, dayIndex) => {
-          const currentDay = mealPlan.plan[day.id] ?? {
-            breakfast: '',
-            lunch: '',
-            dinner: '',
-          };
-          const nextDay = { ...currentDay };
-          mealSlotOrder.forEach((meal, mealIndex) => {
-            nextDay[meal] = nextRecipeId(
-              content.recipes,
-              currentDay[meal],
-              meal,
-              dayIndex + mealIndex + 1,
-            );
-          });
-          next[day.id] = nextDay;
-        });
-        mealPlan.replaceWeek(next);
+      // 整周生成走服务端。
+      //
+      // 客户端手里只有前 100 条菜谱，在那里面轮播既筛不掉过敏原，
+      // 也谈不上按目标选菜——之前就是这么做的，等于问卷白填了。
+      generateWeek: async () => {
+        const next = await suggestion.generate(mealPlan.weekStart);
+        if (next) mealPlan.replaceWeek(next);
       },
+      regenerateWeek: async () => {
+        const next = await suggestion.regenerate(mealPlan.weekStart);
+        if (next) mealPlan.replaceWeek(next);
+      },
+      planGenerating: suggestion.loading,
+      planNotes: suggestion.notes,
       confirmPlan: mealPlan.confirm,
       discardPlan: mealPlan.discard,
 
@@ -149,7 +164,7 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
       cookedIds: marks.cookedIds,
       markCooked: marks.markCooked,
     }),
-    [content, mealPlan, diet, marks, selectedDayId],
+    [content, mealPlan, suggestion, diet, marks, selectedDayId],
   );
 
   return <RecipeContext.Provider value={value}>{children}</RecipeContext.Provider>;

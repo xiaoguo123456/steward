@@ -1,6 +1,6 @@
 import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
@@ -23,6 +23,8 @@ export default function WeekMenuScreen() {
     hasPendingPlan,
     planSaving,
     planFailure,
+    planGenerating,
+    planNotes,
     swapRecipe,
     regenerateWeek,
     confirmPlan,
@@ -48,16 +50,25 @@ export default function WeekMenuScreen() {
       <NavHeader
         right={
           <Pressable
-            accessibilityLabel="重新生成本周菜单"
+            accessibilityLabel={planGenerating ? '正在生成本周菜单' : '重新生成本周菜单'}
             accessibilityRole="button"
+            disabled={planGenerating}
             hitSlop={8}
             onPress={() => {
-              regenerateWeek();
               setSavedMessage(false);
+              void regenerateWeek();
             }}
-            style={({ pressed }) => [styles.headerIconButton, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.headerIconButton,
+              pressed && styles.pressed,
+              planGenerating && styles.headerIconButtonBusy,
+            ]}
           >
-            <AppIcon color={colors.primaryStrong} name="refresh" size={20} />
+            {planGenerating ? (
+              <ActivityIndicator color={colors.primaryStrong} size="small" />
+            ) : (
+              <AppIcon color={colors.primaryStrong} name="refresh" size={20} />
+            )}
           </Pressable>
         }
         title="本周菜单"
@@ -66,10 +77,20 @@ export default function WeekMenuScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.intro}>
           <Text accessibilityRole="header" style={styles.title}>
-            8月17日—23日
+            {days.length > 0 ? `${days[0].fullDate}—${days[days.length - 1].fullDate}` : '本周'}
           </Text>
           <Text style={styles.subtitle}>每天三餐都可以单独替换，确认前不会覆盖原菜单。</Text>
         </View>
+
+        {/*
+          生成时做了什么妥协要说出来。
+          默默给一份筛剩下的菜单，用户只会觉得推荐得莫名其妙。
+        */}
+        {planNotes.map((note) => (
+          <InlineNotice icon="alert-circle-outline" key={`${note.kind}-${note.meal_slot ?? ''}`} tone="warning">
+            {note.message}
+          </InlineNotice>
+        ))}
 
         {hasPendingPlan ? (
           <InlineNotice icon="sparkles-outline" tone="warning">
@@ -192,6 +213,9 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingBottom: 130,
+  },
+  headerIconButtonBusy: {
+    opacity: 0.6,
   },
   headerIconButton: {
     width: 44,

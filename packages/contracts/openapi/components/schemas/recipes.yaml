@@ -453,6 +453,86 @@ MealPlan:
     version:
       type: integer
 
+MealPlanSuggestion:
+  type: object
+  additionalProperties: false
+  description: |
+    一份**还没确认**的周菜单建议。
+
+    它不落库。用户点「采用本周菜单」后走 confirmMealPlan 才算数，
+    和 MealPlan 的说明是同一条规则：预览只是预览。
+
+    生成是确定性的：同一个 seed 必然给出同一份结果。
+    客户端切走再切回来不该换菜——那会让人以为自己刚才看到的菜没了。
+    换一批就递增 seed。
+  required: [week_start, seed, entries, candidates, notes]
+  properties:
+    week_start:
+      type: string
+      format: date
+    seed:
+      type: integer
+      description: |
+        本次生成用的种子。原样回传，客户端「换一批」时提交 seed + 1。
+    entries:
+      type: array
+      items:
+        $ref: '#/MealPlanEntry'
+    candidates:
+      description: |
+        硬过滤后各时段还剩多少道可选。
+        这个数字是给客户端判断「菜少是因为筛得狠」而不是「接口坏了」用的。
+      allOf:
+        - $ref: '#/MealPlanCandidateCounts'
+    notes:
+      type: array
+      description: |
+        本次生成中做了什么妥协。**空数组表示没有妥协**。
+        不把妥协说出来的话，用户看到的就是一份莫名其妙的菜单。
+      items:
+        $ref: '#/MealPlanSuggestionNote'
+
+MealPlanCandidateCounts:
+  type: object
+  additionalProperties: false
+  required: [breakfast, lunch, dinner]
+  properties:
+    breakfast:
+      type: integer
+    lunch:
+      type: integer
+    dinner:
+      type: integer
+
+MealPlanSuggestionNote:
+  type: object
+  additionalProperties: false
+  required: [kind, message]
+  properties:
+    kind:
+      type: string
+      enum: [cook_time_relaxed, slot_unfilled, pool_repeats]
+      description: |
+        - cook_time_relaxed：可选菜太少，放宽了「最长烹饪时间」。
+          **过敏原与忌口永远不会被放宽**，没有对应的 kind。
+        - slot_unfilled：这一格实在没有可选的菜，留空了。
+        - pool_repeats：可选菜不足一周的餐数，出现了重复。
+    message:
+      type: string
+      description: 直接展示给用户的中文说明。
+    meal_slot:
+      $ref: '#/RecipeMealSlot'
+
+MealPlanSuggestionResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MealPlanSuggestion'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
 MealPlanEntryInput:
   type: object
   additionalProperties: false

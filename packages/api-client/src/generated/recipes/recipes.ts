@@ -40,10 +40,12 @@ import type {
   DietProfileResponse,
   GetMealPlanParams,
   GetMealPlanShoppingDraftParams,
+  GetMealPlanSuggestionParams,
   InternalErrorResponse,
   ListFavoriteRecipesParams,
   ListRecipesParams,
   MealPlanResponse,
+  MealPlanSuggestionResponse,
   MutationResponse,
   NotFoundResponse,
   RecipeResponse,
@@ -959,7 +961,119 @@ export const useConfirmMealPlan = <TError = BadRequestResponse | UnauthorizedRes
       > => {
       return useMutation(getConfirmMealPlanMutationOptions(options), queryClient);
     }
-    export const getGetMealPlanShoppingDraftUrl = (params?: GetMealPlanShoppingDraftParams,) => {
+    export const getGetMealPlanSuggestionUrl = (params?: GetMealPlanSuggestionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/meal-plans/suggestion?${stringifiedParams}` : `/v1/meal-plans/suggestion`
+}
+
+/**
+ * 只读：算出一份建议并返回，不写入任何东西。用户确认后走 confirmMealPlan。
+ *
+ * 选菜是确定性的 Go 代码，不调用模型：同样的档案与 seed 必然得到同样的菜单。
+ * 过敏原与忌口是硬过滤，可选菜再少也不会为了填满一周而放宽——
+ * 填不满就留空并在 notes 里说明。
+ * @summary 按饮食档案生成一周菜单建议
+ */
+export const getMealPlanSuggestion = async (params?: GetMealPlanSuggestionParams, options?: Parameters<typeof stewardFetch>[1]): Promise<MealPlanSuggestionResponse> => {
+
+  return stewardFetch<MealPlanSuggestionResponse>(getGetMealPlanSuggestionUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMealPlanSuggestionQueryKey = (params?: GetMealPlanSuggestionParams,) => {
+    return [
+    `/v1/meal-plans/suggestion`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMealPlanSuggestionQueryOptions = <TData = Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(params?: GetMealPlanSuggestionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMealPlanSuggestionQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMealPlanSuggestion>>> = ({ signal }) => getMealPlanSuggestion(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMealPlanSuggestionQueryResult = NonNullable<Awaited<ReturnType<typeof getMealPlanSuggestion>>>
+export type GetMealPlanSuggestionQueryError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse
+
+
+export function useGetMealPlanSuggestion<TData = Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params: undefined |  GetMealPlanSuggestionParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMealPlanSuggestion>>,
+          TError,
+          Awaited<ReturnType<typeof getMealPlanSuggestion>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMealPlanSuggestion<TData = Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanSuggestionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMealPlanSuggestion>>,
+          TError,
+          Awaited<ReturnType<typeof getMealPlanSuggestion>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMealPlanSuggestion<TData = Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanSuggestionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 按饮食档案生成一周菜单建议
+ */
+
+export function useGetMealPlanSuggestion<TData = Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanSuggestionParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanSuggestion>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMealPlanSuggestionQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetMealPlanShoppingDraftUrl = (params?: GetMealPlanShoppingDraftParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {

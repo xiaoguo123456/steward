@@ -47,7 +47,11 @@ function WeekHome() {
     selectedDayId,
     setSelectedDayId,
     plan,
+    planLoading,
+    planGenerating,
+    planFailure,
     hasPendingPlan,
+    generateWeek,
     swapRecipe,
     getRecipe,
   } = useRecipePrototype();
@@ -97,21 +101,42 @@ function WeekHome() {
 
       <NutritionStrip recipes={dayRecipes} />
 
-      <View style={styles.mealList}>
-        {mealSlotOrder.map((meal) => {
-          const recipe = getRecipe(plan[selectedDayId][meal]);
-          if (!recipe) return null;
-          return (
-            <MealRow
-              key={`${selectedDayId}-${meal}`}
-              meal={meal}
-              onOpen={() => router.push(recipeRoute(recipe.id))}
-              onSwap={() => swapRecipe(selectedDayId, meal)}
-              recipe={recipe}
-            />
-          );
-        })}
-      </View>
+      {/*
+        还没有菜单时要给出口。
+        以前这里什么都不渲染——页面上只剩一个空的营养条，
+        用户看不出是没安排还是没加载出来，更找不到从哪开始。
+      */}
+      {dayRecipes.length === 0 && !planLoading ? (
+        <View style={styles.emptyPlan}>
+          <Text style={styles.emptyPlanTitle}>这一周还没有菜单</Text>
+          <Text style={styles.emptyPlanBody}>
+            按你的饮食档案排一周三餐，会避开你填过的过敏原与忌口。生成后可以逐餐替换，确认前不会保存。
+          </Text>
+          <RecipePrimaryButton
+            disabled={planGenerating}
+            icon="sparkles-outline"
+            label={planGenerating ? '正在生成…' : '生成本周菜单'}
+            onPress={() => void generateWeek()}
+          />
+          {planFailure ? <Text style={styles.emptyPlanError}>{planFailure}</Text> : null}
+        </View>
+      ) : (
+        <View style={styles.mealList}>
+          {mealSlotOrder.map((meal) => {
+            const recipe = getRecipe(plan[selectedDayId][meal]);
+            if (!recipe) return null;
+            return (
+              <MealRow
+                key={`${selectedDayId}-${meal}`}
+                meal={meal}
+                onOpen={() => router.push(recipeRoute(recipe.id))}
+                onSwap={() => swapRecipe(selectedDayId, meal)}
+                recipe={recipe}
+              />
+            );
+          })}
+        </View>
+      )}
 
       <View style={styles.homeActions}>
         <RecipePrimaryButton
@@ -376,6 +401,31 @@ const styles = StyleSheet.create({
   mealList: {
     marginTop: 20,
     gap: 22,
+  },
+  emptyPlan: {
+    marginTop: 20,
+    padding: 18,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    gap: 10,
+  },
+  emptyPlanTitle: {
+    color: recipeColors.ink,
+    fontFamily,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyPlanBody: {
+    color: recipeColors.muted,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  emptyPlanError: {
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
   },
   homeActions: {
     marginTop: 22,

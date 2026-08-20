@@ -2550,6 +2550,45 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/meal-plans/suggestion:
+    get:
+      operationId: getMealPlanSuggestion
+      summary: 按饮食档案生成一周菜单建议
+      description: |
+        只读：算出一份建议并返回，不写入任何东西。用户确认后走 confirmMealPlan。
+
+        选菜是确定性的 Go 代码，不调用模型：同样的档案与 seed 必然得到同样的菜单。
+        过敏原与忌口是硬过滤，可选菜再少也不会为了填满一周而放宽——
+        填不满就留空并在 notes 里说明。
+      tags:
+        - recipes
+      parameters:
+        - name: week_start
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: seed
+          in: query
+          required: false
+          description: 换一批时递增。不传按 0 处理。
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlanSuggestionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/meal-plans/shopping-draft:
     get:
       operationId: getMealPlanShoppingDraft
@@ -7193,6 +7232,97 @@ components:
           description: 空数组表示清空本周菜单。
           items:
             $ref: '#/components/schemas/MealPlanEntryInput'
+    MealPlanCandidateCounts:
+      type: object
+      additionalProperties: false
+      required:
+        - breakfast
+        - lunch
+        - dinner
+      properties:
+        breakfast:
+          type: integer
+        lunch:
+          type: integer
+        dinner:
+          type: integer
+    MealPlanSuggestionNote:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - message
+      properties:
+        kind:
+          type: string
+          enum:
+            - cook_time_relaxed
+            - slot_unfilled
+            - pool_repeats
+          description: |
+            - cook_time_relaxed：可选菜太少，放宽了「最长烹饪时间」。
+              **过敏原与忌口永远不会被放宽**，没有对应的 kind。
+            - slot_unfilled：这一格实在没有可选的菜，留空了。
+            - pool_repeats：可选菜不足一周的餐数，出现了重复。
+        message:
+          type: string
+          description: 直接展示给用户的中文说明。
+        meal_slot:
+          $ref: '#/components/schemas/RecipeMealSlot'
+    MealPlanSuggestion:
+      type: object
+      additionalProperties: false
+      description: |
+        一份**还没确认**的周菜单建议。
+
+        它不落库。用户点「采用本周菜单」后走 confirmMealPlan 才算数，
+        和 MealPlan 的说明是同一条规则：预览只是预览。
+
+        生成是确定性的：同一个 seed 必然给出同一份结果。
+        客户端切走再切回来不该换菜——那会让人以为自己刚才看到的菜没了。
+        换一批就递增 seed。
+      required:
+        - week_start
+        - seed
+        - entries
+        - candidates
+        - notes
+      properties:
+        week_start:
+          type: string
+          format: date
+        seed:
+          type: integer
+          description: |
+            本次生成用的种子。原样回传，客户端「换一批」时提交 seed + 1。
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MealPlanEntry'
+        candidates:
+          description: |
+            硬过滤后各时段还剩多少道可选。
+            这个数字是给客户端判断「菜少是因为筛得狠」而不是「接口坏了」用的。
+          allOf:
+            - $ref: '#/components/schemas/MealPlanCandidateCounts'
+        notes:
+          type: array
+          description: |
+            本次生成中做了什么妥协。**空数组表示没有妥协**。
+            不把妥协说出来的话，用户看到的就是一份莫名其妙的菜单。
+          items:
+            $ref: '#/components/schemas/MealPlanSuggestionNote'
+    MealPlanSuggestionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MealPlanSuggestion'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
     ShoppingDraftItem:
       type: object
       additionalProperties: false
