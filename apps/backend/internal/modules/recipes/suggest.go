@@ -14,31 +14,51 @@ import (
 
 // 周菜单生成。
 //
-// 三类规则，优先级从高到低：
+// 一餐是一个**组合**，不是一道菜：早餐主食+蛋白，午晚主食+荤+素。
+// 挑到「单品成餐」（牛肉面、蛋包饭）时它顶掉主食与荤菜两格，
+// 午晚再配一道素菜——一碗面再配一荤一素就成了三道菜的午饭，没人这么吃。
 //
-//  1. **过敏原与忌口**。任何情况下都不放宽。可选菜再少也宁可留空——
-//     为了填满一周而放宽过敏原，是这个功能唯一能造成人身伤害的方式。
-//  2. **一周不重样**。候选不够时才允许重复，且必须在 notes 里说出来。
-//  3. **目标匹配**。按营养数字排名打分，是偏好不是硬条件。
+// 规则优先级，从高到低：
+//
+//  1. **过敏原与忌口**。在 SQL 里过滤，任何情况下都不放宽。
+//     可选菜再少也宁可留空——为了填满一周而放宽过敏原，
+//     是这个功能唯一能造成人身伤害的方式。
+//  2. **一周不重样**，跨餐次也算。
+//  3. **热量与碳蛋脂目标**。按身高体重算出每日目标再分摊到每餐；
+//     身体数据不全时退回按营养排名打分，不拿默认值顶上。
 //
 // 全程确定性、不调用模型：同样的档案与 seed 必然得到同样的菜单。
-// 这既是为了可测，也是为了「切走再切回来不换菜」——
-// 用户看中的那道菜因为刷新消失了，比菜选得不够好更让人恼火。
-//
-// 生成结果不落库，用户点「采用本周菜单」后走 ConfirmMealPlan。
 
-// mealSlots 是一天三餐的固定顺序，输出条目按此排列。
+// mealSlots 是一天三餐的固定顺序。
 var mealSlots = []string{"breakfast", "lunch", "dinner"}
 
-// daysPerWeek 是要填的天数。
 const daysPerWeek = 7
+
+// 一餐由哪些角色组成。主食那一格从 staple 与 one_dish 里一起挑。
+var mealShapes = map[string][]string{
+	"breakfast": {"staple", "protein"},
+	"lunch":     {"staple", "protein", "vegetable"},
+	"dinner":    {"staple", "protein", "vegetable"},
+}
+
+// 一餐的热量在各角色之间怎么分。
+//
+// 主食与荤菜大致对半，素菜占两成——这和「餐盘里蔬菜占一半」不冲突：
+// 蔬菜占的是体积，热量本来就低。
+var componentShares = map[string]map[string]float64{
+	"breakfast": {"staple": 0.55, "protein": 0.45, "one_dish": 1.00},
+	"lunch":     {"staple": 0.40, "protein": 0.38, "vegetable": 0.22, "one_dish": 0.78},
+	"dinner":    {"staple": 0.40, "protein": 0.38, "vegetable": 0.22, "one_dish": 0.78},
+}
 
 // scorePoolSize 是进入随机化的「好菜池」大小。
 //
-// 只在打分最高的这些里随机：全池随机等于没打分，只取前 7 名则
-// 「换一批」换不出东西来。40 道给 7 个格子，重排后仍有明显变化，
-// 又不至于滑到池子尾部那些明显不合目标的菜。
-const scorePoolSize = 40
+// 只在打分最高的这些里随机：全池随机等于没打分，只取第一名则
+// 「换一批」换不出东西来。
+const scorePoolSize = 25
+
+// targetTolerance 是实际值偏离目标多少就要告诉用户。
+const targetTolerance = 0.20
 
 // SuggestionNote 说明本次生成做了什么妥协。
 type SuggestionNote struct {
@@ -47,20 +67,31 @@ type SuggestionNote struct {
 	MealSlot string
 }
 
-// SuggestedEntry 是建议里的一格。
+// SuggestedEntry 是建议里的一道菜。
 type SuggestedEntry struct {
-	Date     time.Time
-	MealSlot string
-	RecipeID string
+	Date      time.Time
+	MealSlot  string
+	RecipeID  string
+	Component string
+}
+
+// Achieved 是这份菜单实际算出来的每日平均值。
+type Achieved struct {
+	Calories float64
+	ProteinG float64
+	CarbsG   float64
+	FatG     *float64
 }
 
 // Suggestion 是一份未确认的周菜单。
 type Suggestion struct {
-	WeekStart  time.Time
-	Seed       int
-	Entries    []SuggestedEntry
-	Candidates map[string]int
-	Notes      []SuggestionNote
+	WeekStart   time.Time
+	Seed        int
+	Entries     []SuggestedEntry
+	Candidates  map[string]int
+	DailyTarget *EnergyTarget
+	Achieved    Achieved
+	Notes       []SuggestionNote
 }
 
 // candidate 是打分需要的全部信息。刻意不含食材与步骤：
@@ -68,24 +99,34 @@ type Suggestion struct {
 type candidate struct {
 	ID         string
 	Title      string
+	Component  string
 	Minutes    int
 	Calories   float64
 	ProteinG   float64
 	CarbsG     float64
+	FatG       *float64
 	Categories []string
 }
 
 func candidateOf(row dbgen.ListRecipeCandidatesRow) candidate {
-	return candidate{
+	c := candidate{
 		ID:         row.ID,
 		Title:      row.Title,
 		Minutes:    int(row.DurationMinutes),
 		Calories:   row.Calories,
 		ProteinG:   row.ProteinG,
 		CarbsG:     row.CarbsG,
+		FatG:       row.FatG,
 		Categories: row.Categories,
 	}
+	if row.Component != nil {
+		c.Component = *row.Component
+	}
+	return c
 }
+
+// pools 是「时段 → 角色 → 候选」。
+type pools map[string]map[string][]candidate
 
 // SuggestMealPlan 按用户的饮食档案生成一周菜单建议。
 func (s *Service) SuggestMealPlan(ctx context.Context, userID string,
@@ -96,35 +137,46 @@ func (s *Service) SuggestMealPlan(ctx context.Context, userID string,
 		return Suggestion{}, err
 	}
 
-	pools := map[string][]candidate{}
+	target, hasTarget := DailyEnergyTarget(profile)
 	var notes []SuggestionNote
+	if hasTarget {
+		notes = append(notes, target.Notes...)
+	} else {
+		notes = append(notes, SuggestionNote{
+			Kind:    "profile_incomplete",
+			Message: "填上身高、体重和年龄，就能按你的热量目标安排每餐的份量。这次先按营养均衡程度挑。",
+		})
+	}
 
+	allPools := pools{}
 	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		for _, slot := range mealSlots {
-			rows, err := s.candidatesForSlot(ctx, q, profile, slot, profile.MaxCookMinutes)
-			if err != nil {
-				return err
-			}
-			// 可选菜不够填满一周时，放宽「最长烹饪时间」再试一次。
-			//
-			// 时长是偏好，放宽了顶多让人多花十分钟，而且这里会明说；
-			// 过敏原是安全条件，没有对应的放宽分支，将来也不要加。
-			if len(rows) < daysPerWeek && profile.MaxCookMinutes != nil {
-				relaxed, err := s.candidatesForSlot(ctx, q, profile, slot, nil)
+			allPools[slot] = map[string][]candidate{}
+			for _, component := range []string{"staple", "one_dish", "protein", "vegetable"} {
+				rows, err := s.candidatesFor(ctx, q, profile, slot, component, profile.MaxCookMinutes)
 				if err != nil {
 					return err
 				}
-				if len(relaxed) > len(rows) {
-					rows = relaxed
-					notes = append(notes, SuggestionNote{
-						Kind:     "cook_time_relaxed",
-						MealSlot: slot,
-						Message: fmt.Sprintf("%s能在 %d 分钟内做完的菜太少，这次放宽了时间限制。",
-							mealSlotLabel(slot), *profile.MaxCookMinutes),
-					})
+				// 可选菜太少时放宽「最长烹饪时间」再试一次。
+				//
+				// 时长是偏好，放宽了顶多让人多花十分钟，而且这里会明说；
+				// 过敏原是安全条件，没有对应的放宽分支，将来也不要加。
+				if len(rows) < daysPerWeek && profile.MaxCookMinutes != nil {
+					relaxed, err := s.candidatesFor(ctx, q, profile, slot, component, nil)
+					if err != nil {
+						return err
+					}
+					if len(relaxed) > len(rows) {
+						rows = relaxed
+						notes = appendOnce(notes, SuggestionNote{
+							Kind: "cook_time_relaxed",
+							Message: fmt.Sprintf("能在 %d 分钟内做完的菜太少，这次放宽了时间限制。",
+								*profile.MaxCookMinutes),
+						})
+					}
 				}
+				allPools[slot][component] = rows
 			}
-			pools[slot] = rows
 		}
 		return nil
 	})
@@ -132,16 +184,22 @@ func (s *Service) SuggestMealPlan(ctx context.Context, userID string,
 		return Suggestion{}, err
 	}
 
-	out := buildSuggestion(weekStart, seed, string(profile.Goal), pools)
+	var targetPtr *EnergyTarget
+	if hasTarget {
+		targetPtr = &target
+	}
+	out := buildSuggestion(weekStart, seed, string(profile.Goal), targetPtr, allPools)
 	out.Notes = append(notes, out.Notes...)
 	return out, nil
 }
 
-func (s *Service) candidatesForSlot(ctx context.Context, q *dbgen.Queries,
-	profile dbgen.RecipeDietProfile, slot string, maxMinutes *int32) ([]candidate, error) {
+func (s *Service) candidatesFor(ctx context.Context, q *dbgen.Queries,
+	profile dbgen.RecipeDietProfile, slot, component string,
+	maxMinutes *int32) ([]candidate, error) {
 
 	rows, err := q.ListRecipeCandidates(ctx, dbgen.ListRecipeCandidatesParams{
-		MealSlot: slot,
+		MealSlot:  slot,
+		Component: component,
 		// 过敏原与忌口在 SQL 里就滤掉，不留给上层——漏一层就是一次事故。
 		ExcludeAllergens: cleanFilterList(profile.Allergens),
 		Dislikes:         cleanFilterList(profile.Dislikes),
@@ -163,7 +221,7 @@ func (s *Service) candidatesForSlot(ctx context.Context, q *dbgen.Queries,
 // 传 NULL 会让整个 WHERE 一条都不返回——症状是「菜单整周空白」。
 //
 // 丢空项是因为一个只剩空格的忌口项会被当成关键词去匹配菜名与食材，
-// 把大量菜误伤掉。SQL 里那道 `d <> ”` 拦不住 "  "。
+// 把大量菜误伤掉。
 func cleanFilterList(v []string) []string {
 	out := make([]string, 0, len(v))
 	for _, item := range v {
@@ -174,149 +232,283 @@ func cleanFilterList(v []string) []string {
 	return out
 }
 
+func appendOnce(notes []SuggestionNote, note SuggestionNote) []SuggestionNote {
+	for _, existing := range notes {
+		if existing.Kind == note.Kind && existing.MealSlot == note.MealSlot {
+			return notes
+		}
+	}
+	return append(notes, note)
+}
+
 // buildSuggestion 是选菜的全部逻辑，纯函数，不碰数据库。
 func buildSuggestion(weekStart time.Time, seed int, goal string,
-	pools map[string][]candidate) Suggestion {
+	target *EnergyTarget, all pools) Suggestion {
 
 	out := Suggestion{
-		WeekStart:  weekStart,
-		Seed:       seed,
-		Entries:    []SuggestedEntry{},
-		Candidates: map[string]int{},
-		Notes:      []SuggestionNote{},
+		WeekStart:   weekStart,
+		Seed:        seed,
+		Entries:     []SuggestedEntry{},
+		Candidates:  map[string]int{},
+		DailyTarget: target,
+		Notes:       []SuggestionNote{},
+	}
+	for _, slot := range mealSlots {
+		for _, list := range all[slot] {
+			out.Candidates[slot] += len(list)
+		}
 	}
 
 	// 整周不重样：一道菜在这一周里只出现一次，跨餐也算。
 	// 午餐吃过的晚上再来一遍，用户会觉得这个功能没在干活。
 	used := map[string]bool{}
 
-	// 先按时段各自挑满一周，再按「日期 + 餐次」排出去。
-	//
-	// 时段按 breakfast → lunch → dinner 处理，而早餐池最小（库里约 940 道，
-	// 午晚各 2600）。**最受限的先挑**：反过来的话，午晚餐会把早餐仅有的
-	// 那些菜先占走，早餐反而排不出来。
-	picks := map[string][]string{}
+	// 打分用的排名在整个池子上算一次，不必每天重算。
+	ranks := map[string]map[string]float64{}
 	for _, slot := range mealSlots {
-		pool := pools[slot]
-		out.Candidates[slot] = len(pool)
-		chosen, note := pickWeek(pool, slot, seed, goal, used)
-		picks[slot] = chosen
-		if note != nil {
-			out.Notes = append(out.Notes, *note)
+		for component, list := range all[slot] {
+			ranks[slot+"/"+component] = goalScores(list, goal, slot)
 		}
 	}
 
+	unfilled := map[string]bool{}
 	for day := 0; day < daysPerWeek; day++ {
 		date := weekStart.AddDate(0, 0, day)
 		for _, slot := range mealSlots {
-			chosen := picks[slot]
-			if day >= len(chosen) {
+			picks := buildMeal(all[slot], ranks, slot, seed, day, target, used)
+			if len(picks) == 0 {
+				unfilled[slot] = true
 				continue
 			}
-			out.Entries = append(out.Entries, SuggestedEntry{
-				Date: date, MealSlot: slot, RecipeID: chosen[day],
+			for _, pick := range picks {
+				used[pick.ID] = true
+				out.Entries = append(out.Entries, SuggestedEntry{
+					Date: date, MealSlot: slot,
+					RecipeID: pick.ID, Component: pick.Component,
+				})
+			}
+		}
+	}
+
+	for _, slot := range mealSlots {
+		if unfilled[slot] {
+			out.Notes = append(out.Notes, SuggestionNote{
+				Kind:     "slot_unfilled",
+				MealSlot: slot,
+				Message: fmt.Sprintf("按你的过敏原与忌口筛下来，没有可作为%s的菜，这几格留空了。",
+					mealSlotLabel(slot)),
+			})
+		}
+	}
+
+	out.Achieved = achievedOf(out.Entries, all)
+	if target != nil && target.Calories > 0 {
+		gap := (out.Achieved.Calories - target.Calories) / target.Calories
+		if gap > targetTolerance || gap < -targetTolerance {
+			out.Notes = append(out.Notes, SuggestionNote{
+				Kind: "target_unreachable",
+				Message: fmt.Sprintf("符合你条件的菜凑不到每天 %.0f 千卡，这份菜单平均每天约 %.0f 千卡。",
+					target.Calories, out.Achieved.Calories),
 			})
 		}
 	}
 	return out
 }
 
-// pickWeek 从一个时段的候选池里挑出一周的菜。
-func pickWeek(pool []candidate, slot string, seed int, goal string,
-	used map[string]bool) ([]string, *SuggestionNote) {
+// buildMeal 组出一餐。
+//
+// 主食那一格从 staple 与 one_dish 里一起挑；挑中 one_dish 时它顶掉
+// 主食与荤菜两格，午晚只再配一道素菜。
+func buildMeal(slotPools map[string][]candidate, ranks map[string]map[string]float64,
+	slot string, seed, day int, target *EnergyTarget, used map[string]bool) []candidate {
+
+	shape := mealShapes[slot]
+	shares := componentShares[slot]
+	mealCalories := 0.0
+	if target != nil {
+		mealCalories = target.Calories * slotShares[slot]
+	}
+
+	picks := make([]candidate, 0, len(shape))
+	skipProtein := false
+
+	for _, component := range shape {
+		if component == "protein" && skipProtein {
+			continue
+		}
+		// 主食那一格把 one_dish 也放进来一起比。
+		pool := slotPools[component]
+		if component == "staple" {
+			pool = append(append([]candidate{}, pool...), slotPools["one_dish"]...)
+		}
+		pick, ok := choose(pool, ranks, slot, component, shares, mealCalories, seed, day, used)
+		if !ok {
+			continue
+		}
+		if pick.Component == "one_dish" {
+			skipProtein = true
+		}
+		picks = append(picks, pick)
+		// 同一餐里也不能重复，所以立刻标记。
+		used[pick.ID] = true
+	}
+	return picks
+}
+
+// choose 从一个池子里挑一道。
+func choose(pool []candidate, ranks map[string]map[string]float64,
+	slot, component string, shares map[string]float64, mealCalories float64,
+	seed, day int, used map[string]bool) (candidate, bool) {
 
 	if len(pool) == 0 {
-		return nil, &SuggestionNote{
-			Kind:     "slot_unfilled",
-			MealSlot: slot,
-			Message: fmt.Sprintf("按你的过敏原与忌口筛下来，没有可作为%s的菜，这一格留空了。",
-				mealSlotLabel(slot)),
-		}
+		return candidate{}, false
 	}
 
-	ranked := rankByGoal(pool, goal, slot)
-	if len(ranked) > scorePoolSize {
-		ranked = ranked[:scorePoolSize]
+	scored := make([]candidate, 0, len(pool))
+	for _, c := range pool {
+		if used[c.ID] {
+			continue
+		}
+		scored = append(scored, c)
 	}
+	if len(scored) == 0 {
+		return candidate{}, false
+	}
+
+	// 热量目标是**筛选条件**，不是打分项。
+	//
+	// 最初写成「契合度占 65% 权重」，然后在得分最高的 25 道里按 seed 随机。
+	// 结果是每一格都偏高一点，三格一累加，目标 1400 排出来 2111——
+	// 打分只表达倾向，挡不住偏差累积。改成先按目标框出一个热量带，
+	// 带内再按营养质量挑，目标才真的起作用。
+	if mealCalories > 0 {
+		scored = withinCalorieBand(scored, shares, component, mealCalories)
+	}
+
+	sort.SliceStable(scored, func(i, j int) bool {
+		si := ranks[slot+"/"+scored[i].Component][scored[i].ID]
+		sj := ranks[slot+"/"+scored[j].Component][scored[j].ID]
+		if si != sj {
+			return si > sj
+		}
+		// 同分按 ID：排序必须是全序，否则同样的输入会给出不同的菜单。
+		return scored[i].ID < scored[j].ID
+	})
+	if len(scored) > scorePoolSize {
+		scored = scored[:scorePoolSize]
+	}
+
 	// 在好菜池里做确定性重排：同一个 seed 永远得到同一个顺序，
 	// seed 变了顺序就变，于是「换一批」既能换出新东西又可复现。
-	sort.SliceStable(ranked, func(i, j int) bool {
-		return shuffleKey(seed, slot, ranked[i].ID) < shuffleKey(seed, slot, ranked[j].ID)
-	})
+	best := scored[0]
+	bestKey := shuffleKey(seed, slot+component+fmt.Sprint(day), best.ID)
+	for _, c := range scored[1:] {
+		if key := shuffleKey(seed, slot+component+fmt.Sprint(day), c.ID); key < bestKey {
+			best, bestKey = c, key
+		}
+	}
+	return best, true
+}
 
-	chosen := make([]string, 0, daysPerWeek)
-	var lastCategory string
-	for pass := 0; pass < 2 && len(chosen) < daysPerWeek; pass++ {
-		for _, item := range ranked {
-			if len(chosen) >= daysPerWeek {
-				break
+// achievedOf 算这份菜单的每日平均营养。
+func achievedOf(entries []SuggestedEntry, all pools) Achieved {
+	index := map[string]candidate{}
+	for _, slotPools := range all {
+		for _, list := range slotPools {
+			for _, c := range list {
+				index[c.ID] = c
 			}
-			if used[item.ID] {
-				continue
-			}
-			// 第一轮避开与前一天同品类；不够了第二轮就不挑了。
-			// 这是「别连着三天都是炒菜」，不是硬条件。
-			if pass == 0 && lastCategory != "" && primaryCategory(item) == lastCategory {
-				continue
-			}
-			chosen = append(chosen, item.ID)
-			used[item.ID] = true
-			lastCategory = primaryCategory(item)
 		}
 	}
 
-	if len(chosen) >= daysPerWeek {
-		return chosen, nil
+	var calories, protein, carbs, fat float64
+	fatKnown := true
+	for _, entry := range entries {
+		c, ok := index[entry.RecipeID]
+		if !ok {
+			continue
+		}
+		calories += c.Calories
+		protein += c.ProteinG
+		carbs += c.CarbsG
+		// 有一道菜缺脂肪，整周那一项就算不出来。
+		// **不能把缺的当 0 加进去**：那样会给出一个偏低、
+		// 且从数字本身看不出偏低的结果。
+		if c.FatG == nil {
+			fatKnown = false
+		} else {
+			fat += *c.FatG
+		}
 	}
 
-	// 候选实在不够一周。重复排总比留空好——用户能自己换掉重的那几格，
-	// 但空格子只会让人以为功能坏了。重复了就说出来。
-	if len(chosen) == 0 {
-		// 池子里的菜全被别的时段用光了，只能允许跨时段重复。
-		chosen = append(chosen, ranked[0].ID)
+	out := Achieved{
+		Calories: roundTo(calories/daysPerWeek, 1),
+		ProteinG: roundTo(protein/daysPerWeek, 1),
+		CarbsG:   roundTo(carbs/daysPerWeek, 1),
 	}
-	filled := len(chosen)
-	for i := filled; i < daysPerWeek; i++ {
-		chosen = append(chosen, chosen[i%filled])
+	if fatKnown && len(entries) > 0 {
+		value := roundTo(fat/daysPerWeek, 1)
+		out.FatG = &value
 	}
-	return chosen, &SuggestionNote{
-		Kind:     "pool_repeats",
-		MealSlot: slot,
-		// 报的是池子大小而不是实际填进去的道数：用户能据此判断
-		// 「是我筛得太狠」，而实际道数还受别的时段占用影响，说不清楚。
-		Message: fmt.Sprintf("符合条件的%s只有 %d 道，不够一周，有几天是重复的。",
-			mealSlotLabel(slot), len(pool)),
-	}
+	return out
 }
 
-// primaryCategory 取第一个品类作为「这是哪一类菜」。
-func primaryCategory(c candidate) string {
-	if len(c.Categories) == 0 {
-		return ""
+// RecipeIDs 是建议里出现过的菜谱 ID，已去重。
+func (s Suggestion) RecipeIDs() []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(s.Entries))
+	for _, entry := range s.Entries {
+		if seen[entry.RecipeID] {
+			continue
+		}
+		seen[entry.RecipeID] = true
+		out = append(out, entry.RecipeID)
 	}
-	return c.Categories[0]
+	return out
 }
 
-// shuffleKey 把 (seed, 时段, 菜谱 ID) 散列成一个排序键。
+// RecipesByIDs 按 ID 取完整菜谱，用于把建议展开给客户端。
+func (s *Service) RecipesByIDs(ctx context.Context, userID string, ids []string) (map[string]dbgen.Recipe, error) {
+	out := map[string]dbgen.Recipe{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		rows, err := q.ListRecipesByIDs(ctx, ids)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		for _, row := range rows {
+			out[row.ID] = row
+		}
+		return nil
+	})
+	return out, err
+}
+
+// shuffleKey 把 (seed, 位置, 菜谱 ID) 散列成一个排序键。
 //
 // 用散列而不是 math/rand：不依赖遍历顺序、不需要维护状态，
 // 而且任何一次结果都能凭这三个输入重放出来。
-func shuffleKey(seed int, slot, id string) uint64 {
+func shuffleKey(seed int, position, id string) uint64 {
 	h := fnv.New64a()
-	fmt.Fprintf(h, "%d|%s|%s", seed, slot, id)
+	fmt.Fprintf(h, "%d|%s|%s", seed, position, id)
 	return h.Sum64()
 }
 
-// ---- 打分 ----
+// ---- 目标打分 ----
 
-// rankByGoal 按目标契合度从高到低排序。
+// goalScores 按目标契合度给池子里每道菜打一个 [0,1] 的分。
 //
 // 打分用**池内排名**而不是绝对阈值。导入内容的营养是按食材表估算的，
 // 绝对值不可靠，但相对高低大体成立；而且「热量低于 400」这种阈值
 // 换一批菜谱就得重调，排名不用。
-func rankByGoal(pool []candidate, goal, slot string) []candidate {
-	if len(pool) <= 1 {
-		return append([]candidate{}, pool...)
+func goalScores(pool []candidate, goal, slot string) map[string]float64 {
+	if len(pool) == 0 {
+		return map[string]float64{}
+	}
+	if len(pool) == 1 {
+		return map[string]float64{pool[0].ID: 1}
 	}
 
 	cal := percentiles(pool, func(c candidate) float64 { return c.Calories })
@@ -327,10 +519,9 @@ func rankByGoal(pool []candidate, goal, slot string) []candidate {
 	carbShare := percentiles(pool, func(c candidate) float64 {
 		return c.CarbsG * 4 / max1(c.Calories)
 	})
-	// 时间越短排名越高。
 	quick := percentiles(pool, func(c candidate) float64 { return -float64(c.Minutes) })
 
-	scores := make(map[string]float64, len(pool))
+	out := make(map[string]float64, len(pool))
 	for _, c := range pool {
 		var s float64
 		switch goal {
@@ -339,34 +530,21 @@ func rankByGoal(pool []candidate, goal, slot string) []candidate {
 			//
 			// 这里刻意**不是**「热量越低越好」。那样打分会一路选到池子最底，
 			// 实测平均每餐 114 kcal、一天三餐三百出头——那不是减脂食谱，
-			// 是没法照着吃的东西。真正该拉开差距的是蛋白密度：
-			// 同样的热量给到更多蛋白，才是减脂时想要的。
+			// 是没法照着吃的东西。真正该拉开差距的是蛋白密度。
 			s = 0.35*nearTarget(cal[c.ID], 0.30) + 0.50*density[c.ID] + 0.15*quick[c.ID]
 		case "muscle_gain":
-			// 蛋白绝对量优先。热量偏高没关系，但同样不取最极端的那批。
 			s = 0.55*protein[c.ID] + 0.25*density[c.ID] + 0.20*nearTarget(cal[c.ID], 0.75)
 		case "steady_sugar":
-			// 碳水供能占比低，份量仍然正常。
 			s = 0.55*(1-carbShare[c.ID]) + 0.25*density[c.ID] + 0.20*nearTarget(cal[c.ID], 0.40)
 		default:
-			// balanced：避开两头极端，居中的得分最高。
 			s = 0.60*nearTarget(cal[c.ID], 0.50) + 0.25*density[c.ID] + 0.15*quick[c.ID]
 		}
 		// 早餐额外看重快：早上没人愿意花四十分钟。
 		if slot == "breakfast" {
 			s = 0.75*s + 0.25*quick[c.ID]
 		}
-		scores[c.ID] = s
+		out[c.ID] = s
 	}
-
-	out := append([]candidate{}, pool...)
-	sort.SliceStable(out, func(i, j int) bool {
-		if scores[out[i].ID] != scores[out[j].ID] {
-			return scores[out[i].ID] > scores[out[j].ID]
-		}
-		// 同分按 ID：排序必须是全序，否则同样的输入会给出不同的菜单。
-		return out[i].ID < out[j].ID
-	})
 	return out
 }
 
@@ -437,35 +615,34 @@ func abs(v float64) float64 {
 	return v
 }
 
-// RecipeIDs 是建议里出现过的菜谱 ID，已去重。
-func (s Suggestion) RecipeIDs() []string {
-	seen := map[string]bool{}
-	out := make([]string, 0, len(s.Entries))
-	for _, entry := range s.Entries {
-		if seen[entry.RecipeID] {
-			continue
-		}
-		seen[entry.RecipeID] = true
-		out = append(out, entry.RecipeID)
-	}
-	return out
-}
+// withinCalorieBand 只留下热量落在目标附近的候选。
+//
+// 带宽从 ±25% 起，不够 minBandSize 道就逐步放宽。**放宽而不是放弃**：
+// 一个都不留会让这一格空着，而排一道偏了 40% 的菜远好过不排。
+// 一直放宽到全池都进来为止，所以这个函数永远不会返回空。
+func withinCalorieBand(pool []candidate, shares map[string]float64,
+	component string, mealCalories float64) []candidate {
 
-// RecipesByIDs 按 ID 取完整菜谱，用于把建议展开给客户端。
-func (s *Service) RecipesByIDs(ctx context.Context, userID string, ids []string) (map[string]dbgen.Recipe, error) {
-	out := map[string]dbgen.Recipe{}
-	if len(ids) == 0 {
-		return out, nil
+	const minBandSize = 8
+	for _, width := range []float64{0.25, 0.40, 0.60, 1.00} {
+		kept := make([]candidate, 0, len(pool))
+		for _, c := range pool {
+			want := mealCalories * shares[c.Component]
+			if want <= 0 {
+				want = mealCalories * shares[component]
+			}
+			if want <= 0 {
+				kept = append(kept, c)
+				continue
+			}
+			if abs(c.Calories-want)/want <= width {
+				kept = append(kept, c)
+			}
+		}
+		if len(kept) >= minBandSize {
+			return kept
+		}
 	}
-	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		rows, err := q.ListRecipesByIDs(ctx, ids)
-		if err != nil {
-			return apperr.Internal(err)
-		}
-		for _, row := range rows {
-			out[row.ID] = row
-		}
-		return nil
-	})
-	return out, err
+	// 全都离目标很远。这一格只能将就，交给上层的 target_unreachable 说明。
+	return pool
 }

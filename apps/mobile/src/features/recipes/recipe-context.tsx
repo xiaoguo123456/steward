@@ -45,8 +45,10 @@ type RecipeContextValue = {
   planFailure: string | null;
   /** 已确认菜单的整周计划摄入，由服务端求和。 */
   plannedNutrition?: RecipeNutrition;
-  swapRecipe: (dayId: WeekDayId, meal: MealSlot) => void;
-  setRecipeForMeal: (dayId: WeekDayId, meal: MealSlot, recipeId: string) => void;
+  /** 把一格里第 index 道换成同类的另一道。 */
+  swapRecipe: (dayId: WeekDayId, meal: MealSlot, index: number) => void;
+  /** 把一道菜加进某一餐（菜谱详情页用）。 */
+  addRecipeToMeal: (dayId: WeekDayId, meal: MealSlot, recipeId: string) => void;
   /** 首次生成本周菜单。 */
   generateWeek: () => Promise<void>;
   /** 换一批：同一份档案下换另一组菜。 */
@@ -55,6 +57,12 @@ type RecipeContextValue = {
   planGenerating: boolean;
   /** 本次生成做了什么妥协（过敏原筛太狠、时间放宽了等）。空数组表示没有。 */
   planNotes: MealPlanSuggestionNote[];
+  /**
+   * 按身高、体重、年龄与目标算出的每日热量目标。
+   *
+   * 身体数据没填全时为 null——此时不显示目标，也不显示一个编出来的数字。
+   */
+  dailyTarget: { calories: number; proteinG: number } | null;
   confirmPlan: () => Promise<boolean>;
   discardPlan: () => void;
 
@@ -75,9 +83,11 @@ const RecipeContext = createContext<RecipeContextValue | null>(null);
 /**
  * 在同一餐位的候选里往后挑一道，用于单格的「换一道」。
  *
- * 只在**已经取回来的**菜谱里换，是刻意的：换单格要立刻有反应，
- * 为一格去服务端跑一次整周生成不值得。整周「换一批」走服务端，
- * 因为那时过敏原过滤与目标匹配都要看全库。
+ * 只在**已经取回来的**菜谱里换，是刻意的：换一道要立刻有反应，
+ * 为一道菜去服务端跑一次整周生成不值得。整周「换一批」走服务端，
+ * 因为那时过敏原过滤与热量目标都要看全库。
+ *
+ * 浏览列表本身已经按用户的过敏原过滤过，所以换出来的不会有过敏原。
  */
 function nextRecipeId(recipes: Recipe[], currentId: string, meal: MealSlot, offset = 1) {
   const candidates = recipes.filter((recipe) => recipe.mealSlots.includes(meal));
@@ -131,10 +141,18 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
       planFailure: mealPlan.failure ?? suggestion.failure,
       plannedNutrition: mealPlan.plannedNutrition,
 
-      setRecipeForMeal: mealPlan.setRecipeForMeal,
-      swapRecipe: (dayId, meal) => {
-        const current = mealPlan.plan[dayId]?.[meal] ?? '';
-        mealPlan.setRecipeForMeal(dayId, meal, nextRecipeId(content.recipes, current, meal));
+      addRecipeToMeal: (dayId, meal, recipeId) => {
+        const recipe = content.getRecipe(recipeId);
+        mealPlan.addDish(dayId, meal, { recipeId, component: recipe?.component });
+      },
+      swapRecipe: (dayId, meal, index) => {
+        const current = mealPlan.plan[dayId]?.[meal]?.[index]?.recipeId ?? '';
+        mealPlan.replaceDish(
+          dayId,
+          meal,
+          index,
+          nextRecipeId(content.recipes, current, meal),
+        );
       },
       // 整周生成走服务端。
       //
@@ -150,6 +168,7 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
       },
       planGenerating: suggestion.loading,
       planNotes: suggestion.notes,
+      dailyTarget: suggestion.dailyTarget,
       confirmPlan: mealPlan.confirm,
       discardPlan: mealPlan.discard,
 

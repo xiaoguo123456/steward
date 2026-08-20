@@ -19,6 +19,11 @@
  *   **过敏原与忌口永远不会被放宽**，没有对应的 kind。
  * - slot_unfilled：这一格实在没有可选的菜，留空了。
  * - pool_repeats：可选菜不足一周的餐数，出现了重复。
+ * - energy_floored：算出来的热量低于安全下限，已按下限安排。
+ * - energy_estimated：性别没填，热量目标按男女中间值估算。
+ * - target_unreachable：可选菜凑不到热量目标，实际值与目标有明显差距。
+ * - profile_incomplete：身高体重年龄没填全，算不出热量目标，
+ *   这次按营养排名选菜。
  */
 export type MealPlanSuggestionNoteKind = typeof MealPlanSuggestionNoteKind[keyof typeof MealPlanSuggestionNoteKind];
 
@@ -27,4 +32,8 @@ export const MealPlanSuggestionNoteKind = {
   cook_time_relaxed: 'cook_time_relaxed',
   slot_unfilled: 'slot_unfilled',
   pool_repeats: 'pool_repeats',
+  energy_floored: 'energy_floored',
+  energy_estimated: 'energy_estimated',
+  target_unreachable: 'target_unreachable',
+  profile_incomplete: 'profile_incomplete',
 } as const;

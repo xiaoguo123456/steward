@@ -326,6 +326,7 @@ type MealPlanEntry struct {
 	MealSlot   string
 	RecipeID   string
 	CreatedAt  time.Time
+	Component  *string
 }
 
 type MediaAsset struct {
@@ -446,35 +447,37 @@ type Project struct {
 }
 
 type Recipe struct {
-	ID              string
-	Title           string
-	Summary         *string
-	ImageUrl        *string
-	Servings        int32
-	DurationMinutes int32
-	Difficulty      string
-	Calories        float64
-	ProteinG        float64
-	CarbsG          float64
-	FiberG          *float64
-	MealSlots       []string
-	Categories      []string
-	Goals           []string
-	Tags            []string
-	Allergens       []string
-	Ingredients     []byte
-	Steps           []byte
-	SourceName      string
-	SourceAuthor    *string
-	SourceUrl       *string
-	License         string
-	LicenseUrl      *string
-	ImageCredit     *string
-	ContentVersion  string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	FatG            *float64
-	ImageKey        *string
+	ID                 string
+	Title              string
+	Summary            *string
+	ImageUrl           *string
+	Servings           int32
+	DurationMinutes    int32
+	Difficulty         string
+	Calories           float64
+	ProteinG           float64
+	CarbsG             float64
+	FiberG             *float64
+	MealSlots          []string
+	Categories         []string
+	Goals              []string
+	Tags               []string
+	Allergens          []string
+	Ingredients        []byte
+	Steps              []byte
+	SourceName         string
+	SourceAuthor       *string
+	SourceUrl          *string
+	License            string
+	LicenseUrl         *string
+	ImageCredit        *string
+	ContentVersion     string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	FatG               *float64
+	ImageKey           *string
+	Component          *string
+	PlanExcludedReason *string
 }
 
 type RecipeCookLog struct {

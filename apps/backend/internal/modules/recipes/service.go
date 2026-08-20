@@ -129,6 +129,10 @@ func MapRecipe(row dbgen.Recipe) httpapi.Recipe {
 			ContentVersion: row.ContentVersion,
 		},
 	}
+	if row.Component != nil {
+		component := httpapi.RecipeComponent(*row.Component)
+		out.Component = &component
+	}
 	return out
 }
 

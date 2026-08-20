@@ -31,6 +31,7 @@ import {
   mealSlotOrder,
   type Recipe,
   type RecipeCategory,
+  type RecipeComponent,
 } from '@/features/recipes/model';
 import { recipeColors } from '@/features/recipes/theme';
 import { colors, fontFamily, radius } from '@/theme/tokens';
@@ -38,6 +39,8 @@ import { colors, fontFamily, radius } from '@/theme/tokens';
 function recipeRoute(recipeId: string) {
   return `/features/recipes/recipe/${recipeId}` as Href;
 }
+
+type PlannedDishView = { recipe: Recipe; component?: RecipeComponent };
 
 function WeekHome() {
   const router = useRouter();
@@ -54,11 +57,22 @@ function WeekHome() {
     generateWeek,
     swapRecipe,
     getRecipe,
+    dailyTarget,
   } = useRecipePrototype();
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
-  const dayRecipes = mealSlotOrder
-    .map((meal) => getRecipe(plan[selectedDayId]?.[meal] ?? ''))
-    .filter((recipe): recipe is Recipe => Boolean(recipe));
+  // 一格是一组菜，摊平之后拿去算当天的营养合计。
+  //
+  // 菜谱可能还没取回来（菜单里的菜多半不在浏览列表的前 100 条里），
+  // 取不到的先跳过，不渲染成空卡片。
+  const dayDishes: PlannedDishView[][] = mealSlotOrder.map((meal) => {
+    const out: PlannedDishView[] = [];
+    for (const dish of plan[selectedDayId]?.[meal] ?? []) {
+      const recipe = getRecipe(dish.recipeId);
+      if (recipe) out.push({ recipe, component: dish.component });
+    }
+    return out;
+  });
+  const dayRecipes = dayDishes.flat().map((item) => item.recipe);
 
   return (
     <>
@@ -99,7 +113,7 @@ function WeekHome() {
         title={selectedDay.isToday ? '今天的菜单' : `${selectedDay.fullDate}菜单`}
       />
 
-      <NutritionStrip recipes={dayRecipes} />
+      <NutritionStrip recipes={dayRecipes} target={dailyTarget} />
 
       {/*
         还没有菜单时要给出口。
@@ -122,16 +136,16 @@ function WeekHome() {
         </View>
       ) : (
         <View style={styles.mealList}>
-          {mealSlotOrder.map((meal) => {
-            const recipe = getRecipe(plan[selectedDayId][meal]);
-            if (!recipe) return null;
+          {mealSlotOrder.map((meal, mealIndex) => {
+            const dishes = dayDishes[mealIndex];
+            if (dishes.length === 0) return null;
             return (
               <MealRow
+                dishes={dishes}
                 key={`${selectedDayId}-${meal}`}
                 meal={meal}
-                onOpen={() => router.push(recipeRoute(recipe.id))}
-                onSwap={() => swapRecipe(selectedDayId, meal)}
-                recipe={recipe}
+                onOpen={(recipeId) => router.push(recipeRoute(recipeId))}
+                onSwap={(index) => swapRecipe(selectedDayId, meal, index)}
               />
             );
           })}

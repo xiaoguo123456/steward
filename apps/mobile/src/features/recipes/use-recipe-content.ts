@@ -81,6 +81,7 @@ export function toRecipe(recipe: ApiRecipe): Recipe {
     goals: recipe.goals.map(toLocalKey) as RecipeGoal[],
     tags: recipe.tags,
     allergens: recipe.allergens,
+    component: recipe.component ?? undefined,
     ingredients: recipe.ingredients.map(toIngredient),
     steps: recipe.steps.map(toStep),
     sourceLabel: sourceLabelOf(recipe),

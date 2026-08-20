@@ -8,7 +8,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
 import { toRecipe } from './use-recipe-content';
-import type { MealSlot, Recipe, WeekDay, WeekDayId, WeekPlan } from './model';
+import type {
+  MealSlot,
+  PlannedDish,
+  Recipe,
+  RecipeComponent,
+  WeekDay,
+  WeekDayId,
+  WeekPlan,
+} from './model';
 
 /**
  * 本周菜单。
@@ -82,10 +90,24 @@ export function useMealPlan() {
     plannedNutrition: plan?.planned_nutrition,
     recipes,
 
-    setRecipeForMeal: (dayId: WeekDayId, meal: MealSlot, recipeId: string) => {
+    /** 把一格里的某一道换掉。位置不变，所以 component 也不变。 */
+    replaceDish: (dayId: WeekDayId, meal: MealSlot, index: number, recipeId: string) => {
       setDraft((current) => {
         const base = current ?? confirmed;
-        return { ...base, [dayId]: { ...base[dayId], [meal]: recipeId } };
+        const dishes = [...(base[dayId]?.[meal] ?? [])];
+        if (index < 0 || index >= dishes.length) return base;
+        dishes[index] = { ...dishes[index], recipeId };
+        return { ...base, [dayId]: { ...base[dayId], [meal]: dishes } };
+      });
+    },
+    /** 往一格里加一道（从菜谱详情页「加入某一餐」进来）。 */
+    addDish: (dayId: WeekDayId, meal: MealSlot, dish: PlannedDish) => {
+      setDraft((current) => {
+        const base = current ?? confirmed;
+        const dishes = base[dayId]?.[meal] ?? [];
+        // 同一格里已经有这道菜就不重复加：服务端也会拒。
+        if (dishes.some((item) => item.recipeId === dish.recipeId)) return base;
+        return { ...base, [dayId]: { ...base[dayId], [meal]: [...dishes, dish] } };
       });
     },
     replaceWeek: (next: WeekPlan) => setDraft(next),
@@ -123,27 +145,50 @@ export function weekDaysFrom(weekStart: string): WeekDay[] {
   });
 }
 
-/** 服务端的条目列表摊平成「哪天哪餐吃什么」。 */
+/**
+ * 服务端的条目列表摊平成「哪天哪餐吃什么」。
+ *
+ * 一格是一个数组：服务端按主食、荤、素的顺序返回，这里保持原序，
+ * 不在客户端重排——顺序是服务端连同 component 一起决定的。
+ */
 function toWeekPlan(plan: ApiMealPlan | undefined, days: WeekDay[]): WeekPlan {
   const out: WeekPlan = {};
   // 先把七天都摆出来，空着的格子也要能渲染成「还没安排」。
   for (const day of days) {
-    out[day.id] = { breakfast: '', lunch: '', dinner: '' };
+    out[day.id] = { breakfast: [], lunch: [], dinner: [] };
   }
   for (const entry of plan?.entries ?? []) {
     const day = out[entry.date];
-    if (day) day[entry.meal_slot as MealSlot] = entry.recipe_id;
+    if (!day) continue;
+    day[entry.meal_slot as MealSlot].push({
+      recipeId: entry.recipe_id,
+      component: entry.component as RecipeComponent | undefined,
+    });
   }
   return out;
 }
 
 /** 摊平的菜单转回契约的条目数组。空格子不提交。 */
 function toEntries(plan: WeekPlan) {
-  const entries: { date: string; meal_slot: MealSlot; recipe_id: string }[] = [];
+  const entries: {
+    date: string;
+    meal_slot: MealSlot;
+    recipe_id: string;
+    component?: RecipeComponent;
+  }[] = [];
   for (const [date, meals] of Object.entries(plan)) {
     for (const meal of ['breakfast', 'lunch', 'dinner'] as const) {
-      const recipeId = meals[meal];
-      if (recipeId) entries.push({ date, meal_slot: meal, recipe_id: recipeId });
+      for (const dish of meals[meal] ?? []) {
+        if (!dish.recipeId) continue;
+        // 把 component 原样送回去：菜谱分类将来可能因规则调整而变，
+        // 用户确认过的这一版不该跟着变。
+        entries.push({
+          date,
+          meal_slot: meal,
+          recipe_id: dish.recipeId,
+          component: dish.component,
+        });
+      }
     }
   }
   return entries;

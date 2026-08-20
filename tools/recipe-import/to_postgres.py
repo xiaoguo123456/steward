@@ -21,7 +21,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from allergens import detect as detect_allergens  # noqa: E402
+from allergens import detect as detect_allergens
+from classify import classify as classify_component, excluded_reason  # noqa: E402
 
 try:
     import psycopg
@@ -204,6 +205,15 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
         # 图片和菜谱同源。没有图片权利就不下发图，约束会拦住。
         "image_credit": SOURCE_NAME,
         "content_version": CONTENT_VERSION,
+        # 这道菜在一餐里扮演什么角色，以及要不要排除出周菜单。
+        # 规则见 classify.py；那里以来源自带的分类标签为主，营养只做兜底。
+        "component": classify_component(
+            name, sorted(set(cats)), [i[0] for i in ings],
+            nutri["calories"], nutri["protein"], nutri["carbohydrate"],
+        ),
+        "plan_excluded_reason": excluded_reason(
+            name, sorted(set(cats)), nutri["calories"]
+        ),
     }
 
 
@@ -214,14 +224,14 @@ INSERT INTO recipes (
     meal_slots, categories, goals, tags, allergens,
     ingredients, steps,
     source_name, source_author, license, license_url,
-    image_credit, content_version
+    image_credit, content_version, component, plan_excluded_reason
 ) VALUES (
     %(id)s, %(title)s, %(summary)s, %(image_key)s, %(image_url)s, %(servings)s, %(duration_minutes)s, %(difficulty)s,
     %(calories)s, %(protein_g)s, %(carbs_g)s, %(fat_g)s, %(fiber_g)s,
     %(meal_slots)s, %(categories)s, %(goals)s, %(tags)s, %(allergens)s,
     %(ingredients)s, %(steps)s,
     %(source_name)s, %(source_author)s, %(license)s, %(license_url)s,
-    %(image_credit)s, %(content_version)s
+    %(image_credit)s, %(content_version)s, %(component)s, %(plan_excluded_reason)s
 )
 ON CONFLICT (id) DO UPDATE SET
     title = EXCLUDED.title, summary = EXCLUDED.summary,
@@ -235,6 +245,7 @@ ON CONFLICT (id) DO UPDATE SET
     ingredients = EXCLUDED.ingredients, steps = EXCLUDED.steps,
     license = EXCLUDED.license,
     image_credit = EXCLUDED.image_credit, content_version = EXCLUDED.content_version,
+    component = EXCLUDED.component, plan_excluded_reason = EXCLUDED.plan_excluded_reason,
     updated_at = now()
 """
 

@@ -13,18 +13,23 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { RecipeComponent } from './recipeComponent';
-import type { RecipeMealSlot } from './recipeMealSlot';
 
-export interface MealPlanEntryInput {
-  date: string;
-  meal_slot: RecipeMealSlot;
-  recipe_id: string;
+/**
+ * 每日营养目标。热量用 Mifflin-St Jeor 估算基础代谢，乘活动系数，
+ * 再按目标调整（减脂 −20%、增肌 +10%）。
+ *
+ * **有硬下限**（女 1200、男 1500 千卡）：低于它就不是吃得少而是吃不够，
+ * 夹住并在 notes 里说明。
+ *
+ * 这是一般性的能量估算，不是治疗方案。
+ */
+export interface DailyNutritionTarget {
   /**
-     * 这道菜在这一格里的角色。不传时服务端按菜谱当前的分类填。
-     *
-     * 提交时带上，是为了让用户确认的那一版原样存下来：
-     * 菜谱分类将来可能因规则调整而变，已确认的菜单不该跟着变。
+     * 已取整到 50 千卡。菜谱营养是按食材表估算的，
+     * 报一个 1783 会让人以为这个数字比实际可靠。
      */
-  component?: RecipeComponent;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
 }

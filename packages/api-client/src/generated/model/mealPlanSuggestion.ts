@@ -13,6 +13,8 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { DailyNutritionAchieved } from './dailyNutritionAchieved';
+import type { DailyNutritionTarget } from './dailyNutritionTarget';
 import type { MealPlanCandidateCounts } from './mealPlanCandidateCounts';
 import type { MealPlanEntry } from './mealPlanEntry';
 import type { MealPlanSuggestionNote } from './mealPlanSuggestionNote';
@@ -37,6 +39,18 @@ export interface MealPlanSuggestion {
      * 这个数字是给客户端判断「菜少是因为筛得狠」而不是「接口坏了」用的。
      */
   candidates: MealPlanCandidateCounts;
+  /**
+     * 按身高、体重、年龄、活动量与目标算出的每日热量与碳蛋脂目标。
+     *
+     * **身体数据缺任何一项就为空**，此时选菜退回按营养排名打分。
+     * 不拿默认体重顶上：编一个数会给出看起来很确定、但对这个人是错的目标。
+     */
+  daily_target?: DailyNutritionTarget | null;
+  /**
+     * 这份菜单实际算出来的每日平均值，供客户端与目标对照。
+     * 没有 daily_target 时同样返回，只是没有可比的目标。
+     */
+  achieved: DailyNutritionAchieved;
   /**
      * 本次生成中做了什么妥协。**空数组表示没有妥协**。
      * 不把妥协说出来的话，用户看到的就是一份莫名其妙的菜单。

@@ -29,7 +29,7 @@ INSERT INTO recipes (
     meal_slots, categories, goals, tags, allergens,
     ingredients, steps,
     source_name, source_author, source_url, license, license_url,
-    image_credit, content_version
+    image_credit, content_version, component
 ) VALUES (
     sqlc.arg(id), sqlc.arg(title), sqlc.narg(summary), sqlc.narg(image_url),
     sqlc.arg(servings), sqlc.arg(duration_minutes), sqlc.arg(difficulty),
@@ -39,7 +39,7 @@ INSERT INTO recipes (
     sqlc.arg(ingredients), sqlc.arg(steps),
     sqlc.arg(source_name), sqlc.narg(source_author), sqlc.narg(source_url),
     sqlc.arg(license), sqlc.narg(license_url),
-    sqlc.narg(image_credit), sqlc.arg(content_version)
+    sqlc.narg(image_credit), sqlc.arg(content_version), sqlc.arg(component)
 )
 ON CONFLICT (id) DO UPDATE SET
     title = excluded.title, summary = excluded.summary,
@@ -54,6 +54,7 @@ ON CONFLICT (id) DO UPDATE SET
     source_url = excluded.source_url, license = excluded.license,
     license_url = excluded.license_url, image_credit = excluded.image_credit,
     content_version = excluded.content_version,
+    component = excluded.component,
     updated_at = now();
 
 -- ---- 用户自己的食谱数据 ----
@@ -160,22 +161,29 @@ RETURNING *;
 DELETE FROM meal_plan_entries WHERE meal_plan_id = sqlc.arg(meal_plan_id);
 
 -- name: CreateMealPlanEntry :exec
-INSERT INTO meal_plan_entries (id, user_id, meal_plan_id, entry_date, meal_slot, recipe_id)
+INSERT INTO meal_plan_entries (id, user_id, meal_plan_id, entry_date, meal_slot, recipe_id, component)
 VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(meal_plan_id),
-        sqlc.arg(entry_date)::date, sqlc.arg(meal_slot), sqlc.arg(recipe_id));
+        sqlc.arg(entry_date)::date, sqlc.arg(meal_slot), sqlc.arg(recipe_id),
+        sqlc.narg(component));
 
 -- name: ListMealPlanEntries :many
 -- 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
 SELECT
     e.entry_date,
     e.meal_slot,
+    e.component,
     sqlc.embed(r)
 FROM meal_plan_entries e
 JOIN recipes r ON r.id = e.recipe_id
 WHERE e.meal_plan_id = sqlc.arg(meal_plan_id)
 -- 按用餐顺序而不是字母序：字母序会排成早餐、晚餐、午餐。
+-- 一格之内主食排在前面，和端上桌的顺序一致。
 ORDER BY e.entry_date,
-    CASE e.meal_slot WHEN 'breakfast' THEN 0 WHEN 'lunch' THEN 1 ELSE 2 END;
+    CASE e.meal_slot WHEN 'breakfast' THEN 0 WHEN 'lunch' THEN 1 ELSE 2 END,
+    CASE e.component
+        WHEN 'staple' THEN 0 WHEN 'one_dish' THEN 0
+        WHEN 'protein' THEN 1 WHEN 'vegetable' THEN 2 ELSE 3 END,
+    e.recipe_id;
 
 -- name: ListRecipeCandidates :many
 -- 生成周菜单用的候选集。
@@ -187,9 +195,15 @@ ORDER BY e.entry_date,
 -- 过敏原与忌口在这里就滤掉，不留给上层——漏一层就是一次事故。
 -- 忌口要连食材一起看：用户忌香菜，菜名里没有但配料里有，一样得排除。
 SELECT id, title, duration_minutes, difficulty, calories, protein_g, carbs_g,
-       fiber_g, fat_g, meal_slots, categories, tags
+       fiber_g, fat_g, meal_slots, categories, tags, component
 FROM recipes
 WHERE sqlc.arg(meal_slot)::text = ANY (meal_slots)
+  -- 甜品饮品、刀工教程与营养估算离谱的条目不进菜单。
+  -- 未分类（component 为空）同样跳过：宁可少推荐，
+  -- 也不要把一道不知道是什么的菜塞进「荤菜」那一格。
+  AND plan_excluded_reason IS NULL
+  AND component IS NOT NULL
+  AND component = sqlc.arg(component)::text
   AND NOT (allergens && sqlc.arg(exclude_allergens)::text[])
   AND NOT EXISTS (
         SELECT 1 FROM unnest(sqlc.arg(dislikes)::text[]) AS d

@@ -272,12 +272,17 @@ func mapMealPlan(weekStart time.Time, plan MealPlan) httpapi.MealPlan {
 	entries := make([]httpapi.MealPlanEntry, 0, len(plan.Entries))
 	for _, row := range plan.Entries {
 		recipe := MapRecipe(row.Recipe)
-		entries = append(entries, httpapi.MealPlanEntry{
+		entry := httpapi.MealPlanEntry{
 			Date:     openapi_types.Date{Time: row.EntryDate},
 			MealSlot: httpapi.RecipeMealSlot(row.MealSlot),
 			RecipeId: row.Recipe.ID,
 			Recipe:   &recipe,
-		})
+		}
+		if row.Component != nil {
+			component := httpapi.RecipeComponent(*row.Component)
+			entry.Component = &component
+		}
+		entries = append(entries, entry)
 	}
 
 	out := httpapi.MealPlan{
@@ -333,6 +338,10 @@ func mapSuggestion(s Suggestion, recipes map[string]dbgen.Recipe) httpapi.MealPl
 			MealSlot: httpapi.RecipeMealSlot(item.MealSlot),
 			RecipeId: item.RecipeID,
 		}
+		if item.Component != "" {
+			component := httpapi.RecipeComponent(item.Component)
+			entry.Component = &component
+		}
 		if row, ok := recipes[item.RecipeID]; ok {
 			recipe := MapRecipe(row)
 			entry.Recipe = &recipe
@@ -353,10 +362,16 @@ func mapSuggestion(s Suggestion, recipes map[string]dbgen.Recipe) httpapi.MealPl
 		notes = append(notes, mapped)
 	}
 
-	return httpapi.MealPlanSuggestion{
+	out := httpapi.MealPlanSuggestion{
 		WeekStart: openapi_types.Date{Time: s.WeekStart},
 		Seed:      s.Seed,
 		Entries:   entries,
+		Achieved: httpapi.DailyNutritionAchieved{
+			Calories: s.Achieved.Calories,
+			ProteinG: s.Achieved.ProteinG,
+			CarbsG:   s.Achieved.CarbsG,
+			FatG:     s.Achieved.FatG,
+		},
 		Candidates: httpapi.MealPlanCandidateCounts{
 			Breakfast: s.Candidates["breakfast"],
 			Lunch:     s.Candidates["lunch"],
@@ -364,4 +379,13 @@ func mapSuggestion(s Suggestion, recipes map[string]dbgen.Recipe) httpapi.MealPl
 		},
 		Notes: notes,
 	}
+	if s.DailyTarget != nil {
+		out.DailyTarget = &httpapi.DailyNutritionTarget{
+			Calories: s.DailyTarget.Calories,
+			ProteinG: s.DailyTarget.ProteinG,
+			CarbsG:   s.DailyTarget.CarbsG,
+			FatG:     s.DailyTarget.FatG,
+		}
+	}
+	return out
 }

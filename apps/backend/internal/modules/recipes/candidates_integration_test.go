@@ -41,6 +41,9 @@ type fixture struct {
 	minutes    int32
 	allergens  []string
 	ingredient string
+	// component 与 excluded 决定这条能不能进周菜单。留空时用默认值。
+	component string
+	excluded  string
 }
 
 // seedCandidateFixtures 写入几条带固定 ID 前缀的菜谱，测完删掉。
@@ -55,6 +58,10 @@ func seedCandidateFixtures(t *testing.T, db *database.DB, rows []fixture) {
 				{"name": r.ingredient, "group": "produce", "amount": "适量"},
 			})
 			steps, _ := json.Marshal([]map[string]any{{"order": 1, "text": "略"}})
+			component := r.component
+			if component == "" {
+				component = "protein"
+			}
 			if err := q.UpsertRecipe(ctx, dbgen.UpsertRecipeParams{
 				ID: r.id, Title: r.title, Servings: 1,
 				DurationMinutes: r.minutes, Difficulty: "easy",
@@ -66,6 +73,7 @@ func seedCandidateFixtures(t *testing.T, db *database.DB, rows []fixture) {
 				Allergens:   r.allergens,
 				Ingredients: ingredients, Steps: steps,
 				SourceName: "测试", License: "测试", ContentVersion: "test",
+				Component: &component,
 			}); err != nil {
 				return err
 			}
@@ -74,6 +82,28 @@ func seedCandidateFixtures(t *testing.T, db *database.DB, rows []fixture) {
 	})
 	if err != nil {
 		t.Fatalf("写入测试菜谱失败：%v", err)
+	}
+
+	// plan_excluded_reason 由导入工具写，UpsertRecipe 不碰它，这里直接改。
+	err = db.InTxAnonymous(ctx, func(ctx context.Context, _ *dbgen.Queries) error {
+		tx, err := database.TxFrom(ctx)
+		if err != nil {
+			return err
+		}
+		for _, r := range rows {
+			if r.excluded == "" {
+				continue
+			}
+			if _, err := tx.Exec(ctx,
+				"UPDATE recipes SET plan_excluded_reason = $1 WHERE id = $2",
+				r.excluded, r.id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("标记排除原因失败：%v", err)
 	}
 
 	t.Cleanup(func() {
@@ -114,14 +144,15 @@ func queryCandidates(t *testing.T, db *database.DB, params dbgen.ListRecipeCandi
 func TestCandidateQueryExcludesAllergens(t *testing.T) {
 	db := candidateTestDB(t)
 	rows := []fixture{
-		{"rcp_test_peanut", "宫保鸡丁", 20, []string{"花生", "大豆"}, "花生"},
-		{"rcp_test_egg", "番茄炒蛋", 10, []string{"鸡蛋"}, "鸡蛋"},
-		{"rcp_test_clean", "清炒时蔬", 8, []string{}, "青菜"},
+		{"rcp_test_peanut", "宫保鸡丁", 20, []string{"花生", "大豆"}, "花生", "", ""},
+		{"rcp_test_egg", "番茄炒蛋", 10, []string{"鸡蛋"}, "鸡蛋", "", ""},
+		{"rcp_test_clean", "清炒时蔬", 8, []string{}, "青菜", "", ""},
 	}
 	seedCandidateFixtures(t, db, rows)
 
 	got := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
 		MealSlot:         "lunch",
+		Component:        "protein",
 		ExcludeAllergens: []string{"花生"},
 		Dislikes:         []string{},
 	})
@@ -138,13 +169,14 @@ func TestCandidateQueryExcludesAllergens(t *testing.T) {
 func TestCandidateQueryExcludesAnyMatchingAllergen(t *testing.T) {
 	db := candidateTestDB(t)
 	seedCandidateFixtures(t, db, []fixture{
-		{"rcp_test_multi", "麻婆豆腐", 20, []string{"大豆", "小麦"}, "豆腐"},
-		{"rcp_test_plain", "白灼菜心", 6, []string{}, "菜心"},
+		{"rcp_test_multi", "麻婆豆腐", 20, []string{"大豆", "小麦"}, "豆腐", "", ""},
+		{"rcp_test_plain", "白灼菜心", 6, []string{}, "菜心", "", ""},
 	})
 
 	// 只对小麦过敏，而这道菜同时含大豆与小麦——一样要排掉。
 	got := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
 		MealSlot:         "lunch",
+		Component:        "protein",
 		ExcludeAllergens: []string{"小麦"},
 		Dislikes:         []string{},
 	})
@@ -161,11 +193,12 @@ func TestCandidateQueryExcludesAnyMatchingAllergen(t *testing.T) {
 func TestCandidateQueryEmptyAllergensReturnsAll(t *testing.T) {
 	db := candidateTestDB(t)
 	seedCandidateFixtures(t, db, []fixture{
-		{"rcp_test_any", "蒜蓉西兰花", 12, []string{"大豆"}, "西兰花"},
+		{"rcp_test_any", "蒜蓉西兰花", 12, []string{"大豆"}, "西兰花", "", ""},
 	})
 
 	got := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
 		MealSlot:         "lunch",
+		Component:        "protein",
 		ExcludeAllergens: []string{},
 		Dislikes:         []string{},
 	})
@@ -178,13 +211,14 @@ func TestCandidateQueryEmptyAllergensReturnsAll(t *testing.T) {
 func TestCandidateQueryExcludesDislikesByIngredient(t *testing.T) {
 	db := candidateTestDB(t)
 	seedCandidateFixtures(t, db, []fixture{
-		{"rcp_test_cilantro", "牛肉汤", 30, []string{}, "香菜"},
-		{"rcp_test_named", "香菜拌豆腐", 5, []string{}, "豆腐"},
-		{"rcp_test_neither", "土豆丝", 15, []string{}, "土豆"},
+		{"rcp_test_cilantro", "牛肉汤", 30, []string{}, "香菜", "", ""},
+		{"rcp_test_named", "香菜拌豆腐", 5, []string{}, "豆腐", "", ""},
+		{"rcp_test_neither", "土豆丝", 15, []string{}, "土豆", "", ""},
 	})
 
 	got := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
 		MealSlot:         "lunch",
+		Component:        "protein",
 		ExcludeAllergens: []string{},
 		Dislikes:         []string{"香菜"},
 	})
@@ -205,11 +239,12 @@ func TestCandidateQueryExcludesDislikesByIngredient(t *testing.T) {
 func TestCandidateQueryIgnoresBlankDislikes(t *testing.T) {
 	db := candidateTestDB(t)
 	seedCandidateFixtures(t, db, []fixture{
-		{"rcp_test_blank", "青椒肉丝", 18, []string{}, "青椒"},
+		{"rcp_test_blank", "青椒肉丝", 18, []string{}, "青椒", "", ""},
 	})
 
 	got := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
 		MealSlot:         "lunch",
+		Component:        "protein",
 		ExcludeAllergens: []string{},
 		Dislikes:         []string{"", "  "},
 	})
@@ -221,13 +256,14 @@ func TestCandidateQueryIgnoresBlankDislikes(t *testing.T) {
 func TestCandidateQueryRespectsMaxMinutes(t *testing.T) {
 	db := candidateTestDB(t)
 	seedCandidateFixtures(t, db, []fixture{
-		{"rcp_test_fast", "凉拌黄瓜", 5, []string{}, "黄瓜"},
-		{"rcp_test_slow", "红烧肉", 90, []string{}, "五花肉"},
+		{"rcp_test_fast", "凉拌黄瓜", 5, []string{}, "黄瓜", "", ""},
+		{"rcp_test_slow", "红烧肉", 90, []string{}, "五花肉", "", ""},
 	})
 
 	limit := int32(20)
 	got := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
 		MealSlot:         "lunch",
+		Component:        "protein",
 		ExcludeAllergens: []string{},
 		Dislikes:         []string{},
 		MaxMinutes:       &limit,
@@ -237,5 +273,97 @@ func TestCandidateQueryRespectsMaxMinutes(t *testing.T) {
 	}
 	if !got["rcp_test_fast"] {
 		t.Error("时间内的菜应当返回")
+	}
+}
+
+// 甜品、刀工教程与营养估算离谱的条目不进周菜单。
+//
+// 这条断了，午餐的素菜那一格就会出现「果冻布丁」，
+// 而热量目标会建在每份上万卡的坏数据上。
+func TestCandidateQueryExcludesPlanExcluded(t *testing.T) {
+	db := candidateTestDB(t)
+	seedCandidateFixtures(t, db, []fixture{
+		{"rcp_test_dessert", "巧做果冻布丁", 10, []string{}, "吉利丁", "vegetable", "dessert_or_drink"},
+		{"rcp_test_tutorial", "切香菇花刀", 5, []string{}, "香菇", "vegetable", "not_a_dish"},
+		{"rcp_test_bogus", "孜香酸辣拌饺", 20, []string{}, "饺子皮", "vegetable", "implausible_nutrition"},
+		{"rcp_test_normal", "清炒时蔬", 8, []string{}, "青菜", "vegetable", ""},
+	})
+
+	got := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
+		MealSlot:         "lunch",
+		Component:        "vegetable",
+		ExcludeAllergens: []string{},
+		Dislikes:         []string{},
+	})
+
+	for _, id := range []string{"rcp_test_dessert", "rcp_test_tutorial", "rcp_test_bogus"} {
+		if got[id] {
+			t.Errorf("%s 被标记为不进菜单，不该出现在候选里", id)
+		}
+	}
+	if !got["rcp_test_normal"] {
+		t.Error("正常的菜应当返回")
+	}
+}
+
+// 角色是硬过滤：查素菜就只该拿到素菜，不能把荤菜混进那一格。
+func TestCandidateQueryFiltersByComponent(t *testing.T) {
+	db := candidateTestDB(t)
+	seedCandidateFixtures(t, db, []fixture{
+		{"rcp_test_veg", "蒜蓉西兰花", 10, []string{}, "西兰花", "vegetable", ""},
+		{"rcp_test_meat", "红烧肉", 60, []string{}, "五花肉", "protein", ""},
+		{"rcp_test_rice", "蛋炒饭", 15, []string{}, "米饭", "one_dish", ""},
+	})
+
+	veg := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
+		MealSlot: "lunch", Component: "vegetable",
+		ExcludeAllergens: []string{}, Dislikes: []string{},
+	})
+	if !veg["rcp_test_veg"] {
+		t.Error("素菜应当出现在素菜的候选里")
+	}
+	if veg["rcp_test_meat"] || veg["rcp_test_rice"] {
+		t.Error("荤菜与主食不该混进素菜那一格")
+	}
+
+	oneDish := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
+		MealSlot: "lunch", Component: "one_dish",
+		ExcludeAllergens: []string{}, Dislikes: []string{},
+	})
+	if !oneDish["rcp_test_rice"] || oneDish["rcp_test_veg"] {
+		t.Error("单品成餐那一格只该有单品成餐")
+	}
+}
+
+// 未分类的菜谱一律跳过。
+//
+// 宁可少推荐，也不要把一道不知道是什么的菜塞进「荤菜」那一格——
+// 分类规则在导入工具里，新导入的内容忘了跑就会出现这种行。
+func TestCandidateQuerySkipsUnclassified(t *testing.T) {
+	db := candidateTestDB(t)
+	seedCandidateFixtures(t, db, []fixture{
+		{"rcp_test_unknown", "来路不明的菜", 10, []string{}, "青菜", "vegetable", ""},
+	})
+	// 直接把 component 抹掉，模拟没跑过分类的数据。
+	err := db.InTxAnonymous(context.Background(), func(ctx context.Context, _ *dbgen.Queries) error {
+		tx, err := database.TxFrom(ctx)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, "UPDATE recipes SET component = NULL WHERE id = 'rcp_test_unknown'")
+		return err
+	})
+	if err != nil {
+		t.Fatalf("抹掉分类失败：%v", err)
+	}
+
+	for _, component := range []string{"staple", "one_dish", "protein", "vegetable"} {
+		got := queryCandidates(t, db, dbgen.ListRecipeCandidatesParams{
+			MealSlot: "lunch", Component: component,
+			ExcludeAllergens: []string{}, Dislikes: []string{},
+		})
+		if got["rcp_test_unknown"] {
+			t.Errorf("未分类的菜不该出现在 %s 的候选里", component)
+		}
 	}
 }

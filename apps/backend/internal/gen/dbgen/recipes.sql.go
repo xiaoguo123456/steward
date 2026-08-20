@@ -44,9 +44,10 @@ func (q *Queries) CreateCookLog(ctx context.Context, arg CreateCookLogParams) er
 }
 
 const createMealPlanEntry = `-- name: CreateMealPlanEntry :exec
-INSERT INTO meal_plan_entries (id, user_id, meal_plan_id, entry_date, meal_slot, recipe_id)
+INSERT INTO meal_plan_entries (id, user_id, meal_plan_id, entry_date, meal_slot, recipe_id, component)
 VALUES ($1, $2, $3,
-        $4::date, $5, $6)
+        $4::date, $5, $6,
+        $7)
 `
 
 type CreateMealPlanEntryParams struct {
@@ -56,6 +57,7 @@ type CreateMealPlanEntryParams struct {
 	EntryDate  time.Time
 	MealSlot   string
 	RecipeID   string
+	Component  *string
 }
 
 func (q *Queries) CreateMealPlanEntry(ctx context.Context, arg CreateMealPlanEntryParams) error {
@@ -66,6 +68,7 @@ func (q *Queries) CreateMealPlanEntry(ctx context.Context, arg CreateMealPlanEnt
 		arg.EntryDate,
 		arg.MealSlot,
 		arg.RecipeID,
+		arg.Component,
 	)
 	return err
 }
@@ -152,7 +155,7 @@ func (q *Queries) GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (M
 }
 
 const getRecipe = `-- name: GetRecipe :one
-SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key FROM recipes WHERE id = $1
+SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key, component, plan_excluded_reason FROM recipes WHERE id = $1
 `
 
 func (q *Queries) GetRecipe(ctx context.Context, id string) (Recipe, error) {
@@ -188,6 +191,8 @@ func (q *Queries) GetRecipe(ctx context.Context, id string) (Recipe, error) {
 		&i.UpdatedAt,
 		&i.FatG,
 		&i.ImageKey,
+		&i.Component,
+		&i.PlanExcludedReason,
 	)
 	return i, err
 }
@@ -241,7 +246,7 @@ func (q *Queries) ListFavoriteRecipeIDs(ctx context.Context) ([]string, error) {
 }
 
 const listFavoriteRecipes = `-- name: ListFavoriteRecipes :many
-SELECT r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at, r.fat_g, r.image_key FROM recipe_favorites f
+SELECT r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at, r.fat_g, r.image_key, r.component, r.plan_excluded_reason FROM recipe_favorites f
 JOIN recipes r ON r.id = f.recipe_id
 ORDER BY f.created_at DESC
 LIMIT $1
@@ -286,6 +291,8 @@ func (q *Queries) ListFavoriteRecipes(ctx context.Context, rowLimit int32) ([]Re
 			&i.UpdatedAt,
 			&i.FatG,
 			&i.ImageKey,
+			&i.Component,
+			&i.PlanExcludedReason,
 		); err != nil {
 			return nil, err
 		}
@@ -301,22 +308,29 @@ const listMealPlanEntries = `-- name: ListMealPlanEntries :many
 SELECT
     e.entry_date,
     e.meal_slot,
-    r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at, r.fat_g, r.image_key
+    e.component,
+    r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at, r.fat_g, r.image_key, r.component, r.plan_excluded_reason
 FROM meal_plan_entries e
 JOIN recipes r ON r.id = e.recipe_id
 WHERE e.meal_plan_id = $1
 ORDER BY e.entry_date,
-    CASE e.meal_slot WHEN 'breakfast' THEN 0 WHEN 'lunch' THEN 1 ELSE 2 END
+    CASE e.meal_slot WHEN 'breakfast' THEN 0 WHEN 'lunch' THEN 1 ELSE 2 END,
+    CASE e.component
+        WHEN 'staple' THEN 0 WHEN 'one_dish' THEN 0
+        WHEN 'protein' THEN 1 WHEN 'vegetable' THEN 2 ELSE 3 END,
+    e.recipe_id
 `
 
 type ListMealPlanEntriesRow struct {
 	EntryDate time.Time
 	MealSlot  string
+	Component *string
 	Recipe    Recipe
 }
 
 // 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
 // 按用餐顺序而不是字母序：字母序会排成早餐、晚餐、午餐。
+// 一格之内主食排在前面，和端上桌的顺序一致。
 func (q *Queries) ListMealPlanEntries(ctx context.Context, mealPlanID string) ([]ListMealPlanEntriesRow, error) {
 	rows, err := q.db.Query(ctx, listMealPlanEntries, mealPlanID)
 	if err != nil {
@@ -329,6 +343,7 @@ func (q *Queries) ListMealPlanEntries(ctx context.Context, mealPlanID string) ([
 		if err := rows.Scan(
 			&i.EntryDate,
 			&i.MealSlot,
+			&i.Component,
 			&i.Recipe.ID,
 			&i.Recipe.Title,
 			&i.Recipe.Summary,
@@ -358,6 +373,8 @@ func (q *Queries) ListMealPlanEntries(ctx context.Context, mealPlanID string) ([
 			&i.Recipe.UpdatedAt,
 			&i.Recipe.FatG,
 			&i.Recipe.ImageKey,
+			&i.Recipe.Component,
+			&i.Recipe.PlanExcludedReason,
 		); err != nil {
 			return nil, err
 		}
@@ -371,23 +388,30 @@ func (q *Queries) ListMealPlanEntries(ctx context.Context, mealPlanID string) ([
 
 const listRecipeCandidates = `-- name: ListRecipeCandidates :many
 SELECT id, title, duration_minutes, difficulty, calories, protein_g, carbs_g,
-       fiber_g, fat_g, meal_slots, categories, tags
+       fiber_g, fat_g, meal_slots, categories, tags, component
 FROM recipes
 WHERE $1::text = ANY (meal_slots)
-  AND NOT (allergens && $2::text[])
+  -- 甜品饮品、刀工教程与营养估算离谱的条目不进菜单。
+  -- 未分类（component 为空）同样跳过：宁可少推荐，
+  -- 也不要把一道不知道是什么的菜塞进「荤菜」那一格。
+  AND plan_excluded_reason IS NULL
+  AND component IS NOT NULL
+  AND component = $2::text
+  AND NOT (allergens && $3::text[])
   AND NOT EXISTS (
-        SELECT 1 FROM unnest($3::text[]) AS d
+        SELECT 1 FROM unnest($4::text[]) AS d
         WHERE d <> ''
           AND (title ILIKE '%' || d || '%'
                OR EXISTS (
                     SELECT 1 FROM jsonb_array_elements(ingredients) AS ing
                     WHERE ing ->> 'name' ILIKE '%' || d || '%')))
-  AND ($4::int IS NULL OR duration_minutes <= $4::int)
+  AND ($5::int IS NULL OR duration_minutes <= $5::int)
 ORDER BY id
 `
 
 type ListRecipeCandidatesParams struct {
 	MealSlot         string
+	Component        string
 	ExcludeAllergens []string
 	Dislikes         []string
 	MaxMinutes       *int32
@@ -406,6 +430,7 @@ type ListRecipeCandidatesRow struct {
 	MealSlots       []string
 	Categories      []string
 	Tags            []string
+	Component       *string
 }
 
 // 生成周菜单用的候选集。
@@ -419,6 +444,7 @@ type ListRecipeCandidatesRow struct {
 func (q *Queries) ListRecipeCandidates(ctx context.Context, arg ListRecipeCandidatesParams) ([]ListRecipeCandidatesRow, error) {
 	rows, err := q.db.Query(ctx, listRecipeCandidates,
 		arg.MealSlot,
+		arg.Component,
 		arg.ExcludeAllergens,
 		arg.Dislikes,
 		arg.MaxMinutes,
@@ -443,6 +469,7 @@ func (q *Queries) ListRecipeCandidates(ctx context.Context, arg ListRecipeCandid
 			&i.MealSlots,
 			&i.Categories,
 			&i.Tags,
+			&i.Component,
 		); err != nil {
 			return nil, err
 		}
@@ -456,7 +483,7 @@ func (q *Queries) ListRecipeCandidates(ctx context.Context, arg ListRecipeCandid
 
 const listRecipes = `-- name: ListRecipes :many
 
-SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key FROM recipes
+SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key, component, plan_excluded_reason FROM recipes
 WHERE ($1::text IS NULL
        OR title ILIKE '%' || $1::text || '%'
        OR EXISTS (
@@ -527,6 +554,8 @@ func (q *Queries) ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Rec
 			&i.UpdatedAt,
 			&i.FatG,
 			&i.ImageKey,
+			&i.Component,
+			&i.PlanExcludedReason,
 		); err != nil {
 			return nil, err
 		}
@@ -539,7 +568,7 @@ func (q *Queries) ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Rec
 }
 
 const listRecipesByIDs = `-- name: ListRecipesByIDs :many
-SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key FROM recipes WHERE id = ANY($1::text[])
+SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key, component, plan_excluded_reason FROM recipes WHERE id = ANY($1::text[])
 `
 
 // 选定之后再取完整菜谱（含食材与步骤）。候选阶段刻意不取这些列。
@@ -582,6 +611,8 @@ func (q *Queries) ListRecipesByIDs(ctx context.Context, ids []string) ([]Recipe,
 			&i.UpdatedAt,
 			&i.FatG,
 			&i.ImageKey,
+			&i.Component,
+			&i.PlanExcludedReason,
 		); err != nil {
 			return nil, err
 		}
@@ -770,7 +801,7 @@ INSERT INTO recipes (
     meal_slots, categories, goals, tags, allergens,
     ingredients, steps,
     source_name, source_author, source_url, license, license_url,
-    image_credit, content_version
+    image_credit, content_version, component
 ) VALUES (
     $1, $2, $3, $4,
     $5, $6, $7,
@@ -780,7 +811,7 @@ INSERT INTO recipes (
     $17, $18,
     $19, $20, $21,
     $22, $23,
-    $24, $25
+    $24, $25, $26
 )
 ON CONFLICT (id) DO UPDATE SET
     title = excluded.title, summary = excluded.summary,
@@ -795,6 +826,7 @@ ON CONFLICT (id) DO UPDATE SET
     source_url = excluded.source_url, license = excluded.license,
     license_url = excluded.license_url, image_credit = excluded.image_credit,
     content_version = excluded.content_version,
+    component = excluded.component,
     updated_at = now()
 `
 
@@ -824,6 +856,7 @@ type UpsertRecipeParams struct {
 	LicenseUrl      *string
 	ImageCredit     *string
 	ContentVersion  string
+	Component       *string
 }
 
 // 只给 seed 用：菜谱由平台提供，没有面向用户的写接口。
@@ -854,6 +887,7 @@ func (q *Queries) UpsertRecipe(ctx context.Context, arg UpsertRecipeParams) erro
 		arg.LicenseUrl,
 		arg.ImageCredit,
 		arg.ContentVersion,
+		arg.Component,
 	)
 	return err
 }

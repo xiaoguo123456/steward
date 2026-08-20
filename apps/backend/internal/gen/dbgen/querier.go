@@ -174,6 +174,7 @@ type Querier interface {
 	ListFavoriteRecipes(ctx context.Context, rowLimit int32) ([]Recipe, error)
 	// 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
 	// 按用餐顺序而不是字母序：字母序会排成早餐、晚餐、午餐。
+	// 一格之内主食排在前面，和端上桌的顺序一致。
 	ListMealPlanEntries(ctx context.Context, mealPlanID string) ([]ListMealPlanEntriesRow, error)
 	ListMemories(ctx context.Context, arg ListMemoriesParams) ([]MemoryItem, error)
 	ListMemoryEvidence(ctx context.Context, memoryID string) ([]MemoryEvidence, error)

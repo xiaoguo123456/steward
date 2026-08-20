@@ -10,6 +10,7 @@ import {
   mealSlotLabels,
   type MealSlot,
   type Recipe,
+  type RecipeComponent,
   type WeekDay,
   type WeekDayId,
 } from '../model';
@@ -200,8 +201,11 @@ function sumOrUnknown(values: (number | undefined)[]): number | undefined {
 
 export function NutritionStrip({
   recipes,
+  target,
 }: {
   recipes: Recipe[];
+  /** 按身高体重算出的每日目标。身体数据没填全时为空。 */
+  target?: { calories: number; proteinG: number } | null;
 }) {
   const calories = recipes.reduce((total, recipe) => total + recipe.calories, 0);
   const protein = recipes.reduce((total, recipe) => total + recipe.protein, 0);
@@ -209,15 +213,35 @@ export function NutritionStrip({
   // 把缺的当 0 加进去会得到一个偏低、且从数字上看不出偏低的结果。
   const fiber = sumOrUnknown(recipes.map((recipe) => recipe.fiber));
   const metrics = [
-    { label: '计划热量', value: `${Math.round(calories)}`, unit: '千卡' },
-    { label: '蛋白质', value: `${Math.round(protein)}`, unit: '克' },
-    { label: '膳食纤维', value: fiber === undefined ? '—' : `${Math.round(fiber)}`, unit: '克' },
+    {
+      label: '今日热量',
+      value: `${Math.round(calories)}`,
+      unit: '千卡',
+      // 有目标就并排显示，让用户看得出离目标还差多少。
+      // 数字取整到 50：菜谱营养是按食材表估算的，说得更细反而显得比实际可靠。
+      target: target ? `目标 ${Math.round(target.calories)}` : undefined,
+    },
+    {
+      label: '蛋白质',
+      value: `${Math.round(protein)}`,
+      unit: '克',
+      target: target ? `目标 ${Math.round(target.proteinG)}` : undefined,
+    },
+    {
+      label: '膳食纤维',
+      value: fiber === undefined ? '—' : `${Math.round(fiber)}`,
+      unit: '克',
+      target: undefined,
+    },
   ];
 
   return (
     <View
-      accessibilityLabel={`计划摄入，${metrics
-        .map((metric) => `${metric.label}${metric.value}${metric.unit}`)
+      accessibilityLabel={`今日计划，${metrics
+        .map(
+          (metric) =>
+            `${metric.label}${metric.value}${metric.unit}${metric.target ? `，${metric.target}` : ''}`,
+        )
         .join('，')}`}
       accessible
       style={styles.nutritionStrip}
@@ -235,23 +259,41 @@ export function NutritionStrip({
           <Text style={styles.nutritionValue}>
             {metric.value} <Text style={styles.nutritionUnit}>{metric.unit}</Text>
           </Text>
+          {metric.target ? (
+            <Text style={styles.nutritionTarget}>{metric.target}</Text>
+          ) : null}
         </View>
       ))}
     </View>
   );
 }
 
+/** 角色标签。单品成餐不标——它本身就是一整餐，标「主食」会误导。 */
+const componentLabels: Partial<Record<RecipeComponent, string>> = {
+  staple: '主食',
+  protein: '荤菜',
+  vegetable: '素菜',
+};
+
+/**
+ * 一餐。
+ *
+ * **一格是一组菜而不是一道**：早餐主食+蛋白，午晚主食+荤+素。
+ * 顺序由服务端连同角色一起给出，这里不重排。
+ */
 export function MealRow({
   meal,
-  recipe,
+  dishes,
   onOpen,
   onSwap,
 }: {
   meal: MealSlot;
-  recipe: Recipe;
-  onOpen: () => void;
-  onSwap: () => void;
+  dishes: { recipe: Recipe; component?: RecipeComponent }[];
+  onOpen: (recipeId: string) => void;
+  onSwap: (index: number) => void;
 }) {
+  const calories = dishes.reduce((sum, item) => sum + item.recipe.calories, 0);
+
   return (
     <View style={styles.mealRow}>
       <View style={styles.mealHeader}>
@@ -259,34 +301,48 @@ export function MealRow({
           <Text accessibilityRole="header" style={styles.mealLabel}>
             {mealSlotLabels[meal]}
           </Text>
-          <Text style={styles.mealCalories}>{recipe.calories} 千卡</Text>
+          {/* 整餐合计，不是单道——一格多道之后单道的热量说明不了什么。 */}
+          <Text style={styles.mealCalories}>{Math.round(calories)} 千卡</Text>
         </View>
-        <Pressable
-          accessibilityLabel={`更换${mealSlotLabels[meal]}`}
-          accessibilityRole="button"
-          onPress={onSwap}
-          style={({ pressed }) => [styles.swapButton, pressed && styles.pressed]}
-        >
-          <AppIcon color={colors.primaryStrong} name="refresh" size={16} />
-          <Text style={styles.swapText}>换一道</Text>
-        </Pressable>
       </View>
-      <Pressable
-        accessibilityLabel={`${mealSlotLabels[meal]}，${recipe.title}，查看菜谱`}
-        accessibilityRole="button"
-        onPress={onOpen}
-        style={({ pressed }) => [styles.mealMain, pressed && styles.pressed]}
-      >
-        <RecipeImage recipe={recipe} style={styles.mealImage} />
-        <View style={styles.mealCopy}>
-          <Text numberOfLines={2} style={styles.mealTitle}>
-            {recipe.title}
-          </Text>
-          <Text numberOfLines={1} style={styles.mealMeta}>
-            {recipe.timeMinutes} 分钟 · {recipe.difficulty}
-          </Text>
-        </View>
-      </Pressable>
+
+      <View style={styles.mealDishes}>
+        {dishes.map((item, index) => (
+          <View key={item.recipe.id} style={styles.mealDish}>
+            <Pressable
+              accessibilityLabel={`${mealSlotLabels[meal]}，${item.recipe.title}，查看菜谱`}
+              accessibilityRole="button"
+              onPress={() => onOpen(item.recipe.id)}
+              style={({ pressed }) => [styles.mealMain, pressed && styles.pressed]}
+            >
+              <RecipeImage recipe={item.recipe} style={styles.mealImage} />
+              <View style={styles.mealCopy}>
+                <View style={styles.mealTitleRow}>
+                  {item.component && componentLabels[item.component] ? (
+                    <Text style={styles.componentTag}>{componentLabels[item.component]}</Text>
+                  ) : null}
+                  <Text numberOfLines={2} style={styles.mealTitle}>
+                    {item.recipe.title}
+                  </Text>
+                </View>
+                <Text numberOfLines={1} style={styles.mealMeta}>
+                  {item.recipe.timeMinutes} 分钟 · {Math.round(item.recipe.calories)} 千卡
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              accessibilityLabel={`更换${item.recipe.title}`}
+              accessibilityRole="button"
+              hitSlop={6}
+              onPress={() => onSwap(index)}
+              style={({ pressed }) => [styles.swapButton, pressed && styles.pressed]}
+            >
+              <AppIcon color={colors.primaryStrong} name="refresh" size={16} />
+              <Text style={styles.swapText}>换一道</Text>
+            </Pressable>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -539,6 +595,12 @@ const styles = StyleSheet.create({
   nutritionMetricEnd: {
     alignItems: 'flex-end',
   },
+  nutritionTarget: {
+    color: recipeColors.muted,
+    fontFamily,
+    fontSize: 11,
+    marginTop: 2,
+  },
   nutritionLabel: {
     color: recipeColors.muted,
     fontFamily,
@@ -559,6 +621,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 15,
     fontWeight: '500',
+  },
+  mealDishes: {
+    gap: 12,
+  },
+  mealDish: {
+    gap: 6,
+  },
+  mealTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  componentTag: {
+    color: colors.primaryStrong,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.sm,
+    fontFamily,
+    fontSize: 11,
+    overflow: 'hidden',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   mealRow: {
     gap: 8,

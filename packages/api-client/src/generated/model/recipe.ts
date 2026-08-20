@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { RecipeCategory } from './recipeCategory';
+import type { RecipeComponent } from './recipeComponent';
 import type { RecipeDifficulty } from './recipeDifficulty';
 import type { RecipeGoal } from './recipeGoal';
 import type { RecipeIngredient } from './recipeIngredient';
@@ -45,6 +46,11 @@ export interface Recipe {
   categories: RecipeCategory[];
   goals: RecipeGoal[];
   tags: string[];
+  /**
+     * 这道菜在一餐里扮演什么角色，周菜单据此组合。
+     * 为空表示还没分类，此时不会进入周菜单生成。
+     */
+  component?: RecipeComponent | null;
   /** 过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。 */
   allergens: string[];
   /** @minItems 1 */

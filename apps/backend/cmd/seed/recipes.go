@@ -20,21 +20,27 @@ import (
 // 与其挂一张来路不明的图，不如先没有图。
 
 type recipeSeed struct {
-	ID          string
-	Title       string
-	Summary     string
-	Servings    int32
-	Minutes     int32
-	Difficulty  string
-	Calories    float64
-	Protein     float64
-	Carbs       float64
-	Fiber       float64
-	MealSlots   []string
-	Categories  []string
-	Goals       []string
-	Tags        []string
-	Allergens   []string
+	ID         string
+	Title      string
+	Summary    string
+	Servings   int32
+	Minutes    int32
+	Difficulty string
+	Calories   float64
+	Protein    float64
+	Carbs      float64
+	Fiber      float64
+	MealSlots  []string
+	Categories []string
+	Goals      []string
+	Tags       []string
+	Allergens  []string
+	// Component 是这道菜在一餐里扮演的角色，周菜单据此组合。
+	//
+	// 示例菜谱是手写的，所以这里由人直接判定；导入内容走
+	// tools/recipe-import/classify.py 的规则。手写内容才几条，
+	// 让它们也去过一遍关键词规则没有意义，还会引入两套判据。
+	Component   string
 	Ingredients []httpapi.RecipeIngredient
 	Steps       []httpapi.RecipeStep
 }
@@ -56,7 +62,9 @@ func step(title, description string, timer int) httpapi.RecipeStep {
 
 var seedRecipes = []recipeSeed{
 	{
-		ID: "rcp_tomato_beef_pasta", Title: "番茄牛肉意面",
+		ID: "rcp_tomato_beef_pasta", Component: "one_dish",
+		// 意面加牛肉末，主食与蛋白都有，单独就是一餐。
+		Title:    "番茄牛肉意面",
 		Summary:  "番茄的酸甜配上牛肉末，煮一锅面就是一顿正餐。",
 		Servings: 2, Minutes: 30, Difficulty: "easy",
 		Calories: 520, Protein: 28, Carbs: 62, Fiber: 6,
@@ -81,7 +89,9 @@ var seedRecipes = []recipeSeed{
 		},
 	},
 	{
-		ID: "rcp_oat_bowl", Title: "隔夜燕麦碗",
+		ID: "rcp_oat_bowl", Component: "staple",
+		// 燕麦是主食，蛋白不够撑起一餐，要配个蛋或奶。
+		Title:    "隔夜燕麦碗",
 		Summary:  "前一晚泡上，早上拿出来就能吃。",
 		Servings: 1, Minutes: 5, Difficulty: "easy",
 		Calories: 340, Protein: 14, Carbs: 48, Fiber: 8,
@@ -102,7 +112,8 @@ var seedRecipes = []recipeSeed{
 		},
 	},
 	{
-		ID: "rcp_steamed_fish", Title: "清蒸鲈鱼",
+		ID: "rcp_steamed_fish", Component: "protein",
+		Title:    "清蒸鲈鱼",
 		Summary:  "十分钟出锅，鲜味全在鱼本身。",
 		Servings: 3, Minutes: 25, Difficulty: "medium",
 		Calories: 260, Protein: 34, Carbs: 4, Fiber: 1,
@@ -124,7 +135,9 @@ var seedRecipes = []recipeSeed{
 		},
 	},
 	{
-		ID: "rcp_chicken_salad", Title: "鸡胸沙拉碗",
+		ID: "rcp_chicken_salad", Component: "protein",
+		// 沙拉碗里主要吃的是鸡胸。
+		Title:    "鸡胸沙拉碗",
 		Summary:  "煎一块鸡胸，配菜随手抓。",
 		Servings: 1, Minutes: 20, Difficulty: "easy",
 		Calories: 380, Protein: 38, Carbs: 22, Fiber: 7,
@@ -147,7 +160,8 @@ var seedRecipes = []recipeSeed{
 		},
 	},
 	{
-		ID: "rcp_egg_fried_rice", Title: "隔夜饭蛋炒饭",
+		ID: "rcp_egg_fried_rice", Component: "one_dish",
+		Title:    "隔夜饭蛋炒饭",
 		Summary:  "冰箱里有什么放什么，十分钟解决一餐。",
 		Servings: 2, Minutes: 12, Difficulty: "easy",
 		Calories: 460, Protein: 16, Carbs: 66, Fiber: 3,
@@ -169,7 +183,9 @@ var seedRecipes = []recipeSeed{
 		},
 	},
 	{
-		ID: "rcp_tofu_soup", Title: "菌菇豆腐汤",
+		ID: "rcp_tofu_soup", Component: "protein",
+		// 豆制品在中餐里承担的正是荤菜的位置。
+		Title:    "菌菇豆腐汤",
 		Summary:  "煮一锅热汤，配什么主食都合适。",
 		Servings: 3, Minutes: 18, Difficulty: "easy",
 		Calories: 150, Protein: 12, Carbs: 10, Fiber: 4,
@@ -210,6 +226,8 @@ func seedRecipeContent(ctx context.Context, db *database.DB, userID string) erro
 
 			summary := r.Summary
 			credit := "暂无图片"
+			// 列是可空的（导入工具跑之前旧数据没有值），所以取地址传。
+			component := r.Component
 			if err := q.UpsertRecipe(ctx, dbgen.UpsertRecipeParams{
 				ID:              r.ID,
 				Title:           r.Title,
@@ -235,6 +253,7 @@ func seedRecipeContent(ctx context.Context, db *database.DB, userID string) erro
 				License:        "平台自有内容",
 				ImageCredit:    &credit,
 				ContentVersion: "sample-v1",
+				Component:      &component,
 			}); err != nil {
 				return err
 			}

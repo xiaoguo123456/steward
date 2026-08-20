@@ -12,8 +12,19 @@ import {
 } from '@/features/recipes/components/recipe-ui';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
-import { mealSlotLabels, mealSlotOrder } from '@/features/recipes/model';
+import {
+  mealSlotLabels,
+  mealSlotOrder,
+  type RecipeComponent,
+} from '@/features/recipes/model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
+
+/** 角色标签。单品成餐不标——它本身就是一整餐，标「主食」会误导。 */
+const componentLabels: Partial<Record<RecipeComponent, string>> = {
+  staple: '主食',
+  protein: '荤菜',
+  vegetable: '素菜',
+};
 
 export default function WeekMenuScreen() {
   const router = useRouter();
@@ -125,41 +136,65 @@ export default function WeekMenuScreen() {
 
               <View style={styles.dayMeals}>
                 {mealSlotOrder.map((meal) => {
-                  const recipe = getRecipe(plan[day.id]?.[meal] ?? '');
-                  if (!recipe) return null;
+                  const dishes = plan[day.id]?.[meal] ?? [];
+                  if (dishes.length === 0) return null;
+                  const total = dishes.reduce(
+                    (sum, dish) => sum + (getRecipe(dish.recipeId)?.calories ?? 0),
+                    0,
+                  );
                   return (
-                    <View key={`${day.id}-${meal}`} style={styles.dayMealRow}>
-                      <Pressable
-                        accessibilityLabel={`${mealSlotLabels[meal]}，${recipe.title}，查看菜谱`}
-                        accessibilityRole="button"
-                        onPress={() =>
-                          router.push(`/features/recipes/recipe/${recipe.id}` as Href)
-                        }
-                        style={({ pressed }) => [styles.dayMealMain, pressed && styles.pressed]}
-                      >
-                        <RecipeImage recipe={recipe} style={styles.mealThumb} />
-                        <View style={styles.mealCopy}>
-                          <Text style={styles.mealSlot}>{mealSlotLabels[meal]}</Text>
-                          <Text numberOfLines={1} style={styles.mealTitle}>
-                            {recipe.title}
-                          </Text>
-                          <Text style={styles.mealMeta}>
-                            {recipe.timeMinutes} 分钟 · {recipe.calories} 千卡
-                          </Text>
-                        </View>
-                      </Pressable>
-                      <Pressable
-                        accessibilityLabel={`更换${day.label}${mealSlotLabels[meal]}`}
-                        accessibilityRole="button"
-                        hitSlop={6}
-                        onPress={() => {
-                          swapRecipe(day.id, meal);
-                          setSavedMessage(false);
-                        }}
-                        style={({ pressed }) => [styles.swapButton, pressed && styles.pressed]}
-                      >
-                        <AppIcon color={colors.primaryStrong} name="refresh" size={17} />
-                      </Pressable>
+                    <View key={`${day.id}-${meal}`} style={styles.dayMealGroup}>
+                      <View style={styles.dayMealHeading}>
+                        <Text style={styles.mealSlot}>{mealSlotLabels[meal]}</Text>
+                        {/* 整餐合计：一格多道之后单道的热量说明不了什么。 */}
+                        <Text style={styles.mealSlotCalories}>{Math.round(total)} 千卡</Text>
+                      </View>
+                      {dishes.map((dish, index) => {
+                        const recipe = getRecipe(dish.recipeId);
+                        if (!recipe) return null;
+                        return (
+                          <View key={dish.recipeId} style={styles.dayMealRow}>
+                            <Pressable
+                              accessibilityLabel={`${mealSlotLabels[meal]}，${recipe.title}，查看菜谱`}
+                              accessibilityRole="button"
+                              onPress={() =>
+                                router.push(`/features/recipes/recipe/${recipe.id}` as Href)
+                              }
+                              style={({ pressed }) => [
+                                styles.dayMealMain,
+                                pressed && styles.pressed,
+                              ]}
+                            >
+                              <RecipeImage recipe={recipe} style={styles.mealThumb} />
+                              <View style={styles.mealCopy}>
+                                <Text numberOfLines={1} style={styles.mealTitle}>
+                                  {recipe.title}
+                                </Text>
+                                <Text style={styles.mealMeta}>
+                                  {componentLabels[dish.component ?? 'staple'] ?? ''}
+                                  {componentLabels[dish.component ?? 'staple'] ? ' · ' : ''}
+                                  {recipe.timeMinutes} 分钟 · {Math.round(recipe.calories)} 千卡
+                                </Text>
+                              </View>
+                            </Pressable>
+                            <Pressable
+                              accessibilityLabel={`更换${day.label}${mealSlotLabels[meal]}的${recipe.title}`}
+                              accessibilityRole="button"
+                              hitSlop={6}
+                              onPress={() => {
+                                swapRecipe(day.id, meal, index);
+                                setSavedMessage(false);
+                              }}
+                              style={({ pressed }) => [
+                                styles.swapButton,
+                                pressed && styles.pressed,
+                              ]}
+                            >
+                              <AppIcon color={colors.primaryStrong} name="refresh" size={17} />
+                            </Pressable>
+                          </View>
+                        );
+                      })}
                     </View>
                   );
                 })}
@@ -282,6 +317,19 @@ const styles = StyleSheet.create({
   },
   dayMeals: {
     paddingTop: 2,
+  },
+  dayMealGroup: {
+    gap: 8,
+  },
+  dayMealHeading: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  mealSlotCalories: {
+    color: recipeColors.muted,
+    fontFamily,
+    fontSize: 12,
   },
   dayMealRow: {
     minHeight: 76,

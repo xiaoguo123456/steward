@@ -13,18 +13,17 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { RecipeComponent } from './recipeComponent';
-import type { RecipeMealSlot } from './recipeMealSlot';
 
-export interface MealPlanEntryInput {
-  date: string;
-  meal_slot: RecipeMealSlot;
-  recipe_id: string;
+/**
+ * 这份菜单每日平均实际值。
+ */
+export interface DailyNutritionAchieved {
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
   /**
-     * 这道菜在这一格里的角色。不传时服务端按菜谱当前的分类填。
-     *
-     * 提交时带上，是为了让用户确认的那一版原样存下来：
-     * 菜谱分类将来可能因规则调整而变，已确认的菜单不该跟着变。
+     * 有任何一道菜缺脂肪数据就为空，不把缺的当 0 加进去。
+     * @nullable
      */
-  component?: RecipeComponent;
+  fat_g?: number | null;
 }

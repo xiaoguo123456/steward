@@ -58,7 +58,7 @@ export default function RecipeDetailScreen() {
     cookedIds,
     selectedDayId,
     setSelectedDayId,
-    setRecipeForMeal,
+    addRecipeToMeal,
     getRecipe,
   } = useRecipePrototype();
   const recipe = clientReady && recipeId ? getRecipe(recipeId) : undefined;
@@ -89,7 +89,9 @@ export default function RecipeDetailScreen() {
   const servingFactor = servings / recipe.servings;
 
   const addToPlan = () => {
-    setRecipeForMeal(selectedDayId, pickedMeal, recipe.id);
+    // 加进这一餐而不是替换掉整餐：一餐是一组菜，
+    // 用户想加一道素菜，不该把主食和荤菜一起顶掉。
+    addRecipeToMeal(selectedDayId, pickedMeal, recipe.id);
     setPickerVisible(false);
     setAdded(true);
   };

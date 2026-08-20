@@ -22,6 +22,11 @@ export interface MealPlanSuggestionNote {
      *   **过敏原与忌口永远不会被放宽**，没有对应的 kind。
      * - slot_unfilled：这一格实在没有可选的菜，留空了。
      * - pool_repeats：可选菜不足一周的餐数，出现了重复。
+     * - energy_floored：算出来的热量低于安全下限，已按下限安排。
+     * - energy_estimated：性别没填，热量目标按男女中间值估算。
+     * - target_unreachable：可选菜凑不到热量目标，实际值与目标有明显差距。
+     * - profile_incomplete：身高体重年龄没填全，算不出热量目标，
+     *   这次按营养排名选菜。
      */
   kind: MealPlanSuggestionNoteKind;
   /** 直接展示给用户的中文说明。 */

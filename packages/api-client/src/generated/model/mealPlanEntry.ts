@@ -14,13 +14,27 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { Recipe } from './recipe';
+import type { RecipeComponent } from './recipeComponent';
 import type { RecipeMealSlot } from './recipeMealSlot';
 
+/**
+ * 菜单里的一道菜。**一格可以有多道**：早餐是主食+蛋白，午晚是主食+荤+素。
+ *
+ * 一格一道的话，单道菜的热量中位数只有 318 kcal，
+ * 按身高体重算出来的每餐目标根本够不到。
+ */
 export interface MealPlanEntry {
   /** 该餐所在日期。用真实日期而不是“周几”，跨周与跨时区才不会含糊。 */
   date: string;
   meal_slot: RecipeMealSlot;
   recipe_id: string;
+  /**
+     * 这道菜在这一格里扮演什么角色，展示顺序也按它排（主食在前）。
+     *
+     * 随菜单存下来而不是每次去菜谱里查：菜谱的分类将来可能因规则调整而变，
+     * 但用户确认过的那份菜单里“这道是主食”是当时的事实。
+     */
+  component?: RecipeComponent;
   /** 展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。 */
   recipe?: Recipe;
 }

@@ -7,7 +7,7 @@ import {
 import { useState } from 'react';
 
 import { toRecipe } from './use-recipe-content';
-import type { MealSlot, Recipe, WeekPlan } from './model';
+import type { MealSlot, Recipe, RecipeComponent, WeekPlan } from './model';
 
 /**
  * 一周菜单建议。
@@ -26,6 +26,12 @@ export function useMealPlanSuggestion() {
   const [loading, setLoading] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [notes, setNotes] = useState<MealPlanSuggestionNote[]>([]);
+  // 每日热量目标。服务端算不出来（身高体重没填全）时是 null，
+  // 此时界面上不显示目标，而不是显示一个编出来的数字。
+  const [dailyTarget, setDailyTarget] = useState<{
+    calories: number;
+    proteinG: number;
+  } | null>(null);
   // 建议里的菜谱多半不在浏览列表的那 100 条里，
   // 不把它们留下来，菜单格子就会渲染成空白。
   const [recipes, setRecipes] = useState<Map<string, Recipe>>(new Map());
@@ -41,14 +47,23 @@ export function useMealPlanSuggestion() {
       const found = new Map<string, Recipe>();
       const plan: WeekPlan = {};
       for (const entry of data.entries) {
-        const day = plan[entry.date] ?? { breakfast: '', lunch: '', dinner: '' };
-        day[entry.meal_slot as MealSlot] = entry.recipe_id;
+        const day = plan[entry.date] ?? { breakfast: [], lunch: [], dinner: [] };
+        // 一格多道，按服务端给的顺序追加（主食在前），客户端不重排。
+        day[entry.meal_slot as MealSlot].push({
+          recipeId: entry.recipe_id,
+          component: entry.component as RecipeComponent | undefined,
+        });
         plan[entry.date] = day;
         if (entry.recipe) found.set(entry.recipe_id, toRecipe(entry.recipe as ApiRecipe));
       }
 
       setSeed(data.seed);
       setNotes(data.notes);
+      setDailyTarget(
+        data.daily_target
+          ? { calories: data.daily_target.calories, proteinG: data.daily_target.protein_g }
+          : null,
+      );
       setRecipes((current) => new Map([...current, ...found]));
       return plan;
     } catch (error) {
@@ -65,6 +80,7 @@ export function useMealPlanSuggestion() {
     failure,
     /** 本次生成做了什么妥协。空数组表示没有妥协。 */
     notes,
+    dailyTarget,
     /** 建议里出现过的菜谱，供菜单格子查名字与营养。 */
     recipes,
     /** 首次生成。 */

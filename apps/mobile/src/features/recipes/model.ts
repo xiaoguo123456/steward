@@ -58,6 +58,8 @@ export type Recipe = {
   goals: RecipeGoal[];
   tags: string[];
   allergens: string[];
+  /** 这道菜在一餐里扮演什么角色。未分类的菜谱为空。 */
+  component?: RecipeComponent;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
   sourceLabel: string;
@@ -77,7 +79,21 @@ export type WeekDay = {
   isToday?: boolean;
 };
 
-export type DayPlan = Record<MealSlot, string>;
+/**
+ * 一格里的一道菜。
+ *
+ * 一餐是一个**组合**而不是一道菜：早餐主食+蛋白，午晚主食+荤+素。
+ * component 决定展示顺序（主食在前），也让「换一道」知道该在哪一类里换。
+ */
+export type PlannedDish = {
+  recipeId: string;
+  component?: RecipeComponent;
+};
+
+/** 这道菜在一餐里扮演什么角色。 */
+export type RecipeComponent = 'staple' | 'one_dish' | 'protein' | 'vegetable';
+
+export type DayPlan = Record<MealSlot, PlannedDish[]>;
 
 export type WeekPlan = Record<WeekDayId, DayPlan>;
 

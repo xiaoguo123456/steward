@@ -105,13 +105,44 @@ func TestValidateMealPlanEntriesAcceptsWholeWeek(t *testing.T) {
 	}
 }
 
-func TestValidateMealPlanEntriesRejectsDuplicateSlot(t *testing.T) {
+// 一格可以有多道菜：早餐主食+蛋白，午晚主食+荤+素。
+//
+// 这条规则原来是「一格只能一道」。单道菜的热量中位数只有 318 kcal，
+// 按身高体重算出来的每餐目标根本够不到——只提高目标不改结构，
+// 得到的会是一份「目标 1800、实际 950」的菜单。
+func TestValidateMealPlanEntriesAllowsMultipleDishesPerSlot(t *testing.T) {
+	weekStart := date(t, "2026-08-17")
+	err := validateMealPlanEntries(weekStart, []httpapi.MealPlanEntryInput{
+		{Date: openapi_types.Date{Time: weekStart}, MealSlot: "lunch", RecipeId: "rcp_rice"},
+		{Date: openapi_types.Date{Time: weekStart}, MealSlot: "lunch", RecipeId: "rcp_pork"},
+		{Date: openapi_types.Date{Time: weekStart}, MealSlot: "lunch", RecipeId: "rcp_greens"},
+	})
+	if err != nil {
+		t.Errorf("一格三道是正常搭配，不该被拒：%v", err)
+	}
+}
+
+// 但同一格里排两遍同一道菜是提交出错，不是搭配。
+func TestValidateMealPlanEntriesRejectsSameRecipeTwiceInSlot(t *testing.T) {
 	weekStart := date(t, "2026-08-17")
 	err := validateMealPlanEntries(weekStart, []httpapi.MealPlanEntryInput{
 		{Date: openapi_types.Date{Time: weekStart}, MealSlot: "lunch", RecipeId: "rcp_a"},
-		{Date: openapi_types.Date{Time: weekStart}, MealSlot: "lunch", RecipeId: "rcp_b"},
+		{Date: openapi_types.Date{Time: weekStart}, MealSlot: "lunch", RecipeId: "rcp_a"},
 	})
 	assertValidationFailed(t, err)
+}
+
+// 同一道菜出现在不同餐次是允许的——生成器自己不会这么排，
+// 但用户手动调整时把中午那道挪到晚上是合理的。
+func TestValidateMealPlanEntriesAllowsSameRecipeInDifferentSlots(t *testing.T) {
+	weekStart := date(t, "2026-08-17")
+	err := validateMealPlanEntries(weekStart, []httpapi.MealPlanEntryInput{
+		{Date: openapi_types.Date{Time: weekStart}, MealSlot: "lunch", RecipeId: "rcp_a"},
+		{Date: openapi_types.Date{Time: weekStart}, MealSlot: "dinner", RecipeId: "rcp_a"},
+	})
+	if err != nil {
+		t.Errorf("不同餐次用同一道菜不该被拒：%v", err)
+	}
 }
 
 func TestValidateDietProfileRejectsOutOfRangeBody(t *testing.T) {

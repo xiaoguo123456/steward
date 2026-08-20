@@ -6647,6 +6647,21 @@ components:
         - fat_loss
         - muscle_gain
         - steady_sugar
+    RecipeComponent:
+      type: string
+      description: |
+        这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。
+
+        - staple：纯主食，要配菜（白粥、馒头）
+        - one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），
+          配一道素菜就够，不再另配主食与荤菜
+        - protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置
+        - vegetable：素菜
+      enum:
+        - staple
+        - one_dish
+        - protein
+        - vegetable
     RecipeIngredientGroup:
       type: string
       description: 与购物清单的品类分开：这里是做菜时的分组，不是超市货架。
@@ -6780,6 +6795,13 @@ components:
           type: array
           items:
             type: string
+        component:
+          description: |
+            这道菜在一餐里扮演什么角色，周菜单据此组合。
+            为空表示还没分类，此时不会进入周菜单生成。
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/RecipeComponent'
         allergens:
           type: array
           description: |
@@ -7127,6 +7149,11 @@ components:
     MealPlanEntry:
       type: object
       additionalProperties: false
+      description: |
+        菜单里的一道菜。**一格可以有多道**：早餐是主食+蛋白，午晚是主食+荤+素。
+
+        一格一道的话，单道菜的热量中位数只有 318 kcal，
+        按身高体重算出来的每餐目标根本够不到。
       required:
         - date
         - meal_slot
@@ -7140,6 +7167,14 @@ components:
           $ref: '#/components/schemas/RecipeMealSlot'
         recipe_id:
           type: string
+        component:
+          description: |
+            这道菜在这一格里扮演什么角色，展示顺序也按它排（主食在前）。
+
+            随菜单存下来而不是每次去菜谱里查：菜谱的分类将来可能因规则调整而变，
+            但用户确认过的那份菜单里“这道是主食”是当时的事实。
+          allOf:
+            - $ref: '#/components/schemas/RecipeComponent'
         recipe:
           description: 展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。
           allOf:
@@ -7214,6 +7249,14 @@ components:
           $ref: '#/components/schemas/RecipeMealSlot'
         recipe_id:
           type: string
+        component:
+          description: |
+            这道菜在这一格里的角色。不传时服务端按菜谱当前的分类填。
+
+            提交时带上，是为了让用户确认的那一版原样存下来：
+            菜谱分类将来可能因规则调整而变，已确认的菜单不该跟着变。
+          allOf:
+            - $ref: '#/components/schemas/RecipeComponent'
     ConfirmMealPlanRequest:
       type: object
       additionalProperties: false
@@ -7246,6 +7289,61 @@ components:
           type: integer
         dinner:
           type: integer
+    DailyNutritionTarget:
+      type: object
+      additionalProperties: false
+      description: |
+        每日营养目标。热量用 Mifflin-St Jeor 估算基础代谢，乘活动系数，
+        再按目标调整（减脂 −20%、增肌 +10%）。
+
+        **有硬下限**（女 1200、男 1500 千卡）：低于它就不是吃得少而是吃不够，
+        夹住并在 notes 里说明。
+
+        这是一般性的能量估算，不是治疗方案。
+      required:
+        - calories
+        - protein_g
+        - carbs_g
+        - fat_g
+      properties:
+        calories:
+          type: number
+          format: double
+          description: |
+            已取整到 50 千卡。菜谱营养是按食材表估算的，
+            报一个 1783 会让人以为这个数字比实际可靠。
+        protein_g:
+          type: number
+          format: double
+        carbs_g:
+          type: number
+          format: double
+        fat_g:
+          type: number
+          format: double
+    DailyNutritionAchieved:
+      type: object
+      additionalProperties: false
+      description: 这份菜单每日平均实际值。
+      required:
+        - calories
+        - protein_g
+        - carbs_g
+      properties:
+        calories:
+          type: number
+          format: double
+        protein_g:
+          type: number
+          format: double
+        carbs_g:
+          type: number
+          format: double
+        fat_g:
+          type: number
+          format: double
+          nullable: true
+          description: 有任何一道菜缺脂肪数据就为空，不把缺的当 0 加进去。
     MealPlanSuggestionNote:
       type: object
       additionalProperties: false
@@ -7259,11 +7357,20 @@ components:
             - cook_time_relaxed
             - slot_unfilled
             - pool_repeats
+            - energy_floored
+            - energy_estimated
+            - target_unreachable
+            - profile_incomplete
           description: |
             - cook_time_relaxed：可选菜太少，放宽了「最长烹饪时间」。
               **过敏原与忌口永远不会被放宽**，没有对应的 kind。
             - slot_unfilled：这一格实在没有可选的菜，留空了。
             - pool_repeats：可选菜不足一周的餐数，出现了重复。
+            - energy_floored：算出来的热量低于安全下限，已按下限安排。
+            - energy_estimated：性别没填，热量目标按男女中间值估算。
+            - target_unreachable：可选菜凑不到热量目标，实际值与目标有明显差距。
+            - profile_incomplete：身高体重年龄没填全，算不出热量目标，
+              这次按营养排名选菜。
         message:
           type: string
           description: 直接展示给用户的中文说明。
@@ -7286,6 +7393,7 @@ components:
         - seed
         - entries
         - candidates
+        - achieved
         - notes
       properties:
         week_start:
@@ -7305,6 +7413,21 @@ components:
             这个数字是给客户端判断「菜少是因为筛得狠」而不是「接口坏了」用的。
           allOf:
             - $ref: '#/components/schemas/MealPlanCandidateCounts'
+        daily_target:
+          description: |
+            按身高、体重、年龄、活动量与目标算出的每日热量与碳蛋脂目标。
+
+            **身体数据缺任何一项就为空**，此时选菜退回按营养排名打分。
+            不拿默认体重顶上：编一个数会给出看起来很确定、但对这个人是错的目标。
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/DailyNutritionTarget'
+        achieved:
+          description: |
+            这份菜单实际算出来的每日平均值，供客户端与目标对照。
+            没有 daily_target 时同样返回，只是没有可比的目标。
+          allOf:
+            - $ref: '#/components/schemas/DailyNutritionAchieved'
         notes:
           type: array
           description: |

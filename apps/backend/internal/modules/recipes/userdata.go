@@ -335,17 +335,26 @@ func (s *Service) ConfirmMealPlan(ctx context.Context, userID string,
 		for _, entry := range body.Entries {
 			// 菜谱必须真实存在。外键也会拦，但那报出来的是约束名，
 			// 用户看不懂哪一格填错了。
-			if _, err := q.GetRecipe(ctx, entry.RecipeId); err != nil {
+			recipe, err := q.GetRecipe(ctx, entry.RecipeId)
+			if err != nil {
 				if database.IsNoRows(err) {
 					return apperr.Validation(apperr.Field("entries",
 						fmt.Sprintf("菜谱 %s 不存在。", entry.RecipeId)))
 				}
 				return apperr.Internal(err)
 			}
+			// 角色随菜单存下来。客户端没传时按菜谱当前的分类填——
+			// 菜谱分类将来可能因规则调整而变，已确认的菜单不该跟着变。
+			component := recipe.Component
+			if entry.Component != nil {
+				value := string(*entry.Component)
+				component = &value
+			}
 			if err := q.CreateMealPlanEntry(ctx, dbgen.CreateMealPlanEntryParams{
 				ID: idgen.New(idgen.PrefixMealPlanEntry), UserID: userID,
 				MealPlanID: plan.ID, EntryDate: entry.Date.Time,
 				MealSlot: string(entry.MealSlot), RecipeID: entry.RecipeId,
+				Component: component,
 			}); err != nil {
 				return apperr.Internal(err)
 			}
@@ -362,6 +371,13 @@ func (s *Service) ConfirmMealPlan(ctx context.Context, userID string,
 }
 
 // validateMealPlanEntries 校验条目落在本周之内且不重复。
+//
+// **一格可以有多道菜**：早餐是主食+蛋白，午晚是主食+荤+素。
+// 这条规则原来是「一格只能一道」——单道菜的热量中位数只有 318 kcal，
+// 按身高体重算出来的每餐目标根本够不到。
+//
+// 仍然不许的是「同一格里排两遍同一道菜」：那是提交出错，不是搭配。
+// 数据库上的唯一约束也守着同一条。
 func validateMealPlanEntries(weekStart time.Time, entries []httpapi.MealPlanEntryInput) error {
 	weekEnd := weekStart.AddDate(0, 0, 7)
 	seen := make(map[string]struct{}, len(entries))
@@ -372,10 +388,10 @@ func validateMealPlanEntries(weekStart time.Time, entries []httpapi.MealPlanEntr
 			return apperr.Validation(apperr.Field("entries",
 				fmt.Sprintf("%s 不在这一周内。", timeutil.FormatDate(day))))
 		}
-		key := timeutil.FormatDate(day) + string(entry.MealSlot)
+		key := timeutil.FormatDate(day) + string(entry.MealSlot) + entry.RecipeId
 		if _, dup := seen[key]; dup {
 			return apperr.Validation(apperr.Field("entries",
-				fmt.Sprintf("%s 的%s安排了不止一道菜。",
+				fmt.Sprintf("%s 的%s里同一道菜出现了两次。",
 					timeutil.FormatDate(day), mealSlotLabel(string(entry.MealSlot)))))
 		}
 		seen[key] = struct{}{}

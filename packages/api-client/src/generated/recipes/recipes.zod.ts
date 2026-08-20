@@ -62,6 +62,7 @@ export const ListRecipesResponse = zod.object({
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
   "tags": zod.array(zod.string()),
+  "component": zod.union([zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n'),zod.null()]).optional().describe('这道菜在一餐里扮演什么角色，周菜单据此组合。\n为空表示还没分类，此时不会进入周菜单生成。\n'),
   "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
@@ -125,6 +126,7 @@ export const GetRecipeResponse = zod.object({
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
   "tags": zod.array(zod.string()),
+  "component": zod.union([zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n'),zod.null()]).optional().describe('这道菜在一餐里扮演什么角色，周菜单据此组合。\n为空表示还没分类，此时不会进入周菜单生成。\n'),
   "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
@@ -279,6 +281,7 @@ export const ListFavoriteRecipesResponse = zod.object({
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
   "tags": zod.array(zod.string()),
+  "component": zod.union([zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n'),zod.null()]).optional().describe('这道菜在一餐里扮演什么角色，周菜单据此组合。\n为空表示还没分类，此时不会进入周菜单生成。\n'),
   "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
@@ -459,6 +462,7 @@ export const GetMealPlanResponse = zod.object({
   "date": zod.string().date().describe('该餐所在日期。用真实日期而不是“周几”，跨周与跨时区才不会含糊。'),
   "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']),
   "recipe_id": zod.string(),
+  "component": zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n').optional().describe('这道菜在这一格里扮演什么角色，展示顺序也按它排（主食在前）。\n\n随菜单存下来而不是每次去菜谱里查：菜谱的分类将来可能因规则调整而变，\n但用户确认过的那份菜单里“这道是主食”是当时的事实。\n'),
   "recipe": zod.object({
   "id": zod.string(),
   "title": zod.string(),
@@ -478,6 +482,7 @@ export const GetMealPlanResponse = zod.object({
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
   "tags": zod.array(zod.string()),
+  "component": zod.union([zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n'),zod.null()]).optional().describe('这道菜在一餐里扮演什么角色，周菜单据此组合。\n为空表示还没分类，此时不会进入周菜单生成。\n'),
   "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
@@ -499,7 +504,7 @@ export const GetMealPlanResponse = zod.object({
   "content_version": zod.string().describe('内容版本。来源更新时递增，客户端据此判断缓存是否过期。')
 }).describe('内容来源与授权。字段不全的菜谱不允许进库：\n不知道来源和授权范围，就等于不知道自己有没有权利展示它。\n')
 }).optional().describe('展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。')
-})),
+}).describe('菜单里的一道菜。\*\*一格可以有多道\*\*：早餐是主食+蛋白，午晚是主食+荤+素。\n\n一格一道的话，单道菜的热量中位数只有 318 kcal，\n按身高体重算出来的每餐目标根本够不到。\n')),
   "planned_nutrition": zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
@@ -536,7 +541,8 @@ export const ConfirmMealPlanBody = zod.object({
   "entries": zod.array(zod.object({
   "date": zod.string().date(),
   "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']),
-  "recipe_id": zod.string()
+  "recipe_id": zod.string(),
+  "component": zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n').optional().describe('这道菜在这一格里的角色。不传时服务端按菜谱当前的分类填。\n\n提交时带上，是为了让用户确认的那一版原样存下来：\n菜谱分类将来可能因规则调整而变，已确认的菜单不该跟着变。\n')
 })).describe('空数组表示清空本周菜单。')
 }).describe('采用一份菜单。整周一次性提交：菜单是一个整体，\n逐格增量提交会让“这周到底是哪一版”说不清楚。\n')
 
@@ -554,6 +560,7 @@ export const ConfirmMealPlanResponse = zod.object({
   "date": zod.string().date().describe('该餐所在日期。用真实日期而不是“周几”，跨周与跨时区才不会含糊。'),
   "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']),
   "recipe_id": zod.string(),
+  "component": zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n').optional().describe('这道菜在这一格里扮演什么角色，展示顺序也按它排（主食在前）。\n\n随菜单存下来而不是每次去菜谱里查：菜谱的分类将来可能因规则调整而变，\n但用户确认过的那份菜单里“这道是主食”是当时的事实。\n'),
   "recipe": zod.object({
   "id": zod.string(),
   "title": zod.string(),
@@ -573,6 +580,7 @@ export const ConfirmMealPlanResponse = zod.object({
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
   "tags": zod.array(zod.string()),
+  "component": zod.union([zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n'),zod.null()]).optional().describe('这道菜在一餐里扮演什么角色，周菜单据此组合。\n为空表示还没分类，此时不会进入周菜单生成。\n'),
   "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
@@ -594,7 +602,7 @@ export const ConfirmMealPlanResponse = zod.object({
   "content_version": zod.string().describe('内容版本。来源更新时递增，客户端据此判断缓存是否过期。')
 }).describe('内容来源与授权。字段不全的菜谱不允许进库：\n不知道来源和授权范围，就等于不知道自己有没有权利展示它。\n')
 }).optional().describe('展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。')
-})),
+}).describe('菜单里的一道菜。\*\*一格可以有多道\*\*：早餐是主食+蛋白，午晚是主食+荤+素。\n\n一格一道的话，单道菜的热量中位数只有 318 kcal，\n按身高体重算出来的每餐目标根本够不到。\n')),
   "planned_nutrition": zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
@@ -642,6 +650,7 @@ export const GetMealPlanSuggestionResponse = zod.object({
   "date": zod.string().date().describe('该餐所在日期。用真实日期而不是“周几”，跨周与跨时区才不会含糊。'),
   "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']),
   "recipe_id": zod.string(),
+  "component": zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n').optional().describe('这道菜在这一格里扮演什么角色，展示顺序也按它排（主食在前）。\n\n随菜单存下来而不是每次去菜谱里查：菜谱的分类将来可能因规则调整而变，\n但用户确认过的那份菜单里“这道是主食”是当时的事实。\n'),
   "recipe": zod.object({
   "id": zod.string(),
   "title": zod.string(),
@@ -661,6 +670,7 @@ export const GetMealPlanSuggestionResponse = zod.object({
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
   "tags": zod.array(zod.string()),
+  "component": zod.union([zod.enum(['staple', 'one_dish', 'protein', 'vegetable']).describe('这道菜在一餐里扮演什么角色。周菜单按类别组合，不按固定道数。\n\n- staple：纯主食，要配菜（白粥、馒头）\n- one_dish：单品成餐，本身就把主食和蛋白都包了（牛肉面、蛋包饭），\n  配一道素菜就够，不再另配主食与荤菜\n- protein：荤菜。豆制品也算——在中餐里它承担的正是这个位置\n- vegetable：素菜\n'),zod.null()]).optional().describe('这道菜在一餐里扮演什么角色，周菜单据此组合。\n为空表示还没分类，此时不会进入周菜单生成。\n'),
   "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
@@ -682,14 +692,26 @@ export const GetMealPlanSuggestionResponse = zod.object({
   "content_version": zod.string().describe('内容版本。来源更新时递增，客户端据此判断缓存是否过期。')
 }).describe('内容来源与授权。字段不全的菜谱不允许进库：\n不知道来源和授权范围，就等于不知道自己有没有权利展示它。\n')
 }).optional().describe('展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。')
-})),
+}).describe('菜单里的一道菜。\*\*一格可以有多道\*\*：早餐是主食+蛋白，午晚是主食+荤+素。\n\n一格一道的话，单道菜的热量中位数只有 318 kcal，\n按身高体重算出来的每餐目标根本够不到。\n')),
   "candidates": zod.object({
   "breakfast": zod.number().int(),
   "lunch": zod.number().int(),
   "dinner": zod.number().int()
 }).describe('硬过滤后各时段还剩多少道可选。\n这个数字是给客户端判断「菜少是因为筛得狠」而不是「接口坏了」用的。\n'),
+  "daily_target": zod.union([zod.object({
+  "calories": zod.number().describe('已取整到 50 千卡。菜谱营养是按食材表估算的，\n报一个 1783 会让人以为这个数字比实际可靠。\n'),
+  "protein_g": zod.number(),
+  "carbs_g": zod.number(),
+  "fat_g": zod.number()
+}).describe('每日营养目标。热量用 Mifflin-St Jeor 估算基础代谢，乘活动系数，\n再按目标调整（减脂 −20%、增肌 +10%）。\n\n\*\*有硬下限\*\*（女 1200、男 1500 千卡）：低于它就不是吃得少而是吃不够，\n夹住并在 notes 里说明。\n\n这是一般性的能量估算，不是治疗方案。\n'),zod.null()]).optional().describe('按身高、体重、年龄、活动量与目标算出的每日热量与碳蛋脂目标。\n\n\*\*身体数据缺任何一项就为空\*\*，此时选菜退回按营养排名打分。\n不拿默认体重顶上：编一个数会给出看起来很确定、但对这个人是错的目标。\n'),
+  "achieved": zod.object({
+  "calories": zod.number(),
+  "protein_g": zod.number(),
+  "carbs_g": zod.number(),
+  "fat_g": zod.number().nullish().describe('有任何一道菜缺脂肪数据就为空，不把缺的当 0 加进去。')
+}).describe('这份菜单每日平均实际值。').describe('这份菜单实际算出来的每日平均值，供客户端与目标对照。\n没有 daily_target 时同样返回，只是没有可比的目标。\n'),
   "notes": zod.array(zod.object({
-  "kind": zod.enum(['cook_time_relaxed', 'slot_unfilled', 'pool_repeats']).describe('- cook_time_relaxed：可选菜太少，放宽了「最长烹饪时间」。\n  \*\*过敏原与忌口永远不会被放宽\*\*，没有对应的 kind。\n- slot_unfilled：这一格实在没有可选的菜，留空了。\n- pool_repeats：可选菜不足一周的餐数，出现了重复。\n'),
+  "kind": zod.enum(['cook_time_relaxed', 'slot_unfilled', 'pool_repeats', 'energy_floored', 'energy_estimated', 'target_unreachable', 'profile_incomplete']).describe('- cook_time_relaxed：可选菜太少，放宽了「最长烹饪时间」。\n  \*\*过敏原与忌口永远不会被放宽\*\*，没有对应的 kind。\n- slot_unfilled：这一格实在没有可选的菜，留空了。\n- pool_repeats：可选菜不足一周的餐数，出现了重复。\n- energy_floored：算出来的热量低于安全下限，已按下限安排。\n- energy_estimated：性别没填，热量目标按男女中间值估算。\n- target_unreachable：可选菜凑不到热量目标，实际值与目标有明显差距。\n- profile_incomplete：身高体重年龄没填全，算不出热量目标，\n  这次按营养排名选菜。\n'),
   "message": zod.string().describe('直接展示给用户的中文说明。'),
   "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']).optional()
 })).describe('本次生成中做了什么妥协。\*\*空数组表示没有妥协\*\*。\n不把妥协说出来的话，用户看到的就是一份莫名其妙的菜单。\n')
