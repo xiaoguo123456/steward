@@ -212,7 +212,7 @@ AffectedResource:
     type:
       type: string
       description: 受影响资源类型，App 据此精确失效缓存。
-      enum: [task, event, project, note, record, tracker, task_list, capture, today, calendar, activity, assistant_thread, action_proposal, memory]
+      enum: [task, event, project, note, record, tracker, task_list, capture, today, calendar, activity, assistant_thread, action_proposal, memory, recipe, meal_plan, diet_profile]
     id:
       type: string
       nullable: true

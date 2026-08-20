@@ -6,6 +6,7 @@ package dbgen
 
 import (
 	"context"
+	"time"
 )
 
 type Querier interface {
@@ -49,7 +50,9 @@ type Querier interface {
 	CreateCapturePart(ctx context.Context, arg CreateCapturePartParams) (CapturePart, error)
 	CreateCaptureQuestion(ctx context.Context, arg CreateCaptureQuestionParams) (CaptureQuestion, error)
 	CreateCaptureRelationCandidate(ctx context.Context, arg CreateCaptureRelationCandidateParams) error
+	CreateCookLog(ctx context.Context, arg CreateCookLogParams) error
 	CreateEvent(ctx context.Context, arg CreateEventParams) (Event, error)
+	CreateMealPlanEntry(ctx context.Context, arg CreateMealPlanEntryParams) error
 	// 媒体资产。二进制内容在对象存储，这里只保存受控引用与元数据。
 	CreateMediaAsset(ctx context.Context, arg CreateMediaAssetParams) (MediaAsset, error)
 	// 长期记忆。只有用户确认过的条目才是 active，Context Builder 只读 active。
@@ -81,6 +84,7 @@ type Querier interface {
 	// 而这点垃圾量不值得为它引入一条绕过 RLS 的路径。
 	DeleteAbandonedThreads(ctx context.Context) error
 	DeleteExpiredIdempotencyRecords(ctx context.Context) error
+	DeleteMealPlanEntries(ctx context.Context, mealPlanID string) error
 	// 同步标记删除，查询立即不可见；派生数据由清理任务处理。
 	DeleteMemory(ctx context.Context, id string) (MemoryItem, error)
 	DeleteRelearnBlock(ctx context.Context, id string) (MemoryRelearnBlock, error)
@@ -90,6 +94,8 @@ type Querier interface {
 	EnsureBuiltinTracker(ctx context.Context, arg EnsureBuiltinTrackerParams) (Tracker, error)
 	EnsureUserPreferences(ctx context.Context, userID string) (UserPreference, error)
 	ExpireStaleProposals(ctx context.Context) error
+	// 幂等：重复收藏同一道菜不产生第二条记录。
+	FavoriteRecipe(ctx context.Context, arg FavoriteRecipeParams) error
 	// 同一用户上传相同内容时复用已有资产，避免重复占用存储。
 	FindUploadedMediaByHash(ctx context.Context, contentHash *string) (MediaAsset, error)
 	FinishTurn(ctx context.Context, arg FinishTurnParams) (AssistantTurn, error)
@@ -100,12 +106,18 @@ type Querier interface {
 	GetCaptureCandidate(ctx context.Context, arg GetCaptureCandidateParams) (CaptureCandidate, error)
 	GetCaptureQuestion(ctx context.Context, id string) (CaptureQuestion, error)
 	GetDefaultTaskList(ctx context.Context) (TaskList, error)
+	// ---- 用户自己的食谱数据 ----
+	//
+	// 下面这些表都带 user_id 并受 RLS 约束，查询里不需要也不应该再写 user_id 条件：
+	// 归属由策略保证，手写条件反而会让人以为没有策略也安全。
+	GetDietProfile(ctx context.Context, userID string) (RecipeDietProfile, error)
 	GetEvent(ctx context.Context, id string) (Event, error)
 	GetIdempotencyRecord(ctx context.Context, arg GetIdempotencyRecordParams) (IdempotencyKey, error)
 	// 面板重新打开时用：最近一次说过话的对话。
 	// 调用方据此决定是续上这一次，还是开一个新的。
 	GetLatestThread(ctx context.Context) (AssistantThread, error)
 	GetLatestVerificationCode(ctx context.Context, arg GetLatestVerificationCodeParams) (AuthVerificationCode, error)
+	GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (MealPlan, error)
 	GetMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	GetMemory(ctx context.Context, id string) (MemoryItem, error)
 	GetNote(ctx context.Context, id string) (Note, error)
@@ -143,10 +155,16 @@ type Querier interface {
 	ListCaptureQuestionsForCapture(ctx context.Context, arg ListCaptureQuestionsForCaptureParams) ([]CaptureQuestion, error)
 	ListCaptureRelationCandidates(ctx context.Context, arg ListCaptureRelationCandidatesParams) ([]CaptureRelationCandidate, error)
 	ListCompletedTasksBetween(ctx context.Context, arg ListCompletedTasksBetweenParams) ([]ListCompletedTasksBetweenRow, error)
+	ListCookedRecipeIDs(ctx context.Context) ([]string, error)
 	// Event 查询。yearly 重复的重要日在应用层按查询范围投影，数据库只保存原始定义。
 	ListEvents(ctx context.Context, arg ListEventsParams) ([]Event, error)
 	// 日历与 Today 用：只返回定时与全天事件的原始行，投影在应用层完成。
 	ListEventsInRange(ctx context.Context, arg ListEventsInRangeParams) ([]Event, error)
+	ListFavoriteRecipeIDs(ctx context.Context) ([]string, error)
+	ListFavoriteRecipes(ctx context.Context, rowLimit int32) ([]Recipe, error)
+	// 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
+	// 按用餐顺序而不是字母序：字母序会排成早餐、晚餐、午餐。
+	ListMealPlanEntries(ctx context.Context, mealPlanID string) ([]ListMealPlanEntriesRow, error)
 	ListMemories(ctx context.Context, arg ListMemoriesParams) ([]MemoryItem, error)
 	ListMemoryEvidence(ctx context.Context, memoryID string) ([]MemoryEvidence, error)
 	ListMemoryRevisions(ctx context.Context, memoryID string) ([]MemoryRevision, error)
@@ -245,6 +263,7 @@ type Querier interface {
 	// 记录被使用的时间用于排序。被模型引用不提高事实可信度。
 	TouchMemoryUsed(ctx context.Context, ids []string) error
 	TouchThread(ctx context.Context, id string) error
+	UnfavoriteRecipe(ctx context.Context, recipeID string) error
 	UpdateAiSettings(ctx context.Context, arg UpdateAiSettingsParams) (UserAiSetting, error)
 	UpdateCapturePartResult(ctx context.Context, arg UpdateCapturePartResultParams) error
 	UpdateCaptureStatus(ctx context.Context, arg UpdateCaptureStatusParams) (Capture, error)
@@ -263,6 +282,14 @@ type Querier interface {
 	UpdateTurnDraft(ctx context.Context, arg UpdateTurnDraftParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) (UserPreference, error)
+	// 第一次修改时顺带建行：客户端不需要先「创建档案」再改。
+	//
+	// INSERT 分支必须带上全部字段。只写 user_id 的话，第一次填问卷不会冲突，
+	// DO UPDATE 分支根本不执行，用户填的东西会被默认值悄悄吃掉。
+	// clear_* 在插入时没有意义：没有旧值可清。
+	UpsertDietProfile(ctx context.Context, arg UpsertDietProfileParams) (RecipeDietProfile, error)
+	// 采用菜单是整周覆盖，因此这里同时负责建与更新，并推进版本号。
+	UpsertMealPlan(ctx context.Context, arg UpsertMealPlanParams) (MealPlan, error)
 	// 只给 seed 用：菜谱由平台提供，没有面向用户的写接口。
 	UpsertRecipe(ctx context.Context, arg UpsertRecipeParams) error
 	// Review 快照。确定性指标始终可用，AI 叙述是可选增强。

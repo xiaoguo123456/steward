@@ -14,28 +14,12 @@
  * OpenAPI spec version: 1.0.0
  */
 
-/**
- * 受影响资源类型，App 据此精确失效缓存。
- */
-export type AffectedResourceType = typeof AffectedResourceType[keyof typeof AffectedResourceType];
+export type DietActivityLevel = typeof DietActivityLevel[keyof typeof DietActivityLevel];
 
 
-export const AffectedResourceType = {
-  task: 'task',
-  event: 'event',
-  project: 'project',
-  note: 'note',
-  record: 'record',
-  tracker: 'tracker',
-  task_list: 'task_list',
-  capture: 'capture',
-  today: 'today',
-  calendar: 'calendar',
-  activity: 'activity',
-  assistant_thread: 'assistant_thread',
-  action_proposal: 'action_proposal',
-  memory: 'memory',
-  recipe: 'recipe',
-  meal_plan: 'meal_plan',
-  diet_profile: 'diet_profile',
+export const DietActivityLevel = {
+  sedentary: 'sedentary',
+  light: 'light',
+  moderate: 'moderate',
+  active: 'active',
 } as const;

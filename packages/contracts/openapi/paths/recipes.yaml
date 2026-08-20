@@ -82,3 +82,254 @@ Item:
         $ref: '../components/responses.yaml#/NotFound'
       '500':
         $ref: '../components/responses.yaml#/InternalError'
+
+DietProfile:
+  get:
+    operationId: getDietProfile
+    summary: 读取饮食档案
+    description: |
+      从未填写过问卷时返回一份默认档案，completed 为 false。
+      不返回 404：客户端要的是“现在按什么口径推荐”，而不是“有没有这行记录”。
+    tags: [recipes]
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/DietProfileResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  patch:
+    operationId: updateDietProfile
+    summary: 修改饮食档案
+    description: 身体数据只允许用户自己填写与修改，不接受任何推断结果。
+    tags: [recipes]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/recipes.yaml#/UpdateDietProfileRequest'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/DietProfileResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Favorites:
+  get:
+    operationId: listFavoriteRecipes
+    summary: 查询收藏的菜谱
+    tags: [recipes]
+    parameters:
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/RecipesResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Favorite:
+  put:
+    operationId: favoriteRecipe
+    summary: 收藏一道菜
+    description: 幂等：重复收藏同一道菜不会产生第二条记录。
+    tags: [recipes]
+    parameters:
+      - $ref: '../components/parameters.yaml#/RecipeId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: unfavoriteRecipe
+    summary: 取消收藏
+    tags: [recipes]
+    parameters:
+      - $ref: '../components/parameters.yaml#/RecipeId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Cooked:
+  post:
+    operationId: markRecipeCooked
+    summary: 标记做过这道菜
+    description: |
+      只记“做过”这件事，不等于记录实际摄入——后者是 Record，走记录项接口。
+      同一道菜可以做很多次，每次都留一条。
+    tags: [recipes]
+    parameters:
+      - $ref: '../components/parameters.yaml#/RecipeId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+MealPlan:
+  get:
+    operationId: getMealPlan
+    summary: 读取某一周已确认的菜单
+    description: |
+      不传 week_start 时返回本周。本周从哪天开始由服务端按用户偏好算，
+      客户端不自行推导。该周没有确认过菜单时 entries 为空数组。
+    tags: [recipes]
+    parameters:
+      - name: week_start
+        in: query
+        required: false
+        description: 该周的第一天。不传时服务端按用户偏好计算本周。
+        schema:
+          type: string
+          format: date
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/MealPlanResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  put:
+    operationId: confirmMealPlan
+    summary: 采用本周菜单
+    description: |
+      整周一次性提交并覆盖该周的已确认菜单。
+      AI 生成的预览必须先经用户确认才能走到这里。
+    tags: [recipes]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/recipes.yaml#/ConfirmMealPlanRequest'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/MealPlanResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+ShoppingDraft:
+  get:
+    operationId: getMealPlanShoppingDraft
+    summary: 按已确认菜单合并出待采购食材
+    description: |
+      只读：合并重复食材与份量并按品类分组，不创建任何东西。
+      用户在此基础上排除家中已有食材，再调用创建接口。
+    tags: [recipes]
+    parameters:
+      - name: week_start
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/recipes.yaml#/ShoppingDraftResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createShoppingListFromMealPlan
+    summary: 用选中的食材创建购物清单
+    description: |
+      复用 TaskList / Task，不创建与之同义的食材待办类型。
+      每项 Task 记录来源菜谱，用户在清单里看得到这项是为哪道菜买的。
+    tags: [recipes]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/recipes.yaml#/CreateShoppingListRequest'
+    responses:
+      '201':
+        description: 创建成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/TaskListResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

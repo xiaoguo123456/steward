@@ -18,13 +18,21 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 )
 
-// Service 是菜谱的只读服务。
+// Service 拥有菜谱内容与用户自己的食谱数据。
+//
+// 菜谱本身只读且不分用户；饮食档案、收藏、做过与本周菜单都属于某个人，
+// 见 userdata.go。
 type Service struct {
-	db *database.DB
+	db      *database.DB
+	users   UserProfile
+	lists   ListCommands
+	objects TaskCommands
 }
 
 // New 构造 Service。
-func New(db *database.DB) *Service { return &Service{db: db} }
+func New(db *database.DB, users UserProfile, listCmds ListCommands, taskCmds TaskCommands) *Service {
+	return &Service{db: db, users: users, lists: listCmds, objects: taskCmds}
+}
 
 // Filter 是菜谱查询条件。
 type Filter struct {

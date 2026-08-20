@@ -159,3 +159,10 @@ BatchId:
   required: true
   schema:
     type: string
+
+RecipeId:
+  name: recipe_id
+  in: path
+  required: true
+  schema:
+    type: string

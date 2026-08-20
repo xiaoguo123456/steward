@@ -103,13 +103,29 @@ func (s *Service) List(ctx context.Context, userID string, includeArchived bool)
 
 // Create 新建清单。
 func (s *Service) Create(ctx context.Context, userID string, in CreateInput) (dbgen.TaskList, error) {
+	var out dbgen.TaskList
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		created, err := s.CreateInTx(ctx, q, userID, in)
+		out = created
+		return err
+	})
+	return out, err
+}
+
+// CreateInTx 在调用方事务内新建清单。
+//
+// 「从食谱生成购物清单」要在同一个事务里建清单与它的全部条目：
+// 建了清单却没建成条目，用户会看到一个空清单，不知道该重来还是接着填。
+func (s *Service) CreateInTx(ctx context.Context, q *dbgen.Queries, userID string,
+	in CreateInput) (dbgen.TaskList, error) {
+
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return dbgen.TaskList{}, apperr.Validation(apperr.Field("name", "清单名称不能为空。"))
 	}
 
 	var out dbgen.TaskList
-	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+	err := func() error {
 		position := int32(0)
 		if in.Position != nil {
 			position = int32(*in.Position)
@@ -139,7 +155,7 @@ func (s *Service) Create(ctx context.Context, userID string, in CreateInput) (db
 		}
 		out = created
 		return nil
-	})
+	}()
 	return out, err
 }
 

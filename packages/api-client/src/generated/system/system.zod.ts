@@ -129,7 +129,7 @@ export const UndoActivityBatchResponse = zod.object({
   "created_at": zod.string().datetime({"offset":true})
 }),
   "affected_resources": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 }))
 }),

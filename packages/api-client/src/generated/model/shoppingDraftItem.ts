@@ -13,29 +13,20 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { RecipeIngredientGroup } from './recipeIngredientGroup';
 
 /**
- * 受影响资源类型，App 据此精确失效缓存。
+ * 合并后的一项食材。合并与分类由服务端做，客户端不重算。
  */
-export type AffectedResourceType = typeof AffectedResourceType[keyof typeof AffectedResourceType];
-
-
-export const AffectedResourceType = {
-  task: 'task',
-  event: 'event',
-  project: 'project',
-  note: 'note',
-  record: 'record',
-  tracker: 'tracker',
-  task_list: 'task_list',
-  capture: 'capture',
-  today: 'today',
-  calendar: 'calendar',
-  activity: 'activity',
-  assistant_thread: 'assistant_thread',
-  action_proposal: 'action_proposal',
-  memory: 'memory',
-  recipe: 'recipe',
-  meal_plan: 'meal_plan',
-  diet_profile: 'diet_profile',
-} as const;
+export interface ShoppingDraftItem {
+  name: string;
+  group: RecipeIngredientGroup;
+  /**
+     * 合并后的份量描述，例如“鸡蛋 6 个”。
+     * 单位不一致时按原样并列，不硬凑成一个数——
+     * “2 个 + 少许”算不出一个准确总量，编一个反而误导。
+     */
+  quantity_text: string;
+  /** 这项食材来自哪几道菜，客户端据此显示来源。 */
+  recipe_ids: string[];
+}

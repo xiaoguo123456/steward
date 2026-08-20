@@ -7,6 +7,7 @@ package dbgen
 
 import (
 	"context"
+	"time"
 )
 
 const countRecipes = `-- name: CountRecipes :one
@@ -18,6 +19,132 @@ func (q *Queries) CountRecipes(ctx context.Context) (int32, error) {
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const createCookLog = `-- name: CreateCookLog :exec
+INSERT INTO recipe_cook_logs (id, user_id, recipe_id, cooked_at)
+VALUES ($1, $2, $3, $4)
+`
+
+type CreateCookLogParams struct {
+	ID       string
+	UserID   string
+	RecipeID string
+	CookedAt time.Time
+}
+
+func (q *Queries) CreateCookLog(ctx context.Context, arg CreateCookLogParams) error {
+	_, err := q.db.Exec(ctx, createCookLog,
+		arg.ID,
+		arg.UserID,
+		arg.RecipeID,
+		arg.CookedAt,
+	)
+	return err
+}
+
+const createMealPlanEntry = `-- name: CreateMealPlanEntry :exec
+INSERT INTO meal_plan_entries (id, user_id, meal_plan_id, entry_date, meal_slot, recipe_id)
+VALUES ($1, $2, $3,
+        $4::date, $5, $6)
+`
+
+type CreateMealPlanEntryParams struct {
+	ID         string
+	UserID     string
+	MealPlanID string
+	EntryDate  time.Time
+	MealSlot   string
+	RecipeID   string
+}
+
+func (q *Queries) CreateMealPlanEntry(ctx context.Context, arg CreateMealPlanEntryParams) error {
+	_, err := q.db.Exec(ctx, createMealPlanEntry,
+		arg.ID,
+		arg.UserID,
+		arg.MealPlanID,
+		arg.EntryDate,
+		arg.MealSlot,
+		arg.RecipeID,
+	)
+	return err
+}
+
+const deleteMealPlanEntries = `-- name: DeleteMealPlanEntries :exec
+DELETE FROM meal_plan_entries WHERE meal_plan_id = $1
+`
+
+func (q *Queries) DeleteMealPlanEntries(ctx context.Context, mealPlanID string) error {
+	_, err := q.db.Exec(ctx, deleteMealPlanEntries, mealPlanID)
+	return err
+}
+
+const favoriteRecipe = `-- name: FavoriteRecipe :exec
+INSERT INTO recipe_favorites (id, user_id, recipe_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, recipe_id) DO NOTHING
+`
+
+type FavoriteRecipeParams struct {
+	ID       string
+	UserID   string
+	RecipeID string
+}
+
+// 幂等：重复收藏同一道菜不产生第二条记录。
+func (q *Queries) FavoriteRecipe(ctx context.Context, arg FavoriteRecipeParams) error {
+	_, err := q.db.Exec(ctx, favoriteRecipe, arg.ID, arg.UserID, arg.RecipeID)
+	return err
+}
+
+const getDietProfile = `-- name: GetDietProfile :one
+
+SELECT user_id, goal, age, sex, height_cm, weight_kg, target_weight_kg, activity_level, allergens, dislikes, servings, max_cook_minutes, completed, created_at, updated_at FROM recipe_diet_profiles WHERE user_id = $1
+`
+
+// ---- 用户自己的食谱数据 ----
+//
+// 下面这些表都带 user_id 并受 RLS 约束，查询里不需要也不应该再写 user_id 条件：
+// 归属由策略保证，手写条件反而会让人以为没有策略也安全。
+func (q *Queries) GetDietProfile(ctx context.Context, userID string) (RecipeDietProfile, error) {
+	row := q.db.QueryRow(ctx, getDietProfile, userID)
+	var i RecipeDietProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.Goal,
+		&i.Age,
+		&i.Sex,
+		&i.HeightCm,
+		&i.WeightKg,
+		&i.TargetWeightKg,
+		&i.ActivityLevel,
+		&i.Allergens,
+		&i.Dislikes,
+		&i.Servings,
+		&i.MaxCookMinutes,
+		&i.Completed,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMealPlanByWeek = `-- name: GetMealPlanByWeek :one
+SELECT id, user_id, week_start, version, created_at, updated_at FROM meal_plans WHERE week_start = $1::date
+`
+
+func (q *Queries) GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (MealPlan, error) {
+	row := q.db.QueryRow(ctx, getMealPlanByWeek, weekStart)
+	var i MealPlan
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.WeekStart,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getRecipe = `-- name: GetRecipe :one
@@ -57,6 +184,179 @@ func (q *Queries) GetRecipe(ctx context.Context, id string) (Recipe, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listCookedRecipeIDs = `-- name: ListCookedRecipeIDs :many
+SELECT DISTINCT recipe_id FROM recipe_cook_logs
+`
+
+func (q *Queries) ListCookedRecipeIDs(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listCookedRecipeIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var recipe_id string
+		if err := rows.Scan(&recipe_id); err != nil {
+			return nil, err
+		}
+		items = append(items, recipe_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFavoriteRecipeIDs = `-- name: ListFavoriteRecipeIDs :many
+SELECT recipe_id FROM recipe_favorites ORDER BY created_at DESC
+`
+
+func (q *Queries) ListFavoriteRecipeIDs(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listFavoriteRecipeIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var recipe_id string
+		if err := rows.Scan(&recipe_id); err != nil {
+			return nil, err
+		}
+		items = append(items, recipe_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFavoriteRecipes = `-- name: ListFavoriteRecipes :many
+SELECT r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at FROM recipe_favorites f
+JOIN recipes r ON r.id = f.recipe_id
+ORDER BY f.created_at DESC
+LIMIT $1
+`
+
+func (q *Queries) ListFavoriteRecipes(ctx context.Context, rowLimit int32) ([]Recipe, error) {
+	rows, err := q.db.Query(ctx, listFavoriteRecipes, rowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Recipe{}
+	for rows.Next() {
+		var i Recipe
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Summary,
+			&i.ImageUrl,
+			&i.Servings,
+			&i.DurationMinutes,
+			&i.Difficulty,
+			&i.Calories,
+			&i.ProteinG,
+			&i.CarbsG,
+			&i.FiberG,
+			&i.MealSlots,
+			&i.Categories,
+			&i.Goals,
+			&i.Tags,
+			&i.Allergens,
+			&i.Ingredients,
+			&i.Steps,
+			&i.SourceName,
+			&i.SourceAuthor,
+			&i.SourceUrl,
+			&i.License,
+			&i.LicenseUrl,
+			&i.ImageCredit,
+			&i.ContentVersion,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMealPlanEntries = `-- name: ListMealPlanEntries :many
+SELECT
+    e.entry_date,
+    e.meal_slot,
+    r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at
+FROM meal_plan_entries e
+JOIN recipes r ON r.id = e.recipe_id
+WHERE e.meal_plan_id = $1
+ORDER BY e.entry_date,
+    CASE e.meal_slot WHEN 'breakfast' THEN 0 WHEN 'lunch' THEN 1 ELSE 2 END
+`
+
+type ListMealPlanEntriesRow struct {
+	EntryDate time.Time
+	MealSlot  string
+	Recipe    Recipe
+}
+
+// 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
+// 按用餐顺序而不是字母序：字母序会排成早餐、晚餐、午餐。
+func (q *Queries) ListMealPlanEntries(ctx context.Context, mealPlanID string) ([]ListMealPlanEntriesRow, error) {
+	rows, err := q.db.Query(ctx, listMealPlanEntries, mealPlanID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMealPlanEntriesRow{}
+	for rows.Next() {
+		var i ListMealPlanEntriesRow
+		if err := rows.Scan(
+			&i.EntryDate,
+			&i.MealSlot,
+			&i.Recipe.ID,
+			&i.Recipe.Title,
+			&i.Recipe.Summary,
+			&i.Recipe.ImageUrl,
+			&i.Recipe.Servings,
+			&i.Recipe.DurationMinutes,
+			&i.Recipe.Difficulty,
+			&i.Recipe.Calories,
+			&i.Recipe.ProteinG,
+			&i.Recipe.CarbsG,
+			&i.Recipe.FiberG,
+			&i.Recipe.MealSlots,
+			&i.Recipe.Categories,
+			&i.Recipe.Goals,
+			&i.Recipe.Tags,
+			&i.Recipe.Allergens,
+			&i.Recipe.Ingredients,
+			&i.Recipe.Steps,
+			&i.Recipe.SourceName,
+			&i.Recipe.SourceAuthor,
+			&i.Recipe.SourceUrl,
+			&i.Recipe.License,
+			&i.Recipe.LicenseUrl,
+			&i.Recipe.ImageCredit,
+			&i.Recipe.ContentVersion,
+			&i.Recipe.CreatedAt,
+			&i.Recipe.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRecipes = `-- name: ListRecipes :many
@@ -139,6 +439,154 @@ func (q *Queries) ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Rec
 		return nil, err
 	}
 	return items, nil
+}
+
+const unfavoriteRecipe = `-- name: UnfavoriteRecipe :exec
+DELETE FROM recipe_favorites WHERE recipe_id = $1
+`
+
+func (q *Queries) UnfavoriteRecipe(ctx context.Context, recipeID string) error {
+	_, err := q.db.Exec(ctx, unfavoriteRecipe, recipeID)
+	return err
+}
+
+const upsertDietProfile = `-- name: UpsertDietProfile :one
+INSERT INTO recipe_diet_profiles (
+    user_id, goal, sex, activity_level,
+    age, height_cm, weight_kg, target_weight_kg, max_cook_minutes,
+    allergens, dislikes, servings, completed
+) VALUES (
+    $1,
+    coalesce($2, 'balanced'),
+    coalesce($3, 'unspecified'),
+    coalesce($4, 'moderate'),
+    $5, $6, $7,
+    $8, $9,
+    coalesce($10::text[], '{}'),
+    coalesce($11::text[], '{}'),
+    coalesce($12, 2),
+    coalesce($13, false)
+)
+ON CONFLICT (user_id) DO UPDATE SET
+    goal           = coalesce($2, recipe_diet_profiles.goal),
+    sex            = coalesce($3, recipe_diet_profiles.sex),
+    activity_level = coalesce($4, recipe_diet_profiles.activity_level),
+    age = CASE WHEN $14::bool THEN NULL
+               ELSE coalesce($5, recipe_diet_profiles.age) END,
+    height_cm = CASE WHEN $15::bool THEN NULL
+                     ELSE coalesce($6, recipe_diet_profiles.height_cm) END,
+    weight_kg = CASE WHEN $16::bool THEN NULL
+                     ELSE coalesce($7, recipe_diet_profiles.weight_kg) END,
+    target_weight_kg = CASE WHEN $17::bool THEN NULL
+                            ELSE coalesce($8,
+                                          recipe_diet_profiles.target_weight_kg) END,
+    max_cook_minutes = CASE WHEN $18::bool THEN NULL
+                            ELSE coalesce($9,
+                                          recipe_diet_profiles.max_cook_minutes) END,
+    allergens  = coalesce($10::text[], recipe_diet_profiles.allergens),
+    dislikes   = coalesce($11::text[], recipe_diet_profiles.dislikes),
+    servings   = coalesce($12, recipe_diet_profiles.servings),
+    completed  = coalesce($13, recipe_diet_profiles.completed),
+    updated_at = now()
+RETURNING user_id, goal, age, sex, height_cm, weight_kg, target_weight_kg, activity_level, allergens, dislikes, servings, max_cook_minutes, completed, created_at, updated_at
+`
+
+type UpsertDietProfileParams struct {
+	UserID            string
+	Goal              interface{}
+	Sex               interface{}
+	ActivityLevel     interface{}
+	Age               *int32
+	HeightCm          *float64
+	WeightKg          *float64
+	TargetWeightKg    *float64
+	MaxCookMinutes    *int32
+	Allergens         []string
+	Dislikes          []string
+	Servings          interface{}
+	Completed         interface{}
+	ClearAge          bool
+	ClearHeight       bool
+	ClearWeight       bool
+	ClearTargetWeight bool
+	ClearCookMinutes  bool
+}
+
+// 第一次修改时顺带建行：客户端不需要先「创建档案」再改。
+//
+// INSERT 分支必须带上全部字段。只写 user_id 的话，第一次填问卷不会冲突，
+// DO UPDATE 分支根本不执行，用户填的东西会被默认值悄悄吃掉。
+// clear_* 在插入时没有意义：没有旧值可清。
+func (q *Queries) UpsertDietProfile(ctx context.Context, arg UpsertDietProfileParams) (RecipeDietProfile, error) {
+	row := q.db.QueryRow(ctx, upsertDietProfile,
+		arg.UserID,
+		arg.Goal,
+		arg.Sex,
+		arg.ActivityLevel,
+		arg.Age,
+		arg.HeightCm,
+		arg.WeightKg,
+		arg.TargetWeightKg,
+		arg.MaxCookMinutes,
+		arg.Allergens,
+		arg.Dislikes,
+		arg.Servings,
+		arg.Completed,
+		arg.ClearAge,
+		arg.ClearHeight,
+		arg.ClearWeight,
+		arg.ClearTargetWeight,
+		arg.ClearCookMinutes,
+	)
+	var i RecipeDietProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.Goal,
+		&i.Age,
+		&i.Sex,
+		&i.HeightCm,
+		&i.WeightKg,
+		&i.TargetWeightKg,
+		&i.ActivityLevel,
+		&i.Allergens,
+		&i.Dislikes,
+		&i.Servings,
+		&i.MaxCookMinutes,
+		&i.Completed,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertMealPlan = `-- name: UpsertMealPlan :one
+INSERT INTO meal_plans (id, user_id, week_start)
+VALUES ($1, $2, $3::date)
+ON CONFLICT (user_id, week_start) DO UPDATE SET
+    version    = meal_plans.version + 1,
+    updated_at = now()
+RETURNING id, user_id, week_start, version, created_at, updated_at
+`
+
+type UpsertMealPlanParams struct {
+	ID        string
+	UserID    string
+	WeekStart time.Time
+}
+
+// 采用菜单是整周覆盖，因此这里同时负责建与更新，并推进版本号。
+func (q *Queries) UpsertMealPlan(ctx context.Context, arg UpsertMealPlanParams) (MealPlan, error) {
+	row := q.db.QueryRow(ctx, upsertMealPlan, arg.ID, arg.UserID, arg.WeekStart)
+	var i MealPlan
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.WeekStart,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const upsertRecipe = `-- name: UpsertRecipe :exec

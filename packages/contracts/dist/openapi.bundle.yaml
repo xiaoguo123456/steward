@@ -2239,6 +2239,261 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/recipes/{recipe_id}/favorite:
+    put:
+      operationId: favoriteRecipe
+      summary: 收藏一道菜
+      description: 幂等：重复收藏同一道菜不会产生第二条记录。
+      tags:
+        - recipes
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: unfavoriteRecipe
+      summary: 取消收藏
+      tags:
+        - recipes
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/recipes/{recipe_id}/cooked:
+    post:
+      operationId: markRecipeCooked
+      summary: 标记做过这道菜
+      description: |
+        只记“做过”这件事，不等于记录实际摄入——后者是 Record，走记录项接口。
+        同一道菜可以做很多次，每次都留一条。
+      tags:
+        - recipes
+      parameters:
+        - $ref: '#/components/parameters/RecipeId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/recipe-favorites:
+    get:
+      operationId: listFavoriteRecipes
+      summary: 查询收藏的菜谱
+      tags:
+        - recipes
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/diet-profile:
+    get:
+      operationId: getDietProfile
+      summary: 读取饮食档案
+      description: |
+        从未填写过问卷时返回一份默认档案，completed 为 false。
+        不返回 404：客户端要的是“现在按什么口径推荐”，而不是“有没有这行记录”。
+      tags:
+        - recipes
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DietProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateDietProfile
+      summary: 修改饮食档案
+      description: 身体数据只允许用户自己填写与修改，不接受任何推断结果。
+      tags:
+        - recipes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDietProfileRequest'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DietProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/meal-plans:
+    get:
+      operationId: getMealPlan
+      summary: 读取某一周已确认的菜单
+      description: |
+        不传 week_start 时返回本周。本周从哪天开始由服务端按用户偏好算，
+        客户端不自行推导。该周没有确认过菜单时 entries 为空数组。
+      tags:
+        - recipes
+      parameters:
+        - name: week_start
+          in: query
+          required: false
+          description: 该周的第一天。不传时服务端按用户偏好计算本周。
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlanResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: confirmMealPlan
+      summary: 采用本周菜单
+      description: |
+        整周一次性提交并覆盖该周的已确认菜单。
+        AI 生成的预览必须先经用户确认才能走到这里。
+      tags:
+        - recipes
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmMealPlanRequest'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MealPlanResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/meal-plans/shopping-draft:
+    get:
+      operationId: getMealPlanShoppingDraft
+      summary: 按已确认菜单合并出待采购食材
+      description: |
+        只读：合并重复食材与份量并按品类分组，不创建任何东西。
+        用户在此基础上排除家中已有食材，再调用创建接口。
+      tags:
+        - recipes
+      parameters:
+        - name: week_start
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingDraftResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createShoppingListFromMealPlan
+      summary: 用选中的食材创建购物清单
+      description: |
+        复用 TaskList / Task，不创建与之同义的食材待办类型。
+        每项 Task 记录来源菜谱，用户在清单里看得到这项是为哪道菜买的。
+      tags:
+        - recipes
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShoppingListRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/important-dates:
     get:
       operationId: getImportantDates
@@ -2995,6 +3250,9 @@ components:
             - assistant_thread
             - action_proposal
             - memory
+            - recipe
+            - meal_plan
+            - diet_profile
         id:
           type: string
           nullable: true
@@ -6390,6 +6648,371 @@ components:
           $ref: '#/components/schemas/Recipe'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
+    DietGoal:
+      type: string
+      description: |
+        与 RecipeGoal 取值一致：用户的目标要能直接拿去筛菜谱。
+        steady_sugar 只用于推荐少糖、全谷物、高纤维的日常菜谱，
+        不提供疾病诊断、治疗承诺或用药建议。
+      enum:
+        - balanced
+        - fat_loss
+        - muscle_gain
+        - steady_sugar
+    DietSex:
+      type: string
+      description: 仅用于能量估算。用户可以不填。
+      enum:
+        - female
+        - male
+        - unspecified
+    DietActivityLevel:
+      type: string
+      enum:
+        - sedentary
+        - light
+        - moderate
+        - active
+    DietProfile:
+      type: object
+      additionalProperties: false
+      description: |
+        饮食档案。**身体数据属于高敏信息**：只允许用户自己填写与修改，
+        不接受任何推断，也不得写入日志、埋点、Prompt 快照或测试 Fixture。
+
+        allergens 与 dislikes 是确定性硬过滤条件，排序与推荐都不得覆盖它们。
+      required:
+        - goal
+        - allergens
+        - dislikes
+        - servings
+        - updated_at
+      properties:
+        goal:
+          $ref: '#/components/schemas/DietGoal'
+        age:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 120
+        sex:
+          $ref: '#/components/schemas/DietSex'
+        height_cm:
+          type: number
+          format: double
+          nullable: true
+          minimum: 50
+          maximum: 260
+        weight_kg:
+          type: number
+          format: double
+          nullable: true
+          minimum: 20
+          maximum: 400
+        target_weight_kg:
+          type: number
+          format: double
+          nullable: true
+          minimum: 20
+          maximum: 400
+        activity_level:
+          $ref: '#/components/schemas/DietActivityLevel'
+        allergens:
+          type: array
+          description: 过敏原。命中即从推荐中剔除，不做降权处理。
+          items:
+            type: string
+        dislikes:
+          type: array
+          description: 忌口。与过敏原同样是硬过滤，只是后果不同。
+          items:
+            type: string
+        servings:
+          type: integer
+          description: 常规用餐人数，用于换算食材份量。
+          minimum: 1
+          maximum: 20
+        max_cook_minutes:
+          type: integer
+          nullable: true
+          minimum: 1
+        completed:
+          type: boolean
+          description: 是否完成过问卷。false 时客户端引导填写，但不阻止浏览菜谱。
+        updated_at:
+          type: string
+          format: date-time
+    DietProfileResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/DietProfile'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateDietProfileRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        只提交需要修改的字段；不传表示保持原值。
+        清空一个可空字段必须把字段名放进 clear 数组，
+        因为生成的 Go 类型无法区分“不传”与“传 null”。
+      properties:
+        clear:
+          type: array
+          items:
+            type: string
+            enum:
+              - age
+              - height_cm
+              - weight_kg
+              - target_weight_kg
+              - max_cook_minutes
+        goal:
+          $ref: '#/components/schemas/DietGoal'
+        age:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 120
+        sex:
+          $ref: '#/components/schemas/DietSex'
+        height_cm:
+          type: number
+          format: double
+          nullable: true
+          minimum: 50
+          maximum: 260
+        weight_kg:
+          type: number
+          format: double
+          nullable: true
+          minimum: 20
+          maximum: 400
+        target_weight_kg:
+          type: number
+          format: double
+          nullable: true
+          minimum: 20
+          maximum: 400
+        activity_level:
+          $ref: '#/components/schemas/DietActivityLevel'
+        allergens:
+          type: array
+          items:
+            type: string
+        dislikes:
+          type: array
+          items:
+            type: string
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 20
+        max_cook_minutes:
+          type: integer
+          nullable: true
+          minimum: 1
+        completed:
+          type: boolean
+    MealPlanEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - meal_slot
+        - recipe_id
+      properties:
+        date:
+          type: string
+          format: date
+          description: 该餐所在日期。用真实日期而不是“周几”，跨周与跨时区才不会含糊。
+        meal_slot:
+          $ref: '#/components/schemas/RecipeMealSlot'
+        recipe_id:
+          type: string
+        recipe:
+          description: 展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。
+          allOf:
+            - $ref: '#/components/schemas/Recipe'
+    MealPlan:
+      type: object
+      additionalProperties: false
+      description: |
+        已确认的本周菜单。
+
+        AI 生成的预览不在这里：规格 8.2.2 要求预览只是预览，
+        用户点过“采用本周菜单”才算数，所以草稿留在客户端，不落库。
+      required:
+        - id
+        - week_start
+        - entries
+        - planned_nutrition
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: mpl_01J8Z3
+        week_start:
+          type: string
+          format: date
+          description: |
+            本周第一天。由服务端按用户的 week_start 偏好计算，
+            客户端不自行推导——周一还是周日开始是用户设置。
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MealPlanEntry'
+        planned_nutrition:
+          description: |
+            整周的**计划**摄入估算，由服务端按菜谱营养求和。
+            它和用户实际记录的摄入是两回事，客户端不得混在一起展示。
+          allOf:
+            - $ref: '#/components/schemas/RecipeNutrition'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    MealPlanResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MealPlan'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    MealPlanEntryInput:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - meal_slot
+        - recipe_id
+      properties:
+        date:
+          type: string
+          format: date
+        meal_slot:
+          $ref: '#/components/schemas/RecipeMealSlot'
+        recipe_id:
+          type: string
+    ConfirmMealPlanRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        采用一份菜单。整周一次性提交：菜单是一个整体，
+        逐格增量提交会让“这周到底是哪一版”说不清楚。
+      required:
+        - week_start
+        - entries
+      properties:
+        week_start:
+          type: string
+          format: date
+        entries:
+          type: array
+          description: 空数组表示清空本周菜单。
+          items:
+            $ref: '#/components/schemas/MealPlanEntryInput'
+    ShoppingDraftItem:
+      type: object
+      additionalProperties: false
+      description: 合并后的一项食材。合并与分类由服务端做，客户端不重算。
+      required:
+        - name
+        - group
+        - quantity_text
+        - recipe_ids
+      properties:
+        name:
+          type: string
+        group:
+          $ref: '#/components/schemas/RecipeIngredientGroup'
+        quantity_text:
+          type: string
+          description: |
+            合并后的份量描述，例如“鸡蛋 6 个”。
+            单位不一致时按原样并列，不硬凑成一个数——
+            “2 个 + 少许”算不出一个准确总量，编一个反而误导。
+        recipe_ids:
+          type: array
+          description: 这项食材来自哪几道菜，客户端据此显示来源。
+          items:
+            type: string
+    ShoppingDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - week_start
+        - items
+      properties:
+        week_start:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShoppingDraftItem'
+    ShoppingDraftResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/ShoppingDraft'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ShoppingListItemInput:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - quantity_text
+      properties:
+        name:
+          type: string
+        quantity_text:
+          type: string
+        recipe_ids:
+          type: array
+          items:
+            type: string
+    CreateShoppingListRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        把选中的食材创建成正式购物清单（TaskList + Task）。
+        用户排除家中已有食材之后才提交，服务端不替他决定买什么。
+      required:
+        - week_start
+        - items
+      properties:
+        week_start:
+          type: string
+          format: date
+        list_name:
+          type: string
+          maxLength: 40
+          description: 不传时服务端按周生成，例如“8月17日那周的采购”。
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ShoppingListItemInput'
     ImportantDateEntry:
       type: object
       additionalProperties: false
@@ -6909,6 +7532,12 @@ components:
         type: string
     BlockId:
       name: block_id
+      in: path
+      required: true
+      schema:
+        type: string
+    RecipeId:
+      name: recipe_id
       in: path
       required: true
       schema:

@@ -163,6 +163,18 @@ paths:
     $ref: './paths/recipes.yaml#/Collection'
   /v1/recipes/{recipe_id}:
     $ref: './paths/recipes.yaml#/Item'
+  /v1/recipes/{recipe_id}/favorite:
+    $ref: './paths/recipes.yaml#/Favorite'
+  /v1/recipes/{recipe_id}/cooked:
+    $ref: './paths/recipes.yaml#/Cooked'
+  /v1/me/recipe-favorites:
+    $ref: './paths/recipes.yaml#/Favorites'
+  /v1/me/diet-profile:
+    $ref: './paths/recipes.yaml#/DietProfile'
+  /v1/meal-plans:
+    $ref: './paths/recipes.yaml#/MealPlan'
+  /v1/meal-plans/shopping-draft:
+    $ref: './paths/recipes.yaml#/ShoppingDraft'
   /v1/important-dates:
     $ref: './paths/views.yaml#/ImportantDates'
   /v1/reviews/weekly:

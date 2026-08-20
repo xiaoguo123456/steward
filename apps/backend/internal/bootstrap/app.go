@@ -116,7 +116,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
-	recipesSvc := recipes.New(db)
+	recipesSvc := recipes.New(db, usersSvc, listsSvc, objectsSvc)
 	mediaSvc := media.New(db, store)
 
 	// Capture 需要队列才能入队，而队列的 Worker 又需要 Capture 服务。

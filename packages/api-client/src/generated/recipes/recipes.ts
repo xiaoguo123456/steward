@@ -14,28 +14,44 @@
  * OpenAPI spec version: 1.0.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
   BadRequestResponse,
+  ConfirmMealPlanRequest,
+  ConflictResponse,
+  CreateShoppingListRequest,
+  DietProfileResponse,
+  GetMealPlanParams,
+  GetMealPlanShoppingDraftParams,
   InternalErrorResponse,
+  ListFavoriteRecipesParams,
   ListRecipesParams,
+  MealPlanResponse,
+  MutationResponse,
   NotFoundResponse,
   RecipeResponse,
   RecipesResponse,
-  UnauthorizedResponse
+  ShoppingDraftResponse,
+  TaskListResponse,
+  UnauthorizedResponse,
+  UpdateDietProfileRequest
 } from '../model';
 
 import { stewardFetch } from '../../http/fetcher';
@@ -269,3 +285,858 @@ export function useGetRecipe<TData = Awaited<ReturnType<typeof getRecipe>>, TErr
 
 
 
+export const getFavoriteRecipeUrl = (recipeId: string,) => {
+
+
+
+
+  return `/v1/recipes/${recipeId}/favorite`
+}
+
+/**
+ * 幂等：重复收藏同一道菜不会产生第二条记录。
+ * @summary 收藏一道菜
+ */
+export const favoriteRecipe = async (recipeId: string, options?: Parameters<typeof stewardFetch>[1]): Promise<MutationResponse> => {
+
+  return stewardFetch<MutationResponse>(getFavoriteRecipeUrl(recipeId),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getFavoriteRecipeMutationOptions = <TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof favoriteRecipe>>, TError,{recipeId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof favoriteRecipe>>, TError,{recipeId: string}, TContext> => {
+
+const mutationKey = ['favoriteRecipe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof favoriteRecipe>>, {recipeId: string}> = (props) => {
+          const {recipeId} = props ?? {};
+
+          return  favoriteRecipe(recipeId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FavoriteRecipeMutationResult = NonNullable<Awaited<ReturnType<typeof favoriteRecipe>>>
+
+    export type FavoriteRecipeMutationError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse
+
+    /**
+ * @summary 收藏一道菜
+ */
+export const useFavoriteRecipe = <TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof favoriteRecipe>>, TError,{recipeId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof favoriteRecipe>>,
+        TError,
+        {recipeId: string},
+        TContext
+      > => {
+      return useMutation(getFavoriteRecipeMutationOptions(options), queryClient);
+    }
+    export const getUnfavoriteRecipeUrl = (recipeId: string,) => {
+
+
+
+
+  return `/v1/recipes/${recipeId}/favorite`
+}
+
+/**
+ * @summary 取消收藏
+ */
+export const unfavoriteRecipe = async (recipeId: string, options?: Parameters<typeof stewardFetch>[1]): Promise<MutationResponse> => {
+
+  return stewardFetch<MutationResponse>(getUnfavoriteRecipeUrl(recipeId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnfavoriteRecipeMutationOptions = <TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unfavoriteRecipe>>, TError,{recipeId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unfavoriteRecipe>>, TError,{recipeId: string}, TContext> => {
+
+const mutationKey = ['unfavoriteRecipe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unfavoriteRecipe>>, {recipeId: string}> = (props) => {
+          const {recipeId} = props ?? {};
+
+          return  unfavoriteRecipe(recipeId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnfavoriteRecipeMutationResult = NonNullable<Awaited<ReturnType<typeof unfavoriteRecipe>>>
+
+    export type UnfavoriteRecipeMutationError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse
+
+    /**
+ * @summary 取消收藏
+ */
+export const useUnfavoriteRecipe = <TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unfavoriteRecipe>>, TError,{recipeId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unfavoriteRecipe>>,
+        TError,
+        {recipeId: string},
+        TContext
+      > => {
+      return useMutation(getUnfavoriteRecipeMutationOptions(options), queryClient);
+    }
+    export const getMarkRecipeCookedUrl = (recipeId: string,) => {
+
+
+
+
+  return `/v1/recipes/${recipeId}/cooked`
+}
+
+/**
+ * 只记“做过”这件事，不等于记录实际摄入——后者是 Record，走记录项接口。
+ * 同一道菜可以做很多次，每次都留一条。
+ * @summary 标记做过这道菜
+ */
+export const markRecipeCooked = async (recipeId: string, options?: Parameters<typeof stewardFetch>[1]): Promise<MutationResponse> => {
+
+  return stewardFetch<MutationResponse>(getMarkRecipeCookedUrl(recipeId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkRecipeCookedMutationOptions = <TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markRecipeCooked>>, TError,{recipeId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markRecipeCooked>>, TError,{recipeId: string}, TContext> => {
+
+const mutationKey = ['markRecipeCooked'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markRecipeCooked>>, {recipeId: string}> = (props) => {
+          const {recipeId} = props ?? {};
+
+          return  markRecipeCooked(recipeId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkRecipeCookedMutationResult = NonNullable<Awaited<ReturnType<typeof markRecipeCooked>>>
+
+    export type MarkRecipeCookedMutationError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse
+
+    /**
+ * @summary 标记做过这道菜
+ */
+export const useMarkRecipeCooked = <TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markRecipeCooked>>, TError,{recipeId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof markRecipeCooked>>,
+        TError,
+        {recipeId: string},
+        TContext
+      > => {
+      return useMutation(getMarkRecipeCookedMutationOptions(options), queryClient);
+    }
+    export const getListFavoriteRecipesUrl = (params?: ListFavoriteRecipesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/me/recipe-favorites?${stringifiedParams}` : `/v1/me/recipe-favorites`
+}
+
+/**
+ * @summary 查询收藏的菜谱
+ */
+export const listFavoriteRecipes = async (params?: ListFavoriteRecipesParams, options?: Parameters<typeof stewardFetch>[1]): Promise<RecipesResponse> => {
+
+  return stewardFetch<RecipesResponse>(getListFavoriteRecipesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFavoriteRecipesQueryKey = (params?: ListFavoriteRecipesParams,) => {
+    return [
+    `/v1/me/recipe-favorites`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFavoriteRecipesQueryOptions = <TData = Awaited<ReturnType<typeof listFavoriteRecipes>>, TError = UnauthorizedResponse | InternalErrorResponse>(params?: ListFavoriteRecipesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFavoriteRecipes>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFavoriteRecipesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFavoriteRecipes>>> = ({ signal }) => listFavoriteRecipes(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFavoriteRecipes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListFavoriteRecipesQueryResult = NonNullable<Awaited<ReturnType<typeof listFavoriteRecipes>>>
+export type ListFavoriteRecipesQueryError = UnauthorizedResponse | InternalErrorResponse
+
+
+export function useListFavoriteRecipes<TData = Awaited<ReturnType<typeof listFavoriteRecipes>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+ params: undefined |  ListFavoriteRecipesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFavoriteRecipes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listFavoriteRecipes>>,
+          TError,
+          Awaited<ReturnType<typeof listFavoriteRecipes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListFavoriteRecipes<TData = Awaited<ReturnType<typeof listFavoriteRecipes>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+ params?: ListFavoriteRecipesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFavoriteRecipes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listFavoriteRecipes>>,
+          TError,
+          Awaited<ReturnType<typeof listFavoriteRecipes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListFavoriteRecipes<TData = Awaited<ReturnType<typeof listFavoriteRecipes>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+ params?: ListFavoriteRecipesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFavoriteRecipes>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 查询收藏的菜谱
+ */
+
+export function useListFavoriteRecipes<TData = Awaited<ReturnType<typeof listFavoriteRecipes>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+ params?: ListFavoriteRecipesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listFavoriteRecipes>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListFavoriteRecipesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetDietProfileUrl = () => {
+
+
+
+
+  return `/v1/me/diet-profile`
+}
+
+/**
+ * 从未填写过问卷时返回一份默认档案，completed 为 false。
+ * 不返回 404：客户端要的是“现在按什么口径推荐”，而不是“有没有这行记录”。
+ * @summary 读取饮食档案
+ */
+export const getDietProfile = async ( options?: Parameters<typeof stewardFetch>[1]): Promise<DietProfileResponse> => {
+
+  return stewardFetch<DietProfileResponse>(getGetDietProfileUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDietProfileQueryKey = () => {
+    return [
+    `/v1/me/diet-profile`
+    ] as const;
+    }
+
+
+export const getGetDietProfileQueryOptions = <TData = Awaited<ReturnType<typeof getDietProfile>>, TError = UnauthorizedResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDietProfile>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDietProfileQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDietProfile>>> = ({ signal }) => getDietProfile({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDietProfile>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetDietProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getDietProfile>>>
+export type GetDietProfileQueryError = UnauthorizedResponse | InternalErrorResponse
+
+
+export function useGetDietProfile<TData = Awaited<ReturnType<typeof getDietProfile>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDietProfile>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDietProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getDietProfile>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetDietProfile<TData = Awaited<ReturnType<typeof getDietProfile>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDietProfile>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDietProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getDietProfile>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetDietProfile<TData = Awaited<ReturnType<typeof getDietProfile>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDietProfile>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 读取饮食档案
+ */
+
+export function useGetDietProfile<TData = Awaited<ReturnType<typeof getDietProfile>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDietProfile>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetDietProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getUpdateDietProfileUrl = () => {
+
+
+
+
+  return `/v1/me/diet-profile`
+}
+
+/**
+ * 身体数据只允许用户自己填写与修改，不接受任何推断结果。
+ * @summary 修改饮食档案
+ */
+export const updateDietProfile = async (updateDietProfileRequest: UpdateDietProfileRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<DietProfileResponse> => {
+
+  return stewardFetch<DietProfileResponse>(getUpdateDietProfileUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateDietProfileRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateDietProfileMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDietProfile>>, TError,{data: UpdateDietProfileRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDietProfile>>, TError,{data: UpdateDietProfileRequest}, TContext> => {
+
+const mutationKey = ['updateDietProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDietProfile>>, {data: UpdateDietProfileRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateDietProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDietProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateDietProfile>>>
+    export type UpdateDietProfileMutationBody = UpdateDietProfileRequest
+    export type UpdateDietProfileMutationError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse
+
+    /**
+ * @summary 修改饮食档案
+ */
+export const useUpdateDietProfile = <TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDietProfile>>, TError,{data: UpdateDietProfileRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateDietProfile>>,
+        TError,
+        {data: UpdateDietProfileRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateDietProfileMutationOptions(options), queryClient);
+    }
+    export const getGetMealPlanUrl = (params?: GetMealPlanParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/meal-plans?${stringifiedParams}` : `/v1/meal-plans`
+}
+
+/**
+ * 不传 week_start 时返回本周。本周从哪天开始由服务端按用户偏好算，
+ * 客户端不自行推导。该周没有确认过菜单时 entries 为空数组。
+ * @summary 读取某一周已确认的菜单
+ */
+export const getMealPlan = async (params?: GetMealPlanParams, options?: Parameters<typeof stewardFetch>[1]): Promise<MealPlanResponse> => {
+
+  return stewardFetch<MealPlanResponse>(getGetMealPlanUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMealPlanQueryKey = (params?: GetMealPlanParams,) => {
+    return [
+    `/v1/meal-plans`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMealPlanQueryOptions = <TData = Awaited<ReturnType<typeof getMealPlan>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(params?: GetMealPlanParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlan>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMealPlanQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMealPlan>>> = ({ signal }) => getMealPlan(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMealPlan>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMealPlanQueryResult = NonNullable<Awaited<ReturnType<typeof getMealPlan>>>
+export type GetMealPlanQueryError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse
+
+
+export function useGetMealPlan<TData = Awaited<ReturnType<typeof getMealPlan>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params: undefined |  GetMealPlanParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlan>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMealPlan>>,
+          TError,
+          Awaited<ReturnType<typeof getMealPlan>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMealPlan<TData = Awaited<ReturnType<typeof getMealPlan>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlan>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMealPlan>>,
+          TError,
+          Awaited<ReturnType<typeof getMealPlan>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMealPlan<TData = Awaited<ReturnType<typeof getMealPlan>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlan>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 读取某一周已确认的菜单
+ */
+
+export function useGetMealPlan<TData = Awaited<ReturnType<typeof getMealPlan>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlan>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMealPlanQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getConfirmMealPlanUrl = () => {
+
+
+
+
+  return `/v1/meal-plans`
+}
+
+/**
+ * 整周一次性提交并覆盖该周的已确认菜单。
+ * AI 生成的预览必须先经用户确认才能走到这里。
+ * @summary 采用本周菜单
+ */
+export const confirmMealPlan = async (confirmMealPlanRequest: ConfirmMealPlanRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<MealPlanResponse> => {
+
+  return stewardFetch<MealPlanResponse>(getConfirmMealPlanUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmMealPlanRequest)
+  }
+);}
+
+
+
+
+
+export const getConfirmMealPlanMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmMealPlan>>, TError,{data: ConfirmMealPlanRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmMealPlan>>, TError,{data: ConfirmMealPlanRequest}, TContext> => {
+
+const mutationKey = ['confirmMealPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmMealPlan>>, {data: ConfirmMealPlanRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmMealPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmMealPlanMutationResult = NonNullable<Awaited<ReturnType<typeof confirmMealPlan>>>
+    export type ConfirmMealPlanMutationBody = ConfirmMealPlanRequest
+    export type ConfirmMealPlanMutationError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse
+
+    /**
+ * @summary 采用本周菜单
+ */
+export const useConfirmMealPlan = <TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmMealPlan>>, TError,{data: ConfirmMealPlanRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmMealPlan>>,
+        TError,
+        {data: ConfirmMealPlanRequest},
+        TContext
+      > => {
+      return useMutation(getConfirmMealPlanMutationOptions(options), queryClient);
+    }
+    export const getGetMealPlanShoppingDraftUrl = (params?: GetMealPlanShoppingDraftParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/meal-plans/shopping-draft?${stringifiedParams}` : `/v1/meal-plans/shopping-draft`
+}
+
+/**
+ * 只读：合并重复食材与份量并按品类分组，不创建任何东西。
+ * 用户在此基础上排除家中已有食材，再调用创建接口。
+ * @summary 按已确认菜单合并出待采购食材
+ */
+export const getMealPlanShoppingDraft = async (params?: GetMealPlanShoppingDraftParams, options?: Parameters<typeof stewardFetch>[1]): Promise<ShoppingDraftResponse> => {
+
+  return stewardFetch<ShoppingDraftResponse>(getGetMealPlanShoppingDraftUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMealPlanShoppingDraftQueryKey = (params?: GetMealPlanShoppingDraftParams,) => {
+    return [
+    `/v1/meal-plans/shopping-draft`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMealPlanShoppingDraftQueryOptions = <TData = Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(params?: GetMealPlanShoppingDraftParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMealPlanShoppingDraftQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMealPlanShoppingDraft>>> = ({ signal }) => getMealPlanShoppingDraft(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMealPlanShoppingDraftQueryResult = NonNullable<Awaited<ReturnType<typeof getMealPlanShoppingDraft>>>
+export type GetMealPlanShoppingDraftQueryError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse
+
+
+export function useGetMealPlanShoppingDraft<TData = Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params: undefined |  GetMealPlanShoppingDraftParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMealPlanShoppingDraft>>,
+          TError,
+          Awaited<ReturnType<typeof getMealPlanShoppingDraft>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMealPlanShoppingDraft<TData = Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanShoppingDraftParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMealPlanShoppingDraft>>,
+          TError,
+          Awaited<ReturnType<typeof getMealPlanShoppingDraft>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMealPlanShoppingDraft<TData = Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanShoppingDraftParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 按已确认菜单合并出待采购食材
+ */
+
+export function useGetMealPlanShoppingDraft<TData = Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetMealPlanShoppingDraftParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMealPlanShoppingDraft>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMealPlanShoppingDraftQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getCreateShoppingListFromMealPlanUrl = () => {
+
+
+
+
+  return `/v1/meal-plans/shopping-draft`
+}
+
+/**
+ * 复用 TaskList / Task，不创建与之同义的食材待办类型。
+ * 每项 Task 记录来源菜谱，用户在清单里看得到这项是为哪道菜买的。
+ * @summary 用选中的食材创建购物清单
+ */
+export const createShoppingListFromMealPlan = async (createShoppingListRequest: CreateShoppingListRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<TaskListResponse> => {
+
+  return stewardFetch<TaskListResponse>(getCreateShoppingListFromMealPlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createShoppingListRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateShoppingListFromMealPlanMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShoppingListFromMealPlan>>, TError,{data: CreateShoppingListRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createShoppingListFromMealPlan>>, TError,{data: CreateShoppingListRequest}, TContext> => {
+
+const mutationKey = ['createShoppingListFromMealPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createShoppingListFromMealPlan>>, {data: CreateShoppingListRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createShoppingListFromMealPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateShoppingListFromMealPlanMutationResult = NonNullable<Awaited<ReturnType<typeof createShoppingListFromMealPlan>>>
+    export type CreateShoppingListFromMealPlanMutationBody = CreateShoppingListRequest
+    export type CreateShoppingListFromMealPlanMutationError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse
+
+    /**
+ * @summary 用选中的食材创建购物清单
+ */
+export const useCreateShoppingListFromMealPlan = <TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShoppingListFromMealPlan>>, TError,{data: CreateShoppingListRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createShoppingListFromMealPlan>>,
+        TError,
+        {data: CreateShoppingListRequest},
+        TContext
+      > => {
+      return useMutation(getCreateShoppingListFromMealPlanMutationOptions(options), queryClient);
+    }

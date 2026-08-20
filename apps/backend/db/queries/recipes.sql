@@ -55,3 +55,114 @@ ON CONFLICT (id) DO UPDATE SET
     license_url = excluded.license_url, image_credit = excluded.image_credit,
     content_version = excluded.content_version,
     updated_at = now();
+
+-- ---- 用户自己的食谱数据 ----
+--
+-- 下面这些表都带 user_id 并受 RLS 约束，查询里不需要也不应该再写 user_id 条件：
+-- 归属由策略保证，手写条件反而会让人以为没有策略也安全。
+
+-- name: GetDietProfile :one
+SELECT * FROM recipe_diet_profiles WHERE user_id = sqlc.arg(user_id);
+
+-- name: UpsertDietProfile :one
+-- 第一次修改时顺带建行：客户端不需要先「创建档案」再改。
+--
+-- INSERT 分支必须带上全部字段。只写 user_id 的话，第一次填问卷不会冲突，
+-- DO UPDATE 分支根本不执行，用户填的东西会被默认值悄悄吃掉。
+-- clear_* 在插入时没有意义：没有旧值可清。
+INSERT INTO recipe_diet_profiles (
+    user_id, goal, sex, activity_level,
+    age, height_cm, weight_kg, target_weight_kg, max_cook_minutes,
+    allergens, dislikes, servings, completed
+) VALUES (
+    sqlc.arg(user_id),
+    coalesce(sqlc.narg(goal), 'balanced'),
+    coalesce(sqlc.narg(sex), 'unspecified'),
+    coalesce(sqlc.narg(activity_level), 'moderate'),
+    sqlc.narg(age), sqlc.narg(height_cm), sqlc.narg(weight_kg),
+    sqlc.narg(target_weight_kg), sqlc.narg(max_cook_minutes),
+    coalesce(sqlc.narg(allergens)::text[], '{}'),
+    coalesce(sqlc.narg(dislikes)::text[], '{}'),
+    coalesce(sqlc.narg(servings), 2),
+    coalesce(sqlc.narg(completed), false)
+)
+ON CONFLICT (user_id) DO UPDATE SET
+    goal           = coalesce(sqlc.narg(goal), recipe_diet_profiles.goal),
+    sex            = coalesce(sqlc.narg(sex), recipe_diet_profiles.sex),
+    activity_level = coalesce(sqlc.narg(activity_level), recipe_diet_profiles.activity_level),
+    age = CASE WHEN sqlc.arg(clear_age)::bool THEN NULL
+               ELSE coalesce(sqlc.narg(age), recipe_diet_profiles.age) END,
+    height_cm = CASE WHEN sqlc.arg(clear_height)::bool THEN NULL
+                     ELSE coalesce(sqlc.narg(height_cm), recipe_diet_profiles.height_cm) END,
+    weight_kg = CASE WHEN sqlc.arg(clear_weight)::bool THEN NULL
+                     ELSE coalesce(sqlc.narg(weight_kg), recipe_diet_profiles.weight_kg) END,
+    target_weight_kg = CASE WHEN sqlc.arg(clear_target_weight)::bool THEN NULL
+                            ELSE coalesce(sqlc.narg(target_weight_kg),
+                                          recipe_diet_profiles.target_weight_kg) END,
+    max_cook_minutes = CASE WHEN sqlc.arg(clear_cook_minutes)::bool THEN NULL
+                            ELSE coalesce(sqlc.narg(max_cook_minutes),
+                                          recipe_diet_profiles.max_cook_minutes) END,
+    allergens  = coalesce(sqlc.narg(allergens)::text[], recipe_diet_profiles.allergens),
+    dislikes   = coalesce(sqlc.narg(dislikes)::text[], recipe_diet_profiles.dislikes),
+    servings   = coalesce(sqlc.narg(servings), recipe_diet_profiles.servings),
+    completed  = coalesce(sqlc.narg(completed), recipe_diet_profiles.completed),
+    updated_at = now()
+RETURNING *;
+
+-- name: ListFavoriteRecipes :many
+SELECT r.* FROM recipe_favorites f
+JOIN recipes r ON r.id = f.recipe_id
+ORDER BY f.created_at DESC
+LIMIT sqlc.arg(row_limit);
+
+-- name: ListFavoriteRecipeIDs :many
+SELECT recipe_id FROM recipe_favorites ORDER BY created_at DESC;
+
+-- name: FavoriteRecipe :exec
+-- 幂等：重复收藏同一道菜不产生第二条记录。
+INSERT INTO recipe_favorites (id, user_id, recipe_id)
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(recipe_id))
+ON CONFLICT (user_id, recipe_id) DO NOTHING;
+
+-- name: UnfavoriteRecipe :exec
+DELETE FROM recipe_favorites WHERE recipe_id = sqlc.arg(recipe_id);
+
+-- name: CreateCookLog :exec
+INSERT INTO recipe_cook_logs (id, user_id, recipe_id, cooked_at)
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(recipe_id), sqlc.arg(cooked_at));
+
+-- name: ListCookedRecipeIDs :many
+SELECT DISTINCT recipe_id FROM recipe_cook_logs;
+
+-- name: GetMealPlanByWeek :one
+SELECT * FROM meal_plans WHERE week_start = sqlc.arg(week_start)::date;
+
+-- name: UpsertMealPlan :one
+-- 采用菜单是整周覆盖，因此这里同时负责建与更新，并推进版本号。
+INSERT INTO meal_plans (id, user_id, week_start)
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(week_start)::date)
+ON CONFLICT (user_id, week_start) DO UPDATE SET
+    version    = meal_plans.version + 1,
+    updated_at = now()
+RETURNING *;
+
+-- name: DeleteMealPlanEntries :exec
+DELETE FROM meal_plan_entries WHERE meal_plan_id = sqlc.arg(meal_plan_id);
+
+-- name: CreateMealPlanEntry :exec
+INSERT INTO meal_plan_entries (id, user_id, meal_plan_id, entry_date, meal_slot, recipe_id)
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(meal_plan_id),
+        sqlc.arg(entry_date)::date, sqlc.arg(meal_slot), sqlc.arg(recipe_id));
+
+-- name: ListMealPlanEntries :many
+-- 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
+SELECT
+    e.entry_date,
+    e.meal_slot,
+    sqlc.embed(r)
+FROM meal_plan_entries e
+JOIN recipes r ON r.id = e.recipe_id
+WHERE e.meal_plan_id = sqlc.arg(meal_plan_id)
+-- 按用餐顺序而不是字母序：字母序会排成早餐、晚餐、午餐。
+ORDER BY e.entry_date,
+    CASE e.meal_slot WHEN 'breakfast' THEN 0 WHEN 'lunch' THEN 1 ELSE 2 END;

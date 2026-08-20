@@ -149,3 +149,519 @@ export const GetRecipeResponse = zod.object({
 }).describe('所有成功响应共有的元信息。')
 })
 
+/**
+ * 幂等：重复收藏同一道菜不会产生第二条记录。
+ * @summary 收藏一道菜
+ */
+export const FavoriteRecipeParams = zod.object({
+  "recipe_id": zod.string()
+})
+
+export const favoriteRecipeHeaderIdempotencyKeyMin = 8;
+export const favoriteRecipeHeaderIdempotencyKeyMax = 128;
+
+
+
+export const FavoriteRecipeHeader = zod.object({
+  "Idempotency-Key": zod.string().min(favoriteRecipeHeaderIdempotencyKeyMin).max(favoriteRecipeHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const FavoriteRecipeResponse = zod.object({
+  "data": zod.object({
+  "affected_resources": zod.array(zod.object({
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
+})),
+  "activity_batch_id": zod.string().nullish()
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+}).describe('删除等不返回实体的写操作响应，携带需要失效的资源列表。')
+
+/**
+ * @summary 取消收藏
+ */
+export const UnfavoriteRecipeParams = zod.object({
+  "recipe_id": zod.string()
+})
+
+export const unfavoriteRecipeHeaderIdempotencyKeyMin = 8;
+export const unfavoriteRecipeHeaderIdempotencyKeyMax = 128;
+
+
+
+export const UnfavoriteRecipeHeader = zod.object({
+  "Idempotency-Key": zod.string().min(unfavoriteRecipeHeaderIdempotencyKeyMin).max(unfavoriteRecipeHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const UnfavoriteRecipeResponse = zod.object({
+  "data": zod.object({
+  "affected_resources": zod.array(zod.object({
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
+})),
+  "activity_batch_id": zod.string().nullish()
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+}).describe('删除等不返回实体的写操作响应，携带需要失效的资源列表。')
+
+/**
+ * 只记“做过”这件事，不等于记录实际摄入——后者是 Record，走记录项接口。
+ * 同一道菜可以做很多次，每次都留一条。
+ * @summary 标记做过这道菜
+ */
+export const MarkRecipeCookedParams = zod.object({
+  "recipe_id": zod.string()
+})
+
+export const markRecipeCookedHeaderIdempotencyKeyMin = 8;
+export const markRecipeCookedHeaderIdempotencyKeyMax = 128;
+
+
+
+export const MarkRecipeCookedHeader = zod.object({
+  "Idempotency-Key": zod.string().min(markRecipeCookedHeaderIdempotencyKeyMin).max(markRecipeCookedHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const MarkRecipeCookedResponse = zod.object({
+  "data": zod.object({
+  "affected_resources": zod.array(zod.object({
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
+})),
+  "activity_batch_id": zod.string().nullish()
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+}).describe('删除等不返回实体的写操作响应，携带需要失效的资源列表。')
+
+/**
+ * @summary 查询收藏的菜谱
+ */
+export const listFavoriteRecipesQueryLimitDefault = 20;
+export const listFavoriteRecipesQueryLimitMax = 100;
+
+
+
+export const ListFavoriteRecipesQueryParams = zod.object({
+  "limit": zod.number().int().min(1).max(listFavoriteRecipesQueryLimitMax).default(listFavoriteRecipesQueryLimitDefault).describe('单页条数。')
+})
+
+
+
+
+
+
+
+export const ListFavoriteRecipesResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n'),
+  "servings": zod.number().int().min(1),
+  "duration_minutes": zod.number().int().min(1),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein_g": zod.number(),
+  "carbs_g": zod.number(),
+  "fiber_g": zod.number()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n'),
+  "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
+  "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
+  "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
+  "tags": zod.array(zod.string()),
+  "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
+  "ingredients": zod.array(zod.object({
+  "name": zod.string(),
+  "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+})).min(1),
+  "steps": zod.array(zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
+})).min(1),
+  "source": zod.object({
+  "name": zod.string().describe('内容提供方。'),
+  "author": zod.string().nullish(),
+  "url": zod.string().nullish().describe('原始出处。'),
+  "license": zod.string().describe('授权范围，例如 CC-BY-4.0、平台自有内容。'),
+  "license_url": zod.string().nullish(),
+  "image_credit": zod.string().nullish().describe('图片的权利说明。没有明确权利的图片不下发 image_url。'),
+  "content_version": zod.string().describe('内容版本。来源更新时递增，客户端据此判断缓存是否过期。')
+}).describe('内容来源与授权。字段不全的菜谱不允许进库：\n不知道来源和授权范围，就等于不知道自己有没有权利展示它。\n')
+})),
+  "page": zod.object({
+  "has_more": zod.boolean().describe('是否还有下一页。'),
+  "next_cursor": zod.string().nullish().describe('不透明游标。App 不得解析其内容。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 从未填写过问卷时返回一份默认档案，completed 为 false。
+ * 不返回 404：客户端要的是“现在按什么口径推荐”，而不是“有没有这行记录”。
+ * @summary 读取饮食档案
+ */
+export const getDietProfileResponseDataAgeMax = 120;
+
+export const getDietProfileResponseDataHeightCmMin = 50;
+export const getDietProfileResponseDataHeightCmMax = 260;
+
+export const getDietProfileResponseDataWeightKgMin = 20;
+export const getDietProfileResponseDataWeightKgMax = 400;
+
+export const getDietProfileResponseDataTargetWeightKgMin = 20;
+export const getDietProfileResponseDataTargetWeightKgMax = 400;
+
+export const getDietProfileResponseDataServingsMax = 20;
+
+
+
+
+export const GetDietProfileResponse = zod.object({
+  "data": zod.object({
+  "goal": zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('与 RecipeGoal 取值一致：用户的目标要能直接拿去筛菜谱。\nsteady_sugar 只用于推荐少糖、全谷物、高纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n'),
+  "age": zod.number().int().min(1).max(getDietProfileResponseDataAgeMax).nullish(),
+  "sex": zod.enum(['female', 'male', 'unspecified']).optional().describe('仅用于能量估算。用户可以不填。'),
+  "height_cm": zod.number().min(getDietProfileResponseDataHeightCmMin).max(getDietProfileResponseDataHeightCmMax).nullish(),
+  "weight_kg": zod.number().min(getDietProfileResponseDataWeightKgMin).max(getDietProfileResponseDataWeightKgMax).nullish(),
+  "target_weight_kg": zod.number().min(getDietProfileResponseDataTargetWeightKgMin).max(getDietProfileResponseDataTargetWeightKgMax).nullish(),
+  "activity_level": zod.enum(['sedentary', 'light', 'moderate', 'active']).optional(),
+  "allergens": zod.array(zod.string()).describe('过敏原。命中即从推荐中剔除，不做降权处理。'),
+  "dislikes": zod.array(zod.string()).describe('忌口。与过敏原同样是硬过滤，只是后果不同。'),
+  "servings": zod.number().int().min(1).max(getDietProfileResponseDataServingsMax).describe('常规用餐人数，用于换算食材份量。'),
+  "max_cook_minutes": zod.number().int().min(1).nullish(),
+  "completed": zod.boolean().optional().describe('是否完成过问卷。false 时客户端引导填写，但不阻止浏览菜谱。'),
+  "updated_at": zod.string().datetime({"offset":true})
+}).describe('饮食档案。\*\*身体数据属于高敏信息\*\*：只允许用户自己填写与修改，\n不接受任何推断，也不得写入日志、埋点、Prompt 快照或测试 Fixture。\n\nallergens 与 dislikes 是确定性硬过滤条件，排序与推荐都不得覆盖它们。\n'),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 身体数据只允许用户自己填写与修改，不接受任何推断结果。
+ * @summary 修改饮食档案
+ */
+export const updateDietProfileBodyAgeMax = 120;
+
+export const updateDietProfileBodyHeightCmMin = 50;
+export const updateDietProfileBodyHeightCmMax = 260;
+
+export const updateDietProfileBodyWeightKgMin = 20;
+export const updateDietProfileBodyWeightKgMax = 400;
+
+export const updateDietProfileBodyTargetWeightKgMin = 20;
+export const updateDietProfileBodyTargetWeightKgMax = 400;
+
+export const updateDietProfileBodyServingsMax = 20;
+
+
+
+
+export const UpdateDietProfileBody = zod.object({
+  "clear": zod.array(zod.enum(['age', 'height_cm', 'weight_kg', 'target_weight_kg', 'max_cook_minutes'])).optional(),
+  "goal": zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).optional().describe('与 RecipeGoal 取值一致：用户的目标要能直接拿去筛菜谱。\nsteady_sugar 只用于推荐少糖、全谷物、高纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n'),
+  "age": zod.number().int().min(1).max(updateDietProfileBodyAgeMax).nullish(),
+  "sex": zod.enum(['female', 'male', 'unspecified']).optional().describe('仅用于能量估算。用户可以不填。'),
+  "height_cm": zod.number().min(updateDietProfileBodyHeightCmMin).max(updateDietProfileBodyHeightCmMax).nullish(),
+  "weight_kg": zod.number().min(updateDietProfileBodyWeightKgMin).max(updateDietProfileBodyWeightKgMax).nullish(),
+  "target_weight_kg": zod.number().min(updateDietProfileBodyTargetWeightKgMin).max(updateDietProfileBodyTargetWeightKgMax).nullish(),
+  "activity_level": zod.enum(['sedentary', 'light', 'moderate', 'active']).optional(),
+  "allergens": zod.array(zod.string()).optional(),
+  "dislikes": zod.array(zod.string()).optional(),
+  "servings": zod.number().int().min(1).max(updateDietProfileBodyServingsMax).optional(),
+  "max_cook_minutes": zod.number().int().min(1).nullish(),
+  "completed": zod.boolean().optional()
+}).describe('只提交需要修改的字段；不传表示保持原值。\n清空一个可空字段必须把字段名放进 clear 数组，\n因为生成的 Go 类型无法区分“不传”与“传 null”。\n')
+
+export const updateDietProfileResponseDataAgeMax = 120;
+
+export const updateDietProfileResponseDataHeightCmMin = 50;
+export const updateDietProfileResponseDataHeightCmMax = 260;
+
+export const updateDietProfileResponseDataWeightKgMin = 20;
+export const updateDietProfileResponseDataWeightKgMax = 400;
+
+export const updateDietProfileResponseDataTargetWeightKgMin = 20;
+export const updateDietProfileResponseDataTargetWeightKgMax = 400;
+
+export const updateDietProfileResponseDataServingsMax = 20;
+
+
+
+
+export const UpdateDietProfileResponse = zod.object({
+  "data": zod.object({
+  "goal": zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('与 RecipeGoal 取值一致：用户的目标要能直接拿去筛菜谱。\nsteady_sugar 只用于推荐少糖、全谷物、高纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n'),
+  "age": zod.number().int().min(1).max(updateDietProfileResponseDataAgeMax).nullish(),
+  "sex": zod.enum(['female', 'male', 'unspecified']).optional().describe('仅用于能量估算。用户可以不填。'),
+  "height_cm": zod.number().min(updateDietProfileResponseDataHeightCmMin).max(updateDietProfileResponseDataHeightCmMax).nullish(),
+  "weight_kg": zod.number().min(updateDietProfileResponseDataWeightKgMin).max(updateDietProfileResponseDataWeightKgMax).nullish(),
+  "target_weight_kg": zod.number().min(updateDietProfileResponseDataTargetWeightKgMin).max(updateDietProfileResponseDataTargetWeightKgMax).nullish(),
+  "activity_level": zod.enum(['sedentary', 'light', 'moderate', 'active']).optional(),
+  "allergens": zod.array(zod.string()).describe('过敏原。命中即从推荐中剔除，不做降权处理。'),
+  "dislikes": zod.array(zod.string()).describe('忌口。与过敏原同样是硬过滤，只是后果不同。'),
+  "servings": zod.number().int().min(1).max(updateDietProfileResponseDataServingsMax).describe('常规用餐人数，用于换算食材份量。'),
+  "max_cook_minutes": zod.number().int().min(1).nullish(),
+  "completed": zod.boolean().optional().describe('是否完成过问卷。false 时客户端引导填写，但不阻止浏览菜谱。'),
+  "updated_at": zod.string().datetime({"offset":true})
+}).describe('饮食档案。\*\*身体数据属于高敏信息\*\*：只允许用户自己填写与修改，\n不接受任何推断，也不得写入日志、埋点、Prompt 快照或测试 Fixture。\n\nallergens 与 dislikes 是确定性硬过滤条件，排序与推荐都不得覆盖它们。\n'),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 不传 week_start 时返回本周。本周从哪天开始由服务端按用户偏好算，
+ * 客户端不自行推导。该周没有确认过菜单时 entries 为空数组。
+ * @summary 读取某一周已确认的菜单
+ */
+export const GetMealPlanQueryParams = zod.object({
+  "week_start": zod.string().date().optional().describe('该周的第一天。不传时服务端按用户偏好计算本周。')
+})
+
+
+
+
+
+
+
+export const GetMealPlanResponse = zod.object({
+  "data": zod.object({
+  "id": zod.string(),
+  "week_start": zod.string().date().describe('本周第一天。由服务端按用户的 week_start 偏好计算，\n客户端不自行推导——周一还是周日开始是用户设置。\n'),
+  "entries": zod.array(zod.object({
+  "date": zod.string().date().describe('该餐所在日期。用真实日期而不是“周几”，跨周与跨时区才不会含糊。'),
+  "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']),
+  "recipe_id": zod.string(),
+  "recipe": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n'),
+  "servings": zod.number().int().min(1),
+  "duration_minutes": zod.number().int().min(1),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein_g": zod.number(),
+  "carbs_g": zod.number(),
+  "fiber_g": zod.number()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n'),
+  "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
+  "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
+  "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
+  "tags": zod.array(zod.string()),
+  "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
+  "ingredients": zod.array(zod.object({
+  "name": zod.string(),
+  "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+})).min(1),
+  "steps": zod.array(zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
+})).min(1),
+  "source": zod.object({
+  "name": zod.string().describe('内容提供方。'),
+  "author": zod.string().nullish(),
+  "url": zod.string().nullish().describe('原始出处。'),
+  "license": zod.string().describe('授权范围，例如 CC-BY-4.0、平台自有内容。'),
+  "license_url": zod.string().nullish(),
+  "image_credit": zod.string().nullish().describe('图片的权利说明。没有明确权利的图片不下发 image_url。'),
+  "content_version": zod.string().describe('内容版本。来源更新时递增，客户端据此判断缓存是否过期。')
+}).describe('内容来源与授权。字段不全的菜谱不允许进库：\n不知道来源和授权范围，就等于不知道自己有没有权利展示它。\n')
+}).optional().describe('展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。')
+})),
+  "planned_nutrition": zod.object({
+  "calories": zod.number(),
+  "protein_g": zod.number(),
+  "carbs_g": zod.number(),
+  "fiber_g": zod.number()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n').describe('整周的\*\*计划\*\*摄入估算，由服务端按菜谱营养求和。\n它和用户实际记录的摄入是两回事，客户端不得混在一起展示。\n'),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "version": zod.number().int()
+}).describe('已确认的本周菜单。\n\nAI 生成的预览不在这里：规格 8.2.2 要求预览只是预览，\n用户点过“采用本周菜单”才算数，所以草稿留在客户端，不落库。\n'),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 整周一次性提交并覆盖该周的已确认菜单。
+ * AI 生成的预览必须先经用户确认才能走到这里。
+ * @summary 采用本周菜单
+ */
+export const confirmMealPlanHeaderIdempotencyKeyMin = 8;
+export const confirmMealPlanHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ConfirmMealPlanHeader = zod.object({
+  "Idempotency-Key": zod.string().min(confirmMealPlanHeaderIdempotencyKeyMin).max(confirmMealPlanHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n'),
+  "If-Match": zod.string().optional().describe('目标资源的 version。提供后与服务端当前版本不一致时返回 VERSION_CONFLICT。\n并发编辑场景应始终携带。\n')
+})
+
+export const ConfirmMealPlanBody = zod.object({
+  "week_start": zod.string().date(),
+  "entries": zod.array(zod.object({
+  "date": zod.string().date(),
+  "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']),
+  "recipe_id": zod.string()
+})).describe('空数组表示清空本周菜单。')
+}).describe('采用一份菜单。整周一次性提交：菜单是一个整体，\n逐格增量提交会让“这周到底是哪一版”说不清楚。\n')
+
+
+
+
+
+
+
+export const ConfirmMealPlanResponse = zod.object({
+  "data": zod.object({
+  "id": zod.string(),
+  "week_start": zod.string().date().describe('本周第一天。由服务端按用户的 week_start 偏好计算，\n客户端不自行推导——周一还是周日开始是用户设置。\n'),
+  "entries": zod.array(zod.object({
+  "date": zod.string().date().describe('该餐所在日期。用真实日期而不是“周几”，跨周与跨时区才不会含糊。'),
+  "meal_slot": zod.enum(['breakfast', 'lunch', 'dinner']),
+  "recipe_id": zod.string(),
+  "recipe": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullish(),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n'),
+  "servings": zod.number().int().min(1),
+  "duration_minutes": zod.number().int().min(1),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein_g": zod.number(),
+  "carbs_g": zod.number(),
+  "fiber_g": zod.number()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n'),
+  "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
+  "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
+  "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
+  "tags": zod.array(zod.string()),
+  "allergens": zod.array(zod.string()).describe('过敏原是确定性硬过滤条件，任何排序或推荐都不得覆盖它。\n'),
+  "ingredients": zod.array(zod.object({
+  "name": zod.string(),
+  "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+})).min(1),
+  "steps": zod.array(zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
+})).min(1),
+  "source": zod.object({
+  "name": zod.string().describe('内容提供方。'),
+  "author": zod.string().nullish(),
+  "url": zod.string().nullish().describe('原始出处。'),
+  "license": zod.string().describe('授权范围，例如 CC-BY-4.0、平台自有内容。'),
+  "license_url": zod.string().nullish(),
+  "image_credit": zod.string().nullish().describe('图片的权利说明。没有明确权利的图片不下发 image_url。'),
+  "content_version": zod.string().describe('内容版本。来源更新时递增，客户端据此判断缓存是否过期。')
+}).describe('内容来源与授权。字段不全的菜谱不允许进库：\n不知道来源和授权范围，就等于不知道自己有没有权利展示它。\n')
+}).optional().describe('展开的菜谱，列表页据此显示菜名与营养，不用逐条再查。')
+})),
+  "planned_nutrition": zod.object({
+  "calories": zod.number(),
+  "protein_g": zod.number(),
+  "carbs_g": zod.number(),
+  "fiber_g": zod.number()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n').describe('整周的\*\*计划\*\*摄入估算，由服务端按菜谱营养求和。\n它和用户实际记录的摄入是两回事，客户端不得混在一起展示。\n'),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "version": zod.number().int()
+}).describe('已确认的本周菜单。\n\nAI 生成的预览不在这里：规格 8.2.2 要求预览只是预览，\n用户点过“采用本周菜单”才算数，所以草稿留在客户端，不落库。\n'),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 只读：合并重复食材与份量并按品类分组，不创建任何东西。
+ * 用户在此基础上排除家中已有食材，再调用创建接口。
+ * @summary 按已确认菜单合并出待采购食材
+ */
+export const GetMealPlanShoppingDraftQueryParams = zod.object({
+  "week_start": zod.string().date().optional()
+})
+
+export const GetMealPlanShoppingDraftResponse = zod.object({
+  "data": zod.object({
+  "week_start": zod.string().date(),
+  "items": zod.array(zod.object({
+  "name": zod.string(),
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。'),
+  "quantity_text": zod.string().describe('合并后的份量描述，例如“鸡蛋 6 个”。\n单位不一致时按原样并列，不硬凑成一个数——\n“2 个 + 少许”算不出一个准确总量，编一个反而误导。\n'),
+  "recipe_ids": zod.array(zod.string()).describe('这项食材来自哪几道菜，客户端据此显示来源。')
+}).describe('合并后的一项食材。合并与分类由服务端做，客户端不重算。'))
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 复用 TaskList / Task，不创建与之同义的食材待办类型。
+ * 每项 Task 记录来源菜谱，用户在清单里看得到这项是为哪道菜买的。
+ * @summary 用选中的食材创建购物清单
+ */
+export const createShoppingListFromMealPlanHeaderIdempotencyKeyMin = 8;
+export const createShoppingListFromMealPlanHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateShoppingListFromMealPlanHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createShoppingListFromMealPlanHeaderIdempotencyKeyMin).max(createShoppingListFromMealPlanHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const createShoppingListFromMealPlanBodyListNameMax = 40;
+
+
+
+
+export const CreateShoppingListFromMealPlanBody = zod.object({
+  "week_start": zod.string().date(),
+  "list_name": zod.string().max(createShoppingListFromMealPlanBodyListNameMax).optional().describe('不传时服务端按周生成，例如“8月17日那周的采购”。'),
+  "items": zod.array(zod.object({
+  "name": zod.string(),
+  "quantity_text": zod.string(),
+  "recipe_ids": zod.array(zod.string()).optional()
+})).min(1)
+}).describe('把选中的食材创建成正式购物清单（TaskList + Task）。\n用户排除家中已有食材之后才提交，服务端不替他决定买什么。\n')
+
+export const CreateShoppingListFromMealPlanResponse = zod.object({
+  "data": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish().describe('只能取自产品 Token 色板的语义名。'),
+  "icon": zod.string().nullish().describe('只能取自产品语义图标集合。'),
+  "position": zod.number().int(),
+  "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n'),
+  "is_default": zod.boolean().describe('每个用户恰好一个默认清单。'),
+  "archived_at": zod.string().datetime({"offset":true}).nullish(),
+  "task_count": zod.number().int().optional().describe('未删除且未完成的 Task 数量，由服务端计算。'),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "version": zod.number().int()
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+

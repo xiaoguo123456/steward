@@ -309,6 +309,25 @@ type IdempotencyKey struct {
 	ExpiresAt    time.Time
 }
 
+type MealPlan struct {
+	ID        string
+	UserID    string
+	WeekStart time.Time
+	Version   int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type MealPlanEntry struct {
+	ID         string
+	UserID     string
+	MealPlanID string
+	EntryDate  time.Time
+	MealSlot   string
+	RecipeID   string
+	CreatedAt  time.Time
+}
+
 type MediaAsset struct {
 	ID          string
 	UserID      string
@@ -454,6 +473,39 @@ type Recipe struct {
 	ContentVersion  string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+}
+
+type RecipeCookLog struct {
+	ID        string
+	UserID    string
+	RecipeID  string
+	CookedAt  time.Time
+	CreatedAt time.Time
+}
+
+type RecipeDietProfile struct {
+	UserID         string
+	Goal           string
+	Age            *int32
+	Sex            string
+	HeightCm       *float64
+	WeightKg       *float64
+	TargetWeightKg *float64
+	ActivityLevel  string
+	Allergens      []string
+	Dislikes       []string
+	Servings       int32
+	MaxCookMinutes *int32
+	Completed      bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type RecipeFavorite struct {
+	ID        string
+	UserID    string
+	RecipeID  string
+	CreatedAt time.Time
 }
 
 type Record struct {

@@ -13,29 +13,19 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { ShoppingListItemInput } from './shoppingListItemInput';
 
 /**
- * 受影响资源类型，App 据此精确失效缓存。
+ * 把选中的食材创建成正式购物清单（TaskList + Task）。
+ * 用户排除家中已有食材之后才提交，服务端不替他决定买什么。
  */
-export type AffectedResourceType = typeof AffectedResourceType[keyof typeof AffectedResourceType];
-
-
-export const AffectedResourceType = {
-  task: 'task',
-  event: 'event',
-  project: 'project',
-  note: 'note',
-  record: 'record',
-  tracker: 'tracker',
-  task_list: 'task_list',
-  capture: 'capture',
-  today: 'today',
-  calendar: 'calendar',
-  activity: 'activity',
-  assistant_thread: 'assistant_thread',
-  action_proposal: 'action_proposal',
-  memory: 'memory',
-  recipe: 'recipe',
-  meal_plan: 'meal_plan',
-  diet_profile: 'diet_profile',
-} as const;
+export interface CreateShoppingListRequest {
+  week_start: string;
+  /**
+     * 不传时服务端按周生成，例如“8月17日那周的采购”。
+     * @maxLength 40
+     */
+  list_name?: string;
+  /** @minItems 1 */
+  items: ShoppingListItemInput[];
+}

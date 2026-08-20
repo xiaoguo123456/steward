@@ -49,6 +49,10 @@ const (
 	PrefixMemoryRevision   = "mrv"
 	PrefixRelearnBlock     = "rlb"
 	PrefixReviewSnapshot   = "rvs"
+	PrefixRecipeFavorite   = "rfv"
+	PrefixRecipeCookLog    = "rcl"
+	PrefixMealPlan         = "mpl"
+	PrefixMealPlanEntry    = "mpe"
 )
 
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)

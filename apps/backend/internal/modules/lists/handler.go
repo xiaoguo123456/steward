@@ -59,7 +59,7 @@ func (h *ListAPI) CreateTaskList(ctx context.Context, req httpapi.CreateTaskList
 	}
 	zero := 0
 	return httpapi.CreateTaskList201JSONResponse{
-		Data: mapTaskList(created, &zero),
+		Data: MapTaskList(created, &zero),
 		Meta: httpx.Meta(ctx),
 	}, nil
 }
@@ -164,7 +164,8 @@ func mapGetRow(row dbgen.GetTaskListRow) httpapi.TaskList {
 	}
 }
 
-func mapTaskList(row dbgen.TaskList, taskCount *int) httpapi.TaskList {
+// MapTaskList 把清单行映射成契约类型。供 recipes 复用，避免两处映射漂移。
+func MapTaskList(row dbgen.TaskList, taskCount *int) httpapi.TaskList {
 	return httpapi.TaskList{
 		Id:         row.ID,
 		Name:       row.Name,
