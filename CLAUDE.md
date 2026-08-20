@@ -29,11 +29,15 @@
 | 购物 | `list_kind=shopping` 的 TaskList；数量是自由文本，品类由服务端确定性分类 |
 | 运动／番茄钟／记账 | 三个内置 Tracker（`builtin_key`），按需创建 |
 | 行程 | `project_kind=trip` 的 Project + `/v1/projects/{id}/itinerary` 聚合 |
-| 食谱 | 只读平台内容（`recipes` 表，不受 RLS）；本周菜单与收藏仍是本地原型状态 |
+| 食谱 | 菜谱是只读平台内容（`recipes` 表，不受 RLS）；饮食档案、收藏、做过与本周菜单是用户数据，各自受 RLS |
 
 菜谱库里目前是 6 条平台自有占位内容。正式内容接入前必须逐条确定来源、
 作者、图片权利与授权范围——`source_name`、`license`、`content_version` 是
 NOT NULL，且「没有 image_credit 就不许挂 image_url」。
+
+本周菜单只存已确认的那版，AI 预览留在客户端（规格 8.2.2）。
+周起始日由服务端按用户偏好与时区算，条目按真实日期存而不是「周几」。
+身体数据属高敏，只接受用户自己填写，能力层没有登记对应 Capability。
 
 ## 常用命令
 

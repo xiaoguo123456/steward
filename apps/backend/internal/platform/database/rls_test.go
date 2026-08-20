@@ -391,3 +391,77 @@ func TestAllUserTablesForceRLS(t *testing.T) {
 		t.Fatalf("检查表属性出错：%v", err)
 	}
 }
+
+// 甲的本周菜单不会出现在乙那里。
+//
+// 菜单是「按周查」而不是按 ID 查的，所以它不像单条读取那样天然带归属条件：
+// 万一策略漏了，乙查自己这一周会直接查出甲的那份，而且看不出异常。
+func TestRLSIsolatesMealPlans(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	alice, _ := seedUser(t, db, uniquePhone())
+	bob, _ := seedUser(t, db, uniquePhone())
+	weekStart := time.Date(2026, 8, 17, 0, 0, 0, 0, time.UTC)
+
+	err := db.InTx(ctx, alice, func(ctx context.Context, q *dbgen.Queries) error {
+		_, err := q.UpsertMealPlan(ctx, dbgen.UpsertMealPlanParams{
+			ID: idgen.New(idgen.PrefixMealPlan), UserID: alice, WeekStart: weekStart,
+		})
+		return err
+	})
+	if err != nil {
+		t.Fatalf("甲创建菜单失败：%v", err)
+	}
+
+	err = db.InTx(ctx, bob, func(ctx context.Context, q *dbgen.Queries) error {
+		if _, err := q.GetMealPlanByWeek(ctx, weekStart); err != nil {
+			if database.IsNoRows(err) {
+				return nil // 期望：同一周，乙查不到甲的那份。
+			}
+			return err
+		}
+		t.Error("乙查到了甲的本周菜单")
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("查询出错：%v", err)
+	}
+}
+
+// 甲的饮食档案不会被乙读到。
+//
+// 这张表用主键做隔离而不是单独的 user_id 列，策略写法和别的表不一样，
+// 值得单独守一条——里面装的是身体数据。
+func TestRLSIsolatesDietProfile(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	alice, _ := seedUser(t, db, uniquePhone())
+	bob, _ := seedUser(t, db, uniquePhone())
+
+	goal := "muscle_gain"
+	err := db.InTx(ctx, alice, func(ctx context.Context, q *dbgen.Queries) error {
+		_, err := q.UpsertDietProfile(ctx, dbgen.UpsertDietProfileParams{
+			UserID: alice, Goal: &goal,
+		})
+		return err
+	})
+	if err != nil {
+		t.Fatalf("甲写入档案失败：%v", err)
+	}
+
+	err = db.InTx(ctx, bob, func(ctx context.Context, q *dbgen.Queries) error {
+		if _, err := q.GetDietProfile(ctx, alice); err != nil {
+			if database.IsNoRows(err) {
+				return nil // 期望：拿着甲的 user_id 也读不到。
+			}
+			return err
+		}
+		t.Error("乙读到了甲的饮食档案")
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("查询出错：%v", err)
+	}
+}
