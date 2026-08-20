@@ -543,6 +543,16 @@ type Relation struct {
 	DeletedAt      *time.Time
 }
 
+type ReminderDismissal struct {
+	ID             string
+	UserID         string
+	SourceType     string
+	SourceID       string
+	ReminderID     string
+	OccurrenceDate time.Time
+	DismissedAt    time.Time
+}
+
 type ReviewSnapshot struct {
 	ID            string
 	UserID        string

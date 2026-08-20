@@ -74,6 +74,9 @@ type Querier interface {
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (AuthRefreshToken, error)
 	// 只保存指纹，不保存明文；用于阻止已删除语义被自动再次建议。
 	CreateRelearnBlock(ctx context.Context, arg CreateRelearnBlockParams) error
+	// 重复消掉同一条不报错：客户端网络重试很常见，
+	// 而「消掉」本来就是幂等的意图。
+	CreateReminderDismissal(ctx context.Context, arg CreateReminderDismissalParams) error
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
 	CreateTaskList(ctx context.Context, arg CreateTaskListParams) (TaskList, error)
 	// Assistant 对话。系统权威会话是这些表，Provider 状态只是可丢弃的优化列。
@@ -164,6 +167,9 @@ type Querier interface {
 	ListEvents(ctx context.Context, arg ListEventsParams) ([]Event, error)
 	// 日历与 Today 用：只返回定时与全天事件的原始行，投影在应用层完成。
 	ListEventsInRange(ctx context.Context, arg ListEventsInRangeParams) ([]Event, error)
+	// 重要日是 recurrence='yearly' 的全天 Event，
+	// 它这一次的发生要投影到当年，因此 start_date 与 recurrence 都要带出来。
+	ListEventsWithReminders(ctx context.Context, rowLimit int32) ([]ListEventsWithRemindersRow, error)
 	ListFavoriteRecipeIDs(ctx context.Context) ([]string, error)
 	ListFavoriteRecipes(ctx context.Context, rowLimit int32) ([]Recipe, error)
 	// 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
@@ -188,11 +194,23 @@ type Querier interface {
 	ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Recipe, error)
 	ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error)
 	ListRelearnBlocks(ctx context.Context, rowLimit int32) ([]MemoryRelearnBlock, error)
+	// 用户消掉过的提醒。只查窗口内的：更早的那些已经超出过期窗口，
+	// 本来就不会再浮出来。
+	ListReminderDismissals(ctx context.Context, since time.Time) ([]ListReminderDismissalsRow, error)
 	ListTaskLists(ctx context.Context, includeArchived bool) ([]ListTaskListsRow, error)
 	// Task 查询。Today 的收录与排序完全由这里的确定性 SQL 决定，客户端不得重排。
 	ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, error)
 	// 日历用：当天截止或当天有计划时间的 Task。
 	ListTasksInRange(ctx context.Context, arg ListTasksInRangeParams) ([]Task, error)
+	// 待提醒判定用的查询。
+	//
+	// 提醒不是独立的行：它是 tasks/events 的 reminders 里一条规则，
+	// 加上一次「发生」算出来的时刻。触发时刻在 Go 里算——
+	// 涉及用户时区、「提前几天」的日期回退和重要日的年度投影，
+	// 写进 SQL 会变成一段没人敢改的表达式。
+	// 只取带提醒且有截止信息的未完成任务。
+	// 已完成或已取消的任务不再提醒：那件事已经不需要用户做了。
+	ListTasksWithReminders(ctx context.Context, rowLimit int32) ([]ListTasksWithRemindersRow, error)
 	// 只返回真正说过话的对话。用户打开面板又直接关掉不算一次对话，
 	// 那种空壳出现在历史里只会让列表全是「新对话」。
 	ListThreads(ctx context.Context, arg ListThreadsParams) ([]AssistantThread, error)
