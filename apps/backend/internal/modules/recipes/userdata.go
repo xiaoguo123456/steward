@@ -400,13 +400,37 @@ func mealSlotLabel(slot string) string {
 //
 // 它是**计划**摄入，和用户实际记录的摄入是两回事，
 // 客户端不得把两者混在一起展示。
+//
+// 脂肪与膳食纤维只有部分菜谱有。**只要有一道菜缺，整周的和就返回空**，
+// 而不是把缺的当 0 加进去——后者会给出一个偏低且看不出偏低的数字，
+// 比明说「这项算不出来」糟得多。
 func PlannedNutrition(entries []dbgen.ListMealPlanEntriesRow) httpapi.RecipeNutrition {
 	var out httpapi.RecipeNutrition
+	fat, fiber := 0.0, 0.0
+	fatKnown, fiberKnown := true, true
+
 	for _, entry := range entries {
 		out.Calories += entry.Recipe.Calories
 		out.ProteinG += entry.Recipe.ProteinG
 		out.CarbsG += entry.Recipe.CarbsG
-		out.FiberG += entry.Recipe.FiberG
+
+		if entry.Recipe.FatG != nil {
+			fat += *entry.Recipe.FatG
+		} else {
+			fatKnown = false
+		}
+		if entry.Recipe.FiberG != nil {
+			fiber += *entry.Recipe.FiberG
+		} else {
+			fiberKnown = false
+		}
+	}
+
+	if fatKnown && len(entries) > 0 {
+		out.FatG = &fat
+	}
+	if fiberKnown && len(entries) > 0 {
+		out.FiberG = &fiber
 	}
 	return out
 }

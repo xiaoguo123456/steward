@@ -34,6 +34,13 @@ DB_PATH = REPO / "tools" / "recipe-import" / "recipes.sqlite3"
 
 # 内容版本。映射规则改了就要改它，便于分辨库里是哪一版规则导入的。
 CONTENT_VERSION = "lanfan-2026-08"
+
+# 图片分发域名。steward/recipes/ 这个前缀在 CDN 上配了免鉴权，
+# 因此可以直接拼出永久地址；其余前缀仍然要签名。
+#
+# 同时存 image_key 与 image_url：键是稳定标识，URL 是当前的分发方式。
+# 哪天换域名或改回签名，重跑映射即可，不用去猜库里那串地址是怎么来的。
+CDN_BASE = "https://img.qhzhiyin.com"
 SOURCE_NAME = "懒饭"
 # **授权状态未确认。** 这不是占位符，是真实状态：
 # 内容来自懒饭 App，是否允许在本产品展示需要单独确认。
@@ -149,15 +156,17 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
     servings = servings or 2
     nutri = nutrition_per_serving([(c, p, f, cb) for _, _, c, p, f, cb in ings], servings)
 
-    cover_key = conn.execute(
+    cover = conn.execute(
         "SELECT oss_key FROM images WHERE recipe_id = ? AND kind = 'cover'", (rid,)
     ).fetchone()
+    cover_key = cover[0] if cover and cover[0] else None
 
     return {
         "id": f"rcp_lf{rid}",
         "title": name,
         "summary": (name_adj or "").strip() or None,
-        "image_key": cover_key[0] if cover_key and cover_key[0] else None,
+        "image_key": cover_key,
+        "image_url": f"{CDN_BASE}/{cover_key}" if cover_key else None,
         "servings": servings,
         "duration_minutes": parse_minutes(time_consuming),
         "difficulty": DIFFICULTY.get(difficulty_text, "medium"),
@@ -200,14 +209,14 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
 
 UPSERT = """
 INSERT INTO recipes (
-    id, title, summary, image_key, servings, duration_minutes, difficulty,
+    id, title, summary, image_key, image_url, servings, duration_minutes, difficulty,
     calories, protein_g, carbs_g, fat_g, fiber_g,
     meal_slots, categories, goals, tags, allergens,
     ingredients, steps,
     source_name, source_author, source_url, license, license_url,
     image_credit, content_version
 ) VALUES (
-    %(id)s, %(title)s, %(summary)s, %(image_key)s, %(servings)s, %(duration_minutes)s, %(difficulty)s,
+    %(id)s, %(title)s, %(summary)s, %(image_key)s, %(image_url)s, %(servings)s, %(duration_minutes)s, %(difficulty)s,
     %(calories)s, %(protein_g)s, %(carbs_g)s, %(fat_g)s, %(fiber_g)s,
     %(meal_slots)s, %(categories)s, %(goals)s, %(tags)s, %(allergens)s,
     %(ingredients)s, %(steps)s,
@@ -215,7 +224,8 @@ INSERT INTO recipes (
     %(image_credit)s, %(content_version)s
 )
 ON CONFLICT (id) DO UPDATE SET
-    title = EXCLUDED.title, summary = EXCLUDED.summary, image_key = EXCLUDED.image_key,
+    title = EXCLUDED.title, summary = EXCLUDED.summary,
+    image_key = EXCLUDED.image_key, image_url = EXCLUDED.image_url,
     servings = EXCLUDED.servings, duration_minutes = EXCLUDED.duration_minutes,
     difficulty = EXCLUDED.difficulty, calories = EXCLUDED.calories,
     protein_g = EXCLUDED.protein_g, carbs_g = EXCLUDED.carbs_g,
@@ -262,7 +272,7 @@ def main() -> int:
         sample = rows[0]
         for key in ("id", "title", "duration_minutes", "difficulty", "servings",
                     "calories", "protein_g", "fat_g", "fiber_g",
-                    "meal_slots", "categories", "allergens", "image_key",
+                    "meal_slots", "categories", "allergens", "image_url",
                     "source_name", "source_url", "license"):
             print(f"  {key} = {sample[key]}")
         print(f"  ingredients[0] = {json.loads(sample['ingredients'])[0]}")

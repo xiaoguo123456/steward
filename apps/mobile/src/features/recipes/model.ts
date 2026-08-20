@@ -48,7 +48,9 @@ export type Recipe = {
   calories: number;
   protein: number;
   carbs: number;
-  fiber: number;
+  /** 脂肪与膳食纤维可能没有。空表示「不知道」，界面显示「—」而不是 0。 */
+  fat?: number;
+  fiber?: number;
   recommendation: string;
   description: string;
   mealSlots: MealSlot[];
@@ -110,7 +112,15 @@ export type RecipeNutrition = {
   calories: number;
   protein_g: number;
   carbs_g: number;
-  fiber_g: number;
+  /**
+   * 脂肪与膳食纤维可能为空。
+   *
+   * 空表示「不知道」而不是 0：不同来源的菜谱给出的营养项不一样，
+   * 而「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话。
+   * 整周求和时只要有一道菜缺，这一项就是空。
+   */
+  fat_g?: number | null;
+  fiber_g?: number | null;
 };
 
 export const mealSlotOrder: MealSlot[] = ['breakfast', 'lunch', 'dinner'];

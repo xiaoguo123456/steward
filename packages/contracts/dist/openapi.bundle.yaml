@@ -6572,9 +6572,14 @@ components:
         - calories
         - protein_g
         - carbs_g
-        - fiber_g
       description: |
         每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。
+
+        **fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。**
+        不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，
+        导入内容反过来。把没有的那项填成 0 是个假声明——
+        「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，
+        而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。
       properties:
         calories:
           type: number
@@ -6585,9 +6590,14 @@ components:
         carbs_g:
           type: number
           format: double
+        fat_g:
+          type: number
+          format: double
+          nullable: true
         fiber_g:
           type: number
           format: double
+          nullable: true
     RecipeGoal:
       type: string
       description: |
@@ -6702,6 +6712,9 @@ components:
           nullable: true
           description: |
             没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。
+
+            它是当前分发方式下的地址。稳定标识是 image_key——
+            换域名或改成签名分发时，URL 会变而键不变。
         servings:
           type: integer
           minimum: 1

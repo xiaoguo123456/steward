@@ -188,6 +188,16 @@ export function RecipeSectionTitle({
   );
 }
 
+/** 全部都有才求和；缺一项就返回 undefined，由调用方显示「—」。 */
+function sumOrUnknown(values: (number | undefined)[]): number | undefined {
+  let total = 0;
+  for (const value of values) {
+    if (value === undefined) return undefined;
+    total += value;
+  }
+  return total;
+}
+
 export function NutritionStrip({
   recipes,
 }: {
@@ -195,11 +205,13 @@ export function NutritionStrip({
 }) {
   const calories = recipes.reduce((total, recipe) => total + recipe.calories, 0);
   const protein = recipes.reduce((total, recipe) => total + recipe.protein, 0);
-  const fiber = recipes.reduce((total, recipe) => total + recipe.fiber, 0);
+  // 有一道菜缺膳食纤维，这一项就显示「—」。
+  // 把缺的当 0 加进去会得到一个偏低、且从数字上看不出偏低的结果。
+  const fiber = sumOrUnknown(recipes.map((recipe) => recipe.fiber));
   const metrics = [
-    { label: '计划热量', value: `${calories}`, unit: '千卡' },
-    { label: '蛋白质', value: `${protein}`, unit: '克' },
-    { label: '膳食纤维', value: `${fiber}`, unit: '克' },
+    { label: '计划热量', value: `${Math.round(calories)}`, unit: '千卡' },
+    { label: '蛋白质', value: `${Math.round(protein)}`, unit: '克' },
+    { label: '膳食纤维', value: fiber === undefined ? '—' : `${Math.round(fiber)}`, unit: '克' },
   ];
 
   return (

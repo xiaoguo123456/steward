@@ -152,7 +152,7 @@ func (q *Queries) GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (M
 }
 
 const getRecipe = `-- name: GetRecipe :one
-SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at FROM recipes WHERE id = $1
+SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key FROM recipes WHERE id = $1
 `
 
 func (q *Queries) GetRecipe(ctx context.Context, id string) (Recipe, error) {
@@ -186,6 +186,8 @@ func (q *Queries) GetRecipe(ctx context.Context, id string) (Recipe, error) {
 		&i.ContentVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FatG,
+		&i.ImageKey,
 	)
 	return i, err
 }
@@ -239,7 +241,7 @@ func (q *Queries) ListFavoriteRecipeIDs(ctx context.Context) ([]string, error) {
 }
 
 const listFavoriteRecipes = `-- name: ListFavoriteRecipes :many
-SELECT r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at FROM recipe_favorites f
+SELECT r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at, r.fat_g, r.image_key FROM recipe_favorites f
 JOIN recipes r ON r.id = f.recipe_id
 ORDER BY f.created_at DESC
 LIMIT $1
@@ -282,6 +284,8 @@ func (q *Queries) ListFavoriteRecipes(ctx context.Context, rowLimit int32) ([]Re
 			&i.ContentVersion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.FatG,
+			&i.ImageKey,
 		); err != nil {
 			return nil, err
 		}
@@ -297,7 +301,7 @@ const listMealPlanEntries = `-- name: ListMealPlanEntries :many
 SELECT
     e.entry_date,
     e.meal_slot,
-    r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at
+    r.id, r.title, r.summary, r.image_url, r.servings, r.duration_minutes, r.difficulty, r.calories, r.protein_g, r.carbs_g, r.fiber_g, r.meal_slots, r.categories, r.goals, r.tags, r.allergens, r.ingredients, r.steps, r.source_name, r.source_author, r.source_url, r.license, r.license_url, r.image_credit, r.content_version, r.created_at, r.updated_at, r.fat_g, r.image_key
 FROM meal_plan_entries e
 JOIN recipes r ON r.id = e.recipe_id
 WHERE e.meal_plan_id = $1
@@ -352,6 +356,8 @@ func (q *Queries) ListMealPlanEntries(ctx context.Context, mealPlanID string) ([
 			&i.Recipe.ContentVersion,
 			&i.Recipe.CreatedAt,
 			&i.Recipe.UpdatedAt,
+			&i.Recipe.FatG,
+			&i.Recipe.ImageKey,
 		); err != nil {
 			return nil, err
 		}
@@ -365,7 +371,7 @@ func (q *Queries) ListMealPlanEntries(ctx context.Context, mealPlanID string) ([
 
 const listRecipes = `-- name: ListRecipes :many
 
-SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at FROM recipes
+SELECT id, title, summary, image_url, servings, duration_minutes, difficulty, calories, protein_g, carbs_g, fiber_g, meal_slots, categories, goals, tags, allergens, ingredients, steps, source_name, source_author, source_url, license, license_url, image_credit, content_version, created_at, updated_at, fat_g, image_key FROM recipes
 WHERE ($1::text IS NULL
        OR title ILIKE '%' || $1::text || '%'
        OR EXISTS (
@@ -434,6 +440,8 @@ func (q *Queries) ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Rec
 			&i.ContentVersion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.FatG,
+			&i.ImageKey,
 		); err != nil {
 			return nil, err
 		}
@@ -661,7 +669,7 @@ type UpsertRecipeParams struct {
 	Calories        float64
 	ProteinG        float64
 	CarbsG          float64
-	FiberG          float64
+	FiberG          *float64
 	MealSlots       []string
 	Categories      []string
 	Goals           []string

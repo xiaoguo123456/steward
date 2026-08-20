@@ -221,18 +221,20 @@ func seedRecipeContent(ctx context.Context, db *database.DB, userID string) erro
 				Calories:        r.Calories,
 				ProteinG:        r.Protein,
 				CarbsG:          r.Carbs,
-				FiberG:          r.Fiber,
-				MealSlots:       r.MealSlots,
-				Categories:      r.Categories,
-				Goals:           r.Goals,
-				Tags:            r.Tags,
-				Allergens:       r.Allergens,
-				Ingredients:     ingredients,
-				Steps:           steps,
-				SourceName:      "AI事管家示例内容",
-				License:         "平台自有内容",
-				ImageCredit:     &credit,
-				ContentVersion:  "sample-v1",
+				// 示例内容是手写的，有膳食纤维没有脂肪。
+				// 取地址而不是传 0：没有的那项要留空。
+				FiberG:         fiberOf(r),
+				MealSlots:      r.MealSlots,
+				Categories:     r.Categories,
+				Goals:          r.Goals,
+				Tags:           r.Tags,
+				Allergens:      r.Allergens,
+				Ingredients:    ingredients,
+				Steps:          steps,
+				SourceName:     "AI事管家示例内容",
+				License:        "平台自有内容",
+				ImageCredit:    &credit,
+				ContentVersion: "sample-v1",
 			}); err != nil {
 				return err
 			}
@@ -240,4 +242,13 @@ func seedRecipeContent(ctx context.Context, db *database.DB, userID string) erro
 		log.Printf("示例菜谱：%d 条（占位内容，正式菜谱需先确定来源与授权）", len(seedRecipes))
 		return nil
 	})
+}
+
+// fiberOf 返回示例菜谱的膳食纤维。
+//
+// 手写内容有这一项，导入的内容没有——两边各自如实填，
+// 缺的那项留空而不是填 0。
+func fiberOf(r recipeSeed) *float64 {
+	value := r.Fiber
+	return &value
 }

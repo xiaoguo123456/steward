@@ -16,10 +16,19 @@
 
 /**
  * 每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。
+ *
+ * **fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。**
+ * 不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，
+ * 导入内容反过来。把没有的那项填成 0 是个假声明——
+ * 「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，
+ * 而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。
  */
 export interface RecipeNutrition {
   calories: number;
   protein_g: number;
   carbs_g: number;
-  fiber_g: number;
+  /** @nullable */
+  fat_g?: number | null;
+  /** @nullable */
+  fiber_g?: number | null;
 }

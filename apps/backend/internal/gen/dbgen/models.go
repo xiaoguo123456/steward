@@ -456,7 +456,7 @@ type Recipe struct {
 	Calories        float64
 	ProteinG        float64
 	CarbsG          float64
-	FiberG          float64
+	FiberG          *float64
 	MealSlots       []string
 	Categories      []string
 	Goals           []string
@@ -473,6 +473,8 @@ type Recipe struct {
 	ContentVersion  string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	FatG            *float64
+	ImageKey        *string
 }
 
 type RecipeCookLog struct {

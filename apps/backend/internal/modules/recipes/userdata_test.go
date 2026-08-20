@@ -134,14 +134,46 @@ func TestValidateDietProfileRejectsOutOfRangeBody(t *testing.T) {
 
 func TestPlannedNutritionSumsWholeWeek(t *testing.T) {
 	entries := []dbgen.ListMealPlanEntriesRow{
-		{Recipe: dbgen.Recipe{Calories: 300, ProteinG: 20, CarbsG: 30, FiberG: 5}},
-		{Recipe: dbgen.Recipe{Calories: 450, ProteinG: 25, CarbsG: 55, FiberG: 8}},
+		{Recipe: dbgen.Recipe{Calories: 300, ProteinG: 20, CarbsG: 30, FiberG: f(5), FatG: f(9)}},
+		{Recipe: dbgen.Recipe{Calories: 450, ProteinG: 25, CarbsG: 55, FiberG: f(8), FatG: f(12)}},
 	}
 	got := PlannedNutrition(entries)
-	if got.Calories != 750 || got.ProteinG != 45 || got.CarbsG != 85 || got.FiberG != 13 {
+	if got.Calories != 750 || got.ProteinG != 45 || got.CarbsG != 85 {
 		t.Errorf("整周求和不对：%+v", got)
 	}
+	if got.FiberG == nil || *got.FiberG != 13 {
+		t.Errorf("膳食纤维应当是 13，实际 %v", got.FiberG)
+	}
+	if got.FatG == nil || *got.FatG != 21 {
+		t.Errorf("脂肪应当是 21，实际 %v", got.FatG)
+	}
 }
+
+// 有一道菜缺某项营养时，整周那一项就算不出来。
+//
+// 关键是**不能把缺的当 0 加进去**：那样会给出一个偏低、且从数字本身
+// 看不出偏低的结果。导入的菜谱没有膳食纤维、手写的没有脂肪，
+// 混在一周里是常态，所以这条不是边角情况。
+func TestPlannedNutritionLeavesUnknownEmpty(t *testing.T) {
+	entries := []dbgen.ListMealPlanEntriesRow{
+		{Recipe: dbgen.Recipe{Calories: 300, ProteinG: 20, CarbsG: 30, FiberG: f(5), FatG: f(9)}},
+		// 这道是导入内容：有脂肪，没有膳食纤维。
+		{Recipe: dbgen.Recipe{Calories: 450, ProteinG: 25, CarbsG: 55, FatG: f(12)}},
+	}
+	got := PlannedNutrition(entries)
+	if got.FiberG != nil {
+		t.Errorf("有一道菜没有膳食纤维，整周就不该给出数字，实际 %v", *got.FiberG)
+	}
+	if got.FatG == nil || *got.FatG != 21 {
+		t.Errorf("两道菜都有脂肪，应当能求和得 21，实际 %v", got.FatG)
+	}
+	// 三项基础营养两边都有，照常求和。
+	if got.Calories != 750 {
+		t.Errorf("热量应当照常求和，实际 %v", got.Calories)
+	}
+}
+
+func f(v float64) *float64 { return &v }
 
 // ---- 辅助 ----
 

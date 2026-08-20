@@ -47,7 +47,7 @@ export const ListRecipesResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "summary": zod.string().nullish(),
-  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n'),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n\n它是当前分发方式下的地址。稳定标识是 image_key——\n换域名或改成签名分发时，URL 会变而键不变。\n'),
   "servings": zod.number().int().min(1),
   "duration_minutes": zod.number().int().min(1),
   "difficulty": zod.enum(['easy', 'medium', 'hard']),
@@ -55,8 +55,9 @@ export const ListRecipesResponse = zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
   "carbs_g": zod.number(),
-  "fiber_g": zod.number()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n'),
+  "fat_g": zod.number().nullish(),
+  "fiber_g": zod.number().nullish()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -109,7 +110,7 @@ export const GetRecipeResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "summary": zod.string().nullish(),
-  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n'),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n\n它是当前分发方式下的地址。稳定标识是 image_key——\n换域名或改成签名分发时，URL 会变而键不变。\n'),
   "servings": zod.number().int().min(1),
   "duration_minutes": zod.number().int().min(1),
   "difficulty": zod.enum(['easy', 'medium', 'hard']),
@@ -117,8 +118,9 @@ export const GetRecipeResponse = zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
   "carbs_g": zod.number(),
-  "fiber_g": zod.number()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n'),
+  "fat_g": zod.number().nullish(),
+  "fiber_g": zod.number().nullish()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -262,7 +264,7 @@ export const ListFavoriteRecipesResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "summary": zod.string().nullish(),
-  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n'),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n\n它是当前分发方式下的地址。稳定标识是 image_key——\n换域名或改成签名分发时，URL 会变而键不变。\n'),
   "servings": zod.number().int().min(1),
   "duration_minutes": zod.number().int().min(1),
   "difficulty": zod.enum(['easy', 'medium', 'hard']),
@@ -270,8 +272,9 @@ export const ListFavoriteRecipesResponse = zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
   "carbs_g": zod.number(),
-  "fiber_g": zod.number()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n'),
+  "fat_g": zod.number().nullish(),
+  "fiber_g": zod.number().nullish()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -460,7 +463,7 @@ export const GetMealPlanResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "summary": zod.string().nullish(),
-  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n'),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n\n它是当前分发方式下的地址。稳定标识是 image_key——\n换域名或改成签名分发时，URL 会变而键不变。\n'),
   "servings": zod.number().int().min(1),
   "duration_minutes": zod.number().int().min(1),
   "difficulty": zod.enum(['easy', 'medium', 'hard']),
@@ -468,8 +471,9 @@ export const GetMealPlanResponse = zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
   "carbs_g": zod.number(),
-  "fiber_g": zod.number()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n'),
+  "fat_g": zod.number().nullish(),
+  "fiber_g": zod.number().nullish()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -500,8 +504,9 @@ export const GetMealPlanResponse = zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
   "carbs_g": zod.number(),
-  "fiber_g": zod.number()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n').describe('整周的\*\*计划\*\*摄入估算，由服务端按菜谱营养求和。\n它和用户实际记录的摄入是两回事，客户端不得混在一起展示。\n'),
+  "fat_g": zod.number().nullish(),
+  "fiber_g": zod.number().nullish()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n').describe('整周的\*\*计划\*\*摄入估算，由服务端按菜谱营养求和。\n它和用户实际记录的摄入是两回事，客户端不得混在一起展示。\n'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
   "version": zod.number().int()
@@ -553,7 +558,7 @@ export const ConfirmMealPlanResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "summary": zod.string().nullish(),
-  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n'),
+  "image_url": zod.string().nullish().describe('没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。\n\n它是当前分发方式下的地址。稳定标识是 image_key——\n换域名或改成签名分发时，URL 会变而键不变。\n'),
   "servings": zod.number().int().min(1),
   "duration_minutes": zod.number().int().min(1),
   "difficulty": zod.enum(['easy', 'medium', 'hard']),
@@ -561,8 +566,9 @@ export const ConfirmMealPlanResponse = zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
   "carbs_g": zod.number(),
-  "fiber_g": zod.number()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n'),
+  "fat_g": zod.number().nullish(),
+  "fiber_g": zod.number().nullish()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -593,8 +599,9 @@ export const ConfirmMealPlanResponse = zod.object({
   "calories": zod.number(),
   "protein_g": zod.number(),
   "carbs_g": zod.number(),
-  "fiber_g": zod.number()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n').describe('整周的\*\*计划\*\*摄入估算，由服务端按菜谱营养求和。\n它和用户实际记录的摄入是两回事，客户端不得混在一起展示。\n'),
+  "fat_g": zod.number().nullish(),
+  "fiber_g": zod.number().nullish()
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n').describe('整周的\*\*计划\*\*摄入估算，由服务端按菜谱营养求和。\n它和用户实际记录的摄入是两回事，客户端不得混在一起展示。\n'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
   "version": zod.number().int()

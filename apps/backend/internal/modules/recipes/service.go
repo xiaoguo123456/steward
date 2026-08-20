@@ -107,7 +107,10 @@ func MapRecipe(row dbgen.Recipe) httpapi.Recipe {
 			Calories: row.Calories,
 			ProteinG: row.ProteinG,
 			CarbsG:   row.CarbsG,
-			FiberG:   row.FiberG,
+			// 空表示「不知道」而不是 0：不同来源给出的营养项不一样，
+			// 手写内容有膳食纤维没有脂肪，导入内容反过来。
+			FatG:   row.FatG,
+			FiberG: row.FiberG,
 		},
 		MealSlots:   mapEnums[httpapi.RecipeMealSlot](row.MealSlots),
 		Categories:  mapEnums[httpapi.RecipeCategory](row.Categories),

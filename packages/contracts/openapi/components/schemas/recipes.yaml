@@ -143,6 +143,9 @@ Recipe:
       nullable: true
       description: |
         没有明确图片权利时为 null，客户端展示占位而不是随便找一张图。
+
+        它是当前分发方式下的地址。稳定标识是 image_key——
+        换域名或改成签名分发时，URL 会变而键不变。
     servings:
       type: integer
       minimum: 1
