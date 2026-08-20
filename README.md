@@ -96,6 +96,7 @@ make check        # gofmt + go vet + eslint + go test + tsc
 - [产品设计说明](./docs/产品设计说明.md)
 - [整体架构设计](./docs/整体架构设计.md)
 - [后端与 AI 开发指南](./docs/后端与AI开发指南.md)
+- [后台管理系统设计](./docs/后台管理系统设计.md)
 - [品牌与设计原则](./PRODUCT.md)
 - [原始 PRD](./AI事管家_PRD_v1.0.md)
 

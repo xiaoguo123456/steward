@@ -36,6 +36,8 @@ const (
 	PrefixRefreshToken     = "rt"
 	PrefixVerificationCode = "vc"
 	PrefixAIAction         = "aia"
+	PrefixAdminSession     = "ase"
+	PrefixAdminAudit       = "aud"
 	PrefixRun              = "run"
 	PrefixReviewSuggestion = "rsg"
 	PrefixReminder         = "rmd"

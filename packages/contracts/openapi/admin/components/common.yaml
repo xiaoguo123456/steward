@@ -1,0 +1,114 @@
+# Admin 契约的公共组件。
+#
+# **与公共 API 的契约完全分开**：两者的鉴权模型、错误码与缓存策略都不一样，
+# 混在一起会让「这个类型是给谁用的」变得模糊。共用的只有概念，不是文件。
+
+ResponseMeta:
+  type: object
+  additionalProperties: false
+  required: [request_id]
+  properties:
+    request_id:
+      type: string
+      description: 出错时报给用户的定位依据，日志里按它能查到整条调用链。
+
+Cursor:
+  type: object
+  additionalProperties: false
+  required: [next_cursor]
+  properties:
+    next_cursor:
+      type: string
+      nullable: true
+      description: 为空表示没有下一页。游标不透明，客户端不得解析。
+
+DataFreshness:
+  type: object
+  additionalProperties: false
+  description: |
+    读模型的新鲜度。后台的跨用户统计走聚合表而不是实时扫全库，
+    因此**必须把「这份数据算到什么时候」告诉使用者**——
+    不标出来的话，一个还没聚合的今天会被读成「今天没人用」。
+  required: [data_as_of, aggregation_status]
+  properties:
+    data_as_of:
+      type: string
+      format: date-time
+      nullable: true
+    aggregation_status:
+      type: string
+      enum: [fresh, stale, pending, failed]
+
+MoneyAmount:
+  type: object
+  additionalProperties: false
+  description: |
+    金额。**用字符串传 decimal**，不用 number——
+    JSON 的 number 是 IEEE754 双精度，累加会漂。
+
+    status=pricing_missing 时 amount 为 null，界面显示「价格缺失」**而不是 0**：
+    「不知道多少钱」和「不花钱」是完全不同的两件事，
+    显示成 0 会让人以为这条链路免费。
+  required: [amount, currency, status]
+  properties:
+    amount:
+      type: string
+      nullable: true
+      example: "2.381245"
+    currency:
+      type: string
+      enum: [USD]
+    status:
+      $ref: '#/CostStatus'
+
+CostStatus:
+  type: string
+  enum: [calculated, partial, pricing_missing, pending, not_applicable, no_usage]
+
+Error:
+  type: object
+  additionalProperties: false
+  required: [code, message]
+  properties:
+    code:
+      $ref: '#/ErrorCode'
+    message:
+      type: string
+    details:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [field, message]
+        properties:
+          field: { type: string }
+          message: { type: string }
+
+ErrorCode:
+  type: string
+  enum:
+    - ADMIN_AUTH_REQUIRED
+    - ADMIN_LOGIN_INVALID
+    - ADMIN_SESSION_EXPIRED
+    - ADMIN_CSRF_INVALID
+    - ADMIN_RATE_LIMITED
+    - ADMIN_IDEMPOTENCY_KEY_REQUIRED
+    - ADMIN_IDEMPOTENCY_KEY_REUSED
+    - ADMIN_VERSION_CONFLICT
+    - ADMIN_REASON_REQUIRED
+    - ADMIN_USER_NOT_FOUND
+    - ADMIN_USER_STATUS_CONFLICT
+    - ADMIN_PRICING_MISSING
+    - ADMIN_AUDIT_WRITE_FAILED
+    - ADMIN_VALIDATION_FAILED
+    - ADMIN_INTERNAL_ERROR
+
+ErrorResponse:
+  type: object
+  additionalProperties: false
+  required: [error, meta]
+  properties:
+    error:
+      $ref: '#/Error'
+    meta:
+      $ref: '#/ResponseMeta'

@@ -1,0 +1,74 @@
+Login:
+  post:
+    operationId: adminLogin
+    summary: 管理员登录
+    description: |
+      校验 Origin 与限流，再比对 Argon2id 口令散列。成功后下发
+      HttpOnly Cookie，并在响应体里返回 CSRF Token。
+
+      失败一律返回同一个 ADMIN_LOGIN_INVALID，**不区分「用户名不存在」
+      与「密码不对」**：区分开等于告诉攻击者用户名猜对了。
+    tags: [admin-auth]
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/auth.yaml#/LoginRequest'
+    responses:
+      '200':
+        description: 登录成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/auth.yaml#/LoginResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '429':
+        $ref: '../components/responses.yaml#/RateLimited'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Session:
+  get:
+    operationId: adminGetSession
+    summary: 读取当前会话
+    description: 前端启动时用它判断是否已登录，并取回 CSRF Token 与报表时区。
+    tags: [admin-auth]
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/auth.yaml#/SessionResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Logout:
+  post:
+    operationId: adminLogout
+    summary: 退出并撤销会话
+    tags: [admin-auth]
+    parameters:
+      - $ref: '../components/parameters.yaml#/CSRFToken'
+    responses:
+      '200':
+        description: 已退出。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/auth.yaml#/LogoutResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

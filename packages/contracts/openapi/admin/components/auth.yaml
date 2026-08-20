@@ -1,0 +1,72 @@
+LoginRequest:
+  type: object
+  additionalProperties: false
+  required: [username, password]
+  properties:
+    username:
+      type: string
+      minLength: 1
+      maxLength: 64
+    password:
+      type: string
+      minLength: 1
+      maxLength: 256
+      format: password
+
+LoginResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/AdminSession'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+AdminSession:
+  type: object
+  additionalProperties: false
+  description: |
+    当前会话。**Session Token 不在这里**——它只走 HttpOnly Cookie，
+    任何能被 JavaScript 读到的地方都不放，否则一次 XSS 就等于拿到后台。
+
+    csrf_token 反过来必须能被 JavaScript 读到：写请求要把它放进请求头，
+    这正是它能防住跨站请求的原因（跨站脚本读不到响应体）。
+  required: [username, csrf_token, expires_at, absolute_expires_at, environment, reporting_timezone]
+  properties:
+    username:
+      type: string
+    csrf_token:
+      type: string
+    expires_at:
+      type: string
+      format: date-time
+      description: 空闲超时时刻，每次请求都会往后推。
+    absolute_expires_at:
+      type: string
+      format: date-time
+      description: 绝对超时时刻，不随请求延长。
+    environment:
+      type: string
+      description: 非 production 时界面上常驻显示，避免在生产上误操作。
+    reporting_timezone:
+      type: string
+      description: 后台报表按这个时区切日，所有日期口径以它为准。
+
+SessionResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/AdminSession'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+LogoutResponse:
+  type: object
+  additionalProperties: false
+  required: [meta]
+  properties:
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

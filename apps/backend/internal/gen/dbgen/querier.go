@@ -47,6 +47,11 @@ type Querier interface {
 	CountTasksInList(ctx context.Context, listID string) (int32, error)
 	CreateActivityBatch(ctx context.Context, arg CreateActivityBatchParams) (ActivityBatch, error)
 	CreateActivityEntry(ctx context.Context, arg CreateActivityEntryParams) (ActivityEntry, error)
+	// 后台管理的查询。
+	//
+	// 这些表在 admin schema 里，由 steward_admin 角色访问。
+	// 业务表的查询仍然在各自的文件里，不混进来。
+	CreateAdminSession(ctx context.Context, arg CreateAdminSessionParams) (AdminSession, error)
 	// Capture 临时输入域。所有查询都限定在最新 revision，旧 revision 只供审计。
 	CreateCapture(ctx context.Context, arg CreateCaptureParams) (Capture, error)
 	CreateCaptureCandidate(ctx context.Context, arg CreateCaptureCandidateParams) (CaptureCandidate, error)
@@ -103,6 +108,11 @@ type Querier interface {
 	ExpireStaleProposals(ctx context.Context) error
 	// 幂等：重复收藏同一道菜不产生第二条记录。
 	FavoriteRecipe(ctx context.Context, arg FavoriteRecipeParams) error
+	// 按令牌散列取会话。过期与撤销的判断放在 Go 里做，
+	// 因为要区分「空闲超时」「绝对超时」「已撤销」「凭证版本变了」四种情况，
+	// 各自给出的提示不一样。
+	FindAdminSession(ctx context.Context, sessionTokenHash []byte) (AdminSession, error)
+	FindAdminSessionByID(ctx context.Context, id string) (AdminSession, error)
 	// 同一用户上传相同内容时复用已有资产，避免重复占用存储。
 	FindUploadedMediaByHash(ctx context.Context, contentHash *string) (MediaAsset, error)
 	FinishTurn(ctx context.Context, arg FinishTurnParams) (AssistantTurn, error)
@@ -155,6 +165,7 @@ type Querier interface {
 	ListActivityBatches(ctx context.Context, arg ListActivityBatchesParams) ([]ActivityBatch, error)
 	ListActivityEntries(ctx context.Context, batchID string) ([]ActivityEntry, error)
 	ListActivityEntriesForBatches(ctx context.Context, batchIds []string) ([]ActivityEntry, error)
+	ListAdminAudit(ctx context.Context, arg ListAdminAuditParams) ([]AdminAuditLog, error)
 	ListCaptureCandidates(ctx context.Context, arg ListCaptureCandidatesParams) ([]CaptureCandidate, error)
 	ListCaptureConflicts(ctx context.Context, arg ListCaptureConflictsParams) ([]CaptureConflict, error)
 	ListCaptureParts(ctx context.Context, arg ListCapturePartsParams) ([]CapturePart, error)
@@ -250,12 +261,19 @@ type Querier interface {
 	MarkProposalResolved(ctx context.Context, arg MarkProposalResolvedParams) (ActionProposal, error)
 	MarkUserInitialized(ctx context.Context, id string) error
 	MoveTasksToList(ctx context.Context, arg MoveTasksToListParams) error
+	// 清理已经绝对过期的会话。留着也没用，还让表越来越大。
+	PurgeExpiredAdminSessions(ctx context.Context) error
+	// 写一条管理操作审计。
+	//
+	// 摘要只放状态、数量与 ID。**不放用户正文。**
+	RecordAdminAudit(ctx context.Context, arg RecordAdminAuditParams) (AdminAuditLog, error)
 	RecordAiAction(ctx context.Context, arg RecordAiActionParams) error
 	RecordToolCall(ctx context.Context, arg RecordToolCallParams) error
 	RestoreEvent(ctx context.Context, id string) (Event, error)
 	RestoreNote(ctx context.Context, id string) (Note, error)
 	RestoreRecord(ctx context.Context, id string) (Record, error)
 	RestoreTask(ctx context.Context, id string) (Task, error)
+	RevokeAdminSession(ctx context.Context, id string) error
 	RevokeAllRefreshTokens(ctx context.Context, userID string) error
 	RevokeRefreshToken(ctx context.Context, id string) error
 	SaveIdempotencyRecord(ctx context.Context, arg SaveIdempotencyRecordParams) error
@@ -294,6 +312,8 @@ type Querier interface {
 	SupersedeOlderTurns(ctx context.Context, arg SupersedeOlderTurnsParams) error
 	// 新建议明确替换同一目标上的旧建议时，把旧项标为 superseded。
 	SupersedeProposalsForTarget(ctx context.Context, arg SupersedeProposalsForTargetParams) error
+	// 每次请求把空闲超时往后推。绝对超时不动。
+	TouchAdminSession(ctx context.Context, arg TouchAdminSessionParams) error
 	// 记录被使用的时间用于排序。被模型引用不提高事实可信度。
 	TouchMemoryUsed(ctx context.Context, ids []string) error
 	TouchThread(ctx context.Context, id string) error

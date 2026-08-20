@@ -1,0 +1,17 @@
+# 由 packages/contracts/dist/admin.bundle.yaml 生成 Admin 的 Go DTO 与 Strict Server。
+#
+# **和公共 API 分开生成到不同的包**：两边的类型不共享。看起来重复，
+# 但正是这份重复保证了「改后台不会动到用户端的契约」。
+package: adminapi
+output: internal/gen/adminapi/adminapi.gen.go
+
+generate:
+  models: true
+  chi-server: true
+  strict-server: true
+  embedded-spec: true
+
+output-options:
+  skip-prune: false
+  skip-fmt: false
+  nullable-type: false

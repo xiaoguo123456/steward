@@ -26,11 +26,20 @@ generate-contracts: ## 校验并打包 OpenAPI 为单文件 bundle
 .PHONY: generate-backend
 generate-backend: ## 由 OpenAPI 生成 Go DTO 与 strict server，并运行 sqlc
 	cd $(BACKEND) && go tool oapi-codegen -config oapi-codegen.yaml ../../$(CONTRACTS)/dist/openapi.bundle.yaml
+	cd $(BACKEND) && go tool oapi-codegen -config oapi-codegen-admin.yaml ../../$(CONTRACTS)/dist/admin.bundle.yaml
 	cd $(BACKEND) && go tool sqlc generate
 
 .PHONY: generate-client
 generate-client: ## 由 OpenAPI 生成 TypeScript Client 与 Zod 校验器
 	pnpm --filter @steward/api-client run generate
+
+.PHONY: admin-api
+admin-api: ## 启动后台管理 API
+	cd $(BACKEND) && go run ./cmd/admin-api
+
+.PHONY: admin-passwd
+admin-passwd: ## 生成管理员口令的 Argon2id 散列
+	cd $(BACKEND) && go run ./cmd/admin-passwd
 
 .PHONY: migrate
 migrate: ## 应用数据库迁移

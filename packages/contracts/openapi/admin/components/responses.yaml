@@ -1,0 +1,54 @@
+# Admin 的公共响应。每一个都带 request_id，出错时用户报这个号就能定位。
+
+Unauthorized:
+  description: |
+    未登录或会话已失效。
+
+    Cache-Control 由中间件统一设置（private, no-store），
+    不在每个响应上重复声明——重复声明只会让生成的类型多一层包装。
+  content:
+    application/json:
+      schema:
+        $ref: './common.yaml#/ErrorResponse'
+
+Forbidden:
+  description: CSRF 或 Origin 校验未通过。
+  content:
+    application/json:
+      schema:
+        $ref: './common.yaml#/ErrorResponse'
+
+BadRequest:
+  description: 参数不合法。
+  content:
+    application/json:
+      schema:
+        $ref: './common.yaml#/ErrorResponse'
+
+NotFound:
+  description: 目标不存在。
+  content:
+    application/json:
+      schema:
+        $ref: './common.yaml#/ErrorResponse'
+
+Conflict:
+  description: 版本冲突、状态冲突或幂等键复用。
+  content:
+    application/json:
+      schema:
+        $ref: './common.yaml#/ErrorResponse'
+
+RateLimited:
+  description: 请求过于频繁。
+  content:
+    application/json:
+      schema:
+        $ref: './common.yaml#/ErrorResponse'
+
+InternalError:
+  description: 服务端错误。
+  content:
+    application/json:
+      schema:
+        $ref: './common.yaml#/ErrorResponse'

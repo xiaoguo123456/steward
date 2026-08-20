@@ -56,6 +56,35 @@ type ActivityEntry struct {
 	CreatedAt    time.Time
 }
 
+type AdminAuditLog struct {
+	ID            string
+	OccurredAt    time.Time
+	Action        string
+	Outcome       string
+	TargetType    *string
+	TargetID      *string
+	ReasonCode    *string
+	ReasonText    *string
+	RequestID     string
+	BeforeSummary []byte
+	AfterSummary  []byte
+	CreatedAt     time.Time
+}
+
+type AdminSession struct {
+	ID                string
+	SessionTokenHash  []byte
+	CsrfSecretHash    []byte
+	CredentialVersion string
+	LastSeenAt        time.Time
+	ExpiresAt         time.Time
+	AbsoluteExpiresAt time.Time
+	RevokedAt         *time.Time
+	CreatedAt         time.Time
+	UserAgent         string
+	IpHash            []byte
+}
+
 type AiAction struct {
 	ID                  string
 	UserID              string

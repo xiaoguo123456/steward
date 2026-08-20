@@ -1,0 +1,63 @@
+Cursor:
+  name: cursor
+  in: query
+  required: false
+  description: 上一页返回的 next_cursor，不透明。
+  schema:
+    type: string
+
+Limit:
+  name: limit
+  in: query
+  required: false
+  description: 每页条数，默认 20，最大 100。
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 20
+
+RangeFrom:
+  name: from
+  in: query
+  required: false
+  description: 统计区间起始日（含），按后台报表时区切日。
+  schema:
+    type: string
+    format: date
+
+RangeTo:
+  name: to
+  in: query
+  required: false
+  description: 统计区间结束日（含）。
+  schema:
+    type: string
+    format: date
+
+UserID:
+  name: user_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+IdempotencyKey:
+  name: Idempotency-Key
+  in: header
+  required: true
+  description: |
+    写操作必带。同一个键配同样的请求体返回同样的结果；
+    配不同的请求体返回冲突——那说明调用方把键复用错了。
+  schema:
+    type: string
+    minLength: 8
+    maxLength: 128
+
+CSRFToken:
+  name: X-Admin-CSRF
+  in: header
+  required: true
+  description: 登录时下发，写操作必带。与 Origin 校验一起用，单靠任何一个都不够。
+  schema:
+    type: string

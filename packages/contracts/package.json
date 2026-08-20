@@ -4,8 +4,8 @@
   "private": true,
   "description": "OpenAPI、错误码、Fixture 与跨语言测试向量的唯一来源",
   "scripts": {
-    "lint": "redocly lint openapi/openapi.yaml",
-    "bundle": "redocly bundle openapi/openapi.yaml -o dist/openapi.bundle.yaml",
+    "lint": "redocly lint openapi/openapi.yaml openapi/admin/openapi.yaml",
+    "bundle": "redocly bundle openapi/openapi.yaml -o dist/openapi.bundle.yaml && redocly bundle openapi/admin/openapi.yaml -o dist/admin.bundle.yaml",
     "check": "pnpm run lint && pnpm run bundle"
   },
   "devDependencies": {

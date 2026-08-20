@@ -3,6 +3,7 @@ package httpx
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 )
@@ -50,4 +51,29 @@ func WithIdempotencyKey(ctx context.Context, key string) context.Context {
 func IdempotencyKey(ctx context.Context) string {
 	key, _ := ctx.Value(contextKeyIdempotencyKey).(string)
 	return key
+}
+
+// contextKeyRequest 让 strict server 的 handler 拿得到原始请求。
+//
+// 大多数 handler 不该需要它——能从契约拿到的东西就该从契约拿。
+// 但登录要看 Origin 和来源 IP，这两样不在请求体里，也不该塞进契约：
+// 它们是传输层的事实，不是接口的参数。
+type requestContextKey struct{}
+
+// WithRequest 把原始请求放进上下文。
+func WithRequest(ctx context.Context, r *http.Request) context.Context {
+	return context.WithValue(ctx, requestContextKey{}, r)
+}
+
+// RequestFrom 取出原始请求，没有时返回 nil。
+func RequestFrom(ctx context.Context) *http.Request {
+	r, _ := ctx.Value(requestContextKey{}).(*http.Request)
+	return r
+}
+
+// RequestMiddleware 把请求塞进上下文。挂在链路最外层。
+func RequestMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(WithRequest(r.Context(), r)))
+	})
 }
