@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+
+    // noUnusedLocals 关掉，因为编译范围里包含 admin-api-client 的生成代码，
+    // 而 orval 会多导入几个没用到的类型。生成产物禁止手改，
+    // 拿本地的 lint 规则去卡它只会逼人去改不该改的文件。
+    // 未使用变量的检查交给 ESLint，那本来也是它的职责。
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@steward/admin-api-client": ["../../packages/admin-api-client/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}

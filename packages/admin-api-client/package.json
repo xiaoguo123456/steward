@@ -1,0 +1,20 @@
+{
+  "name": "@steward/admin-api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "由 Admin OpenAPI 生成的 TypeScript Client",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "generate": "orval --config orval.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.2"
+  },
+  "devDependencies": {
+    "orval": "^8.24.0",
+    "typescript": "~5.9.2"
+  }
+}

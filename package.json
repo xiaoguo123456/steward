@@ -13,7 +13,10 @@
     "contracts:bundle": "pnpm --filter @steward/contracts run bundle",
     "contracts:lint": "pnpm --filter @steward/contracts run lint",
     "client:generate": "pnpm --filter @steward/api-client run generate",
-    "check": "pnpm mobile:lint && pnpm mobile:typecheck"
+    "check": "pnpm mobile:lint && pnpm mobile:typecheck",
+    "admin:dev": "pnpm --filter @steward/admin run dev",
+    "admin:typecheck": "pnpm --filter @steward/admin run typecheck && pnpm --filter @steward/admin-api-client run typecheck",
+    "admin:test": "pnpm --filter @steward/admin run test"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

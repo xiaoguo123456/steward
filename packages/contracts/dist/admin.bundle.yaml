@@ -39,18 +39,6 @@ tags:
     description: 运行中心
   - name: admin-audit
     description: 操作审计
-  - name: admin-dashboard
-    description: 总览
-  - name: admin-users
-    description: 用户查询与管理
-  - name: admin-usage
-    description: 使用分析
-  - name: admin-costs
-    description: AI 成本
-  - name: admin-ops
-    description: 运行中心
-  - name: admin-audit
-    description: 操作审计
 paths:
   /admin/v1/login:
     post:

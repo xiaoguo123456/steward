@@ -21,10 +21,6 @@ info:
     Admin 的数据库账号是 NOBYPASSRLS 的，**它绕不过行级安全**，
     这条由集成测试守着。
 
-servers:
-  - url: http://localhost:8788
-    description: 本地开发
-
 tags:
   - name: admin-auth
     description: 登录与会话
@@ -40,18 +36,11 @@ tags:
     description: 运行中心
   - name: admin-audit
     description: 操作审计
-  - name: admin-dashboard
-    description: 总览
-  - name: admin-users
-    description: 用户查询与管理
-  - name: admin-usage
-    description: 使用分析
-  - name: admin-costs
-    description: AI 成本
-  - name: admin-ops
-    description: 运行中心
-  - name: admin-audit
-    description: 操作审计
+
+servers:
+  - url: http://localhost:8788
+    description: 本地开发
+
 
 security:
   - adminSession: []

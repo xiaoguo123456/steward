@@ -32,6 +32,7 @@ generate-backend: ## 由 OpenAPI 生成 Go DTO 与 strict server，并运行 sql
 .PHONY: generate-client
 generate-client: ## 由 OpenAPI 生成 TypeScript Client 与 Zod 校验器
 	pnpm --filter @steward/api-client run generate
+	pnpm --filter @steward/admin-api-client run generate
 
 .PHONY: admin-api
 admin-api: ## 启动后台管理 API
@@ -100,11 +101,16 @@ eval-update: ## 把本次结果固化为新基线；确认过变化再跑，然�
 	cd $(BACKEND) && STEWARD_EVAL_UPDATE_BASELINE=1 go test -v -count=1 ./internal/platform/ai/eval/
 
 .PHONY: typecheck
-typecheck: ## 移动端类型检查
+typecheck: ## 移动端与后台类型检查
 	pnpm mobile:typecheck
+	pnpm admin:typecheck
 
 .PHONY: check
-check: format-check lint test typecheck ## 提交前全套检查
+check: format-check lint test typecheck test-admin ## 提交前全套检查
+
+.PHONY: test-admin
+test-admin: ## 后台前端测试
+	pnpm admin:test
 
 .PHONY: format-check
 format-check: ## 校验 Go 代码已格式化
