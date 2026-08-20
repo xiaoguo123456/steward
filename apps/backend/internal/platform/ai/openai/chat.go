@@ -80,6 +80,11 @@ type toolChatResponse struct {
 	Usage struct {
 		PromptTokens     int `json:"prompt_tokens"`
 		CompletionTokens int `json:"completion_tokens"`
+		// 命中缓存的输入 token。多数服务商对它另有折扣价，
+		// 不单独取出来就会按全价算，成本报表会偏高。
+		PromptTokensDetails struct {
+			CachedTokens int `json:"cached_tokens"`
+		} `json:"prompt_tokens_details"`
 	} `json:"usage"`
 	Error *struct {
 		Message string `json:"message"`
@@ -170,9 +175,10 @@ func (p *Provider) Complete(ctx context.Context, req ai.CompletionRequest) (ai.C
 		Content:      choice.Message.Content,
 		FinishReason: choice.FinishReason,
 		Usage: ai.Usage{
-			InputTokens:  parsed.Usage.PromptTokens,
-			OutputTokens: parsed.Usage.CompletionTokens,
-			LatencyMS:    int(time.Since(started).Milliseconds()),
+			InputTokens:       parsed.Usage.PromptTokens,
+			CachedInputTokens: parsed.Usage.PromptTokensDetails.CachedTokens,
+			OutputTokens:      parsed.Usage.CompletionTokens,
+			LatencyMS:         int(time.Since(started).Milliseconds()),
 		},
 	}
 	for _, call := range choice.Message.ToolCalls {

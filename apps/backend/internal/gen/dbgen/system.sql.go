@@ -374,7 +374,7 @@ INSERT INTO ai_actions (
     id, user_id, feature, run_id, engine_type, engine_version, provider,
     model_policy, provider_model, prompt_version, schema_version,
     input_refs, input_hash, output_hash, status, error_class,
-    input_tokens, output_tokens, estimated_cost, latency_ms, confirmation_outcome
+    input_tokens, output_tokens, cached_input_tokens, latency_ms, confirmation_outcome
 ) VALUES (
     $1, $2, $3, $4,
     $5, $6, $7,
@@ -405,7 +405,7 @@ type RecordAiActionParams struct {
 	ErrorClass          *string
 	InputTokens         int32
 	OutputTokens        int32
-	EstimatedCost       float64
+	CachedInputTokens   int32
 	LatencyMs           int32
 	ConfirmationOutcome *string
 }
@@ -430,7 +430,7 @@ func (q *Queries) RecordAiAction(ctx context.Context, arg RecordAiActionParams) 
 		arg.ErrorClass,
 		arg.InputTokens,
 		arg.OutputTokens,
-		arg.EstimatedCost,
+		arg.CachedInputTokens,
 		arg.LatencyMs,
 		arg.ConfirmationOutcome,
 	)

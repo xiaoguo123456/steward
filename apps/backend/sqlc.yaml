@@ -42,6 +42,7 @@ sql:
             go_type:
               type: "time.Time"
               pointer: true
-          # 成本是估算值，不参与结算，用 float64 足够且便于聚合。
-          - column: "ai_actions.estimated_cost"
-            go_type: "float64"
+          # 金额一律走 pgtype.Numeric，**不要 override 成 float64**。
+          # 之前这里写着「成本是估算值，用 float64 足够」——那个前提已经不成立：
+          # 后台要按它出账，而 float64 搬一趟 "0.1" 就已经不是 0.1 了。
+          # 换算全部在 SQL 里用 numeric 完成，Go 只负责搬字符串。

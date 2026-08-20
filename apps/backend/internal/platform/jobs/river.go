@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river/rivermigrate"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/aggregate"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/views"
@@ -265,6 +266,9 @@ type Deps struct {
 	Captures  *captures.Service
 	Assistant *assistant.Service
 	Views     *views.Service
+	// Aggregate 生成后台读模型。为空时不注册周期任务，
+	// 后台会看到 aggregation_status=pending 而不是一份看起来正常的空数据。
+	Aggregate *aggregate.Service
 }
 
 // New 构造 Runtime。runWorkers 为 false 时只入队不执行，适用于 API 进程。
@@ -284,6 +288,24 @@ func New(pool *pgxpool.Pool, deps Deps, logger *slog.Logger, runWorkers bool) (*
 		if err := river.AddWorkerSafely(workers,
 			&ReviewGenerateWorker{svc: deps.Views, logger: logger}); err != nil {
 			return nil, fmt.Errorf("注册复盘 Worker 失败：%w", err)
+		}
+		logger.Info("注册周期任务", "aggregate_enabled", deps.Aggregate != nil)
+		if deps.Aggregate != nil {
+			if err := river.AddWorkerSafely(workers,
+				&AdminAggregateWorker{svc: deps.Aggregate, logger: logger}); err != nil {
+				return nil, fmt.Errorf("注册后台聚合 Worker 失败：%w", err)
+			}
+			// 每小时刷新当天的数据。
+			//
+			// **不是「每小时算一次昨天」**：后台最常看的就是今天，
+			// 而今天的数据一直在变。整点重算当天，昨天由零点那次固化。
+			config.PeriodicJobs = append(config.PeriodicJobs, river.NewPeriodicJob(
+				river.PeriodicInterval(time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return AdminAggregateArgs{}, &river.InsertOpts{Queue: QueueRetention}
+				},
+				&river.PeriodicJobOpts{RunOnStart: true},
+			))
 		}
 		config.Workers = workers
 		config.Queues = map[string]river.QueueConfig{
@@ -308,4 +330,42 @@ func (r *Runtime) Start(ctx context.Context) error {
 // Stop 优雅停止 Worker。
 func (r *Runtime) Stop(ctx context.Context) error {
 	return r.client.Stop(ctx)
+}
+
+// AdminAggregateArgs 是后台读模型聚合任务的参数。
+//
+// Day 为空表示「算今天」。补跑历史时显式传日期——聚合是幂等的，
+// 同一天重跑多少遍结果都一样。
+type AdminAggregateArgs struct {
+	Day string `json:"day,omitempty"`
+}
+
+// Kind 返回任务类型名。
+func (AdminAggregateArgs) Kind() string { return "admin.aggregate" }
+
+// AdminAggregateWorker 执行后台读模型聚合。
+type AdminAggregateWorker struct {
+	river.WorkerDefaults[AdminAggregateArgs]
+	svc    *aggregate.Service
+	logger *slog.Logger
+}
+
+// Work 生成某一天的读模型。
+func (w *AdminAggregateWorker) Work(ctx context.Context, job *river.Job[AdminAggregateArgs]) error {
+	day := time.Now()
+	if job.Args.Day != "" {
+		parsed, err := time.Parse("2006-01-02", job.Args.Day)
+		if err != nil {
+			// 参数错了重试多少次都一样，直接放弃而不是无限重试。
+			w.logger.Error("后台聚合日期不合法", "day", job.Args.Day, "error", err)
+			return river.JobCancel(err)
+		}
+		day = parsed
+	}
+	written, err := w.svc.RunDaily(ctx, day)
+	if err != nil {
+		return err
+	}
+	w.logger.Info("后台读模型已更新", "date", day.Format("2006-01-02"), "users", written)
+	return nil
 }

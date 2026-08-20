@@ -12,6 +12,8 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/aggregate"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/costs"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant"
 	authmod "github.com/guoxiaozheng1/steward/apps/backend/internal/modules/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures"
@@ -130,6 +132,12 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	// 用了多少 token、花了多久、成没成功。**只记形状不记正文。**
 	auditor := aiaudit.New(db, logger)
 
+	// 后台读模型的聚合。它以 steward_app 身份跑，逐个用户开 RLS 事务——
+	// 后台看得到统计，但没有任何一条路径能一次读到所有人的原始数据。
+	costsSvc := costs.New(db, logger)
+	aggregateSvc := aggregate.New(db, costsSvc,
+		[]byte(cfg.MemoryFingerprintKey), cfg.AdminReportingTimezone, logger)
+
 	capturesSvc := captures.New(db, parser, processor, mediaSvc,
 		objectsSvc, trackersSvc, listsSvc, usersSvc, activitySvc, enqueuer, auditor)
 
@@ -169,6 +177,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		Captures:  capturesSvc,
 		Assistant: assistantSvc,
 		Views:     viewsSvc,
+		Aggregate: aggregateSvc,
 	}, logger, opts.RunWorkers)
 	if err != nil {
 		db.Close()

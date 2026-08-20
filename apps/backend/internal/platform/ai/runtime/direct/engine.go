@@ -98,8 +98,10 @@ func (e *Engine) RunTurn(ctx context.Context, req ai.TurnRequest) (ai.TurnResult
 		}
 
 		// 模型名每轮都一样，这里顺手记一次，供审计使用。
+		result.Provider = e.provider.Name()
 		result.ProviderModel = e.provider.ModelName()
 		result.Usage.InputTokens += completion.Usage.InputTokens
+		result.Usage.CachedInputTokens += completion.Usage.CachedInputTokens
 		result.Usage.OutputTokens += completion.Usage.OutputTokens
 		result.Usage.LatencyMS += completion.Usage.LatencyMS
 

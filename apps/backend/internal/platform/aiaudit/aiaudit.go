@@ -152,11 +152,10 @@ func (r *Recorder) Record(ctx context.Context, e Entry) {
 			ErrorClass:    nilIfEmpty(e.ErrorClass),
 			InputTokens:   int32(e.Usage.InputTokens),
 			OutputTokens:  int32(e.Usage.OutputTokens),
-			// 成本留 0：token 数是实测的，单价是每家服务商各自的商务条款，
-			// 编一个默认价会得到一个看起来精确、实际没有依据的金额。
-			// 要算钱就拿 token 数乘你自己的单价，SQL 一行的事。
-			EstimatedCost: e.Usage.EstimatedCost,
-			LatencyMs:     int32(e.Usage.LatencyMS),
+			// 缓存命中的输入 token 单独记：多数服务商对它另有折扣价，
+			// 混进 input_tokens 会把成本算高。
+			CachedInputTokens: int32(e.Usage.CachedInputTokens),
+			LatencyMs:         int32(e.Usage.LatencyMS),
 		})
 	})
 	if err != nil {

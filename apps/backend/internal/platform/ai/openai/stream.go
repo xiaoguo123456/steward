@@ -40,6 +40,11 @@ type streamChunk struct {
 	Usage *struct {
 		PromptTokens     int `json:"prompt_tokens"`
 		CompletionTokens int `json:"completion_tokens"`
+		// 命中缓存的输入 token。多数服务商对它另有折扣价，
+		// 不单独取出来就会按全价算，成本报表会偏高。
+		PromptTokensDetails struct {
+			CachedTokens int `json:"cached_tokens"`
+		} `json:"prompt_tokens_details"`
 	} `json:"usage"`
 	Error *struct {
 		Message string `json:"message"`
@@ -153,6 +158,7 @@ func (p *Provider) readStream(body io.Reader, onDelta func(string),
 		}
 		if chunk.Usage != nil {
 			usage.InputTokens = chunk.Usage.PromptTokens
+			usage.CachedInputTokens = chunk.Usage.PromptTokensDetails.CachedTokens
 			usage.OutputTokens = chunk.Usage.CompletionTokens
 		}
 		if len(chunk.Choices) == 0 {
@@ -193,9 +199,10 @@ func (p *Provider) readStream(body io.Reader, onDelta func(string),
 		Content:      content.String(),
 		FinishReason: finishReason,
 		Usage: ai.Usage{
-			InputTokens:  usage.InputTokens,
-			OutputTokens: usage.OutputTokens,
-			LatencyMS:    int(time.Since(started).Milliseconds()),
+			InputTokens:       usage.InputTokens,
+			CachedInputTokens: usage.CachedInputTokens,
+			OutputTokens:      usage.OutputTokens,
+			LatencyMS:         int(time.Since(started).Milliseconds()),
 		},
 	}
 	for _, index := range order {

@@ -64,6 +64,11 @@ type CompletionResult struct {
 // ChatProvider 是编排引擎需要的最小 Provider 能力。
 type ChatProvider interface {
 	Complete(ctx context.Context, req CompletionRequest) (CompletionResult, error)
+	// Name 是服务商标识，ModelName 是当前用的模型。
+	//
+	// **成本按「服务商 + 模型」两者匹配价格**，缺任何一个都永远匹配不上，
+	// 那次调用会一直停在 pricing_missing。
+	Name() string
 	ModelName() string
 }
 
@@ -154,7 +159,11 @@ type TurnResult struct {
 	Usage     Usage
 	// Mode 记录本轮被判定为哪种交互，仅用于审计与展示。
 	Mode string
-	// ProviderModel 是这一轮实际用的模型，只用于审计，不参与业务判断。
+	// Provider 与 ProviderModel 是这一轮实际用的服务商与模型，只用于审计。
+	//
+	// **两个都要**：成本按「服务商 + 模型」匹配价格，缺了服务商就永远
+	// 匹配不上，那次调用会一直是 pricing_missing。
+	Provider      string
 	ProviderModel string
 	// Degraded 为 true 表示因为达到上限或工具失败而给出的降级回答。
 	Degraded bool

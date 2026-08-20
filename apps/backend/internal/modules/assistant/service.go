@@ -524,6 +524,7 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		EngineType: "direct",
 		// 一轮里可能调了好几次工具，这里记的是整轮的合计用量。
 		ModelPolicy:   "chat",
+		Provider:      result.Provider,
 		ProviderModel: result.ProviderModel,
 		InputHash:     aiaudit.Hash(seed.UserText),
 		OutputHash:    aiaudit.Hash(result.Text),

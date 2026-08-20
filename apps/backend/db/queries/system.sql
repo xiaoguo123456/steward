@@ -89,13 +89,13 @@ INSERT INTO ai_actions (
     id, user_id, feature, run_id, engine_type, engine_version, provider,
     model_policy, provider_model, prompt_version, schema_version,
     input_refs, input_hash, output_hash, status, error_class,
-    input_tokens, output_tokens, estimated_cost, latency_ms, confirmation_outcome
+    input_tokens, output_tokens, cached_input_tokens, latency_ms, confirmation_outcome
 ) VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(feature), sqlc.arg(run_id),
     sqlc.arg(engine_type), sqlc.arg(engine_version), sqlc.arg(provider),
     sqlc.arg(model_policy), sqlc.arg(provider_model), sqlc.arg(prompt_version), sqlc.arg(schema_version),
     sqlc.arg(input_refs), sqlc.narg(input_hash), sqlc.narg(output_hash),
     sqlc.arg(status), sqlc.narg(error_class),
-    sqlc.arg(input_tokens), sqlc.arg(output_tokens), sqlc.arg(estimated_cost),
+    sqlc.arg(input_tokens), sqlc.arg(output_tokens), sqlc.arg(cached_input_tokens),
     sqlc.arg(latency_ms), sqlc.narg(confirmation_outcome)
 );

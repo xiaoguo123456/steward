@@ -6,6 +6,8 @@ package dbgen
 
 import (
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ActionProposal struct {
@@ -56,6 +58,18 @@ type ActivityEntry struct {
 	CreatedAt    time.Time
 }
 
+type AdminAggregationRun struct {
+	ID          string
+	Kind        string
+	ReportDate  *time.Time
+	Status      string
+	DataAsOf    *time.Time
+	StartedAt   time.Time
+	FinishedAt  *time.Time
+	ErrorClass  *string
+	RowsWritten int32
+}
+
 type AdminAuditLog struct {
 	ID            string
 	OccurredAt    time.Time
@@ -85,6 +99,43 @@ type AdminSession struct {
 	IpHash            []byte
 }
 
+type AdminUserDailyUsage struct {
+	UserID              string
+	ReportDate          time.Time
+	Active              bool
+	CaptureSubmitted    int32
+	CaptureConfirmed    int32
+	TaskCompleted       int32
+	AssistantTurns      int32
+	ProposalExecuted    int32
+	ReviewGenerated     int32
+	AiInputTokens       int64
+	AiCachedInputTokens int64
+	AiOutputTokens      int64
+	AiCost              pgtype.Numeric
+	AiCostStatus        string
+	UpdatedAt           time.Time
+}
+
+type AdminUserIndex struct {
+	UserID           string
+	MaskedPhone      string
+	PhoneLookupHash  []byte
+	PhoneHashVersion int32
+	DisplayName      string
+	AccountStatus    string
+	Initialized      bool
+	Timezone         string
+	CreatedAt        time.Time
+	LastActiveAt     *time.Time
+	ActiveDays30d    int32
+	AiCost30d        pgtype.Numeric
+	AiCostStatus     string
+	LatestErrorCode  *string
+	SourceVersion    int32
+	UpdatedAt        time.Time
+}
+
 type AiAction struct {
 	ID                  string
 	UserID              string
@@ -104,10 +155,38 @@ type AiAction struct {
 	ErrorClass          *string
 	InputTokens         int32
 	OutputTokens        int32
-	EstimatedCost       float64
+	EstimatedCost       pgtype.Numeric
 	LatencyMs           int32
 	ConfirmationOutcome *string
 	CreatedAt           time.Time
+	CachedInputTokens   int32
+	CostStatus          string
+	CostCalculatedAt    *time.Time
+}
+
+type AiActionCostItem struct {
+	ID           string
+	AiActionID   string
+	PriceID      *string
+	UsageUnit    string
+	Quantity     pgtype.Numeric
+	UnitSize     pgtype.Numeric
+	UnitPriceUsd pgtype.Numeric
+	AmountUsd    pgtype.Numeric
+	CostStatus   string
+	CreatedAt    time.Time
+}
+
+type AiModelPrice struct {
+	ID             string
+	Provider       string
+	Model          string
+	UsageUnit      string
+	UnitSize       pgtype.Numeric
+	UnitPriceUsd   pgtype.Numeric
+	EffectiveFrom  time.Time
+	EffectiveUntil *time.Time
+	CreatedAt      time.Time
 }
 
 type AiToolCall struct {

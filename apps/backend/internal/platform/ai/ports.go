@@ -25,10 +25,15 @@ var (
 
 // Usage 是一次调用的用量统计，用于成本核算与预算控制。
 type Usage struct {
-	InputTokens   int
-	OutputTokens  int
-	EstimatedCost float64
-	LatencyMS     int
+	InputTokens int
+	// CachedInputTokens 是命中缓存的输入 token。
+	// 多数服务商对它另有折扣价，因此单独记；混进 InputTokens 会把成本算高。
+	CachedInputTokens int
+	OutputTokens      int
+	LatencyMS         int
+	// **这里没有金额字段。** Provider 报的是用量，不是钱——
+	// 单价是商务条款，随时间变化，而且要能追溯「那笔账当时按什么价算的」。
+	// 换算在 modules/admin/costs 里按价格版本做。
 }
 
 // PartKind 是输入项类型。

@@ -355,6 +355,10 @@ func (p *scriptedProvider) reset(script []ai.CompletionResult) {
 	p.systemBlocks = nil
 }
 
+// Name 让脚本化 Provider 也满足 ChatProvider。
+// 评测不看成本，但接口要求两个标识都给得出来。
+func (p *scriptedProvider) Name() string { return "scripted" }
+
 func (p *scriptedProvider) ModelName() string { return "scripted-eval" }
 
 func (p *scriptedProvider) Complete(_ context.Context, req ai.CompletionRequest) (ai.CompletionResult, error) {

@@ -95,6 +95,9 @@ type Querier interface {
 	// 有意做成用户自己触发、受 RLS 约束：跨用户的定期清理需要维护角色，
 	// 而这点垃圾量不值得为它引入一条绕过 RLS 的路径。
 	DeleteAbandonedThreads(ctx context.Context) error
+	// 重算之前先清掉旧明细。**重算必须幂等**：同一次调用重算多少遍，
+	// 结果都应当一样，而不是把成本累加两遍。
+	DeleteCostItems(ctx context.Context, aiActionID string) error
 	DeleteExpiredIdempotencyRecords(ctx context.Context) error
 	DeleteMealPlanEntries(ctx context.Context, mealPlanID string) error
 	// 同步标记删除，查询立即不可见；派生数据由清理任务处理。
@@ -115,6 +118,7 @@ type Querier interface {
 	FindAdminSessionByID(ctx context.Context, id string) (AdminSession, error)
 	// 同一用户上传相同内容时复用已有资产，避免重复占用存储。
 	FindUploadedMediaByHash(ctx context.Context, contentHash *string) (MediaAsset, error)
+	FinishAggregationRun(ctx context.Context, arg FinishAggregationRunParams) error
 	FinishTurn(ctx context.Context, arg FinishTurnParams) (AssistantTurn, error)
 	GetActiveMemoryByKey(ctx context.Context, memoryKey string) (MemoryItem, error)
 	GetActivityBatch(ctx context.Context, id string) (ActivityBatch, error)
@@ -161,7 +165,15 @@ type Querier interface {
 	// 留在 pending 会让界面一直显示"处理中"，而它们根本不会被处理。
 	IgnoreUnprocessedParts(ctx context.Context, arg IgnoreUnprocessedPartsParams) error
 	IncrementVerificationAttempts(ctx context.Context, id string) error
+	// 写一条成本明细，价格按调用发生的时刻匹配。
+	//
+	// 匹配不到价格时 amount_usd 为 NULL、状态 pricing_missing——
+	// **不写 0**。「不知道多少钱」和「不花钱」是完全不同的两件事。
+	InsertCostItem(ctx context.Context, arg InsertCostItemParams) error
 	IsRelearnBlocked(ctx context.Context, arg IsRelearnBlockedParams) (bool, error)
+	// 后台每个响应都要说出「这份数据算到什么时候」。
+	LatestAggregation(ctx context.Context, kind string) (AdminAggregationRun, error)
+	ListAIPrices(ctx context.Context) ([]ListAIPricesRow, error)
 	ListActivityBatches(ctx context.Context, arg ListActivityBatchesParams) ([]ActivityBatch, error)
 	ListActivityEntries(ctx context.Context, batchID string) ([]ActivityEntry, error)
 	ListActivityEntriesForBatches(ctx context.Context, batchIds []string) ([]ActivityEntry, error)
@@ -194,6 +206,8 @@ type Querier interface {
 	ListNoteTags(ctx context.Context) ([]string, error)
 	// Note 查询。Note 没有完成状态，列表按置顶优先、更新时间倒序。
 	ListNotes(ctx context.Context, arg ListNotesParams) ([]Note, error)
+	// 取还没算成本的调用。
+	ListPendingCostActions(ctx context.Context, rowLimit int32) ([]ListPendingCostActionsRow, error)
 	// 长期停留在 pending 的资产说明客户端放弃了上传，交给清理任务回收。
 	ListPendingMediaBefore(ctx context.Context, arg ListPendingMediaBeforeParams) ([]MediaAsset, error)
 	// Project 查询。progress 由 Task 计数在应用层计算，不落库。
@@ -269,13 +283,25 @@ type Querier interface {
 	RecordAdminAudit(ctx context.Context, arg RecordAdminAuditParams) (AdminAuditLog, error)
 	RecordAiAction(ctx context.Context, arg RecordAiActionParams) error
 	RecordToolCall(ctx context.Context, arg RecordToolCallParams) error
+	// 新增或停用价格之后，把受影响的调用重新标成待算。
+	// 只影响这个 Provider + 模型，不是全表重算。
+	ResetCostStatus(ctx context.Context, arg ResetCostStatusParams) error
 	RestoreEvent(ctx context.Context, id string) (Event, error)
 	RestoreNote(ctx context.Context, id string) (Note, error)
 	RestoreRecord(ctx context.Context, id string) (Record, error)
 	RestoreTask(ctx context.Context, id string) (Task, error)
+	// 停用一个价格版本：给它一个结束时间，而不是删掉。
+	// 删掉会让引用它的历史成本明细失去来源，账就对不上了。
+	RetireAIPrice(ctx context.Context, arg RetireAIPriceParams) error
 	RevokeAdminSession(ctx context.Context, id string) error
 	RevokeAllRefreshTokens(ctx context.Context, userID string) error
 	RevokeRefreshToken(ctx context.Context, id string) error
+	// 把明细汇总回 ai_actions 上的缓存列。
+	//
+	// 状态取最保守的那个：只要有一项缺价，整次调用就是 partial（有明细算出来了）
+	// 或 pricing_missing（一项都没算出来）。**不能因为大部分算出来了就报 calculated**，
+	// 那会让一个偏低的数字看起来是准的。
+	RollupActionCost(ctx context.Context, aiActionID string) error
 	SaveIdempotencyRecord(ctx context.Context, arg SaveIdempotencyRecordParams) error
 	SaveProcessedJob(ctx context.Context, arg SaveProcessedJobParams) error
 	// provider_state 存客户端页面上下文，只用于消歧；执行前仍会重新校验归属与版本。
@@ -302,6 +328,10 @@ type Querier interface {
 	SoftDeleteTaskList(ctx context.Context, id string) (TaskList, error)
 	SoftDeleteThread(ctx context.Context, id string) (AssistantThread, error)
 	SoftDeleteTracker(ctx context.Context, id string) (Tracker, error)
+	// 注：近 30 天的滚动统计在 modules/admin/aggregate 里用 pgx 手写。
+	// sqlc 对 `max(...) FILTER (WHERE ...)` 的可空性推不出来：加 cast 会当成非空
+	// （遇到 NULL 直接扫描失败），不加 cast 又退化成 interface{}。
+	StartAggregationRun(ctx context.Context, arg StartAggregationRunParams) (AdminAggregationRun, error)
 	// 允许从 running 重新接管：保存结果的事务失败时 Turn 会停在 running，
 	// 若只接受 queued，River 重试会直接跳过，用户的 Operation 永远停在排队中。
 	StartTurn(ctx context.Context, id string) (AssistantTurn, error)
@@ -339,6 +369,11 @@ type Querier interface {
 	// 它需要的授权强度和改昵称完全不同（见 auth.ChangePhone）。
 	UpdateUserPhone(ctx context.Context, arg UpdateUserPhoneParams) (User, error)
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) (UserPreference, error)
+	// AI 成本核算与后台读模型的查询。
+	//
+	// **金额一律在 SQL 里用 numeric 算**，Go 只负责搬字符串。
+	// 用 float64 搬一趟就会有舍入误差，而这是钱。
+	UpsertAIPrice(ctx context.Context, arg UpsertAIPriceParams) (AiModelPrice, error)
 	// 第一次修改时顺带建行：客户端不需要先「创建档案」再改。
 	//
 	// INSERT 分支必须带上全部字段。只写 user_id 的话，第一次填问卷不会冲突，
@@ -351,6 +386,26 @@ type Querier interface {
 	UpsertRecipe(ctx context.Context, arg UpsertRecipeParams) error
 	// Review 快照。确定性指标始终可用，AI 叙述是可选增强。
 	UpsertReviewSnapshot(ctx context.Context, arg UpsertReviewSnapshotParams) (ReviewSnapshot, error)
+	// 幂等：同一天重跑多少次结果都一样，因为是整行覆盖而不是累加。
+	UpsertUserDailyUsage(ctx context.Context, arg UpsertUserDailyUsageParams) error
+	// 后台读模型的聚合查询。
+	//
+	// 由 Worker 以 steward_app 身份运行。跨用户的部分只碰 admin schema
+	// 与不带 user_id 的表；每个用户自己的明细都在他的 RLS 事务里读。
+	// 注：枚举用户那条走 SECURITY DEFINER 函数，sqlc 推不出 RETURNS TABLE 的
+	// 列类型（会退化成 interface{}），因此在 modules/admin/aggregate 里用 pgx 手写，
+	// 和登录前的那几个查询是同一处理。
+	UpsertUserIndex(ctx context.Context, arg UpsertUserIndexParams) error
+	// 某个用户某一天的 AI 用量与成本。
+	//
+	// 成本只汇总 calculated 的部分；只要有一条缺价，状态就降级为 partial。
+	// **不能因为大部分算出来了就报 calculated**，那会让一个偏低的数字看起来是准的。
+	UserDailyAICost(ctx context.Context, arg UserDailyAICostParams) (UserDailyAICostRow, error)
+	// 在某个用户的 RLS 事务里，统计他某一天的业务事实。
+	//
+	// 口径按后台报表时区切日：把 UTC 时间戳转到该时区再取日期。
+	// 不这么做的话，晚上八点之后的操作会被算到第二天。
+	UserDailyFacts(ctx context.Context, arg UserDailyFactsParams) (UserDailyFactsRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

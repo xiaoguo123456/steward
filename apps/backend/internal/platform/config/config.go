@@ -32,6 +32,11 @@ type Config struct {
 	// 它是独立用途的密钥，不复用 JWT 密钥：两者的轮换周期与泄漏影响完全不同。
 	MemoryFingerprintKey string
 
+	// AdminReportingTimezone 是后台报表时区。聚合任务跑在 Worker 进程里，
+	// 因此这一项在主配置里也要有——两个进程必须按同一个时区切日，
+	// 否则后台看到的「今天」和聚合算的「今天」会差一天。
+	AdminReportingTimezone string
+
 	AI      AIConfig
 	Storage StorageConfig
 	Stream  StreamConfig
@@ -92,13 +97,14 @@ func Load() (Config, error) {
 	_ = godotenv.Load(findEnvFile()...)
 
 	cfg := Config{
-		HTTPAddr:             env("STEWARD_HTTP_ADDR", ":8787"),
-		CORSOrigins:          splitAndTrim(env("STEWARD_CORS_ORIGINS", "http://localhost:8081,http://localhost:4174")),
-		PublicBaseURL:        env("STEWARD_PUBLIC_BASE_URL", "http://localhost:8787"),
-		DatabaseURL:          env("STEWARD_DATABASE_URL", ""),
-		JWTSecret:            env("STEWARD_JWT_SECRET", ""),
-		DevSMSCode:           env("STEWARD_DEV_SMS_CODE", ""),
-		MemoryFingerprintKey: env("STEWARD_MEMORY_FINGERPRINT_KEY", ""),
+		HTTPAddr:               env("STEWARD_HTTP_ADDR", ":8787"),
+		CORSOrigins:            splitAndTrim(env("STEWARD_CORS_ORIGINS", "http://localhost:8081,http://localhost:4174")),
+		PublicBaseURL:          env("STEWARD_PUBLIC_BASE_URL", "http://localhost:8787"),
+		DatabaseURL:            env("STEWARD_DATABASE_URL", ""),
+		JWTSecret:              env("STEWARD_JWT_SECRET", ""),
+		DevSMSCode:             env("STEWARD_DEV_SMS_CODE", ""),
+		MemoryFingerprintKey:   env("STEWARD_MEMORY_FINGERPRINT_KEY", ""),
+		AdminReportingTimezone: env("STEWARD_ADMIN_REPORTING_TIMEZONE", "Asia/Shanghai"),
 		AI: AIConfig{
 			Provider:        env("STEWARD_AI_PROVIDER", "fake"),
 			BaseURL:         strings.TrimRight(env("STEWARD_AI_BASE_URL", ""), "/"),
