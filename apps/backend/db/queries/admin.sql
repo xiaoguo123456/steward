@@ -39,10 +39,13 @@ DELETE FROM admin.sessions WHERE absolute_expires_at < now() - interval '7 days'
 --
 -- 摘要只放状态、数量与 ID。**不放用户正文。**
 INSERT INTO admin.audit_logs (
-    id, occurred_at, action, outcome, target_type, target_id,
+    id, occurred_at, actor_username, actor_session_id,
+    action, outcome, target_type, target_id,
     reason_code, reason_text, request_id, before_summary, after_summary
 ) VALUES (
-    sqlc.arg(id), sqlc.arg(occurred_at), sqlc.arg(action), sqlc.arg(outcome),
+    sqlc.arg(id), sqlc.arg(occurred_at),
+    sqlc.arg(actor_username), sqlc.narg(actor_session_id),
+    sqlc.arg(action), sqlc.arg(outcome),
     sqlc.narg(target_type), sqlc.narg(target_id), sqlc.narg(reason_code),
     sqlc.narg(reason_text), sqlc.arg(request_id),
     sqlc.narg(before_summary), sqlc.narg(after_summary)

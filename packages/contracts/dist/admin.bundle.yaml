@@ -1160,7 +1160,6 @@ components:
         - created_at
         - active_days_30d
         - ai_cost_30d
-        - version
       properties:
         id:
           type: string
@@ -1189,9 +1188,6 @@ components:
           type: string
           nullable: true
           description: 稳定错误码，不是错误正文——正文里常带用户输入的片段。
-        version:
-          type: integer
-          description: 管理操作要带它做乐观锁，避免两个人同时改出互相覆盖的结果。
     PageInfo:
       type: object
       additionalProperties: false
@@ -1480,6 +1476,7 @@ components:
       required:
         - id
         - occurred_at
+        - actor_username
         - action
         - outcome
         - request_id
@@ -1489,6 +1486,12 @@ components:
         occurred_at:
           type: string
           format: date-time
+        actor_username:
+          type: string
+          description: |
+            操作者。**空字符串表示这条记录写在补上 actor 之前**，
+            当时没有记录操作者——不要显示成某个叫空字符串的人，
+            界面上应当明确写「未记录」。
         action:
           type: string
         outcome:

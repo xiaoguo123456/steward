@@ -201,7 +201,8 @@ func (a *ReadAPI) auditLogs(ctx context.Context, action, targetID, cursor *strin
 	items := make([]adminapi.AdminAuditEntry, 0, len(rows))
 	for _, r := range rows {
 		items = append(items, adminapi.AdminAuditEntry{
-			Id: r.ID, OccurredAt: r.OccurredAt, Action: r.Action,
+			Id: r.ID, OccurredAt: r.OccurredAt,
+			ActorUsername: r.ActorUsername, Action: r.Action,
 			Outcome:    adminapi.AdminAuditEntryOutcome(r.Outcome),
 			TargetType: r.TargetType, TargetId: r.TargetID,
 			ReasonCode: r.ReasonCode, ReasonText: r.ReasonText,

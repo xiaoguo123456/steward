@@ -36,7 +36,10 @@ var (
 
 // Session 是校验通过后的会话信息。
 type Session struct {
-	ID                string
+	ID string
+	// Username 是操作者身份，审计要靠它回答「谁做的」。
+	// 取自配置：这套后台目前只有一个账号，用户名就是它的真实身份。
+	Username          string
 	CSRFToken         string
 	ExpiresAt         time.Time
 	AbsoluteExpiresAt time.Time
@@ -110,6 +113,7 @@ func (s *Service) Login(ctx context.Context, username, password, userAgent strin
 
 	return token, Session{
 		ID:                created.ID,
+		Username:          s.cfg.Username,
 		CSRFToken:         csrfToken,
 		ExpiresAt:         created.ExpiresAt,
 		AbsoluteExpiresAt: created.AbsoluteExpiresAt,
@@ -162,6 +166,7 @@ func (s *Service) Validate(ctx context.Context, token string) (Session, error) {
 
 	return Session{
 		ID:                row.ID,
+		Username:          s.cfg.Username,
 		ExpiresAt:         next,
 		AbsoluteExpiresAt: row.AbsoluteExpiresAt,
 	}, nil

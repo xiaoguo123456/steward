@@ -259,7 +259,7 @@ func (q *Queries) AdminLatestAggregation(ctx context.Context, kind string) (Admi
 
 const adminListAuditLogs = `-- name: AdminListAuditLogs :many
 
-SELECT id, occurred_at, action, outcome, target_type, target_id,
+SELECT id, occurred_at, actor_username, action, outcome, target_type, target_id,
        reason_code, reason_text, request_id
 FROM admin.audit_logs
 WHERE ($1::text IS NULL OR action = $1::text)
@@ -279,15 +279,16 @@ type AdminListAuditLogsParams struct {
 }
 
 type AdminListAuditLogsRow struct {
-	ID         string
-	OccurredAt time.Time
-	Action     string
-	Outcome    string
-	TargetType *string
-	TargetID   *string
-	ReasonCode *string
-	ReasonText *string
-	RequestID  string
+	ID            string
+	OccurredAt    time.Time
+	ActorUsername string
+	Action        string
+	Outcome       string
+	TargetType    *string
+	TargetID      *string
+	ReasonCode    *string
+	ReasonText    *string
+	RequestID     string
 }
 
 // 注：队列状态查 river_job，那张表由 River 在运行时自建、不在迁移里，
@@ -310,6 +311,7 @@ func (q *Queries) AdminListAuditLogs(ctx context.Context, arg AdminListAuditLogs
 		if err := rows.Scan(
 			&i.ID,
 			&i.OccurredAt,
+			&i.ActorUsername,
 			&i.Action,
 			&i.Outcome,
 			&i.TargetType,

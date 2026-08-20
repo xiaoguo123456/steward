@@ -47,6 +47,4 @@ export interface AdminUserSummary {
      * @nullable
      */
   latest_error_code?: string | null;
-  /** 管理操作要带它做乐观锁，避免两个人同时改出互相覆盖的结果。 */
-  version: number;
 }

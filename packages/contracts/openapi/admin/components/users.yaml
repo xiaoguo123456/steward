@@ -7,7 +7,7 @@ AdminUserSummary:
     **不含任何用户正文**：没有笔记、没有会话消息、没有记忆、
     没有 OCR 结果。能看到的是状态、数量和标识。
   required: [id, masked_phone, account_status, initialized, created_at,
-             active_days_30d, ai_cost_30d, version]
+             active_days_30d, ai_cost_30d]
   properties:
     id: { type: string }
     masked_phone:
@@ -30,9 +30,12 @@ AdminUserSummary:
       type: string
       nullable: true
       description: 稳定错误码，不是错误正文——正文里常带用户输入的片段。
-    version:
-      type: integer
-      description: 管理操作要带它做乐观锁，避免两个人同时改出互相覆盖的结果。
+    # 这里**故意没有 version**。
+    #
+    # 列表来自读模型，最多滞后一个聚合周期。乐观锁的版本号一旦滞后，
+    # 拿它当 expected_version 就会一直撞 409，而刷新列表只会再拿到同一个
+    # 旧值——锁装上了却不发钥匙。所以版本号只由用户详情接口给，
+    # 那里是实时从 users 读的。管理写操作一律先取详情。
 
 AccountStatus:
   type: string
@@ -216,10 +219,16 @@ AdminOperationListResponse:
 AdminAuditEntry:
   type: object
   additionalProperties: false
-  required: [id, occurred_at, action, outcome, request_id]
+  required: [id, occurred_at, actor_username, action, outcome, request_id]
   properties:
     id: { type: string }
     occurred_at: { type: string, format: date-time }
+    actor_username:
+      type: string
+      description: |
+        操作者。**空字符串表示这条记录写在补上 actor 之前**，
+        当时没有记录操作者——不要显示成某个叫空字符串的人，
+        界面上应当明确写「未记录」。
     action: { type: string }
     outcome:
       type: string

@@ -72,9 +72,8 @@ func (a *ReadAPI) AdminListUsers(ctx context.Context,
 			LastActiveAt:  r.LastActiveAt,
 			ActiveDays30d: int(r.ActiveDays30d),
 			AiCost30d:     money(r.AiCost30d, r.AiCostStatus),
-			// version 用于管理操作的乐观锁。读模型里没有它，
-			// 由用户详情接口从 users 表实时取——列表页不需要精确值。
-			Version: 0,
+			// 列表里没有 version：读模型的快照会滞后，滞后的版本号
+			// 拿去做乐观锁只会一直 409。写操作先取详情，那里是实时的。
 		}
 		if r.DisplayName != "" {
 			name := r.DisplayName
@@ -121,7 +120,7 @@ func (a *ReadAPI) AdminGetUser(ctx context.Context,
 
 	// 数量要在该用户的 RLS 事务里数——这是后台唯一会碰业务表的地方，
 	// 而且**一次事务只绑一个用户**。
-	counts, sessions, version, err := a.userCounts(ctx, req.UserId)
+	counts, sessions, version, liveStatus, err := a.userCounts(ctx, req.UserId)
 	if err != nil {
 		a.logger.Error("用户明细取数失败", "user_id", req.UserId, "error", err)
 		return adminapi.AdminGetUser500JSONResponse{
@@ -131,9 +130,10 @@ func (a *ReadAPI) AdminGetUser(ctx context.Context,
 	}
 
 	detail := adminapi.AdminUserDetail{
-		Id:             index.UserID,
-		MaskedPhone:    index.MaskedPhone,
-		AccountStatus:  adminapi.AccountStatus(index.AccountStatus),
+		Id:          index.UserID,
+		MaskedPhone: index.MaskedPhone,
+		// 详情页用实时状态，不是读模型里的那份快照。
+		AccountStatus:  adminapi.AccountStatus(liveStatus),
 		Initialized:    index.Initialized,
 		Timezone:       index.Timezone,
 		CreatedAt:      index.CreatedAt,
@@ -155,9 +155,12 @@ func (a *ReadAPI) AdminGetUser(ctx context.Context,
 // userCounts 在该用户的 RLS 事务里数各类对象。
 //
 // **只数数量，不读正文。** SQL 里一个 SELECT 具体字段都没有。
-func (a *ReadAPI) userCounts(ctx context.Context, userID string) (adminapi.UserCounts, int, int, error) {
+func (a *ReadAPI) userCounts(ctx context.Context, userID string) (
+	adminapi.UserCounts, int, int, string, error) {
+
 	var c adminapi.UserCounts
 	var sessions, version int
+	var status string
 
 	err := a.db.InTx(ctx, userID, func(ctx context.Context, _ *dbgen.Queries) error {
 		tx, err := database.TxFrom(ctx)
@@ -174,14 +177,18 @@ func (a *ReadAPI) userCounts(ctx context.Context, userID string) (adminapi.UserC
 			    (SELECT count(*) FROM assistant_threads),
 			    (SELECT count(*) FROM auth_refresh_tokens
 			      WHERE revoked_at IS NULL AND expires_at > now()),
-			    -- status_version 由用户管理那一步（步骤四）加上。
-			    -- 还没有时一律返回 0：管理操作会带着它做乐观锁，
-			    -- 0 对 0 能过，加上列之后才真正起作用。
-			    0`).
+			    -- 版本与状态必须**实时**从 users 读，不能用读模型里的快照。
+			    --
+			    -- 乐观锁靠这个版本号：读模型最多滞后一个聚合周期，拿它当
+			    -- expected_version 会一直撞 409，而刷新页面只会再拿到同一个
+			    -- 旧值——锁装上了却不发钥匙，用户被写过一次就再也管不了。
+			    -- 状态同理：刚暂停完页面还显示「正常」，按钮就会给反。
+			    (SELECT status_version FROM users WHERE id = $1),
+			    (SELECT account_status FROM users WHERE id = $1)`, userID).
 			Scan(&c.Tasks, &c.Events, &c.Projects, &c.Notes, &c.Captures,
-				&c.AssistantThreads, &sessions, &version)
+				&c.AssistantThreads, &sessions, &version, &status)
 	})
-	return c, sessions, version, err
+	return c, sessions, version, status, err
 }
 
 // AdminGetUserUsage 返回用户的按天使用情况。

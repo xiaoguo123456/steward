@@ -41,6 +41,14 @@ export function AuditPage() {
                   dataIndex: 'occurred_at',
                   render: (v: string) => new Date(v).toLocaleString('zh-CN'),
                 },
+                {
+                  title: '操作者',
+                  dataIndex: 'actor_username',
+                  // 空串表示这条写在补上 actor 之前，当时没记。
+                  // 必须显式写「未记录」——留空会被读成「系统自己做的」。
+                  render: (v: string) =>
+                    v ? v : <Typography.Text type="secondary">未记录</Typography.Text>,
+                },
                 { title: '操作', dataIndex: 'action' },
                 {
                   title: '结果',

@@ -83,6 +83,9 @@ type AdminAuditLog struct {
 	BeforeSummary []byte
 	AfterSummary  []byte
 	CreatedAt     time.Time
+	// 操作者用户名。空字符串表示这条记录写在本迁移之前，当时没有记录操作者——不要把它当成「某个叫空字符串的人」，也不要事后猜一个填进去。
+	ActorUsername  string
+	ActorSessionID *string
 }
 
 type AdminSession struct {

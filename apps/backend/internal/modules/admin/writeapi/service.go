@@ -55,6 +55,11 @@ type ActionInput struct {
 	IdempotencyKey string
 	RequestBody    []byte
 	RequestID      string
+
+	// 操作者。审计要回答「谁做的」，由 Handler 从已验证的会话里取，
+	// **不接受调用方自报**——自报的身份在审计里等于没有身份。
+	ActorUsername  string
+	ActorSessionID string
 }
 
 // StatusResult 是暂停/恢复的结果。
@@ -335,7 +340,9 @@ func (s *Service) writeAudit(ctx context.Context, q *dbgen.Queries, in ActionInp
 	afterJSON, _ := json.Marshal(after)
 
 	_, err := q.RecordAdminAudit(ctx, dbgen.RecordAdminAuditParams{
-		ID: id, OccurredAt: time.Now(), Action: action, Outcome: outcome,
+		ID: id, OccurredAt: time.Now(),
+		ActorUsername: in.ActorUsername, ActorSessionID: nullable(in.ActorSessionID),
+		Action: action, Outcome: outcome,
 		TargetType: &targetType, TargetID: &in.UserID,
 		ReasonCode: &in.ReasonCode, ReasonText: &in.ReasonText,
 		RequestID:     in.RequestID,
@@ -397,4 +404,12 @@ func (s *Service) saveIdempotency(ctx context.Context, q *dbgen.Queries,
 func requestHash(body []byte) []byte {
 	sum := sha256.Sum256(body)
 	return sum[:]
+}
+
+// nullable 把空字符串转成 NULL。审计里「没有」和「空」不是一回事。
+func nullable(v string) *string {
+	if v == "" {
+		return nil
+	}
+	return &v
 }

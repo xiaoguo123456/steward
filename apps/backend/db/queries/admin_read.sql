@@ -101,7 +101,7 @@ GROUP BY report_date ORDER BY report_date;
 -- sqlc 不认识它。因此在 modules/admin/ops 里用 pgx 手写。
 
 -- name: AdminListAuditLogs :many
-SELECT id, occurred_at, action, outcome, target_type, target_id,
+SELECT id, occurred_at, actor_username, action, outcome, target_type, target_id,
        reason_code, reason_text, request_id
 FROM admin.audit_logs
 WHERE (sqlc.narg(action)::text IS NULL OR action = sqlc.narg(action)::text)

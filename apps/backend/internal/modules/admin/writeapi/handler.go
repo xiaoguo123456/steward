@@ -9,6 +9,7 @@ import (
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/adminapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/costs"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/httpx"
 )
@@ -146,12 +147,14 @@ func (a *WriteAPI) AdminSetUserBudget(ctx context.Context,
 	}
 
 	raw, _ := json.Marshal(req.Body)
+	actor, sessionID := actorOf(ctx)
 	in := BudgetInput{
 		ActionInput: ActionInput{
 			UserID: req.UserId, ExpectedVersion: int32(req.Body.ExpectedVersion),
 			ReasonCode: string(req.Body.ReasonCode), ReasonText: req.Body.ReasonText,
 			IdempotencyKey: req.Params.IdempotencyKey, RequestBody: raw,
-			RequestID: httpx.RequestID(ctx),
+			RequestID:     httpx.RequestID(ctx),
+			ActorUsername: actor, ActorSessionID: sessionID,
 		},
 		EffectiveFrom: req.Body.EffectiveFrom, EffectiveUntil: req.Body.EffectiveUntil,
 	}
@@ -192,6 +195,7 @@ func (a *WriteAPI) AdminSetUserBudget(ctx context.Context,
 func (a *WriteAPI) AdminClearUserBudget(ctx context.Context,
 	req adminapi.AdminClearUserBudgetRequestObject) (adminapi.AdminClearUserBudgetResponseObject, error) {
 
+	actor, sessionID := actorOf(ctx)
 	result, err := a.svc.SetBudget(ctx, BudgetInput{
 		ActionInput: ActionInput{
 			UserID: req.UserId,
@@ -199,6 +203,7 @@ func (a *WriteAPI) AdminClearUserBudget(ctx context.Context,
 			ReasonCode: "other", ReasonText: "管理员清除预算限制",
 			IdempotencyKey: req.Params.IdempotencyKey,
 			RequestBody:    []byte("clear"), RequestID: httpx.RequestID(ctx),
+			ActorUsername: actor, ActorSessionID: sessionID,
 		},
 		Clear: true,
 	})
@@ -218,6 +223,20 @@ func (a *WriteAPI) AdminClearUserBudget(ctx context.Context,
 	}), nil
 }
 
+// actorOf 取当前操作者。
+//
+// **只从已验证的会话里取。** 请求体里带来的任何身份都不看——
+// 审计里一个自报的身份等于没有身份，写进去反而让人以为查得清。
+// 会话不存在时留空：审计仍然会写，只是这条追不到人，
+// 这比伪造一个「系统」出来诚实。
+func actorOf(ctx context.Context) (username, sessionID string) {
+	session, ok := auth.SessionFrom(ctx)
+	if !ok {
+		return "", ""
+	}
+	return session.Username, session.ID
+}
+
 // inputOf 校验公共入参。
 func (a *WriteAPI) inputOf(ctx context.Context, userID, key string,
 	req *adminapi.AdminActionRequest) (ActionInput, *adminapi.ErrorResponse) {
@@ -232,11 +251,13 @@ func (a *WriteAPI) inputOf(ctx context.Context, userID, key string,
 	}
 
 	raw, _ := json.Marshal(req)
+	actor, sessionID := actorOf(ctx)
 	return ActionInput{
 		UserID: userID, ExpectedVersion: int32(req.ExpectedVersion),
 		ReasonCode: string(req.ReasonCode), ReasonText: req.ReasonText,
 		ExpiresAt: req.ExpiresAt, IdempotencyKey: key,
 		RequestBody: raw, RequestID: httpx.RequestID(ctx),
+		ActorUsername: actor, ActorSessionID: sessionID,
 	}, nil
 }
 

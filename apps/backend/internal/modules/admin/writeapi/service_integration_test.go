@@ -84,7 +84,8 @@ func actionFor(userID, key string) ActionInput {
 		UserID: userID, ExpectedVersion: 0,
 		ReasonCode: "abuse_prevention", ReasonText: "集成测试用的处置理由",
 		IdempotencyKey: key, RequestBody: []byte(`{"v":0}`),
-		RequestID: "req_test",
+		RequestID:     "req_test",
+		ActorUsername: "集成测试管理员", ActorSessionID: "adms_test",
 	}
 }
 
@@ -376,5 +377,85 @@ func TestActionOnMissingUser(t *testing.T) {
 	if _, err := svc.Suspend(context.Background(),
 		actionFor("usr_does_not_exist", "k-missing")); err != ErrUserNotFound {
 		t.Errorf("用户不存在应当返回 ErrUserNotFound，实际 %v", err)
+	}
+}
+
+// 每一条审计都必须记下操作者。
+//
+// 审计的全部意义是可追责：记了「做了什么」却不记「谁做的」，
+// 出事时只能证明「有人动过」。这条在回归里真的发现过——
+// 表里从一开始就没有 actor 列，四种写操作全都追不到人。
+//
+// 今天后台只有一个账号，看起来「谁」没有歧义。但那不是不记的理由：
+// 第二个账号加进来之前的所有历史行会永远无法归属。
+func TestEveryAuditRecordsItsActor(t *testing.T) {
+	adminDB, appDB := testDB(t)
+	svc := New(adminDB, nil)
+	ctx := context.Background()
+
+	// 四种写操作各来一次，逐个查审计。
+	type step struct {
+		name string
+		run  func(userID string) (string, error)
+	}
+	steps := []step{
+		{"suspend", func(u string) (string, error) {
+			r, err := svc.Suspend(ctx, actionFor(u, "k-actor-s-"+u))
+			return r.AuditLogID, err
+		}},
+		{"resume", func(u string) (string, error) {
+			if _, err := svc.Suspend(ctx, actionFor(u, "k-actor-rs-"+u)); err != nil {
+				return "", err
+			}
+			in := actionFor(u, "k-actor-r-"+u)
+			in.ExpectedVersion = 1
+			r, err := svc.Resume(ctx, in)
+			return r.AuditLogID, err
+		}},
+		{"sessions_revoke", func(u string) (string, error) {
+			r, err := svc.RevokeSessions(ctx, actionFor(u, "k-actor-v-"+u))
+			return r.AuditLogID, err
+		}},
+		{"budget_update", func(u string) (string, error) {
+			daily := int32(10)
+			r, err := svc.SetBudget(ctx, BudgetInput{
+				ActionInput: actionFor(u, "k-actor-b-"+u), DailyCalls: &daily,
+			})
+			return r.AuditLogID, err
+		}},
+	}
+
+	for _, st := range steps {
+		t.Run(st.name, func(t *testing.T) {
+			userID := seedUser(t, appDB)
+			auditID, err := st.run(userID)
+			if err != nil {
+				t.Fatalf("%s 失败：%v", st.name, err)
+			}
+			if auditID == "" {
+				t.Fatalf("%s 没有写审计", st.name)
+			}
+
+			var actor string
+			var sessionID *string
+			err = adminDB.InTxAnonymous(ctx, func(ctx context.Context, _ *dbgen.Queries) error {
+				tx, err := database.TxFrom(ctx)
+				if err != nil {
+					return err
+				}
+				return tx.QueryRow(ctx,
+					"SELECT actor_username, actor_session_id FROM admin.audit_logs WHERE id = $1",
+					auditID).Scan(&actor, &sessionID)
+			})
+			if err != nil {
+				t.Fatalf("读审计失败：%v", err)
+			}
+			if actor == "" {
+				t.Errorf("%s 的审计没有记下操作者", st.name)
+			}
+			if sessionID == nil || *sessionID == "" {
+				t.Errorf("%s 的审计没有记下会话 ID", st.name)
+			}
+		})
 	}
 }

@@ -26,6 +26,12 @@ import type { AdminAuditEntryOutcome } from './adminAuditEntryOutcome';
 export interface AdminAuditEntry {
   id: string;
   occurred_at: string;
+  /**
+     * 操作者。**空字符串表示这条记录写在补上 actor 之前**，
+     * 当时没有记录操作者——不要显示成某个叫空字符串的人，
+     * 界面上应当明确写「未记录」。
+     */
+  actor_username: string;
   action: string;
   outcome: AdminAuditEntryOutcome;
   /** @nullable */

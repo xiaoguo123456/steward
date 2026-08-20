@@ -116,7 +116,7 @@ func (q *Queries) FindAdminSessionByID(ctx context.Context, id string) (AdminSes
 }
 
 const listAdminAudit = `-- name: ListAdminAudit :many
-SELECT id, occurred_at, action, outcome, target_type, target_id, reason_code, reason_text, request_id, before_summary, after_summary, created_at FROM admin.audit_logs
+SELECT id, occurred_at, action, outcome, target_type, target_id, reason_code, reason_text, request_id, before_summary, after_summary, created_at, actor_username, actor_session_id FROM admin.audit_logs
 WHERE ($1::text IS NULL OR action = $1::text)
   AND ($2::text IS NULL OR target_id = $2::text)
   AND ($3::timestamptz IS NULL OR occurred_at < $3::timestamptz)
@@ -158,6 +158,8 @@ func (q *Queries) ListAdminAudit(ctx context.Context, arg ListAdminAuditParams) 
 			&i.BeforeSummary,
 			&i.AfterSummary,
 			&i.CreatedAt,
+			&i.ActorUsername,
+			&i.ActorSessionID,
 		); err != nil {
 			return nil, err
 		}
@@ -181,29 +183,34 @@ func (q *Queries) PurgeExpiredAdminSessions(ctx context.Context) error {
 
 const recordAdminAudit = `-- name: RecordAdminAudit :one
 INSERT INTO admin.audit_logs (
-    id, occurred_at, action, outcome, target_type, target_id,
+    id, occurred_at, actor_username, actor_session_id,
+    action, outcome, target_type, target_id,
     reason_code, reason_text, request_id, before_summary, after_summary
 ) VALUES (
-    $1, $2, $3, $4,
-    $5, $6, $7,
-    $8, $9,
-    $10, $11
+    $1, $2,
+    $3, $4,
+    $5, $6,
+    $7, $8, $9,
+    $10, $11,
+    $12, $13
 )
-RETURNING id, occurred_at, action, outcome, target_type, target_id, reason_code, reason_text, request_id, before_summary, after_summary, created_at
+RETURNING id, occurred_at, action, outcome, target_type, target_id, reason_code, reason_text, request_id, before_summary, after_summary, created_at, actor_username, actor_session_id
 `
 
 type RecordAdminAuditParams struct {
-	ID            string
-	OccurredAt    time.Time
-	Action        string
-	Outcome       string
-	TargetType    *string
-	TargetID      *string
-	ReasonCode    *string
-	ReasonText    *string
-	RequestID     string
-	BeforeSummary []byte
-	AfterSummary  []byte
+	ID             string
+	OccurredAt     time.Time
+	ActorUsername  string
+	ActorSessionID *string
+	Action         string
+	Outcome        string
+	TargetType     *string
+	TargetID       *string
+	ReasonCode     *string
+	ReasonText     *string
+	RequestID      string
+	BeforeSummary  []byte
+	AfterSummary   []byte
 }
 
 // 写一条管理操作审计。
@@ -213,6 +220,8 @@ func (q *Queries) RecordAdminAudit(ctx context.Context, arg RecordAdminAuditPara
 	row := q.db.QueryRow(ctx, recordAdminAudit,
 		arg.ID,
 		arg.OccurredAt,
+		arg.ActorUsername,
+		arg.ActorSessionID,
 		arg.Action,
 		arg.Outcome,
 		arg.TargetType,
@@ -237,6 +246,8 @@ func (q *Queries) RecordAdminAudit(ctx context.Context, arg RecordAdminAuditPara
 		&i.BeforeSummary,
 		&i.AfterSummary,
 		&i.CreatedAt,
+		&i.ActorUsername,
+		&i.ActorSessionID,
 	)
 	return i, err
 }
