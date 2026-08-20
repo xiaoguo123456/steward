@@ -2,6 +2,7 @@ package costs
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -96,6 +97,16 @@ func seedAction(t *testing.T, db *database.DB, userID, provider, model string,
 	return id
 }
 
+// uniqueProvider 给每个测试一个独一无二的服务商名。
+//
+// 价格表上有「生效区间不重叠」的排他约束，固定名字会让**第二次运行**
+// 撞上第一次留下的数据。只在干净库上能过的测试不算测试——
+// 它会在 CI 上时灵时不灵，而且失败原因和被测逻辑毫无关系。
+func uniqueProvider(t *testing.T) string {
+	t.Helper()
+	return "test-" + strings.ToLower(t.Name()) + "-" + idgen.New("p")
+}
+
 func addPrice(t *testing.T, svc *Service, provider, model, unit, size, price string,
 	from time.Time, until *time.Time) string {
 	t.Helper()
@@ -107,6 +118,16 @@ func addPrice(t *testing.T, svc *Service, provider, model, unit, size, price str
 	if err != nil {
 		t.Fatalf("新增价格失败：%v", err)
 	}
+	t.Cleanup(func() {
+		_ = svc.db.InTxAnonymous(context.Background(), func(ctx context.Context, _ *dbgen.Queries) error {
+			tx, err := database.TxFrom(ctx)
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(ctx, "DELETE FROM ai_model_prices WHERE id = $1", row.ID)
+			return err
+		})
+	})
 	return row.ID
 }
 
@@ -135,7 +156,7 @@ func TestNoPriceMeansNullNotZero(t *testing.T) {
 	svc := New(db, nil)
 	userID := seedUser(t, db)
 
-	id := seedAction(t, db, userID, "provider-without-price", "model-x", 1000, 0, 500, time.Now())
+	id := seedAction(t, db, userID, uniqueProvider(t), "model-x", 1000, 0, 500, time.Now())
 	if _, err := svc.SettleForUser(context.Background(), userID, 100); err != nil {
 		t.Fatalf("结算失败：%v", err)
 	}
@@ -155,7 +176,7 @@ func TestCostIsComputedExactly(t *testing.T) {
 	svc := New(db, nil)
 	userID := seedUser(t, db)
 
-	provider, model := "test-provider-exact", "model-exact"
+	provider, model := uniqueProvider(t), "model-exact"
 	from := time.Now().Add(-24 * time.Hour)
 	addPrice(t, svc, provider, model, UnitInputToken, "1000", "0.00250", from, nil)
 	addPrice(t, svc, provider, model, UnitOutputToken, "1000", "0.01000", from, nil)
@@ -186,7 +207,7 @@ func TestPartialPricingKeepsKnownAmount(t *testing.T) {
 	svc := New(db, nil)
 	userID := seedUser(t, db)
 
-	provider, model := "test-provider-partial", "model-partial"
+	provider, model := uniqueProvider(t), "model-partial"
 	// 只给输入 token 配价，输出不配。
 	addPrice(t, svc, provider, model, UnitInputToken, "1000", "0.00200",
 		time.Now().Add(-24*time.Hour), nil)
@@ -213,7 +234,7 @@ func TestSettlingIsIdempotent(t *testing.T) {
 	svc := New(db, nil)
 	userID := seedUser(t, db)
 
-	provider, model := "test-provider-idem", "model-idem"
+	provider, model := uniqueProvider(t), "model-idem"
 	addPrice(t, svc, provider, model, UnitInputToken, "1000", "0.00300",
 		time.Now().Add(-24*time.Hour), nil)
 
@@ -256,7 +277,7 @@ func TestPriceIsMatchedByCallTime(t *testing.T) {
 	svc := New(db, nil)
 	userID := seedUser(t, db)
 
-	provider, model := "test-provider-history", "model-history"
+	provider, model := uniqueProvider(t), "model-history"
 	cutover := time.Now().Add(-48 * time.Hour)
 	// 旧价到 cutover 为止，新价从 cutover 开始。
 	addPrice(t, svc, provider, model, UnitInputToken, "1000", "0.00100",
@@ -290,7 +311,7 @@ func TestZeroQuantityIsNotApplicable(t *testing.T) {
 	svc := New(db, nil)
 	userID := seedUser(t, db)
 
-	provider, model := "test-provider-zero", "model-zero"
+	provider, model := uniqueProvider(t), "model-zero"
 	addPrice(t, svc, provider, model, UnitInputToken, "1000", "0.00100",
 		time.Now().Add(-24*time.Hour), nil)
 	addPrice(t, svc, provider, model, UnitOutputToken, "1000", "0.00200",
@@ -316,7 +337,7 @@ func TestOverlappingPricesAreRejected(t *testing.T) {
 	db := testDB(t)
 	svc := New(db, nil)
 
-	provider, model := "test-provider-overlap", "model-overlap"
+	provider, model := uniqueProvider(t), "model-overlap"
 	base := time.Now().Add(-72 * time.Hour)
 	addPrice(t, svc, provider, model, UnitInputToken, "1000", "0.001", base, nil)
 
@@ -336,7 +357,7 @@ func TestInvalidAmountIsRejected(t *testing.T) {
 	svc := New(db, nil)
 
 	_, err := svc.AddPrice(context.Background(), PriceInput{
-		Provider: "p", Model: "m", UsageUnit: UnitInputToken,
+		Provider: uniqueProvider(t), Model: "m", UsageUnit: UnitInputToken,
 		UnitSize: "1000", UnitPriceUSD: "不是数字",
 		EffectiveFrom: time.Now(),
 	})
