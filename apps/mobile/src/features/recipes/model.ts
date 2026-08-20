@@ -123,7 +123,12 @@ export type ShoppingItem = {
   sources: string[];
 };
 
-/** 整周的计划摄入估算。它是「打算吃多少」，不是用户已经记录的实际摄入。 */
+/**
+ * 整周菜单本身的能量合计。
+ *
+ * 说的是「照这个方案做出来有多少」。用户实际吃多少我们不追踪，
+ * 所以文案上不要写成「你的摄入」。
+ */
 export type RecipeNutrition = {
   calories: number;
   protein_g: number;

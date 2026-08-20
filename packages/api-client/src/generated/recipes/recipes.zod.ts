@@ -511,7 +511,7 @@ export const GetMealPlanResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n').describe('整周的\*\*计划\*\*摄入估算，由服务端按菜谱营养求和。\n它和用户实际记录的摄入是两回事，客户端不得混在一起展示。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n').describe('\*\*这份菜单本身的能量\*\*，由服务端按菜谱营养求和。\n\n它说的是「照这个方案做出来有多少」，不是用户吃了多少——\n用户加不加餐、在外面吃什么，我们不追踪，也不该拿这个数去暗示。\n'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
   "version": zod.number().int()
@@ -609,7 +609,7 @@ export const ConfirmMealPlanResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n').describe('整周的\*\*计划\*\*摄入估算，由服务端按菜谱营养求和。\n它和用户实际记录的摄入是两回事，客户端不得混在一起展示。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n').describe('\*\*这份菜单本身的能量\*\*，由服务端按菜谱营养求和。\n\n它说的是「照这个方案做出来有多少」，不是用户吃了多少——\n用户加不加餐、在外面吃什么，我们不追踪，也不该拿这个数去暗示。\n'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
   "version": zod.number().int()
@@ -709,7 +709,7 @@ export const GetMealPlanSuggestionResponse = zod.object({
   "protein_g": zod.number(),
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish().describe('有任何一道菜缺脂肪数据就为空，不把缺的当 0 加进去。')
-}).describe('这份菜单每日平均实际值。').describe('这份菜单实际算出来的每日平均值，供客户端与目标对照。\n没有 daily_target 时同样返回，只是没有可比的目标。\n'),
+}).describe('这份菜单排出来的每日平均能量，供与目标对照。\n同样是方案本身的量，不是用户实际吃进去的量。\n').describe('这份菜单排出来的每日平均能量，供客户端与目标对照。\n没有 daily_target 时同样返回，只是没有可比的目标。\n'),
   "notes": zod.array(zod.object({
   "kind": zod.enum(['cook_time_relaxed', 'slot_unfilled', 'pool_repeats', 'energy_floored', 'energy_estimated', 'target_unreachable', 'profile_incomplete']).describe('- cook_time_relaxed：可选菜太少，放宽了「最长烹饪时间」。\n  \*\*过敏原与忌口永远不会被放宽\*\*，没有对应的 kind。\n- slot_unfilled：这一格实在没有可选的菜，留空了。\n- pool_repeats：可选菜不足一周的餐数，出现了重复。\n- energy_floored：算出来的热量低于安全下限，已按下限安排。\n- energy_estimated：性别没填，热量目标按男女中间值估算。\n- target_unreachable：可选菜凑不到热量目标，实际值与目标有明显差距。\n- profile_incomplete：身高体重年龄没填全，算不出热量目标，\n  这次按营养排名选菜。\n'),
   "message": zod.string().describe('直接展示给用户的中文说明。'),

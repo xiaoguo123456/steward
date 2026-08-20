@@ -47,7 +47,7 @@ export interface MealPlanSuggestion {
      */
   daily_target?: DailyNutritionTarget | null;
   /**
-     * 这份菜单实际算出来的每日平均值，供客户端与目标对照。
+     * 这份菜单排出来的每日平均能量，供客户端与目标对照。
      * 没有 daily_target 时同样返回，只是没有可比的目标。
      */
   achieved: DailyNutritionAchieved;

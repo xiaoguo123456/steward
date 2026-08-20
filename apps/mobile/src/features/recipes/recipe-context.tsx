@@ -43,7 +43,7 @@ type RecipeContextValue = {
   hasPendingPlan: boolean;
   planSaving: boolean;
   planFailure: string | null;
-  /** 已确认菜单的整周计划摄入，由服务端求和。 */
+  /** 已确认菜单本身的整周能量，由服务端求和。不是用户的实际摄入。 */
   plannedNutrition?: RecipeNutrition;
   /** 把一格里第 index 道换成同类的另一道。 */
   swapRecipe: (dayId: WeekDayId, meal: MealSlot, index: number) => void;

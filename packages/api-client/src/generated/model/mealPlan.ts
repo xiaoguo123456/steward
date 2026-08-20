@@ -31,8 +31,10 @@ export interface MealPlan {
   week_start: string;
   entries: MealPlanEntry[];
   /**
-     * 整周的**计划**摄入估算，由服务端按菜谱营养求和。
-     * 它和用户实际记录的摄入是两回事，客户端不得混在一起展示。
+     * **这份菜单本身的能量**，由服务端按菜谱营养求和。
+     *
+     * 它说的是「照这个方案做出来有多少」，不是用户吃了多少——
+     * 用户加不加餐、在外面吃什么，我们不追踪，也不该拿这个数去暗示。
      */
   planned_nutrition: RecipeNutrition;
   created_at: string;

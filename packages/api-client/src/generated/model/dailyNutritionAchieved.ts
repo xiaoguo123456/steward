@@ -15,7 +15,8 @@
  */
 
 /**
- * 这份菜单每日平均实际值。
+ * 这份菜单排出来的每日平均能量，供与目标对照。
+ * 同样是方案本身的量，不是用户实际吃进去的量。
  */
 export interface DailyNutritionAchieved {
   calories: number;

@@ -472,8 +472,10 @@ MealPlan:
         $ref: '#/MealPlanEntry'
     planned_nutrition:
       description: |
-        整周的**计划**摄入估算，由服务端按菜谱营养求和。
-        它和用户实际记录的摄入是两回事，客户端不得混在一起展示。
+        **这份菜单本身的能量**，由服务端按菜谱营养求和。
+
+        它说的是「照这个方案做出来有多少」，不是用户吃了多少——
+        用户加不加餐、在外面吃什么，我们不追踪，也不该拿这个数去暗示。
       allOf:
         - $ref: '#/RecipeNutrition'
     created_at:
@@ -527,7 +529,7 @@ MealPlanSuggestion:
         - $ref: '#/DailyNutritionTarget'
     achieved:
       description: |
-        这份菜单实际算出来的每日平均值，供客户端与目标对照。
+        这份菜单排出来的每日平均能量，供客户端与目标对照。
         没有 daily_target 时同样返回，只是没有可比的目标。
       allOf:
         - $ref: '#/DailyNutritionAchieved'
@@ -571,7 +573,9 @@ DailyNutritionTarget:
 DailyNutritionAchieved:
   type: object
   additionalProperties: false
-  description: 这份菜单每日平均实际值。
+  description: |
+    这份菜单排出来的每日平均能量，供与目标对照。
+    同样是方案本身的量，不是用户实际吃进去的量。
   required: [calories, protein_g, carbs_g]
   properties:
     calories:

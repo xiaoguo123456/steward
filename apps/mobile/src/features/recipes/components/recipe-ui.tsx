@@ -207,6 +207,8 @@ export function NutritionStrip({
   /** 按身高体重算出的每日目标。身体数据没填全时为空。 */
   target?: { calories: number; proteinG: number } | null;
 }) {
+  // 这里的数字是**这份菜单本身**的能量，不是用户的摄入——
+  // 用户加不加餐、在外面吃什么我们不追踪，文案上不要写成「你的摄入」。
   const calories = recipes.reduce((total, recipe) => total + recipe.calories, 0);
   const protein = recipes.reduce((total, recipe) => total + recipe.protein, 0);
   // 有一道菜缺膳食纤维，这一项就显示「—」。
@@ -214,7 +216,7 @@ export function NutritionStrip({
   const fiber = sumOrUnknown(recipes.map((recipe) => recipe.fiber));
   const metrics = [
     {
-      label: '今日热量',
+      label: '热量',
       value: `${Math.round(calories)}`,
       unit: '千卡',
       // 有目标就并排显示，让用户看得出离目标还差多少。
@@ -237,7 +239,7 @@ export function NutritionStrip({
 
   return (
     <View
-      accessibilityLabel={`今日计划，${metrics
+      accessibilityLabel={`这份菜单合计，${metrics
         .map(
           (metric) =>
             `${metric.label}${metric.value}${metric.unit}${metric.target ? `，${metric.target}` : ''}`,
