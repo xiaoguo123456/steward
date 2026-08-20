@@ -8,9 +8,21 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
+import {
+  dayOfReminder,
+  useTaskReminder,
+} from '@/features/tasks/use-task-reminder';
 import { formatDateParam } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
@@ -37,6 +49,8 @@ export default function NewTaskScreen() {
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('normal');
   const [due, setDue] = useState<DueChoice>('none');
+  const [remind, setRemind] = useState(false);
+  const reminder = useTaskReminder();
   const [pickedListId, setPickedListId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +83,10 @@ export default function NewTaskScreen() {
         // 只给日期不给时刻：服务端会把它保存为「某日截止」，不会补成 23:59。
         body.due_date = formatDateParam(date);
         body.due_timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        // 提醒时刻用偏好里设过的那个，不凭空假设（规格 8.2 与偏好页的承诺）。
+        if (remind) {
+          body.reminders = [dayOfReminder(reminder.defaultTime)];
+        }
       }
 
       await createTask(body);
@@ -144,11 +162,33 @@ export default function NewTaskScreen() {
             <Chip
               key={item.value}
               label={item.label}
-              onPress={() => setDue(item.value)}
+              onPress={() => {
+                setDue(item.value);
+                // 取消截止时提醒也一并关掉：没有截止的任务不允许设提醒，
+                // 留着一个开着的开关，保存时才报错就太晚了。
+                if (item.value === 'none') setRemind(false);
+              }}
               selected={due === item.value}
             />
           ))}
         </View>
+
+        {/* 没设截止就不显示：契约上不允许，摆一个按不动的开关只会让人困惑。 */}
+        {due !== 'none' ? (
+          <View style={styles.remindRow}>
+            <View style={styles.remindCopy}>
+              <Text style={styles.remindLabel}>到期当天提醒我</Text>
+              <Text style={styles.remindMeta}>{reminder.defaultTime} · 可在偏好里改</Text>
+            </View>
+            <Switch
+              accessibilityLabel="到期当天提醒我"
+              onValueChange={setRemind}
+              thumbColor={colors.background}
+              trackColor={{ false: colors.borderStrong, true: colors.primary }}
+              value={remind}
+            />
+          </View>
+        ) : null}
 
         {lists.length > 0 ? (
           <>
@@ -198,6 +238,30 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
+  remindRow: {
+    minHeight: 56,
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  remindCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  remindLabel: {
+    color: colors.text,
+    fontFamily,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  remindMeta: {
+    color: colors.textTertiary,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 40,

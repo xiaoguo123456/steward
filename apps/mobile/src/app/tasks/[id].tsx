@@ -9,12 +9,25 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
+import {
+  describeTaskReminder,
+  hasReminder,
+  useTaskReminder,
+} from '@/features/tasks/use-task-reminder';
 import { formatMonthDay } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
@@ -156,6 +169,7 @@ export default function TaskDetailScreen() {
           <DetailRow label="所属清单" value={listName} />
           <DetailRow color={priority.color} label="优先级" value={priority.label} />
           <DetailRow label="截止" value={dueLabel(task)} />
+          <ReminderRow task={task} />
           {task.estimated_minutes ? (
             <DetailRow label="预计时长" value={`${task.estimated_minutes} 分钟`} />
           ) : null}
@@ -178,6 +192,46 @@ export default function TaskDetailScreen() {
         ) : null}
       </ScrollView>
     </AppScreen>
+  );
+}
+
+/**
+ * 到期提醒的开关。
+ *
+ * 没有截止信息时不给开：契约上就不允许（「没有截止信息时不能设置提醒」），
+ * 摆一个按下去必然报错的开关只会让人困惑。这时说清楚为什么不能开。
+ */
+function ReminderRow({ task }: { task: Task }) {
+  const reminder = useTaskReminder();
+  const hasDue = Boolean(task.due_date || task.due_at);
+  const enabled = hasReminder(task);
+
+  if (!hasDue) {
+    return (
+      <View style={styles.detailRow}>
+        <Text style={styles.label}>提醒</Text>
+        <Text style={[styles.value, styles.valueMuted]}>先设置截止日期</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.label}>提醒</Text>
+      <View style={styles.reminderControl}>
+        <Text style={styles.value}>
+          {enabled ? describeTaskReminder(task.reminders) : `当天 ${reminder.defaultTime}`}
+        </Text>
+        <Switch
+          accessibilityLabel="到期当天提醒我"
+          disabled={reminder.saving}
+          onValueChange={(next) => void reminder.setEnabled(task, next)}
+          thumbColor={colors.background}
+          trackColor={{ false: colors.borderStrong, true: colors.primary }}
+          value={enabled}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -207,6 +261,14 @@ function dueLabel(task: Task): string {
 }
 
 const styles = StyleSheet.create({
+  reminderControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  valueMuted: {
+    color: colors.textTertiary,
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 40,
