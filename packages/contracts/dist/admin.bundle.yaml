@@ -528,6 +528,231 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}/suspensions:
+    post:
+      operationId: adminSuspendUser
+      summary: 暂停用户
+      description: |
+        只允许 active → suspended。同时撤销该用户全部登录会话——
+        **暂停但不踢下线等于没暂停**：他手里的令牌还能继续用到过期。
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CSRFToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminActionRequest'
+      responses:
+        '200':
+          description: 已暂停。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuspendResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}/resumptions:
+    post:
+      operationId: adminResumeUser
+      summary: 恢复用户
+      description: |
+        只允许 suspended → active。
+
+        **不恢复旧会话，也不重放暂停期间失败的任务。**
+        旧会话是暂停时主动撤销的，恢复账号不等于恢复那些令牌；
+        重放任务则可能在用户毫不知情的时候产生一批新数据。
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CSRFToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminActionRequest'
+      responses:
+        '200':
+          description: 已恢复。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuspendResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}/session-revocations:
+    post:
+      operationId: adminRevokeUserSessions
+      summary: 撤销用户会话
+      description: 撤销该用户全部有效会话。不改变账号状态。
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CSRFToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminActionRequest'
+      responses:
+        '200':
+          description: 已撤销。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeSessionsResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/users/{user_id}/ai-budget:
+    put:
+      operationId: adminSetUserBudget
+      summary: 设置用户 AI 预算
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CSRFToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetBudgetRequest'
+      responses:
+        '200':
+          description: 已设置。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: adminClearUserBudget
+      summary: 清除用户 AI 预算
+      tags:
+        - admin-users
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CSRFToken'
+      responses:
+        '200':
+          description: 已清除。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResultResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/v1/ai-prices:
+    get:
+      operationId: adminListAIPrices
+      summary: AI 价格列表
+      tags:
+        - admin-costs
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIPriceListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: adminCreateAIPrice
+      summary: 新增价格版本
+      description: |
+        新增一个版本，**不覆盖旧值**：覆盖会让上个月的报表这个月一看变了数。
+        同一服务商、模型与用量单位的生效区间不允许重叠。
+      tags:
+        - admin-costs
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CSRFToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAIPriceRequest'
+      responses:
+        '200':
+          description: 已新增。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIPriceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     adminSession:
@@ -1615,6 +1840,283 @@ components:
             $ref: '#/components/schemas/ProviderStatus'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
+    ReasonCode:
+      type: string
+      enum:
+        - abuse_prevention
+        - payment_issue
+        - user_request
+        - security_incident
+        - support_investigation
+        - other
+    AdminActionRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        管理操作的公共入参。
+
+        三样都是必填，各有各的理由：
+
+        - `expected_version` 是乐观锁。两个运营看着同一个用户各点各的时，
+          后一个会拿到冲突而不是**悄悄覆盖掉前一个的决定**。
+        - `reason_code` 让处置能被归类统计。
+        - `reason_text` 让三个月后的人看得懂当时为什么这么做。
+
+        没有理由的处置等于没有记录——事后没人能判断那次操作是否恰当。
+      required:
+        - expected_version
+        - reason_code
+        - reason_text
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        reason_code:
+          $ref: '#/components/schemas/ReasonCode'
+        reason_text:
+          type: string
+          minLength: 4
+          maxLength: 500
+          description: 具体说明。**不要写用户的原话**——那是他的资料，不是处置依据。
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 处置的结束时间。不填表示长期有效。
+    SuspendResult:
+      type: object
+      additionalProperties: false
+      required:
+        - user_id
+        - account_status
+        - version
+        - revoked_sessions
+        - audit_log_id
+      properties:
+        user_id:
+          type: string
+        account_status:
+          $ref: '#/components/schemas/AccountStatus'
+        version:
+          type: integer
+        revoked_sessions:
+          type: integer
+          description: 一并撤销掉的登录会话数。暂停但不踢下线等于没暂停。
+        suspended_at:
+          type: string
+          format: date-time
+          nullable: true
+        suspension_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        audit_log_id:
+          type: string
+    SuspendResultResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/SuspendResult'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    RevokeSessionsResult:
+      type: object
+      additionalProperties: false
+      required:
+        - user_id
+        - revoked_sessions
+        - effective_at
+        - audit_log_id
+      properties:
+        user_id:
+          type: string
+        revoked_sessions:
+          type: integer
+        effective_at:
+          type: string
+          format: date-time
+        audit_log_id:
+          type: string
+    RevokeSessionsResultResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/RevokeSessionsResult'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    SetBudgetRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        设置用户的 AI 预算。
+
+        预算按**调用次数**而不是金额：金额要靠用量乘单价算，而单价会变；
+        次数封顶，用户和运营都算得清。
+
+        **不会因为设了预算就替用户打开 AI。** 用户自己关掉的开关，
+        管理员不代他打开——那是他的选择。
+      required:
+        - expected_version
+        - reason_code
+        - reason_text
+      properties:
+        expected_version:
+          type: integer
+          minimum: 0
+        reason_code:
+          $ref: '#/components/schemas/ReasonCode'
+        reason_text:
+          type: string
+          minLength: 4
+          maxLength: 500
+        daily_calls:
+          type: integer
+          nullable: true
+          minimum: 0
+        monthly_calls:
+          type: integer
+          nullable: true
+          minimum: 0
+        effective_from:
+          type: string
+          format: date-time
+          nullable: true
+        effective_until:
+          type: string
+          format: date-time
+          nullable: true
+    BudgetResult:
+      type: object
+      additionalProperties: false
+      required:
+        - user_id
+        - audit_log_id
+      properties:
+        user_id:
+          type: string
+        budget:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AIBudget'
+        audit_log_id:
+          type: string
+    BudgetResultResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/BudgetResult'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UsageUnit:
+      type: string
+      enum:
+        - input_token
+        - cached_input_token
+        - output_token
+        - audio_second
+        - image
+        - request
+    AIPrice:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - provider
+        - model
+        - usage_unit
+        - unit_size
+        - unit_price_usd
+        - effective_from
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+        usage_unit:
+          $ref: '#/components/schemas/UsageUnit'
+        unit_size:
+          type: string
+          description: 单价对应的用量。**用字符串传 decimal**，JSON number 会漂。
+        unit_price_usd:
+          type: string
+        effective_from:
+          type: string
+          format: date-time
+        effective_until:
+          type: string
+          format: date-time
+          nullable: true
+    AIPriceListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIPrice'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateAIPriceRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        新增一个价格版本。**不覆盖旧值**——覆盖会让上个月的报表这个月一看
+        变了数，那份报表就没有任何意义了。
+      required:
+        - provider
+        - model
+        - usage_unit
+        - unit_size
+        - unit_price_usd
+        - effective_from
+      properties:
+        provider:
+          type: string
+          minLength: 1
+        model:
+          type: string
+          minLength: 1
+        usage_unit:
+          $ref: '#/components/schemas/UsageUnit'
+        unit_size:
+          type: string
+        unit_price_usd:
+          type: string
+        effective_from:
+          type: string
+          format: date-time
+        effective_until:
+          type: string
+          format: date-time
+          nullable: true
+    AIPriceResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/AIPrice'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
   responses:
     BadRequest:
       description: 参数不合法。
@@ -1652,6 +2154,12 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     NotFound:
       description: 目标不存在。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: 版本冲突、状态冲突或幂等键复用。
       content:
         application/json:
           schema:
@@ -1767,3 +2275,14 @@ components:
       required: false
       schema:
         type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        写操作必带。同一个键配同样的请求体返回同样的结果；
+        配不同的请求体返回冲突——那说明调用方把键复用错了。
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128

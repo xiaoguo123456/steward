@@ -105,3 +105,13 @@ paths:
     $ref: './paths/read.yaml#/Operations'
   /admin/v1/audit-logs:
     $ref: './paths/read.yaml#/AuditLogs'
+  /admin/v1/users/{user_id}/suspensions:
+    $ref: './paths/write.yaml#/Suspend'
+  /admin/v1/users/{user_id}/resumptions:
+    $ref: './paths/write.yaml#/Resume'
+  /admin/v1/users/{user_id}/session-revocations:
+    $ref: './paths/write.yaml#/RevokeSessions'
+  /admin/v1/users/{user_id}/ai-budget:
+    $ref: './paths/write.yaml#/Budget'
+  /admin/v1/ai-prices:
+    $ref: './paths/write.yaml#/Prices'

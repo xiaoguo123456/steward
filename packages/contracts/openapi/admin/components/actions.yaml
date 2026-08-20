@@ -1,0 +1,141 @@
+AdminActionRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    管理操作的公共入参。
+
+    三样都是必填，各有各的理由：
+
+    - `expected_version` 是乐观锁。两个运营看着同一个用户各点各的时，
+      后一个会拿到冲突而不是**悄悄覆盖掉前一个的决定**。
+    - `reason_code` 让处置能被归类统计。
+    - `reason_text` 让三个月后的人看得懂当时为什么这么做。
+
+    没有理由的处置等于没有记录——事后没人能判断那次操作是否恰当。
+  required: [expected_version, reason_code, reason_text]
+  properties:
+    expected_version:
+      type: integer
+      minimum: 0
+    reason_code:
+      $ref: '#/ReasonCode'
+    reason_text:
+      type: string
+      minLength: 4
+      maxLength: 500
+      description: 具体说明。**不要写用户的原话**——那是他的资料，不是处置依据。
+    expires_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: 处置的结束时间。不填表示长期有效。
+
+ReasonCode:
+  type: string
+  enum:
+    - abuse_prevention
+    - payment_issue
+    - user_request
+    - security_incident
+    - support_investigation
+    - other
+
+SuspendResult:
+  type: object
+  additionalProperties: false
+  required: [user_id, account_status, version, revoked_sessions, audit_log_id]
+  properties:
+    user_id: { type: string }
+    account_status: { $ref: './users.yaml#/AccountStatus' }
+    version: { type: integer }
+    revoked_sessions:
+      type: integer
+      description: 一并撤销掉的登录会话数。暂停但不踢下线等于没暂停。
+    suspended_at:
+      type: string
+      format: date-time
+      nullable: true
+    suspension_expires_at:
+      type: string
+      format: date-time
+      nullable: true
+    audit_log_id: { type: string }
+
+SuspendResultResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data: { $ref: '#/SuspendResult' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+RevokeSessionsResult:
+  type: object
+  additionalProperties: false
+  required: [user_id, revoked_sessions, effective_at, audit_log_id]
+  properties:
+    user_id: { type: string }
+    revoked_sessions: { type: integer }
+    effective_at: { type: string, format: date-time }
+    audit_log_id: { type: string }
+
+RevokeSessionsResultResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data: { $ref: '#/RevokeSessionsResult' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }
+
+SetBudgetRequest:
+  type: object
+  additionalProperties: false
+  description: |
+    设置用户的 AI 预算。
+
+    预算按**调用次数**而不是金额：金额要靠用量乘单价算，而单价会变；
+    次数封顶，用户和运营都算得清。
+
+    **不会因为设了预算就替用户打开 AI。** 用户自己关掉的开关，
+    管理员不代他打开——那是他的选择。
+  required: [expected_version, reason_code, reason_text]
+  properties:
+    expected_version: { type: integer, minimum: 0 }
+    reason_code: { $ref: '#/ReasonCode' }
+    reason_text: { type: string, minLength: 4, maxLength: 500 }
+    daily_calls:
+      type: integer
+      nullable: true
+      minimum: 0
+    monthly_calls:
+      type: integer
+      nullable: true
+      minimum: 0
+    effective_from:
+      type: string
+      format: date-time
+      nullable: true
+    effective_until:
+      type: string
+      format: date-time
+      nullable: true
+
+BudgetResult:
+  type: object
+  additionalProperties: false
+  required: [user_id, audit_log_id]
+  properties:
+    user_id: { type: string }
+    budget:
+      nullable: true
+      allOf:
+        - $ref: './users.yaml#/AIBudget'
+    audit_log_id: { type: string }
+
+BudgetResultResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data: { $ref: '#/BudgetResult' }
+    meta: { $ref: './common.yaml#/ResponseMeta' }

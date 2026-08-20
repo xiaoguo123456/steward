@@ -1,0 +1,229 @@
+# 后台的写操作。
+#
+# 每一个都要求 Idempotency-Key、CSRF Token 与 expected_version，
+# 而且**业务变更与审计在同一个事务里提交**——审计写不进去，
+# 业务变更也不算数。一条能被绕过的审计记录，比没有审计更危险：
+# 它会让人以为所有操作都有记录。
+
+Suspend:
+  post:
+    operationId: adminSuspendUser
+    summary: 暂停用户
+    description: |
+      只允许 active → suspended。同时撤销该用户全部登录会话——
+      **暂停但不踢下线等于没暂停**：他手里的令牌还能继续用到过期。
+    tags: [admin-users]
+    parameters:
+      - $ref: '../components/parameters.yaml#/UserID'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+      - $ref: '../components/parameters.yaml#/CSRFToken'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/actions.yaml#/AdminActionRequest'
+    responses:
+      '200':
+        description: 已暂停。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/actions.yaml#/SuspendResultResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Resume:
+  post:
+    operationId: adminResumeUser
+    summary: 恢复用户
+    description: |
+      只允许 suspended → active。
+
+      **不恢复旧会话，也不重放暂停期间失败的任务。**
+      旧会话是暂停时主动撤销的，恢复账号不等于恢复那些令牌；
+      重放任务则可能在用户毫不知情的时候产生一批新数据。
+    tags: [admin-users]
+    parameters:
+      - $ref: '../components/parameters.yaml#/UserID'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+      - $ref: '../components/parameters.yaml#/CSRFToken'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/actions.yaml#/AdminActionRequest'
+    responses:
+      '200':
+        description: 已恢复。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/actions.yaml#/SuspendResultResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+RevokeSessions:
+  post:
+    operationId: adminRevokeUserSessions
+    summary: 撤销用户会话
+    description: 撤销该用户全部有效会话。不改变账号状态。
+    tags: [admin-users]
+    parameters:
+      - $ref: '../components/parameters.yaml#/UserID'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+      - $ref: '../components/parameters.yaml#/CSRFToken'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/actions.yaml#/AdminActionRequest'
+    responses:
+      '200':
+        description: 已撤销。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/actions.yaml#/RevokeSessionsResultResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Budget:
+  put:
+    operationId: adminSetUserBudget
+    summary: 设置用户 AI 预算
+    tags: [admin-users]
+    parameters:
+      - $ref: '../components/parameters.yaml#/UserID'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+      - $ref: '../components/parameters.yaml#/CSRFToken'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/actions.yaml#/SetBudgetRequest'
+    responses:
+      '200':
+        description: 已设置。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/actions.yaml#/BudgetResultResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: adminClearUserBudget
+    summary: 清除用户 AI 预算
+    tags: [admin-users]
+    parameters:
+      - $ref: '../components/parameters.yaml#/UserID'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+      - $ref: '../components/parameters.yaml#/CSRFToken'
+    responses:
+      '200':
+        description: 已清除。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/actions.yaml#/BudgetResultResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Prices:
+  get:
+    operationId: adminListAIPrices
+    summary: AI 价格列表
+    tags: [admin-costs]
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/ops.yaml#/AIPriceListResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: adminCreateAIPrice
+    summary: 新增价格版本
+    description: |
+      新增一个版本，**不覆盖旧值**：覆盖会让上个月的报表这个月一看变了数。
+      同一服务商、模型与用量单位的生效区间不允许重叠。
+    tags: [admin-costs]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+      - $ref: '../components/parameters.yaml#/CSRFToken'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/ops.yaml#/CreateAIPriceRequest'
+    responses:
+      '200':
+        description: 已新增。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/ops.yaml#/AIPriceResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

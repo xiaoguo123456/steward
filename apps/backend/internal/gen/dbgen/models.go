@@ -746,15 +746,40 @@ type Tracker struct {
 }
 
 type User struct {
-	ID          string
-	Phone       string
-	DisplayName string
-	AvatarUrl   *string
-	Timezone    string
-	Initialized bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   *time.Time
+	ID                  string
+	Phone               string
+	DisplayName         string
+	AvatarUrl           *string
+	Timezone            string
+	Initialized         bool
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	DeletedAt           *time.Time
+	AccountStatus       string
+	StatusVersion       int32
+	SuspendedAt         *time.Time
+	SuspensionExpiresAt *time.Time
+}
+
+type UserAccountAction struct {
+	ID             string
+	UserID         string
+	Action         string
+	ReasonCode     string
+	ReasonText     string
+	EffectiveFrom  time.Time
+	EffectiveUntil *time.Time
+	AuditLogID     string
+	CreatedAt      time.Time
+}
+
+type UserAiBudget struct {
+	UserID         string
+	DailyCalls     *int32
+	MonthlyCalls   *int32
+	EffectiveFrom  time.Time
+	EffectiveUntil *time.Time
+	UpdatedAt      time.Time
 }
 
 type UserAiSetting struct {

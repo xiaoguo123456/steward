@@ -41,6 +41,7 @@ const (
 	PrefixAICostItem       = "aci"
 	PrefixAIPrice          = "apr"
 	PrefixAggregationRun   = "agr"
+	PrefixAccountAction    = "uaa"
 	PrefixRun              = "run"
 	PrefixReviewSuggestion = "rsg"
 	PrefixReminder         = "rmd"

@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	AdminClearBudget(ctx context.Context, userID string) error
 	// AI 口径。
 	//
 	// 成本只汇总算得出来的部分，另外单列「有多少次调用缺价」——
@@ -20,6 +21,13 @@ type Querier interface {
 	// 用户口径。DAU/WAU/MAU 都从日聚合里数去重用户，
 	// **不从登录或轮询算**——那会把一个开着页面的客户端算成活跃。
 	AdminDashboardUsers(ctx context.Context, arg AdminDashboardUsersParams) (AdminDashboardUsersRow, error)
+	// 幂等键。
+	//
+	// 同一个键配同样的请求返回同样的结果；**配不同的请求返回冲突**——
+	// 那说明调用方把键复用错了，不该当成重放而把上一次的结果发回去。
+	// request_hash 就是用来分辨这两种情况的。
+	AdminFindIdempotency(ctx context.Context, arg AdminFindIdempotencyParams) (AdminFindIdempotencyRow, error)
+	AdminGetBudget(ctx context.Context, userID string) (UserAiBudget, error)
 	AdminGetUserIndex(ctx context.Context, userID string) (AdminGetUserIndexRow, error)
 	AdminLatestAggregation(ctx context.Context, kind string) (AdminLatestAggregationRow, error)
 	// 注：队列状态查 river_job，那张表由 River 在运行时自建、不在迁移里，
@@ -33,6 +41,26 @@ type Querier interface {
 	// 用户列表。游标是 (created_at, user_id) 的复合序——
 	// 只按 created_at 排的话，同一毫秒注册的两个用户翻页时会重复或漏掉。
 	AdminListUsers(ctx context.Context, arg AdminListUsersParams) ([]AdminListUsersRow, error)
+	// 后台的写操作。
+	//
+	// 每一个都在**单个事务**里完成「读当前状态 → 校验版本 → 改 → 写审计」。
+	// 审计写不进去，业务变更也回滚——一条能被绕过的审计，
+	// 比没有审计更危险：它会让人以为所有操作都有记录。
+	// 取用户当前状态并加行锁。
+	//
+	// **必须 FOR UPDATE。** 两个运营同时点「暂停」，不加锁的话两条都会成功、
+	// 版本各加一次，而实际只该有一次状态转换。
+	AdminLockUserForUpdate(ctx context.Context, id string) (AdminLockUserForUpdateRow, error)
+	AdminRecordAccountAction(ctx context.Context, arg AdminRecordAccountActionParams) (UserAccountAction, error)
+	// 撤销该用户全部有效会话，返回撤销了几条。
+	AdminRevokeUserSessions(ctx context.Context) (int64, error)
+	AdminSaveIdempotency(ctx context.Context, arg AdminSaveIdempotencyParams) error
+	// 改账号状态并推进版本号。
+	//
+	// WHERE 里再带一次 status_version：即使调用方忘了先加锁，
+	// 版本对不上时这条 UPDATE 也不会命中任何行。
+	AdminSetUserStatus(ctx context.Context, arg AdminSetUserStatusParams) (AdminSetUserStatusRow, error)
+	AdminUpsertBudget(ctx context.Context, arg AdminUpsertBudgetParams) (UserAiBudget, error)
 	AdminUserDailyUsage(ctx context.Context, arg AdminUserDailyUsageParams) ([]AdminUserDailyUsageRow, error)
 	// 在同一事务内原子分配消息与 Turn 序号，避免并发下产生重复序号。
 	AdvanceThreadSeq(ctx context.Context, arg AdvanceThreadSeqParams) (AdvanceThreadSeqRow, error)

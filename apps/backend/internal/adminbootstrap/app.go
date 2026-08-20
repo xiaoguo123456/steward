@@ -14,7 +14,9 @@ import (
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/adminapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/auth"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/costs"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/readapi"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/writeapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/httpx"
@@ -38,6 +40,7 @@ type App struct {
 type Server struct {
 	*auth.SessionAPI
 	*readapi.ReadAPI
+	*writeapi.WriteAPI
 }
 
 var _ adminapi.StrictServerInterface = (*Server)(nil)
@@ -72,6 +75,8 @@ func New(ctx context.Context, cfg config.AdminConfig, logger *slog.Logger) (*App
 			// 手机号查询用的 HMAC 密钥必须和聚合时用的是同一把，
 			// 否则算出来的散列对不上，精确查询永远查不到。
 			ReadAPI: readapi.NewReadAPI(db, cfg, phoneKey, logger),
+			WriteAPI: writeapi.NewWriteAPI(
+				writeapi.New(db, logger), costs.New(db, logger), logger),
 		},
 	}
 	app.middleware = middleware

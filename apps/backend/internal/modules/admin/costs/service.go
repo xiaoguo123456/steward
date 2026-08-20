@@ -213,3 +213,14 @@ func SumAmounts(values []string) (string, bool) {
 	// 保留 8 位小数，和库里 numeric(20,8) 的精度一致。
 	return total.FloatString(8), true
 }
+
+// ListPrices 返回全部价格版本。
+func (s *Service) ListPrices(ctx context.Context) ([]dbgen.ListAIPricesRow, error) {
+	var out []dbgen.ListAIPricesRow
+	err := s.db.InTxAnonymous(ctx, func(ctx context.Context, q *dbgen.Queries) error {
+		var err error
+		out, err = q.ListAIPrices(ctx)
+		return err
+	})
+	return out, err
+}

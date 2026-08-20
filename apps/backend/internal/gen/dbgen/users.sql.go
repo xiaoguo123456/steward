@@ -177,7 +177,7 @@ func (q *Queries) GetLatestVerificationCode(ctx context.Context, arg GetLatestVe
 const getUser = `-- name: GetUser :one
 
 
-SELECT id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, deleted_at FROM users WHERE id = $1 AND deleted_at IS NULL
+SELECT id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, deleted_at, account_status, status_version, suspended_at, suspension_expires_at FROM users WHERE id = $1 AND deleted_at IS NULL
 `
 
 // 账户与偏好。登录链路在拿到用户身份之前只能走 SECURITY DEFINER 函数。
@@ -198,6 +198,10 @@ func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.AccountStatus,
+		&i.StatusVersion,
+		&i.SuspendedAt,
+		&i.SuspensionExpiresAt,
 	)
 	return i, err
 }
@@ -303,7 +307,7 @@ UPDATE users SET
     timezone     = coalesce($4, timezone),
     updated_at   = now()
 WHERE id = $5 AND deleted_at IS NULL
-RETURNING id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, deleted_at
+RETURNING id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, deleted_at, account_status, status_version, suspended_at, suspension_expires_at
 `
 
 type UpdateUserParams struct {
@@ -333,6 +337,10 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.AccountStatus,
+		&i.StatusVersion,
+		&i.SuspendedAt,
+		&i.SuspensionExpiresAt,
 	)
 	return i, err
 }
@@ -340,7 +348,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 const updateUserPhone = `-- name: UpdateUserPhone :one
 UPDATE users SET phone = $1, updated_at = now()
 WHERE id = $2 AND deleted_at IS NULL
-RETURNING id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, deleted_at
+RETURNING id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, deleted_at, account_status, status_version, suspended_at, suspension_expires_at
 `
 
 type UpdateUserPhoneParams struct {
@@ -363,6 +371,10 @@ func (q *Queries) UpdateUserPhone(ctx context.Context, arg UpdateUserPhoneParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.AccountStatus,
+		&i.StatusVersion,
+		&i.SuspendedAt,
+		&i.SuspensionExpiresAt,
 	)
 	return i, err
 }
