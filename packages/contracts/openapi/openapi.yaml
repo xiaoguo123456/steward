@@ -169,6 +169,10 @@ paths:
     $ref: './paths/recipes.yaml#/Cooked'
   /v1/me/recipe-favorites:
     $ref: './paths/recipes.yaml#/Favorites'
+  /v1/me/phone:
+    $ref: './paths/users.yaml#/Phone'
+  /v1/me/phone/code:
+    $ref: './paths/users.yaml#/PhoneCode'
   /v1/me/diet-profile:
     $ref: './paths/recipes.yaml#/DietProfile'
   /v1/meal-plans:

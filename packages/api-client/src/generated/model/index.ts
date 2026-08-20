@@ -68,6 +68,7 @@ export * from './captureSourceRef';
 export * from './captureStatus';
 export * from './captureTaskDraft';
 export * from './captureTrackerDraft';
+export * from './changePhoneRequest';
 export * from './completeUploadRequest';
 export * from './confirmCaptureItem';
 export * from './confirmCaptureRequest';

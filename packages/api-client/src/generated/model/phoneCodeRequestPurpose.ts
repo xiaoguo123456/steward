@@ -22,4 +22,5 @@ export type PhoneCodeRequestPurpose = typeof PhoneCodeRequestPurpose[keyof typeo
 
 export const PhoneCodeRequestPurpose = {
   login: 'login',
+  change_phone: 'change_phone',
 } as const;

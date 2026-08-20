@@ -119,3 +119,67 @@ AiSettings:
         $ref: '../components/responses.yaml#/Unauthorized'
       '500':
         $ref: '../components/responses.yaml#/InternalError'
+
+Phone:
+  post:
+    operationId: changePhone
+    summary: 更换绑定手机号
+    description: |
+      需要同时提供当前手机号与新手机号的验证码，两者都用
+      `purpose=change_phone` 获取。
+
+      成功后其他设备上的登录会失效，当前设备继续可用。
+    tags: [users]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/account.yaml#/ChangePhoneRequest'
+    responses:
+      '200':
+        description: 换绑成功，返回更新后的账号信息。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account.yaml#/UserResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '409':
+        description: 新手机号已经绑定到另一个账号。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/common.yaml#/ErrorResponse'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+PhoneCode:
+  post:
+    operationId: requestCurrentPhoneCode
+    summary: 给当前绑定的手机号发送换绑验证码
+    description: |
+      服务端已经知道你是谁，因此不需要也不接受手机号参数——
+      手机号是脱敏下发的（`138****8000`），客户端本来就拿不到完整号码。
+
+      发出的验证码用途是 `change_phone`，登录码不能拿来换绑，反之亦然。
+    tags: [users]
+    responses:
+      '200':
+        description: 已发送。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account.yaml#/PhoneCodeResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

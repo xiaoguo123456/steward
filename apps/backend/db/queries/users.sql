@@ -90,3 +90,10 @@ UPDATE user_ai_settings SET
     updated_at              = now()
 WHERE user_id = sqlc.arg(user_id)
 RETURNING *;
+
+-- name: UpdateUserPhone :one
+-- 换绑手机号。手机号是这个产品的账号标识，单独一条语句而不是塞进 UpdateUser：
+-- 它需要的授权强度和改昵称完全不同（见 auth.ChangePhone）。
+UPDATE users SET phone = sqlc.arg(phone), updated_at = now()
+WHERE id = sqlc.arg(id) AND deleted_at IS NULL
+RETURNING *;

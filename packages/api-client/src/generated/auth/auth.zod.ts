@@ -24,7 +24,7 @@ export const requestPhoneCodeBodyPurposeDefault = `login`;
 
 export const RequestPhoneCodeBody = zod.object({
   "phone": zod.string().regex(requestPhoneCodeBodyPhoneRegExp).describe('中国大陆手机号，11 位数字。'),
-  "purpose": zod.enum(['login']).default(requestPhoneCodeBodyPurposeDefault).describe('验证码用途，用于区分登录与换绑等场景的限流口径。')
+  "purpose": zod.enum(['login', 'change_phone']).default(requestPhoneCodeBodyPurposeDefault).describe('验证码用途，用于区分登录与换绑等场景的限流口径。')
 })
 
 export const RequestPhoneCodeResponse = zod.object({

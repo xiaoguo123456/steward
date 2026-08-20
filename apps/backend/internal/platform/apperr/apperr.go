@@ -26,6 +26,7 @@ const (
 	CodeInternal          Code = "INTERNAL_ERROR"
 
 	CodePhoneInvalid        Code = "PHONE_INVALID"
+	CodePhoneInUse          Code = "PHONE_ALREADY_IN_USE"
 	CodeCodeInvalid         Code = "VERIFICATION_CODE_INVALID"
 	CodeCodeExpired         Code = "VERIFICATION_CODE_EXPIRED"
 	CodeRefreshTokenInvalid Code = "REFRESH_TOKEN_INVALID"
@@ -150,7 +151,7 @@ func (e *Error) HTTPStatus() int {
 		CodeTaskStatusInvalid, CodeProjectHasOpenTasks, CodeObjectAlreadyDeleted,
 		CodeCaptureAlreadyConfirm, CodeCaptureRevisionStale, CodeCaptureQuestionResolved,
 		CodeAIProposalStale, CodeAIProposalExpired, CodeAIProposalResolved,
-		CodeAITurnCancelled:
+		CodeAITurnCancelled, CodePhoneInUse:
 		return http.StatusConflict
 	case CodeRateLimited, CodeAIProviderRateLimited:
 		return http.StatusTooManyRequests
@@ -208,6 +209,8 @@ func defaultMessage(code Code) string {
 		return "服务出现问题，请稍后重试。"
 	case CodePhoneInvalid:
 		return "手机号格式不正确。"
+	case CodePhoneInUse:
+		return "这个手机号已经绑定了另一个账号。"
 	case CodeCodeInvalid:
 		return "验证码不正确。"
 	case CodeCodeExpired:

@@ -87,3 +87,45 @@ func tokenPair(r LoginResult) httpapi.TokenPair {
 		RefreshExpiresAt: r.RefreshExpiresAt,
 	}
 }
+
+// ChangePhone 更换绑定的手机号。
+//
+// 放在这里而不是 users：它的授权前提和改昵称完全不同——
+// 要两个验证码，并且会让其他设备上的登录失效。
+func (h *SessionAPI) ChangePhone(ctx context.Context,
+	req httpapi.ChangePhoneRequestObject) (httpapi.ChangePhoneResponseObject, error) {
+
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	row, err := h.svc.ChangePhone(ctx, userID,
+		req.Body.CurrentCode, req.Body.NewPhone, req.Body.NewCode)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.ChangePhone200JSONResponse{
+		Data: users.MapUser(row), Meta: httpx.Meta(ctx),
+	}, nil
+}
+
+// RequestCurrentPhoneCode 给当前绑定的手机号发换绑验证码。
+func (h *SessionAPI) RequestCurrentPhoneCode(ctx context.Context,
+	_ httpapi.RequestCurrentPhoneCodeRequestObject) (httpapi.RequestCurrentPhoneCodeResponseObject, error) {
+
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := h.svc.RequestCurrentPhoneCode(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	resp := httpapi.RequestCurrentPhoneCode200JSONResponse{Meta: httpx.Meta(ctx)}
+	resp.Data.ExpiresInSeconds = result.ExpiresInSeconds
+	resp.Data.ResendAfterSeconds = result.ResendAfterSeconds
+	if result.DevCode != "" {
+		resp.Data.DevCode = &result.DevCode
+	}
+	return resp, nil
+}

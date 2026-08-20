@@ -337,6 +337,36 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 	return i, err
 }
 
+const updateUserPhone = `-- name: UpdateUserPhone :one
+UPDATE users SET phone = $1, updated_at = now()
+WHERE id = $2 AND deleted_at IS NULL
+RETURNING id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, deleted_at
+`
+
+type UpdateUserPhoneParams struct {
+	Phone string
+	ID    string
+}
+
+// 换绑手机号。手机号是这个产品的账号标识，单独一条语句而不是塞进 UpdateUser：
+// 它需要的授权强度和改昵称完全不同（见 auth.ChangePhone）。
+func (q *Queries) UpdateUserPhone(ctx context.Context, arg UpdateUserPhoneParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserPhone, arg.Phone, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Phone,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.Timezone,
+		&i.Initialized,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const updateUserPreferences = `-- name: UpdateUserPreferences :one
 UPDATE user_preferences SET
     week_start                  = coalesce($1, week_start),

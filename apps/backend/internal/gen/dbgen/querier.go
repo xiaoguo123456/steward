@@ -285,6 +285,9 @@ type Querier interface {
 	// 覆盖式更新流式草稿。调用方按固定间隔节流，不是每个增量都写。
 	UpdateTurnDraft(ctx context.Context, arg UpdateTurnDraftParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// 换绑手机号。手机号是这个产品的账号标识，单独一条语句而不是塞进 UpdateUser：
+	// 它需要的授权强度和改昵称完全不同（见 auth.ChangePhone）。
+	UpdateUserPhone(ctx context.Context, arg UpdateUserPhoneParams) (User, error)
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) (UserPreference, error)
 	// 第一次修改时顺带建行：客户端不需要先「创建档案」再改。
 	//

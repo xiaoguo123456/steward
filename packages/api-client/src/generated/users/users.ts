@@ -35,7 +35,11 @@ import type {
 import type {
   AiSettingsResponse,
   BadRequestResponse,
+  ChangePhoneRequest,
+  ErrorResponse,
   InternalErrorResponse,
+  PhoneCodeResponse,
+  TooManyRequestsResponse,
   UnauthorizedResponse,
   UpdateAiSettingsRequest,
   UpdateUserPreferencesRequest,
@@ -575,4 +579,152 @@ export const useUpdateAiSettings = <TError = BadRequestResponse | UnauthorizedRe
         TContext
       > => {
       return useMutation(getUpdateAiSettingsMutationOptions(options), queryClient);
+    }
+    export const getChangePhoneUrl = () => {
+
+
+
+
+  return `/v1/me/phone`
+}
+
+/**
+ * 需要同时提供当前手机号与新手机号的验证码，两者都用
+ * `purpose=change_phone` 获取。
+ *
+ * 成功后其他设备上的登录会失效，当前设备继续可用。
+ * @summary 更换绑定手机号
+ */
+export const changePhone = async (changePhoneRequest: ChangePhoneRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<UserResponse> => {
+
+  return stewardFetch<UserResponse>(getChangePhoneUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(changePhoneRequest)
+  }
+);}
+
+
+
+
+
+export const getChangePhoneMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ErrorResponse | TooManyRequestsResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePhone>>, TError,{data: ChangePhoneRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changePhone>>, TError,{data: ChangePhoneRequest}, TContext> => {
+
+const mutationKey = ['changePhone'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changePhone>>, {data: ChangePhoneRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  changePhone(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangePhoneMutationResult = NonNullable<Awaited<ReturnType<typeof changePhone>>>
+    export type ChangePhoneMutationBody = ChangePhoneRequest
+    export type ChangePhoneMutationError = BadRequestResponse | UnauthorizedResponse | ErrorResponse | TooManyRequestsResponse | InternalErrorResponse
+
+    /**
+ * @summary 更换绑定手机号
+ */
+export const useChangePhone = <TError = BadRequestResponse | UnauthorizedResponse | ErrorResponse | TooManyRequestsResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePhone>>, TError,{data: ChangePhoneRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof changePhone>>,
+        TError,
+        {data: ChangePhoneRequest},
+        TContext
+      > => {
+      return useMutation(getChangePhoneMutationOptions(options), queryClient);
+    }
+    export const getRequestCurrentPhoneCodeUrl = () => {
+
+
+
+
+  return `/v1/me/phone/code`
+}
+
+/**
+ * 服务端已经知道你是谁，因此不需要也不接受手机号参数——
+ * 手机号是脱敏下发的（`138****8000`），客户端本来就拿不到完整号码。
+ *
+ * 发出的验证码用途是 `change_phone`，登录码不能拿来换绑，反之亦然。
+ * @summary 给当前绑定的手机号发送换绑验证码
+ */
+export const requestCurrentPhoneCode = async ( options?: Parameters<typeof stewardFetch>[1]): Promise<PhoneCodeResponse> => {
+
+  return stewardFetch<PhoneCodeResponse>(getRequestCurrentPhoneCodeUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRequestCurrentPhoneCodeMutationOptions = <TError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCurrentPhoneCode>>, TError,void, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestCurrentPhoneCode>>, TError,void, TContext> => {
+
+const mutationKey = ['requestCurrentPhoneCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestCurrentPhoneCode>>, void> = () => {
+
+
+          return  requestCurrentPhoneCode(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestCurrentPhoneCodeMutationResult = NonNullable<Awaited<ReturnType<typeof requestCurrentPhoneCode>>>
+
+    export type RequestCurrentPhoneCodeMutationError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse
+
+    /**
+ * @summary 给当前绑定的手机号发送换绑验证码
+ */
+export const useRequestCurrentPhoneCode = <TError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCurrentPhoneCode>>, TError,void, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestCurrentPhoneCode>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRequestCurrentPhoneCodeMutationOptions(options), queryClient);
     }

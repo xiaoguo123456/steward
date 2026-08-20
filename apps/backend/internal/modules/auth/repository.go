@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
@@ -95,4 +96,10 @@ func (s *Service) withAnonymousTx(ctx context.Context, fn func(context.Context, 
 
 func isNoRows(err error) bool {
 	return errors.Is(err, pgx.ErrNoRows) || database.IsNoRows(err)
+}
+
+// isUniqueViolation 判断是否撞了唯一约束。
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }

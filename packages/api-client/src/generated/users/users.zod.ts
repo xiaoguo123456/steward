@@ -139,3 +139,64 @@ export const UpdateAiSettingsResponse = zod.object({
 }).describe('所有成功响应共有的元信息。')
 })
 
+/**
+ * 需要同时提供当前手机号与新手机号的验证码，两者都用
+ * `purpose=change_phone` 获取。
+ *
+ * 成功后其他设备上的登录会失效，当前设备继续可用。
+ * @summary 更换绑定手机号
+ */
+export const changePhoneHeaderIdempotencyKeyMin = 8;
+export const changePhoneHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ChangePhoneHeader = zod.object({
+  "Idempotency-Key": zod.string().min(changePhoneHeaderIdempotencyKeyMin).max(changePhoneHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const changePhoneBodyCurrentCodeRegExp = new RegExp('^[0-9]{6}$');
+export const changePhoneBodyNewPhoneRegExp = new RegExp('^1[3-9][0-9]{9}$');
+export const changePhoneBodyNewCodeRegExp = new RegExp('^[0-9]{6}$');
+
+
+export const ChangePhoneBody = zod.object({
+  "current_code": zod.string().regex(changePhoneBodyCurrentCodeRegExp).describe('发到当前绑定手机号的验证码。'),
+  "new_phone": zod.string().regex(changePhoneBodyNewPhoneRegExp),
+  "new_code": zod.string().regex(changePhoneBodyNewCodeRegExp).describe('发到新手机号的验证码。')
+}).describe('更换绑定手机号。\n\n\*\*要同时验证旧号与新号\*\*：这个产品的账号就是手机号（登录＝手机号＋验证码），\n换绑是权限最高的操作。只验新号的话，一个被劫持的会话就能永久接管账号，\n而真正的机主再也登不进来——他的号码已经不再对应任何账号。\n要求旧号的验证码意味着「光有会话不够」。\n\n两个验证码都要用 purpose=change_phone 获取。\n成功后其他设备上的登录会被登出，当前设备不受影响。\n')
+
+export const ChangePhoneResponse = zod.object({
+  "data": zod.object({
+  "id": zod.string(),
+  "phone": zod.string().describe('已脱敏的手机号，中间四位为星号。'),
+  "display_name": zod.string(),
+  "avatar_url": zod.string().nullish(),
+  "timezone": zod.string().describe('用户时区，所有日期语义换算的基准。'),
+  "initialized": zod.boolean().describe('是否已完成首次初始化流程。'),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true})
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 服务端已经知道你是谁，因此不需要也不接受手机号参数——
+ * 手机号是脱敏下发的（`138****8000`），客户端本来就拿不到完整号码。
+ *
+ * 发出的验证码用途是 `change_phone`，登录码不能拿来换绑，反之亦然。
+ * @summary 给当前绑定的手机号发送换绑验证码
+ */
+export const RequestCurrentPhoneCodeResponse = zod.object({
+  "data": zod.object({
+  "expires_in_seconds": zod.number().int().describe('验证码有效期。'),
+  "resend_after_seconds": zod.number().int().describe('允许再次发送前需要等待的秒数。'),
+  "dev_code": zod.string().nullish().describe('仅在开发环境返回的固定验证码，生产环境恒为 null。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+

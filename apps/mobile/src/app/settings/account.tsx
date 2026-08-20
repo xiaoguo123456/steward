@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import {
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
+import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { NavHeader } from '@/components/ui/nav-header';
 import { SectionTitle } from '@/components/ui/section-title';
@@ -51,10 +53,16 @@ export default function AccountScreen() {
           <>
             <SectionTitle title="登录方式" />
             <View style={styles.rows}>
-              <View style={styles.row}>
+              <Pressable
+                accessibilityLabel="更换绑定手机号"
+                accessibilityRole="button"
+                onPress={() => router.push('/settings/phone')}
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+              >
                 <Text style={styles.rowLabel}>手机号</Text>
                 <Text style={styles.rowValue}>{user?.phone}</Text>
-              </View>
+                <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
+              </Pressable>
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>时区</Text>
                 <Text style={styles.rowValue}>{user?.timezone}</Text>
@@ -127,6 +135,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
@@ -139,6 +148,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily,
     ...typography.body,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   signOut: {
     marginTop: 32,
