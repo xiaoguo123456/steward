@@ -11,6 +11,10 @@ import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
+import {
+  describeReminder,
+  usePendingReminders,
+} from '@/features/reminders/use-pending-reminders';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type HomeShortcut = {
@@ -126,6 +130,8 @@ export default function HomeScreen() {
           title="首页"
         />
 
+        <PendingRemindersBlock />
+
         <View style={styles.shortcutPanel}>
           <View style={styles.shortcutGrid}>
             {homeShortcuts.map((item) => (
@@ -221,10 +227,10 @@ export default function HomeScreen() {
           </>
         )}
 
-        <SectionTitle style={styles.homeSectionTitle} title="今日提醒" />
+        <SectionTitle style={styles.homeSectionTitle} title="今日安排" />
         <Pressable
           accessibilityHint="进入日历查看今天的完整安排"
-          accessibilityLabel="打开日历查看今日提醒"
+          accessibilityLabel="打开日历查看今日安排"
           accessibilityRole="button"
           onPress={() => router.push('/calendar')}
           style={({ pressed }) => [styles.brief, pressed && styles.briefPressed]}
@@ -306,7 +312,133 @@ function listColor(name: string | null | undefined): string {
   }
 }
 
+/**
+ * 到点了、还没处理的提醒。
+ *
+ * 放在最前面：提醒是有时限的，错过就没有意义了。没有待提醒时整块不渲染，
+ * 不占一行去说「暂无提醒」——首页寸土寸金。
+ */
+function PendingRemindersBlock() {
+  const router = useRouter();
+  const reminders = usePendingReminders();
+  const today = new Date();
+
+  if (reminders.loading || reminders.items.length === 0) return null;
+
+  return (
+    <View style={styles.reminderBlock}>
+      {reminders.items.map((item) => (
+        <View key={item.id} style={styles.reminderRow}>
+          <Pressable
+            accessibilityLabel={`${item.title}，${describeReminder(item, today)}`}
+            accessibilityRole="button"
+            onPress={() =>
+              router.push(
+                item.source_type === 'task'
+                  ? ({ pathname: '/tasks/[id]', params: { id: item.source_id } } as Href)
+                  : ('/calendar' as Href),
+              )
+            }
+            style={({ pressed }) => [styles.reminderMain, pressed && styles.reminderPressed]}
+          >
+            <View style={styles.reminderIcon}>
+              <AppIcon
+                color={colors.primaryStrong}
+                name={item.event_kind === 'important_date' ? 'gift-outline' : 'alarm-outline'}
+                size={18}
+              />
+            </View>
+            <View style={styles.reminderCopy}>
+              <Text numberOfLines={1} style={styles.reminderTitle}>
+                {item.title}
+              </Text>
+              <Text style={styles.reminderMeta}>{describeReminder(item, today)}</Text>
+            </View>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={`知道了，不再提醒 ${item.title}`}
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => void reminders.dismiss(item.id)}
+            style={({ pressed }) => [styles.reminderDismiss, pressed && styles.reminderPressed]}
+          >
+            <Text style={styles.reminderDismissText}>知道了</Text>
+          </Pressable>
+        </View>
+      ))}
+      {reminders.failure ? <Text style={styles.reminderFailure}>{reminders.failure}</Text> : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  reminderBlock: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+  },
+  reminderRow: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reminderMain: {
+    flex: 1,
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reminderIcon: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
+  },
+  reminderCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 1,
+  },
+  reminderTitle: {
+    color: colors.text,
+    fontFamily,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  reminderMeta: {
+    color: colors.primaryStrong,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  reminderDismiss: {
+    minHeight: 44,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+  },
+  reminderDismissText: {
+    color: colors.textSecondary,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  reminderFailure: {
+    paddingBottom: 8,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  reminderPressed: {
+    opacity: 0.6,
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 92,

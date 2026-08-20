@@ -148,3 +148,53 @@ func (h *ViewAPI) Search(ctx context.Context, req httpapi.SearchRequestObject) (
 func openapiDate(t time.Time) openapi_types.Date {
 	return openapi_types.Date{Time: t}
 }
+
+// ListPendingReminders 查询此刻该提醒的事。
+func (h *ViewAPI) ListPendingReminders(ctx context.Context,
+	_ httpapi.ListPendingRemindersRequestObject) (httpapi.ListPendingRemindersResponseObject, error) {
+
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	due, err := h.svc.PendingReminders(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	data := make([]httpapi.PendingReminder, 0, len(due))
+	for _, item := range due {
+		out := httpapi.PendingReminder{
+			Id:             item.ID,
+			SourceType:     httpapi.PendingReminderSourceType(item.SourceType),
+			SourceId:       item.SourceID,
+			Title:          item.Title,
+			FireAt:         item.FireAt,
+			OccurrenceDate: openapi_types.Date{Time: item.OccurrenceDate},
+		}
+		if item.EventKind != "" {
+			kind := httpapi.EventKind(item.EventKind)
+			out.EventKind = &kind
+		}
+		data = append(data, out)
+	}
+	return httpapi.ListPendingReminders200JSONResponse{Data: data, Meta: httpx.Meta(ctx)}, nil
+}
+
+// DismissReminder 消掉一条提醒。
+func (h *ViewAPI) DismissReminder(ctx context.Context,
+	req httpapi.DismissReminderRequestObject) (httpapi.DismissReminderResponseObject, error) {
+
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.svc.DismissReminder(ctx, userID, req.Body.Id); err != nil {
+		return nil, err
+	}
+	// 提醒来自 Today 上的一块，消掉之后那块要重新拉。
+	return httpapi.DismissReminder200JSONResponse(
+		httpx.Mutation(ctx, "", httpapi.AffectedResource{
+			Type: httpapi.AffectedResourceTypeToday,
+		})), nil
+}

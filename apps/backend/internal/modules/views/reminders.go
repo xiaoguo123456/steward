@@ -1,11 +1,16 @@
 package views
 
 import (
+	"context"
 	"encoding/json"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
 
@@ -246,4 +251,125 @@ func decodeReminders(raw []byte) []httpapi.Reminder {
 		return nil
 	}
 	return out
+}
+
+// ---- 服务层 ----
+
+// PendingReminders 算出这个用户此刻该看到的提醒。
+//
+// 每次现算而不是查一张排好的表：用户改时区、改截止日期、把事项删了，
+// 结果立刻跟着变，不需要去清理任何预先排好的东西。
+func (s *Service) PendingReminders(ctx context.Context, userID string) ([]DueReminder, error) {
+	now := time.Now()
+
+	var out []DueReminder
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		tz, err := s.users.Timezone(ctx, q, userID)
+		if err != nil {
+			return err
+		}
+
+		tasks, err := q.ListTasksWithReminders(ctx, reminderScanLimit)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		for _, row := range tasks {
+			out = append(out, taskReminders(row, tz, now)...)
+		}
+
+		events, err := q.ListEventsWithReminders(ctx, reminderScanLimit)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		for _, row := range events {
+			out = append(out, eventReminders(row, now)...)
+		}
+
+		// 消掉过的不再出现。查询窗口比过期窗口宽一天，
+		// 避免边界上因为时区差把该排除的漏掉。
+		since := now.Add(-StaleWindow - 24*time.Hour)
+		dismissed, err := q.ListReminderDismissals(ctx, since)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		out = excludeDismissed(out, dismissed)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// 该响得早的排前面：用户先看到最紧迫的。
+	sort.SliceStable(out, func(i, j int) bool { return out[i].FireAt.Before(out[j].FireAt) })
+	return out, nil
+}
+
+// reminderScanLimit 是一次扫描的上限。
+//
+// 带提醒的事项本来就少（要显式设过才有），这个上限只是防止
+// 某个用户攒了极端多的数据时把一次请求拖垮。
+const reminderScanLimit = 500
+
+// excludeDismissed 去掉用户已经处理过的那些。
+func excludeDismissed(due []DueReminder, dismissed []dbgen.ListReminderDismissalsRow) []DueReminder {
+	if len(dismissed) == 0 {
+		return due
+	}
+	seen := make(map[string]struct{}, len(dismissed))
+	for _, row := range dismissed {
+		seen[row.ReminderID+"|"+timeutil.FormatDate(row.OccurrenceDate)] = struct{}{}
+	}
+
+	out := due[:0]
+	for _, item := range due {
+		key := item.ReminderID + "|" + timeutil.FormatDate(item.OccurrenceDate)
+		if _, dup := seen[key]; !dup {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+// DismissReminder 消掉一条提醒。
+//
+// id 是 PendingReminders 给出的复合键。重复消掉同一条不报错：
+// 「消掉」本来就是幂等的意图，而客户端网络重试很常见。
+func (s *Service) DismissReminder(ctx context.Context, userID, id string) error {
+	sourceID, reminderID, occurrence, ok := parseDueReminderID(id)
+	if !ok {
+		return apperr.Validation(apperr.Field("id", "提醒标识格式不正确。"))
+	}
+
+	// 来源类型从 ID 前缀推：任务是 tsk_，日程是 evt_。
+	sourceType := "event"
+	if strings.HasPrefix(sourceID, "tsk_") {
+		sourceType = "task"
+	}
+
+	return s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if err := q.CreateReminderDismissal(ctx, dbgen.CreateReminderDismissalParams{
+			ID:             idgen.New(idgen.PrefixReminderDismiss),
+			UserID:         userID,
+			SourceType:     sourceType,
+			SourceID:       sourceID,
+			ReminderID:     reminderID,
+			OccurrenceDate: occurrence,
+		}); err != nil {
+			return apperr.Internal(err)
+		}
+		return nil
+	})
+}
+
+// parseDueReminderID 拆开复合键。
+func parseDueReminderID(id string) (sourceID, reminderID string, occurrence time.Time, ok bool) {
+	parts := strings.Split(id, "|")
+	if len(parts) != 3 {
+		return "", "", time.Time{}, false
+	}
+	day, err := time.Parse("2006-01-02", parts[2])
+	if err != nil {
+		return "", "", time.Time{}, false
+	}
+	return parts[0], parts[1], day, true
 }

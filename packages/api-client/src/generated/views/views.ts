@@ -36,13 +36,16 @@ import type {
   AcceptedResponse,
   BadRequestResponse,
   CalendarViewResponse,
+  DismissReminderRequest,
   GenerateWeeklyReviewBody,
   GetCalendarParams,
   GetImportantDatesParams,
   GetWeeklyReviewParams,
   ImportantDatesResponse,
   InternalErrorResponse,
+  MutationResponse,
   NotFoundResponse,
+  PendingRemindersResponse,
   ProjectItineraryResponse,
   SearchParams,
   SearchResponse,
@@ -385,7 +388,183 @@ export function useGetProjectItinerary<TData = Awaited<ReturnType<typeof getProj
 
 
 
-export const getGetImportantDatesUrl = (params?: GetImportantDatesParams,) => {
+export const getListPendingRemindersUrl = () => {
+
+
+
+
+  return `/v1/reminders/pending`
+}
+
+/**
+ * 每次现算：用户改了时区、改了截止日期、把事项删了，结果立刻跟着变。
+ *
+ * 只返回已经到点、且事件本身还没过去太久的提醒。窗口按事件算而不是
+ * 按提醒响的时刻算——一条「提前 7 天」的提醒响过 5 天时，事件可能
+ * 还有两天才到，那正是最该看到它的时候。
+ * @summary 查询此刻该提醒的事
+ */
+export const listPendingReminders = async ( options?: Parameters<typeof stewardFetch>[1]): Promise<PendingRemindersResponse> => {
+
+  return stewardFetch<PendingRemindersResponse>(getListPendingRemindersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPendingRemindersQueryKey = () => {
+    return [
+    `/v1/reminders/pending`
+    ] as const;
+    }
+
+
+export const getListPendingRemindersQueryOptions = <TData = Awaited<ReturnType<typeof listPendingReminders>>, TError = UnauthorizedResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingReminders>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPendingRemindersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPendingReminders>>> = ({ signal }) => listPendingReminders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPendingReminders>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPendingRemindersQueryResult = NonNullable<Awaited<ReturnType<typeof listPendingReminders>>>
+export type ListPendingRemindersQueryError = UnauthorizedResponse | InternalErrorResponse
+
+
+export function useListPendingReminders<TData = Awaited<ReturnType<typeof listPendingReminders>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingReminders>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPendingReminders>>,
+          TError,
+          Awaited<ReturnType<typeof listPendingReminders>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPendingReminders<TData = Awaited<ReturnType<typeof listPendingReminders>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingReminders>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPendingReminders>>,
+          TError,
+          Awaited<ReturnType<typeof listPendingReminders>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPendingReminders<TData = Awaited<ReturnType<typeof listPendingReminders>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingReminders>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 查询此刻该提醒的事
+ */
+
+export function useListPendingReminders<TData = Awaited<ReturnType<typeof listPendingReminders>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPendingReminders>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListPendingRemindersQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getDismissReminderUrl = () => {
+
+
+
+
+  return `/v1/reminders/pending`
+}
+
+/**
+ * 消掉之后这一次发生不再浮出来。重复提交同一条不报错。
+ * @summary 消掉一条提醒
+ */
+export const dismissReminder = async (dismissReminderRequest: DismissReminderRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<MutationResponse> => {
+
+  return stewardFetch<MutationResponse>(getDismissReminderUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dismissReminderRequest)
+  }
+);}
+
+
+
+
+
+export const getDismissReminderMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissReminder>>, TError,{data: DismissReminderRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissReminder>>, TError,{data: DismissReminderRequest}, TContext> => {
+
+const mutationKey = ['dismissReminder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissReminder>>, {data: DismissReminderRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  dismissReminder(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissReminderMutationResult = NonNullable<Awaited<ReturnType<typeof dismissReminder>>>
+    export type DismissReminderMutationBody = DismissReminderRequest
+    export type DismissReminderMutationError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse
+
+    /**
+ * @summary 消掉一条提醒
+ */
+export const useDismissReminder = <TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissReminder>>, TError,{data: DismissReminderRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof dismissReminder>>,
+        TError,
+        {data: DismissReminderRequest},
+        TContext
+      > => {
+      return useMutation(getDismissReminderMutationOptions(options), queryClient);
+    }
+    export const getGetImportantDatesUrl = (params?: GetImportantDatesParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {

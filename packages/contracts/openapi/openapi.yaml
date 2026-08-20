@@ -169,6 +169,8 @@ paths:
     $ref: './paths/recipes.yaml#/Cooked'
   /v1/me/recipe-favorites:
     $ref: './paths/recipes.yaml#/Favorites'
+  /v1/reminders/pending:
+    $ref: './paths/views.yaml#/PendingReminders'
   /v1/me/phone:
     $ref: './paths/users.yaml#/Phone'
   /v1/me/phone/code:

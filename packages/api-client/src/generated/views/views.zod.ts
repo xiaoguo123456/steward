@@ -403,6 +403,59 @@ export const GetProjectItineraryResponse = zod.object({
 })
 
 /**
+ * 每次现算：用户改了时区、改了截止日期、把事项删了，结果立刻跟着变。
+ *
+ * 只返回已经到点、且事件本身还没过去太久的提醒。窗口按事件算而不是
+ * 按提醒响的时刻算——一条「提前 7 天」的提醒响过 5 天时，事件可能
+ * 还有两天才到，那正是最该看到它的时候。
+ * @summary 查询此刻该提醒的事
+ */
+export const ListPendingRemindersResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().describe('复合键，消掉这条提醒时原样回传。'),
+  "source_type": zod.enum(['task', 'event']),
+  "source_id": zod.string().describe('点击后跳转到这个事项。'),
+  "title": zod.string(),
+  "fire_at": zod.string().datetime({"offset":true}).describe('这条提醒该响的时刻。可能已经过去，客户端据此显示「今天」或具体日期。'),
+  "occurrence_date": zod.string().date().describe('这一次发生的日期。重要日每年重复，靠它区分是哪一年那次。'),
+  "event_kind": zod.enum(['schedule', 'important_date']).optional()
+}).describe('一条到点了、用户还没处理的提醒。\n\n它不是一张表里的行：提醒是事项上的一条规则，加上一次「发生」算出来的时刻。\n因此 id 是复合键（来源 ID｜规则 ID｜这次发生的日期），消掉时原样回传。\n')),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 消掉之后这一次发生不再浮出来。重复提交同一条不报错。
+ * @summary 消掉一条提醒
+ */
+export const dismissReminderHeaderIdempotencyKeyMin = 8;
+export const dismissReminderHeaderIdempotencyKeyMax = 128;
+
+
+
+export const DismissReminderHeader = zod.object({
+  "Idempotency-Key": zod.string().min(dismissReminderHeaderIdempotencyKeyMin).max(dismissReminderHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const DismissReminderBody = zod.object({
+  "id": zod.string().describe('PendingReminder 的 id，原样回传。')
+}).describe('消掉一条提醒。重复提交同一条不报错——网络重试很常见。')
+
+export const DismissReminderResponse = zod.object({
+  "data": zod.object({
+  "affected_resources": zod.array(zod.object({
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
+})),
+  "activity_batch_id": zod.string().nullish()
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+}).describe('删除等不返回实体的写操作响应，携带需要失效的资源列表。')
+
+/**
  * 重要日复用 event_kind=important_date 的全天 Event，这里只做投影与排序。
  * 年度投影、2 月 29 日与时区换算都由服务端确定性代码计算，客户端不得重排。
  * 新增与修改仍然走普通的 Event 接口。

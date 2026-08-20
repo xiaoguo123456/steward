@@ -219,3 +219,52 @@ ProjectItinerary:
         $ref: '../components/responses.yaml#/NotFound'
       '500':
         $ref: '../components/responses.yaml#/InternalError'
+
+PendingReminders:
+  get:
+    operationId: listPendingReminders
+    summary: 查询此刻该提醒的事
+    description: |
+      每次现算：用户改了时区、改了截止日期、把事项删了，结果立刻跟着变。
+
+      只返回已经到点、且事件本身还没过去太久的提醒。窗口按事件算而不是
+      按提醒响的时刻算——一条「提前 7 天」的提醒响过 5 天时，事件可能
+      还有两天才到，那正是最该看到它的时候。
+    tags: [views]
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/views.yaml#/PendingRemindersResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: dismissReminder
+    summary: 消掉一条提醒
+    description: 消掉之后这一次发生不再浮出来。重复提交同一条不报错。
+    tags: [views]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/views.yaml#/DismissReminderRequest'
+    responses:
+      '200':
+        description: 已消掉。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

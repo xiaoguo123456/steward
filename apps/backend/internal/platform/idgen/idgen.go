@@ -53,6 +53,7 @@ const (
 	PrefixRecipeCookLog    = "rcl"
 	PrefixMealPlan         = "mpl"
 	PrefixMealPlanEntry    = "mpe"
+	PrefixReminderDismiss  = "rdm"
 )
 
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)

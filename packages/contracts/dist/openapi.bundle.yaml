@@ -2327,6 +2327,56 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/reminders/pending:
+    get:
+      operationId: listPendingReminders
+      summary: 查询此刻该提醒的事
+      description: |
+        每次现算：用户改了时区、改了截止日期、把事项删了，结果立刻跟着变。
+
+        只返回已经到点、且事件本身还没过去太久的提醒。窗口按事件算而不是
+        按提醒响的时刻算——一条「提前 7 天」的提醒响过 5 天时，事件可能
+        还有两天才到，那正是最该看到它的时候。
+      tags:
+        - views
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingRemindersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: dismissReminder
+      summary: 消掉一条提醒
+      description: 消掉之后这一次发生不再浮出来。重复提交同一条不报错。
+      tags:
+        - views
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DismissReminderRequest'
+      responses:
+        '200':
+          description: 已消掉。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me/phone:
     post:
       operationId: changePhone
@@ -6723,6 +6773,69 @@ components:
           $ref: '#/components/schemas/Recipe'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
+    PendingReminder:
+      type: object
+      additionalProperties: false
+      description: |
+        一条到点了、用户还没处理的提醒。
+
+        它不是一张表里的行：提醒是事项上的一条规则，加上一次「发生」算出来的时刻。
+        因此 id 是复合键（来源 ID｜规则 ID｜这次发生的日期），消掉时原样回传。
+      required:
+        - id
+        - source_type
+        - source_id
+        - title
+        - fire_at
+        - occurrence_date
+      properties:
+        id:
+          type: string
+          description: 复合键，消掉这条提醒时原样回传。
+          example: evt_01J8Z3|rmd_01J8Z4|2026-08-22
+        source_type:
+          type: string
+          enum:
+            - task
+            - event
+        source_id:
+          type: string
+          description: 点击后跳转到这个事项。
+        title:
+          type: string
+        fire_at:
+          type: string
+          format: date-time
+          description: 这条提醒该响的时刻。可能已经过去，客户端据此显示「今天」或具体日期。
+        occurrence_date:
+          type: string
+          format: date
+          description: 这一次发生的日期。重要日每年重复，靠它区分是哪一年那次。
+        event_kind:
+          $ref: '#/components/schemas/EventKind'
+    PendingRemindersResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingReminder'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DismissReminderRequest:
+      type: object
+      additionalProperties: false
+      description: 消掉一条提醒。重复提交同一条不报错——网络重试很常见。
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          description: PendingReminder 的 id，原样回传。
     ChangePhoneRequest:
       type: object
       additionalProperties: false
