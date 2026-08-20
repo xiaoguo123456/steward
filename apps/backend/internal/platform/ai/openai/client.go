@@ -153,6 +153,7 @@ func (p *Provider) chat(ctx context.Context, model string, messages []chatMessag
 	}
 	if wantJSON {
 		body.ResponseFormat = &responseFormat{Type: "json_object"}
+		body.Messages = ensureJSONMention(body.Messages)
 	}
 
 	payload, err := json.Marshal(body)
@@ -323,5 +324,65 @@ func extensionFor(contentType string) string {
 		return ".mp3"
 	default:
 		return ".m4a"
+	}
+}
+
+// ensureJSONMention 保证**用户消息**里出现 "json" 这个词。
+//
+// 用 response_format=json_object 时服务端要求消息里必须字面提到 json，
+// 否则整个请求以 400 打回：
+//
+//	Response input messages must contain the word 'json' in some form
+//	to use 'text.format' of type 'json_object'
+//
+// **只补在 user 上，补在 system 上没用。** 报错文案里的
+// 「Response input messages」与「text.format」是 Responses API 的说法，
+// 说明服务商把 chat/completions 转译成了 Responses API；转译时 system
+// 变成了 instructions，不算 input message，因此系统提示词里写多少个 json
+// 都不算数。我们的解析提示词本来就提到 json 三次，照样被拒。
+//
+// **这类问题脚本化 Provider 永远测不出来**：它不校验请求体，
+// 只有真连一次模型服务才会暴露。
+func ensureJSONMention(messages []chatMessage) []chatMessage {
+	for _, m := range messages {
+		if m.Role != "user" {
+			continue
+		}
+		if strings.Contains(strings.ToLower(textOf(m.Content)), "json") {
+			return messages
+		}
+	}
+
+	const hint = "\n\n（以 JSON 格式输出／output must be valid json）"
+	out := make([]chatMessage, len(messages))
+	copy(out, messages)
+	// 补在最后一条纯文本 user 上。多段内容（带图的那种）不动：
+	// 往里塞一段文本会打乱 text 与 image_url 的配对。
+	for i := len(out) - 1; i >= 0; i-- {
+		if out[i].Role != "user" {
+			continue
+		}
+		if existing, ok := out[i].Content.(string); ok {
+			out[i].Content = existing + hint
+			return out
+		}
+	}
+	return append(out, chatMessage{Role: "user", Content: strings.TrimSpace(hint)})
+}
+
+// textOf 取出消息里的文字部分。多段内容只看 text 段，图片忽略。
+func textOf(content any) string {
+	switch v := content.(type) {
+	case string:
+		return v
+	case []contentPart:
+		var b strings.Builder
+		for _, part := range v {
+			b.WriteString(part.Text)
+			b.WriteString(" ")
+		}
+		return b.String()
+	default:
+		return ""
 	}
 }

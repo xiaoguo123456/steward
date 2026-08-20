@@ -66,8 +66,11 @@ func (p *Provider) CompleteStream(ctx context.Context, req ai.CompletionRequest,
 		MaxCompletionTokens: maxTokens,
 		Stream:              true,
 	}
+	// 线上名 → 能力名。模型回传的工具名按它还原，
+	// 否则引擎会拿着 tasks_search 去授权表里找 tasks.search，一律拒绝。
+	toolNames := map[string]string{}
 	if len(req.Tools) > 0 {
-		body.Tools = toWireTools(req.Tools)
+		body.Tools, toolNames = toWireTools(req.Tools)
 		body.ToolChoice = "auto"
 	}
 
@@ -105,12 +108,13 @@ func (p *Provider) CompleteStream(ctx context.Context, req ai.CompletionRequest,
 		return ai.CompletionResult{}, fmt.Errorf("%w: HTTP %d", ai.ErrProviderUnavailable, resp.StatusCode)
 	}
 
-	return p.readStream(resp.Body, onDelta, started)
+	return p.readStream(resp.Body, onDelta, started, toolNames)
 }
 
 // readStream 消费 SSE 响应体，拼出完整结果。
+// toolNames 是「线上名 → 能力名」，用于还原模型回传的工具名。
 func (p *Provider) readStream(body io.Reader, onDelta func(string),
-	started time.Time) (ai.CompletionResult, error) {
+	started time.Time, toolNames map[string]string) (ai.CompletionResult, error) {
 
 	var (
 		content      strings.Builder
@@ -175,7 +179,7 @@ func (p *Provider) readStream(body io.Reader, onDelta func(string),
 				existing.ID = call.ID
 			}
 			if call.Function.Name != "" {
-				existing.Name = call.Function.Name
+				existing.Name = fromWireToolName(call.Function.Name, toolNames)
 			}
 			existing.Arguments += call.Function.Arguments
 		}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
@@ -97,8 +98,9 @@ func (p *Provider) Complete(ctx context.Context, req ai.CompletionRequest) (ai.C
 		Temperature:         0.3,
 		MaxCompletionTokens: maxTokens,
 	}
+	toolNames := map[string]string{}
 	if len(req.Tools) > 0 {
-		body.Tools = toWireTools(req.Tools)
+		body.Tools, toolNames = toWireTools(req.Tools)
 		body.ToolChoice = "auto"
 	}
 
@@ -164,8 +166,10 @@ func (p *Provider) Complete(ctx context.Context, req ai.CompletionRequest) (ai.C
 	}
 	for _, call := range choice.Message.ToolCalls {
 		result.ToolCalls = append(result.ToolCalls, ai.ToolCall{
-			ID:        call.ID,
-			Name:      call.Function.Name,
+			ID: call.ID,
+			// 还原成能力名，否则引擎会拿着 tasks_search 去授权表里
+			// 找 tasks.search，一律拒绝。
+			Name:      fromWireToolName(call.Function.Name, toolNames),
 			Arguments: call.Function.Arguments,
 		})
 	}
@@ -181,11 +185,12 @@ func toWireMessages(messages []ai.Message) []toolChatMessage {
 			ToolCallID: m.ToolCallID,
 		}
 		for _, call := range m.ToolCalls {
+			// 历史里的工具名也要转成线上名：模型看到的必须和它自己发出的一致。
 			wire.ToolCalls = append(wire.ToolCalls, toolCallWire{
 				ID:   call.ID,
 				Type: "function",
 				Function: toolCallFunction{
-					Name:      call.Name,
+					Name:      toWireToolName(call.Name),
 					Arguments: call.Arguments,
 				},
 			})
@@ -195,17 +200,51 @@ func toWireMessages(messages []ai.Message) []toolChatMessage {
 	return out
 }
 
-func toWireTools(tools []ai.ToolSpec) []toolSpecWire {
+func toWireTools(tools []ai.ToolSpec) ([]toolSpecWire, map[string]string) {
 	out := make([]toolSpecWire, 0, len(tools))
+	// 线上名 → 能力名。模型回传的工具名要按它还原。
+	back := make(map[string]string, len(tools))
 	for _, t := range tools {
+		wire := toWireToolName(t.Name)
+		back[wire] = t.Name
 		out = append(out, toolSpecWire{
 			Type: "function",
 			Function: toolFunctionSpec{
-				Name:        t.Name,
+				Name:        wire,
 				Description: t.Description,
 				Parameters:  t.Parameters,
 			},
 		})
 	}
-	return out
+	return out, back
+}
+
+// toWireToolName 把能力名转成服务端接受的形式。
+//
+// 我们的能力名是 tasks.search 这种带点的；而服务端要求工具名匹配
+// `^[a-zA-Z0-9_-]+$`，带点会被 400 打回：
+//
+//	Invalid 'tools[0].name': string does not match pattern
+//
+// **不能反过来把能力名改成 tasks_search**：那是让一家服务商的正则
+// 渗进领域命名，而能力名还出现在评测用例、审计记录与文档里。
+// 协议细节只留在本包内，这正是这个适配器存在的意义。
+//
+// 转换不追求可逆（tasks.propose_create 与 tasks_propose_create 撞在一起时
+// 没法凭字符串反推），而是**每次调用建一张回映射表**——
+// 工具清单本来就是我们自己给的，映射一定准确。
+func toWireToolName(name string) string {
+	return strings.NewReplacer(".", "_", "/", "_", ":", "_").Replace(name)
+}
+
+// fromWireToolName 把模型回传的工具名还原成能力名。
+//
+// 认不出来时原样返回：引擎会按名字重新授权，不在清单里的一律拒绝
+// （AI_TOOL_NOT_ALLOWED）并留审计。**这里不要试图猜**——
+// 猜错等于把一次越权调用翻译成一次合法调用。
+func fromWireToolName(wire string, back map[string]string) string {
+	if name, ok := back[wire]; ok {
+		return name
+	}
+	return wire
 }
