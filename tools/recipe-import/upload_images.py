@@ -34,7 +34,12 @@ DB_PATH = REPO / "tools" / "recipe-import" / "recipes.sqlite3"
 DEFAULT_ENV = Path.home() / "Documents" / "project" / "huahuadog" / ".env.prod.real"
 
 # 对象前缀。菜谱图是平台内容，和用户私有媒体分开放。
+# 这个前缀在 CDN 上配了免鉴权，任何人拿到 URL 都能取——只放该公开的东西。
 KEY_PREFIX = "steward/recipes"
+
+# 归档库的备份前缀。**故意不放在 recipes/ 下面**：
+# 那个前缀是公开的，而归档库含全部菜谱数据，不该谁都能下载。
+BACKUP_PREFIX = "steward/backups"
 
 
 def load_credentials(env_path: Path) -> dict:
@@ -65,6 +70,8 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0, help="只传前 N 个，用于试跑")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--verify", action="store_true", help="只核对 OSS 上是否存在，不上传")
+    parser.add_argument("--backup-archive", action="store_true",
+                        help="把 SQLite 归档库备份到 OSS（原始素材删掉后它是唯一副本）")
     args = parser.parse_args()
 
     env = load_credentials(args.env)
@@ -74,6 +81,10 @@ def main() -> int:
 
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.execute("PRAGMA journal_mode = WAL")
+
+    if args.backup_archive:
+        conn.close()
+        return backup_archive(bucket)
 
     if args.verify:
         return verify(conn, bucket)
@@ -161,6 +172,30 @@ def main() -> int:
     print(f"仍未上传：{remaining}（重跑本脚本即可续传）")
     conn.close()
     return 0 if counters["fail"] == 0 else 1
+
+
+def backup_archive(bucket) -> int:
+    """把归档库传到 OSS。
+
+    原始素材（11G）删掉之后，这个库就是结构化数据在 PG 之外的唯一副本，
+    而它不进版本库、只在一台机器上。传到 OSS 让它和图片一样耐久。
+
+    放在非公开前缀下：库里是全部菜谱数据，不该谁都能下载。
+    """
+    if not DB_PATH.exists():
+        print(f"找不到归档库 {DB_PATH}", file=sys.stderr)
+        return 1
+    # 带日期，不覆盖上一次的备份——覆盖式备份在数据出问题时救不了你。
+    from datetime import datetime, timezone
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    key = f"{BACKUP_PREFIX}/recipes-{stamp}.sqlite3"
+    size = DB_PATH.stat().st_size
+    print(f"上传 {DB_PATH.name}（{size / 1024 / 1024:.0f} MB）→ {key}")
+    bucket.put_object_from_file(key, str(DB_PATH))
+    meta = bucket.head_object(key)
+    ok = meta.content_length == size
+    print(f"完成，OSS 上 {meta.content_length} 字节，{'一致' if ok else '大小不符！'}")
+    return 0 if ok else 1
 
 
 def verify(conn: sqlite3.Connection, bucket) -> int:

@@ -25,16 +25,25 @@ python3 tools/recipe-import/to_postgres.py
 不用再碰那 11G。SQLite 里 `raw` 列存着整份原始 JSON，将来发现漏了字段
 也能从那里补。
 
-它同时是**不丢数据的底本**：28M 的归档 + OSS 上的图片，
-合起来等于完整备份，不依赖本地那份原始目录。
+它同时是**不丢数据的底本**：29M 的归档 + OSS 上的图片，合起来等于完整备份。
+原始的 11G 素材已经删掉，所以这个库现在是结构化数据在 PG 之外的唯一副本。
+
+```bash
+# 备份归档库到 OSS。它不进版本库、只在一台机器上，所以要单独备。
+python3 tools/recipe-import/upload_images.py --backup-archive
+```
+
+备份放在 `steward/backups/`（**非公开前缀**）而不是 `steward/recipes/`——
+后者在 CDN 上免鉴权，而归档库含全部菜谱数据，不该谁都能下载。
+文件名带日期，不覆盖上一次：覆盖式备份在数据出问题时救不了你。
 
 ## 几条要留意的规则
 
-**授权状态是「待确认」，不是占位符。** 内容来自懒饭 App
-（`source_url` 存着原始链接）。`license` 字段如实写着待确认——
-正式上线前必须逐条落实，否则就是在展示不知道有没有权利展示的内容。
-这也是 `source_name` / `license` / `content_version` 三个 NOT NULL 字段
-存在的意义。
+**授权已确认，`license` 记「已授权」。** 内容来自懒饭。
+`source_name` / `license` / `content_version` 三个 NOT NULL 字段的用意是
+逼出「有没有权利展示」这个问题——将来接入别的来源时，这里要填真实结论。
+
+原始链接只留在 SQLite 归档的 `url` 列里，不进 PG：展示层用不到它。
 
 **过敏原是硬过滤，见 `allergens.py`。** 漏标会让对花生过敏的人看到含花生的菜；
 而明显误标（土豆被判成大豆）会让用户直接关掉过滤，反而更危险。

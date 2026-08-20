@@ -42,10 +42,10 @@ CONTENT_VERSION = "lanfan-2026-08"
 # 哪天换域名或改回签名，重跑映射即可，不用去猜库里那串地址是怎么来的。
 CDN_BASE = "https://img.qhzhiyin.com"
 SOURCE_NAME = "懒饭"
-# **授权状态未确认。** 这不是占位符，是真实状态：
-# 内容来自懒饭 App，是否允许在本产品展示需要单独确认。
-# 正式上线前必须逐条落实，否则就是在展示不知道有没有权利展示的内容。
-LICENSE = "待确认"
+# 内容已获授权（2026-08 由项目负责人确认）。
+# 这个字段是 NOT NULL 的用意就是逼出「有没有权利展示」这个问题，
+# 所以填的必须是真实结论而不是好看的占位值。
+LICENSE = "已授权"
 
 DIFFICULTY = {
     "零厨艺✌️": "easy",
@@ -137,7 +137,8 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
     ).fetchone()
     if not r:
         return None
-    name, name_adj, url, difficulty_text, time_consuming, servings, tips, cover = r
+    # url 只留在 SQLite 归档里，不进 PG——展示层用不到它。
+    name, name_adj, _url, difficulty_text, time_consuming, servings, tips, cover = r
 
     ings = conn.execute(
         "SELECT name, amount, calories, protein, fat, carbohydrate FROM ingredients "
@@ -198,7 +199,6 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
         ),
         "source_name": SOURCE_NAME,
         "source_author": None,
-        "source_url": url,
         "license": LICENSE,
         "license_url": None,
         # 图片和菜谱同源。没有图片权利就不下发图，约束会拦住。
@@ -213,14 +213,14 @@ INSERT INTO recipes (
     calories, protein_g, carbs_g, fat_g, fiber_g,
     meal_slots, categories, goals, tags, allergens,
     ingredients, steps,
-    source_name, source_author, source_url, license, license_url,
+    source_name, source_author, license, license_url,
     image_credit, content_version
 ) VALUES (
     %(id)s, %(title)s, %(summary)s, %(image_key)s, %(image_url)s, %(servings)s, %(duration_minutes)s, %(difficulty)s,
     %(calories)s, %(protein_g)s, %(carbs_g)s, %(fat_g)s, %(fiber_g)s,
     %(meal_slots)s, %(categories)s, %(goals)s, %(tags)s, %(allergens)s,
     %(ingredients)s, %(steps)s,
-    %(source_name)s, %(source_author)s, %(source_url)s, %(license)s, %(license_url)s,
+    %(source_name)s, %(source_author)s, %(license)s, %(license_url)s,
     %(image_credit)s, %(content_version)s
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -233,7 +233,7 @@ ON CONFLICT (id) DO UPDATE SET
     meal_slots = EXCLUDED.meal_slots, categories = EXCLUDED.categories,
     goals = EXCLUDED.goals, tags = EXCLUDED.tags, allergens = EXCLUDED.allergens,
     ingredients = EXCLUDED.ingredients, steps = EXCLUDED.steps,
-    source_url = EXCLUDED.source_url, license = EXCLUDED.license,
+    license = EXCLUDED.license,
     image_credit = EXCLUDED.image_credit, content_version = EXCLUDED.content_version,
     updated_at = now()
 """
@@ -273,7 +273,7 @@ def main() -> int:
         for key in ("id", "title", "duration_minutes", "difficulty", "servings",
                     "calories", "protein_g", "fat_g", "fiber_g",
                     "meal_slots", "categories", "allergens", "image_url",
-                    "source_name", "source_url", "license"):
+                    "source_name", "license"):
             print(f"  {key} = {sample[key]}")
         print(f"  ingredients[0] = {json.loads(sample['ingredients'])[0]}")
         print(f"  steps[0] = {json.loads(sample['steps'])[0]}")

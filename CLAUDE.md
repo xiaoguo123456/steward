@@ -31,14 +31,16 @@
 | 行程 | `project_kind=trip` 的 Project + `/v1/projects/{id}/itinerary` 聚合 |
 | 食谱 | 菜谱是只读平台内容（`recipes` 表，不受 RLS）；饮食档案、收藏、做过与本周菜单是用户数据，各自受 RLS |
 
-菜谱库里是 4267 条导入内容（来源懒饭 App）加 6 条平台自有示例。
+菜谱库里是 4267 条导入内容（来源懒饭，已授权）加 6 条平台自有示例。
+导入工具链见 `tools/recipe-import/`。
 
-**导入内容的 `license` 是「待确认」，这不是占位符而是真实状态。**
-正式上线前必须逐条落实授权，否则就是在展示不知道有没有权利展示的内容。
-`source_url` 存着每条的原始链接。导入工具链见 `tools/recipe-import/`。
+`source_name`、`license`、`content_version` 仍是 NOT NULL：新增其他来源的
+内容时，这三个字段要填真实结论，不能填好看的占位值——约束的用意就是
+逼出「有没有权利展示」这个问题。
 
 图片在 OSS 的 `weishen-assets/steward/recipes/`，该前缀在 CDN 上配了免鉴权，
 所以 `image_url` 是永久地址；`image_key` 是稳定标识，换分发方式时重跑映射即可。
+**这个前缀是公开的，只放该公开的东西**；备份之类放 `steward/backups/`（不公开）。
 
 营养里 `fat_g` 与 `fiber_g` 可能为空，空表示「不知道」不是 0——
 导入内容有脂肪没纤维，手写内容反过来。整周求和时只要有一道菜缺，
