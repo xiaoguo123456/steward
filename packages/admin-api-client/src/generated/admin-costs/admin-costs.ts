@@ -59,6 +59,8 @@ import type {
 import { adminFetch } from '../../http/fetcher';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
@@ -128,7 +130,7 @@ export const getAdminAICostSummaryUrl = (params?: AdminAICostSummaryParams,) => 
 /**
  * @summary AI 成本汇总
  */
-export const adminAICostSummary = async (params?: AdminAICostSummaryParams, options?: RequestInit): Promise<adminAICostSummaryResponse> => {
+export const adminAICostSummary = async (params?: AdminAICostSummaryParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminAICostSummaryResponse> => {
 
   return adminFetch<adminAICostSummaryResponse>(getAdminAICostSummaryUrl(params),
   {
@@ -150,16 +152,16 @@ export const getAdminAICostSummaryQueryKey = (params?: AdminAICostSummaryParams,
     }
 
 
-export const getAdminAICostSummaryQueryOptions = <TData = Awaited<ReturnType<typeof adminAICostSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminAICostSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostSummary>>, TError, TData>>, }
+export const getAdminAICostSummaryQueryOptions = <TData = Awaited<ReturnType<typeof adminAICostSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminAICostSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostSummary>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminAICostSummaryQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminAICostSummary>>> = ({ signal }) => adminAICostSummary(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminAICostSummary>>> = ({ signal }) => adminAICostSummary(params, { signal, ...requestOptions });
 
 
 
@@ -179,7 +181,7 @@ export function useAdminAICostSummary<TData = Awaited<ReturnType<typeof adminAIC
           TError,
           Awaited<ReturnType<typeof adminAICostSummary>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminAICostSummary<TData = Awaited<ReturnType<typeof adminAICostSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -189,11 +191,11 @@ export function useAdminAICostSummary<TData = Awaited<ReturnType<typeof adminAIC
           TError,
           Awaited<ReturnType<typeof adminAICostSummary>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminAICostSummary<TData = Awaited<ReturnType<typeof adminAICostSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminAICostSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostSummary>>, TError, TData>>, }
+ params?: AdminAICostSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostSummary>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -201,7 +203,7 @@ export function useAdminAICostSummary<TData = Awaited<ReturnType<typeof adminAIC
  */
 
 export function useAdminAICostSummary<TData = Awaited<ReturnType<typeof adminAICostSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminAICostSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostSummary>>, TError, TData>>, }
+ params?: AdminAICostSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostSummary>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -269,7 +271,7 @@ export const getAdminAICostBreakdownUrl = (params?: AdminAICostBreakdownParams,)
 /**
  * @summary AI 成本分组
  */
-export const adminAICostBreakdown = async (params?: AdminAICostBreakdownParams, options?: RequestInit): Promise<adminAICostBreakdownResponse> => {
+export const adminAICostBreakdown = async (params?: AdminAICostBreakdownParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminAICostBreakdownResponse> => {
 
   return adminFetch<adminAICostBreakdownResponse>(getAdminAICostBreakdownUrl(params),
   {
@@ -291,16 +293,16 @@ export const getAdminAICostBreakdownQueryKey = (params?: AdminAICostBreakdownPar
     }
 
 
-export const getAdminAICostBreakdownQueryOptions = <TData = Awaited<ReturnType<typeof adminAICostBreakdown>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminAICostBreakdownParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostBreakdown>>, TError, TData>>, }
+export const getAdminAICostBreakdownQueryOptions = <TData = Awaited<ReturnType<typeof adminAICostBreakdown>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminAICostBreakdownParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostBreakdown>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminAICostBreakdownQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminAICostBreakdown>>> = ({ signal }) => adminAICostBreakdown(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminAICostBreakdown>>> = ({ signal }) => adminAICostBreakdown(params, { signal, ...requestOptions });
 
 
 
@@ -320,7 +322,7 @@ export function useAdminAICostBreakdown<TData = Awaited<ReturnType<typeof adminA
           TError,
           Awaited<ReturnType<typeof adminAICostBreakdown>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminAICostBreakdown<TData = Awaited<ReturnType<typeof adminAICostBreakdown>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -330,11 +332,11 @@ export function useAdminAICostBreakdown<TData = Awaited<ReturnType<typeof adminA
           TError,
           Awaited<ReturnType<typeof adminAICostBreakdown>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminAICostBreakdown<TData = Awaited<ReturnType<typeof adminAICostBreakdown>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminAICostBreakdownParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostBreakdown>>, TError, TData>>, }
+ params?: AdminAICostBreakdownParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostBreakdown>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -342,7 +344,7 @@ export function useAdminAICostBreakdown<TData = Awaited<ReturnType<typeof adminA
  */
 
 export function useAdminAICostBreakdown<TData = Awaited<ReturnType<typeof adminAICostBreakdown>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminAICostBreakdownParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostBreakdown>>, TError, TData>>, }
+ params?: AdminAICostBreakdownParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminAICostBreakdown>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -393,7 +395,7 @@ export const getAdminListAIPricesUrl = () => {
 /**
  * @summary AI 价格列表
  */
-export const adminListAIPrices = async ( options?: RequestInit): Promise<adminListAIPricesResponse> => {
+export const adminListAIPrices = async ( options?: Parameters<typeof adminFetch>[1]): Promise<adminListAIPricesResponse> => {
 
   return adminFetch<adminListAIPricesResponse>(getAdminListAIPricesUrl(),
   {
@@ -415,16 +417,16 @@ export const getAdminListAIPricesQueryKey = () => {
     }
 
 
-export const getAdminListAIPricesQueryOptions = <TData = Awaited<ReturnType<typeof adminListAIPrices>>, TError = UnauthorizedResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAIPrices>>, TError, TData>>, }
+export const getAdminListAIPricesQueryOptions = <TData = Awaited<ReturnType<typeof adminListAIPrices>>, TError = UnauthorizedResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAIPrices>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminListAIPricesQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListAIPrices>>> = ({ signal }) => adminListAIPrices({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListAIPrices>>> = ({ signal }) => adminListAIPrices({ signal, ...requestOptions });
 
 
 
@@ -444,7 +446,7 @@ export function useAdminListAIPrices<TData = Awaited<ReturnType<typeof adminList
           TError,
           Awaited<ReturnType<typeof adminListAIPrices>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminListAIPrices<TData = Awaited<ReturnType<typeof adminListAIPrices>>, TError = UnauthorizedResponse | InternalErrorResponse>(
@@ -454,11 +456,11 @@ export function useAdminListAIPrices<TData = Awaited<ReturnType<typeof adminList
           TError,
           Awaited<ReturnType<typeof adminListAIPrices>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminListAIPrices<TData = Awaited<ReturnType<typeof adminListAIPrices>>, TError = UnauthorizedResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAIPrices>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAIPrices>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -466,7 +468,7 @@ export function useAdminListAIPrices<TData = Awaited<ReturnType<typeof adminList
  */
 
 export function useAdminListAIPrices<TData = Awaited<ReturnType<typeof adminListAIPrices>>, TError = UnauthorizedResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAIPrices>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAIPrices>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -534,7 +536,7 @@ export const getAdminCreateAIPriceUrl = () => {
  * 同一服务商、模型与用量单位的生效区间不允许重叠。
  * @summary 新增价格版本
  */
-export const adminCreateAIPrice = async (createAIPriceRequest: CreateAIPriceRequest, options?: RequestInit): Promise<adminCreateAIPriceResponse> => {
+export const adminCreateAIPrice = async (createAIPriceRequest: CreateAIPriceRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminCreateAIPriceResponse> => {
 
   return adminFetch<adminCreateAIPriceResponse>(getAdminCreateAIPriceUrl(),
   {
@@ -550,15 +552,15 @@ export const adminCreateAIPrice = async (createAIPriceRequest: CreateAIPriceRequ
 
 
 export const getAdminCreateAIPriceMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateAIPrice>>, TError,{data: CreateAIPriceRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateAIPrice>>, TError,{data: CreateAIPriceRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminCreateAIPrice>>, TError,{data: CreateAIPriceRequest}, TContext> => {
 
 const mutationKey = ['adminCreateAIPrice'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
@@ -566,7 +568,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminCreateAIPrice>>, {data: CreateAIPriceRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  adminCreateAIPrice(data,)
+          return  adminCreateAIPrice(data,requestOptions)
         }
 
 
@@ -584,7 +586,7 @@ const {mutation: mutationOptions} = options ?
  * @summary 新增价格版本
  */
 export const useAdminCreateAIPrice = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateAIPrice>>, TError,{data: CreateAIPriceRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateAIPrice>>, TError,{data: CreateAIPriceRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminCreateAIPrice>>,
         TError,

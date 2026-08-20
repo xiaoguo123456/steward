@@ -55,6 +55,8 @@ import type {
 import { adminFetch } from '../../http/fetcher';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
@@ -127,7 +129,7 @@ export const getAdminLoginUrl = () => {
  * 与「密码不对」**：区分开等于告诉攻击者用户名猜对了。
  * @summary 管理员登录
  */
-export const adminLogin = async (loginRequest: LoginRequest, options?: RequestInit): Promise<adminLoginResponse> => {
+export const adminLogin = async (loginRequest: LoginRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminLoginResponse> => {
 
   return adminFetch<adminLoginResponse>(getAdminLoginUrl(),
   {
@@ -143,15 +145,15 @@ export const adminLogin = async (loginRequest: LoginRequest, options?: RequestIn
 
 
 export const getAdminLoginMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,{data: LoginRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,{data: LoginRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,{data: LoginRequest}, TContext> => {
 
 const mutationKey = ['adminLogin'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
@@ -159,7 +161,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminLogin>>, {data: LoginRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  adminLogin(data,)
+          return  adminLogin(data,requestOptions)
         }
 
 
@@ -177,7 +179,7 @@ const {mutation: mutationOptions} = options ?
  * @summary 管理员登录
  */
 export const useAdminLogin = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,{data: LoginRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,{data: LoginRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminLogin>>,
         TError,
@@ -222,7 +224,7 @@ export const getAdminGetSessionUrl = () => {
  * 前端启动时用它判断是否已登录，并取回 CSRF Token 与报表时区。
  * @summary 读取当前会话
  */
-export const adminGetSession = async ( options?: RequestInit): Promise<adminGetSessionResponse> => {
+export const adminGetSession = async ( options?: Parameters<typeof adminFetch>[1]): Promise<adminGetSessionResponse> => {
 
   return adminFetch<adminGetSessionResponse>(getAdminGetSessionUrl(),
   {
@@ -244,16 +246,16 @@ export const getAdminGetSessionQueryKey = () => {
     }
 
 
-export const getAdminGetSessionQueryOptions = <TData = Awaited<ReturnType<typeof adminGetSession>>, TError = UnauthorizedResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetSession>>, TError, TData>>, }
+export const getAdminGetSessionQueryOptions = <TData = Awaited<ReturnType<typeof adminGetSession>>, TError = UnauthorizedResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetSession>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetSessionQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetSession>>> = ({ signal }) => adminGetSession({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetSession>>> = ({ signal }) => adminGetSession({ signal, ...requestOptions });
 
 
 
@@ -273,7 +275,7 @@ export function useAdminGetSession<TData = Awaited<ReturnType<typeof adminGetSes
           TError,
           Awaited<ReturnType<typeof adminGetSession>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetSession<TData = Awaited<ReturnType<typeof adminGetSession>>, TError = UnauthorizedResponse | InternalErrorResponse>(
@@ -283,11 +285,11 @@ export function useAdminGetSession<TData = Awaited<ReturnType<typeof adminGetSes
           TError,
           Awaited<ReturnType<typeof adminGetSession>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetSession<TData = Awaited<ReturnType<typeof adminGetSession>>, TError = UnauthorizedResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetSession>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetSession>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -295,7 +297,7 @@ export function useAdminGetSession<TData = Awaited<ReturnType<typeof adminGetSes
  */
 
 export function useAdminGetSession<TData = Awaited<ReturnType<typeof adminGetSession>>, TError = UnauthorizedResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetSession>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetSession>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -351,7 +353,7 @@ export const getAdminLogoutUrl = () => {
 /**
  * @summary 退出并撤销会话
  */
-export const adminLogout = async ( options?: RequestInit): Promise<adminLogoutResponse> => {
+export const adminLogout = async ( options?: Parameters<typeof adminFetch>[1]): Promise<adminLogoutResponse> => {
 
   return adminFetch<adminLogoutResponse>(getAdminLogoutUrl(),
   {
@@ -367,15 +369,15 @@ export const adminLogout = async ( options?: RequestInit): Promise<adminLogoutRe
 
 
 export const getAdminLogoutMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogout>>, TError,void, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogout>>, TError,void, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminLogout>>, TError,void, TContext> => {
 
 const mutationKey = ['adminLogout'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
@@ -383,7 +385,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminLogout>>, void> = () => {
 
 
-          return  adminLogout()
+          return  adminLogout(requestOptions)
         }
 
 
@@ -401,7 +403,7 @@ const {mutation: mutationOptions} = options ?
  * @summary 退出并撤销会话
  */
 export const useAdminLogout = <TError = UnauthorizedResponse | ForbiddenResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogout>>, TError,void, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogout>>, TError,void, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminLogout>>,
         TError,

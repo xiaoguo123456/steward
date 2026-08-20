@@ -50,6 +50,8 @@ import type {
 import { adminFetch } from '../../http/fetcher';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
@@ -119,7 +121,7 @@ export const getAdminUsageOverviewUrl = (params?: AdminUsageOverviewParams,) => 
 /**
  * @summary 使用概览
  */
-export const adminUsageOverview = async (params?: AdminUsageOverviewParams, options?: RequestInit): Promise<adminUsageOverviewResponse> => {
+export const adminUsageOverview = async (params?: AdminUsageOverviewParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminUsageOverviewResponse> => {
 
   return adminFetch<adminUsageOverviewResponse>(getAdminUsageOverviewUrl(params),
   {
@@ -141,16 +143,16 @@ export const getAdminUsageOverviewQueryKey = (params?: AdminUsageOverviewParams,
     }
 
 
-export const getAdminUsageOverviewQueryOptions = <TData = Awaited<ReturnType<typeof adminUsageOverview>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminUsageOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminUsageOverview>>, TError, TData>>, }
+export const getAdminUsageOverviewQueryOptions = <TData = Awaited<ReturnType<typeof adminUsageOverview>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminUsageOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminUsageOverview>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminUsageOverviewQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminUsageOverview>>> = ({ signal }) => adminUsageOverview(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminUsageOverview>>> = ({ signal }) => adminUsageOverview(params, { signal, ...requestOptions });
 
 
 
@@ -170,7 +172,7 @@ export function useAdminUsageOverview<TData = Awaited<ReturnType<typeof adminUsa
           TError,
           Awaited<ReturnType<typeof adminUsageOverview>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminUsageOverview<TData = Awaited<ReturnType<typeof adminUsageOverview>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -180,11 +182,11 @@ export function useAdminUsageOverview<TData = Awaited<ReturnType<typeof adminUsa
           TError,
           Awaited<ReturnType<typeof adminUsageOverview>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminUsageOverview<TData = Awaited<ReturnType<typeof adminUsageOverview>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminUsageOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminUsageOverview>>, TError, TData>>, }
+ params?: AdminUsageOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminUsageOverview>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -192,7 +194,7 @@ export function useAdminUsageOverview<TData = Awaited<ReturnType<typeof adminUsa
  */
 
 export function useAdminUsageOverview<TData = Awaited<ReturnType<typeof adminUsageOverview>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminUsageOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminUsageOverview>>, TError, TData>>, }
+ params?: AdminUsageOverviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminUsageOverview>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -264,7 +266,7 @@ export const getAdminGetFunnelUrl = (funnel: 'onboarding' | 'capture' | 'assista
  * @summary 漏斗
  */
 export const adminGetFunnel = async (funnel: 'onboarding' | 'capture' | 'assistant',
-    params?: AdminGetFunnelParams, options?: RequestInit): Promise<adminGetFunnelResponse> => {
+    params?: AdminGetFunnelParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminGetFunnelResponse> => {
 
   return adminFetch<adminGetFunnelResponse>(getAdminGetFunnelUrl(funnel,params),
   {
@@ -288,16 +290,16 @@ export const getAdminGetFunnelQueryKey = (funnel: 'onboarding' | 'capture' | 'as
 
 
 export const getAdminGetFunnelQueryOptions = <TData = Awaited<ReturnType<typeof adminGetFunnel>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(funnel: 'onboarding' | 'capture' | 'assistant',
-    params?: AdminGetFunnelParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetFunnel>>, TError, TData>>, }
+    params?: AdminGetFunnelParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetFunnel>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetFunnelQueryKey(funnel,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetFunnel>>> = ({ signal }) => adminGetFunnel(funnel,params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetFunnel>>> = ({ signal }) => adminGetFunnel(funnel,params, { signal, ...requestOptions });
 
 
 
@@ -318,7 +320,7 @@ export function useAdminGetFunnel<TData = Awaited<ReturnType<typeof adminGetFunn
           TError,
           Awaited<ReturnType<typeof adminGetFunnel>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetFunnel<TData = Awaited<ReturnType<typeof adminGetFunnel>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -329,12 +331,12 @@ export function useAdminGetFunnel<TData = Awaited<ReturnType<typeof adminGetFunn
           TError,
           Awaited<ReturnType<typeof adminGetFunnel>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetFunnel<TData = Awaited<ReturnType<typeof adminGetFunnel>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  funnel: 'onboarding' | 'capture' | 'assistant',
-    params?: AdminGetFunnelParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetFunnel>>, TError, TData>>, }
+    params?: AdminGetFunnelParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetFunnel>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -343,7 +345,7 @@ export function useAdminGetFunnel<TData = Awaited<ReturnType<typeof adminGetFunn
 
 export function useAdminGetFunnel<TData = Awaited<ReturnType<typeof adminGetFunnel>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  funnel: 'onboarding' | 'capture' | 'assistant',
-    params?: AdminGetFunnelParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetFunnel>>, TError, TData>>, }
+    params?: AdminGetFunnelParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetFunnel>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

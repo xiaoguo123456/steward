@@ -68,6 +68,8 @@ import type {
 import { adminFetch } from '../../http/fetcher';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
@@ -139,7 +141,7 @@ export const getAdminListUsersUrl = (params?: AdminListUsersParams,) => {
  * 模糊搜索等于给了一个把号码一位位试出来的接口。
  * @summary 用户列表
  */
-export const adminListUsers = async (params?: AdminListUsersParams, options?: RequestInit): Promise<adminListUsersResponse> => {
+export const adminListUsers = async (params?: AdminListUsersParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminListUsersResponse> => {
 
   return adminFetch<adminListUsersResponse>(getAdminListUsersUrl(params),
   {
@@ -161,16 +163,16 @@ export const getAdminListUsersQueryKey = (params?: AdminListUsersParams,) => {
     }
 
 
-export const getAdminListUsersQueryOptions = <TData = Awaited<ReturnType<typeof adminListUsers>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminListUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData>>, }
+export const getAdminListUsersQueryOptions = <TData = Awaited<ReturnType<typeof adminListUsers>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminListUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminListUsersQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListUsers>>> = ({ signal }) => adminListUsers(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListUsers>>> = ({ signal }) => adminListUsers(params, { signal, ...requestOptions });
 
 
 
@@ -190,7 +192,7 @@ export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUse
           TError,
           Awaited<ReturnType<typeof adminListUsers>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUsers>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -200,11 +202,11 @@ export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUse
           TError,
           Awaited<ReturnType<typeof adminListUsers>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUsers>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminListUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData>>, }
+ params?: AdminListUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -212,7 +214,7 @@ export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUse
  */
 
 export function useAdminListUsers<TData = Awaited<ReturnType<typeof adminListUsers>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminListUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData>>, }
+ params?: AdminListUsersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListUsers>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -274,7 +276,7 @@ export const getAdminGetUserUrl = (userId: string,) => {
  * 只返回状态、数量与标识。**不返回笔记、会话消息、记忆、OCR 结果或媒体正文。**
  * @summary 用户概览
  */
-export const adminGetUser = async (userId: string, options?: RequestInit): Promise<adminGetUserResponse> => {
+export const adminGetUser = async (userId: string, options?: Parameters<typeof adminFetch>[1]): Promise<adminGetUserResponse> => {
 
   return adminFetch<adminGetUserResponse>(getAdminGetUserUrl(userId),
   {
@@ -296,16 +298,16 @@ export const getAdminGetUserQueryKey = (userId: string,) => {
     }
 
 
-export const getAdminGetUserQueryOptions = <TData = Awaited<ReturnType<typeof adminGetUser>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(userId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData>>, }
+export const getAdminGetUserQueryOptions = <TData = Awaited<ReturnType<typeof adminGetUser>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(userId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetUserQueryKey(userId);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUser>>> = ({ signal }) => adminGetUser(userId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUser>>> = ({ signal }) => adminGetUser(userId, { signal, ...requestOptions });
 
 
 
@@ -325,7 +327,7 @@ export function useAdminGetUser<TData = Awaited<ReturnType<typeof adminGetUser>>
           TError,
           Awaited<ReturnType<typeof adminGetUser>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUser<TData = Awaited<ReturnType<typeof adminGetUser>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -335,11 +337,11 @@ export function useAdminGetUser<TData = Awaited<ReturnType<typeof adminGetUser>>
           TError,
           Awaited<ReturnType<typeof adminGetUser>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUser<TData = Awaited<ReturnType<typeof adminGetUser>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- userId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData>>, }
+ userId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -347,7 +349,7 @@ export function useAdminGetUser<TData = Awaited<ReturnType<typeof adminGetUser>>
  */
 
 export function useAdminGetUser<TData = Awaited<ReturnType<typeof adminGetUser>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- userId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData>>, }
+ userId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUser>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -417,7 +419,7 @@ export const getAdminGetUserUsageUrl = (userId: string,
  * @summary 用户使用情况
  */
 export const adminGetUserUsage = async (userId: string,
-    params?: AdminGetUserUsageParams, options?: RequestInit): Promise<adminGetUserUsageResponse> => {
+    params?: AdminGetUserUsageParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminGetUserUsageResponse> => {
 
   return adminFetch<adminGetUserUsageResponse>(getAdminGetUserUsageUrl(userId,params),
   {
@@ -441,16 +443,16 @@ export const getAdminGetUserUsageQueryKey = (userId: string,
 
 
 export const getAdminGetUserUsageQueryOptions = <TData = Awaited<ReturnType<typeof adminGetUserUsage>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(userId: string,
-    params?: AdminGetUserUsageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserUsage>>, TError, TData>>, }
+    params?: AdminGetUserUsageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserUsage>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetUserUsageQueryKey(userId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUserUsage>>> = ({ signal }) => adminGetUserUsage(userId,params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUserUsage>>> = ({ signal }) => adminGetUserUsage(userId,params, { signal, ...requestOptions });
 
 
 
@@ -471,7 +473,7 @@ export function useAdminGetUserUsage<TData = Awaited<ReturnType<typeof adminGetU
           TError,
           Awaited<ReturnType<typeof adminGetUserUsage>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUserUsage<TData = Awaited<ReturnType<typeof adminGetUserUsage>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -482,12 +484,12 @@ export function useAdminGetUserUsage<TData = Awaited<ReturnType<typeof adminGetU
           TError,
           Awaited<ReturnType<typeof adminGetUserUsage>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUserUsage<TData = Awaited<ReturnType<typeof adminGetUserUsage>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  userId: string,
-    params?: AdminGetUserUsageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserUsage>>, TError, TData>>, }
+    params?: AdminGetUserUsageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserUsage>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -496,7 +498,7 @@ export function useAdminGetUserUsage<TData = Awaited<ReturnType<typeof adminGetU
 
 export function useAdminGetUserUsage<TData = Awaited<ReturnType<typeof adminGetUserUsage>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  userId: string,
-    params?: AdminGetUserUsageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserUsage>>, TError, TData>>, }
+    params?: AdminGetUserUsageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserUsage>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -566,7 +568,7 @@ export const getAdminGetUserCostsUrl = (userId: string,
  * @summary 用户 AI 成本
  */
 export const adminGetUserCosts = async (userId: string,
-    params?: AdminGetUserCostsParams, options?: RequestInit): Promise<adminGetUserCostsResponse> => {
+    params?: AdminGetUserCostsParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminGetUserCostsResponse> => {
 
   return adminFetch<adminGetUserCostsResponse>(getAdminGetUserCostsUrl(userId,params),
   {
@@ -590,16 +592,16 @@ export const getAdminGetUserCostsQueryKey = (userId: string,
 
 
 export const getAdminGetUserCostsQueryOptions = <TData = Awaited<ReturnType<typeof adminGetUserCosts>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(userId: string,
-    params?: AdminGetUserCostsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserCosts>>, TError, TData>>, }
+    params?: AdminGetUserCostsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserCosts>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetUserCostsQueryKey(userId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUserCosts>>> = ({ signal }) => adminGetUserCosts(userId,params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUserCosts>>> = ({ signal }) => adminGetUserCosts(userId,params, { signal, ...requestOptions });
 
 
 
@@ -620,7 +622,7 @@ export function useAdminGetUserCosts<TData = Awaited<ReturnType<typeof adminGetU
           TError,
           Awaited<ReturnType<typeof adminGetUserCosts>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUserCosts<TData = Awaited<ReturnType<typeof adminGetUserCosts>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -631,12 +633,12 @@ export function useAdminGetUserCosts<TData = Awaited<ReturnType<typeof adminGetU
           TError,
           Awaited<ReturnType<typeof adminGetUserCosts>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUserCosts<TData = Awaited<ReturnType<typeof adminGetUserCosts>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  userId: string,
-    params?: AdminGetUserCostsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserCosts>>, TError, TData>>, }
+    params?: AdminGetUserCostsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserCosts>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -645,7 +647,7 @@ export function useAdminGetUserCosts<TData = Awaited<ReturnType<typeof adminGetU
 
 export function useAdminGetUserCosts<TData = Awaited<ReturnType<typeof adminGetUserCosts>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  userId: string,
-    params?: AdminGetUserCostsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserCosts>>, TError, TData>>, }
+    params?: AdminGetUserCostsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserCosts>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -715,7 +717,7 @@ export const getAdminGetUserOperationsUrl = (userId: string,
  * @summary 用户 Operation
  */
 export const adminGetUserOperations = async (userId: string,
-    params?: AdminGetUserOperationsParams, options?: RequestInit): Promise<adminGetUserOperationsResponse> => {
+    params?: AdminGetUserOperationsParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminGetUserOperationsResponse> => {
 
   return adminFetch<adminGetUserOperationsResponse>(getAdminGetUserOperationsUrl(userId,params),
   {
@@ -739,16 +741,16 @@ export const getAdminGetUserOperationsQueryKey = (userId: string,
 
 
 export const getAdminGetUserOperationsQueryOptions = <TData = Awaited<ReturnType<typeof adminGetUserOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(userId: string,
-    params?: AdminGetUserOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserOperations>>, TError, TData>>, }
+    params?: AdminGetUserOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserOperations>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetUserOperationsQueryKey(userId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUserOperations>>> = ({ signal }) => adminGetUserOperations(userId,params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUserOperations>>> = ({ signal }) => adminGetUserOperations(userId,params, { signal, ...requestOptions });
 
 
 
@@ -769,7 +771,7 @@ export function useAdminGetUserOperations<TData = Awaited<ReturnType<typeof admi
           TError,
           Awaited<ReturnType<typeof adminGetUserOperations>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUserOperations<TData = Awaited<ReturnType<typeof adminGetUserOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -780,12 +782,12 @@ export function useAdminGetUserOperations<TData = Awaited<ReturnType<typeof admi
           TError,
           Awaited<ReturnType<typeof adminGetUserOperations>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUserOperations<TData = Awaited<ReturnType<typeof adminGetUserOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  userId: string,
-    params?: AdminGetUserOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserOperations>>, TError, TData>>, }
+    params?: AdminGetUserOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserOperations>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -794,7 +796,7 @@ export function useAdminGetUserOperations<TData = Awaited<ReturnType<typeof admi
 
 export function useAdminGetUserOperations<TData = Awaited<ReturnType<typeof adminGetUserOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  userId: string,
-    params?: AdminGetUserOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserOperations>>, TError, TData>>, }
+    params?: AdminGetUserOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserOperations>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -864,7 +866,7 @@ export const getAdminGetUserAdminActionsUrl = (userId: string,
  * @summary 用户管理记录
  */
 export const adminGetUserAdminActions = async (userId: string,
-    params?: AdminGetUserAdminActionsParams, options?: RequestInit): Promise<adminGetUserAdminActionsResponse> => {
+    params?: AdminGetUserAdminActionsParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminGetUserAdminActionsResponse> => {
 
   return adminFetch<adminGetUserAdminActionsResponse>(getAdminGetUserAdminActionsUrl(userId,params),
   {
@@ -888,16 +890,16 @@ export const getAdminGetUserAdminActionsQueryKey = (userId: string,
 
 
 export const getAdminGetUserAdminActionsQueryOptions = <TData = Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(userId: string,
-    params?: AdminGetUserAdminActionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError, TData>>, }
+    params?: AdminGetUserAdminActionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetUserAdminActionsQueryKey(userId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUserAdminActions>>> = ({ signal }) => adminGetUserAdminActions(userId,params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetUserAdminActions>>> = ({ signal }) => adminGetUserAdminActions(userId,params, { signal, ...requestOptions });
 
 
 
@@ -918,7 +920,7 @@ export function useAdminGetUserAdminActions<TData = Awaited<ReturnType<typeof ad
           TError,
           Awaited<ReturnType<typeof adminGetUserAdminActions>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUserAdminActions<TData = Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -929,12 +931,12 @@ export function useAdminGetUserAdminActions<TData = Awaited<ReturnType<typeof ad
           TError,
           Awaited<ReturnType<typeof adminGetUserAdminActions>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetUserAdminActions<TData = Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  userId: string,
-    params?: AdminGetUserAdminActionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError, TData>>, }
+    params?: AdminGetUserAdminActionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -943,7 +945,7 @@ export function useAdminGetUserAdminActions<TData = Awaited<ReturnType<typeof ad
 
 export function useAdminGetUserAdminActions<TData = Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
  userId: string,
-    params?: AdminGetUserAdminActionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError, TData>>, }
+    params?: AdminGetUserAdminActionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetUserAdminActions>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -1017,7 +1019,7 @@ export const getAdminSuspendUserUrl = (userId: string,) => {
  * @summary 暂停用户
  */
 export const adminSuspendUser = async (userId: string,
-    adminActionRequest: AdminActionRequest, options?: RequestInit): Promise<adminSuspendUserResponse> => {
+    adminActionRequest: AdminActionRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminSuspendUserResponse> => {
 
   return adminFetch<adminSuspendUserResponse>(getAdminSuspendUserUrl(userId),
   {
@@ -1033,15 +1035,15 @@ export const adminSuspendUser = async (userId: string,
 
 
 export const getAdminSuspendUserMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSuspendUser>>, TError,{userId: string;data: AdminActionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSuspendUser>>, TError,{userId: string;data: AdminActionRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminSuspendUser>>, TError,{userId: string;data: AdminActionRequest}, TContext> => {
 
 const mutationKey = ['adminSuspendUser'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
@@ -1049,7 +1051,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminSuspendUser>>, {userId: string;data: AdminActionRequest}> = (props) => {
           const {userId,data} = props ?? {};
 
-          return  adminSuspendUser(userId,data,)
+          return  adminSuspendUser(userId,data,requestOptions)
         }
 
 
@@ -1067,7 +1069,7 @@ const {mutation: mutationOptions} = options ?
  * @summary 暂停用户
  */
 export const useAdminSuspendUser = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSuspendUser>>, TError,{userId: string;data: AdminActionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSuspendUser>>, TError,{userId: string;data: AdminActionRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminSuspendUser>>,
         TError,
@@ -1137,7 +1139,7 @@ export const getAdminResumeUserUrl = (userId: string,) => {
  * @summary 恢复用户
  */
 export const adminResumeUser = async (userId: string,
-    adminActionRequest: AdminActionRequest, options?: RequestInit): Promise<adminResumeUserResponse> => {
+    adminActionRequest: AdminActionRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminResumeUserResponse> => {
 
   return adminFetch<adminResumeUserResponse>(getAdminResumeUserUrl(userId),
   {
@@ -1153,15 +1155,15 @@ export const adminResumeUser = async (userId: string,
 
 
 export const getAdminResumeUserMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminResumeUser>>, TError,{userId: string;data: AdminActionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminResumeUser>>, TError,{userId: string;data: AdminActionRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminResumeUser>>, TError,{userId: string;data: AdminActionRequest}, TContext> => {
 
 const mutationKey = ['adminResumeUser'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
@@ -1169,7 +1171,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminResumeUser>>, {userId: string;data: AdminActionRequest}> = (props) => {
           const {userId,data} = props ?? {};
 
-          return  adminResumeUser(userId,data,)
+          return  adminResumeUser(userId,data,requestOptions)
         }
 
 
@@ -1187,7 +1189,7 @@ const {mutation: mutationOptions} = options ?
  * @summary 恢复用户
  */
 export const useAdminResumeUser = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminResumeUser>>, TError,{userId: string;data: AdminActionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminResumeUser>>, TError,{userId: string;data: AdminActionRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminResumeUser>>,
         TError,
@@ -1253,7 +1255,7 @@ export const getAdminRevokeUserSessionsUrl = (userId: string,) => {
  * @summary 撤销用户会话
  */
 export const adminRevokeUserSessions = async (userId: string,
-    adminActionRequest: AdminActionRequest, options?: RequestInit): Promise<adminRevokeUserSessionsResponse> => {
+    adminActionRequest: AdminActionRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminRevokeUserSessionsResponse> => {
 
   return adminFetch<adminRevokeUserSessionsResponse>(getAdminRevokeUserSessionsUrl(userId),
   {
@@ -1269,15 +1271,15 @@ export const adminRevokeUserSessions = async (userId: string,
 
 
 export const getAdminRevokeUserSessionsMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRevokeUserSessions>>, TError,{userId: string;data: AdminActionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRevokeUserSessions>>, TError,{userId: string;data: AdminActionRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminRevokeUserSessions>>, TError,{userId: string;data: AdminActionRequest}, TContext> => {
 
 const mutationKey = ['adminRevokeUserSessions'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
@@ -1285,7 +1287,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminRevokeUserSessions>>, {userId: string;data: AdminActionRequest}> = (props) => {
           const {userId,data} = props ?? {};
 
-          return  adminRevokeUserSessions(userId,data,)
+          return  adminRevokeUserSessions(userId,data,requestOptions)
         }
 
 
@@ -1303,7 +1305,7 @@ const {mutation: mutationOptions} = options ?
  * @summary 撤销用户会话
  */
 export const useAdminRevokeUserSessions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRevokeUserSessions>>, TError,{userId: string;data: AdminActionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRevokeUserSessions>>, TError,{userId: string;data: AdminActionRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminRevokeUserSessions>>,
         TError,
@@ -1368,7 +1370,7 @@ export const getAdminSetUserBudgetUrl = (userId: string,) => {
  * @summary 设置用户 AI 预算
  */
 export const adminSetUserBudget = async (userId: string,
-    setBudgetRequest: SetBudgetRequest, options?: RequestInit): Promise<adminSetUserBudgetResponse> => {
+    setBudgetRequest: SetBudgetRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminSetUserBudgetResponse> => {
 
   return adminFetch<adminSetUserBudgetResponse>(getAdminSetUserBudgetUrl(userId),
   {
@@ -1384,15 +1386,15 @@ export const adminSetUserBudget = async (userId: string,
 
 
 export const getAdminSetUserBudgetMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSetUserBudget>>, TError,{userId: string;data: SetBudgetRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSetUserBudget>>, TError,{userId: string;data: SetBudgetRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminSetUserBudget>>, TError,{userId: string;data: SetBudgetRequest}, TContext> => {
 
 const mutationKey = ['adminSetUserBudget'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
@@ -1400,7 +1402,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminSetUserBudget>>, {userId: string;data: SetBudgetRequest}> = (props) => {
           const {userId,data} = props ?? {};
 
-          return  adminSetUserBudget(userId,data,)
+          return  adminSetUserBudget(userId,data,requestOptions)
         }
 
 
@@ -1418,7 +1420,7 @@ const {mutation: mutationOptions} = options ?
  * @summary 设置用户 AI 预算
  */
 export const useAdminSetUserBudget = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSetUserBudget>>, TError,{userId: string;data: SetBudgetRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminSetUserBudget>>, TError,{userId: string;data: SetBudgetRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminSetUserBudget>>,
         TError,
@@ -1472,7 +1474,7 @@ export const getAdminClearUserBudgetUrl = (userId: string,) => {
 /**
  * @summary 清除用户 AI 预算
  */
-export const adminClearUserBudget = async (userId: string, options?: RequestInit): Promise<adminClearUserBudgetResponse> => {
+export const adminClearUserBudget = async (userId: string, options?: Parameters<typeof adminFetch>[1]): Promise<adminClearUserBudgetResponse> => {
 
   return adminFetch<adminClearUserBudgetResponse>(getAdminClearUserBudgetUrl(userId),
   {
@@ -1488,15 +1490,15 @@ export const adminClearUserBudget = async (userId: string, options?: RequestInit
 
 
 export const getAdminClearUserBudgetMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminClearUserBudget>>, TError,{userId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminClearUserBudget>>, TError,{userId: string}, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminClearUserBudget>>, TError,{userId: string}, TContext> => {
 
 const mutationKey = ['adminClearUserBudget'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
@@ -1504,7 +1506,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminClearUserBudget>>, {userId: string}> = (props) => {
           const {userId} = props ?? {};
 
-          return  adminClearUserBudget(userId,)
+          return  adminClearUserBudget(userId,requestOptions)
         }
 
 
@@ -1522,7 +1524,7 @@ const {mutation: mutationOptions} = options ?
  * @summary 清除用户 AI 预算
  */
 export const useAdminClearUserBudget = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | InternalErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminClearUserBudget>>, TError,{userId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminClearUserBudget>>, TError,{userId: string}, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminClearUserBudget>>,
         TError,

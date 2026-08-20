@@ -50,6 +50,8 @@ import type {
 import { adminFetch } from '../../http/fetcher';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
@@ -121,7 +123,7 @@ export const getAdminDashboardSummaryUrl = (params?: AdminDashboardSummaryParams
  * 一个模块查不出来，不该让运营连用户数都看不到。
  * @summary 总览
  */
-export const adminDashboardSummary = async (params?: AdminDashboardSummaryParams, options?: RequestInit): Promise<adminDashboardSummaryResponse> => {
+export const adminDashboardSummary = async (params?: AdminDashboardSummaryParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminDashboardSummaryResponse> => {
 
   return adminFetch<adminDashboardSummaryResponse>(getAdminDashboardSummaryUrl(params),
   {
@@ -143,16 +145,16 @@ export const getAdminDashboardSummaryQueryKey = (params?: AdminDashboardSummaryP
     }
 
 
-export const getAdminDashboardSummaryQueryOptions = <TData = Awaited<ReturnType<typeof adminDashboardSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminDashboardSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardSummary>>, TError, TData>>, }
+export const getAdminDashboardSummaryQueryOptions = <TData = Awaited<ReturnType<typeof adminDashboardSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminDashboardSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardSummary>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminDashboardSummaryQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminDashboardSummary>>> = ({ signal }) => adminDashboardSummary(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminDashboardSummary>>> = ({ signal }) => adminDashboardSummary(params, { signal, ...requestOptions });
 
 
 
@@ -172,7 +174,7 @@ export function useAdminDashboardSummary<TData = Awaited<ReturnType<typeof admin
           TError,
           Awaited<ReturnType<typeof adminDashboardSummary>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminDashboardSummary<TData = Awaited<ReturnType<typeof adminDashboardSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -182,11 +184,11 @@ export function useAdminDashboardSummary<TData = Awaited<ReturnType<typeof admin
           TError,
           Awaited<ReturnType<typeof adminDashboardSummary>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminDashboardSummary<TData = Awaited<ReturnType<typeof adminDashboardSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminDashboardSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardSummary>>, TError, TData>>, }
+ params?: AdminDashboardSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardSummary>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -194,7 +196,7 @@ export function useAdminDashboardSummary<TData = Awaited<ReturnType<typeof admin
  */
 
 export function useAdminDashboardSummary<TData = Awaited<ReturnType<typeof adminDashboardSummary>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminDashboardSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardSummary>>, TError, TData>>, }
+ params?: AdminDashboardSummaryParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardSummary>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -262,7 +264,7 @@ export const getAdminDashboardTrendsUrl = (params?: AdminDashboardTrendsParams,)
 /**
  * @summary 总览趋势
  */
-export const adminDashboardTrends = async (params?: AdminDashboardTrendsParams, options?: RequestInit): Promise<adminDashboardTrendsResponse> => {
+export const adminDashboardTrends = async (params?: AdminDashboardTrendsParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminDashboardTrendsResponse> => {
 
   return adminFetch<adminDashboardTrendsResponse>(getAdminDashboardTrendsUrl(params),
   {
@@ -284,16 +286,16 @@ export const getAdminDashboardTrendsQueryKey = (params?: AdminDashboardTrendsPar
     }
 
 
-export const getAdminDashboardTrendsQueryOptions = <TData = Awaited<ReturnType<typeof adminDashboardTrends>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminDashboardTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardTrends>>, TError, TData>>, }
+export const getAdminDashboardTrendsQueryOptions = <TData = Awaited<ReturnType<typeof adminDashboardTrends>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminDashboardTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardTrends>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminDashboardTrendsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminDashboardTrends>>> = ({ signal }) => adminDashboardTrends(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminDashboardTrends>>> = ({ signal }) => adminDashboardTrends(params, { signal, ...requestOptions });
 
 
 
@@ -313,7 +315,7 @@ export function useAdminDashboardTrends<TData = Awaited<ReturnType<typeof adminD
           TError,
           Awaited<ReturnType<typeof adminDashboardTrends>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminDashboardTrends<TData = Awaited<ReturnType<typeof adminDashboardTrends>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -323,11 +325,11 @@ export function useAdminDashboardTrends<TData = Awaited<ReturnType<typeof adminD
           TError,
           Awaited<ReturnType<typeof adminDashboardTrends>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminDashboardTrends<TData = Awaited<ReturnType<typeof adminDashboardTrends>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminDashboardTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardTrends>>, TError, TData>>, }
+ params?: AdminDashboardTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardTrends>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -335,7 +337,7 @@ export function useAdminDashboardTrends<TData = Awaited<ReturnType<typeof adminD
  */
 
 export function useAdminDashboardTrends<TData = Awaited<ReturnType<typeof adminDashboardTrends>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminDashboardTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardTrends>>, TError, TData>>, }
+ params?: AdminDashboardTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminDashboardTrends>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

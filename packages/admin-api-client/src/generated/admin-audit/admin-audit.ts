@@ -48,6 +48,8 @@ import type {
 import { adminFetch } from '../../http/fetcher';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
@@ -117,7 +119,7 @@ export const getAdminListAuditLogsUrl = (params?: AdminListAuditLogsParams,) => 
 /**
  * @summary 操作审计
  */
-export const adminListAuditLogs = async (params?: AdminListAuditLogsParams, options?: RequestInit): Promise<adminListAuditLogsResponse> => {
+export const adminListAuditLogs = async (params?: AdminListAuditLogsParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminListAuditLogsResponse> => {
 
   return adminFetch<adminListAuditLogsResponse>(getAdminListAuditLogsUrl(params),
   {
@@ -139,16 +141,16 @@ export const getAdminListAuditLogsQueryKey = (params?: AdminListAuditLogsParams,
     }
 
 
-export const getAdminListAuditLogsQueryOptions = <TData = Awaited<ReturnType<typeof adminListAuditLogs>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminListAuditLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAuditLogs>>, TError, TData>>, }
+export const getAdminListAuditLogsQueryOptions = <TData = Awaited<ReturnType<typeof adminListAuditLogs>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminListAuditLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAuditLogs>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminListAuditLogsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListAuditLogs>>> = ({ signal }) => adminListAuditLogs(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListAuditLogs>>> = ({ signal }) => adminListAuditLogs(params, { signal, ...requestOptions });
 
 
 
@@ -168,7 +170,7 @@ export function useAdminListAuditLogs<TData = Awaited<ReturnType<typeof adminLis
           TError,
           Awaited<ReturnType<typeof adminListAuditLogs>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminListAuditLogs<TData = Awaited<ReturnType<typeof adminListAuditLogs>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -178,11 +180,11 @@ export function useAdminListAuditLogs<TData = Awaited<ReturnType<typeof adminLis
           TError,
           Awaited<ReturnType<typeof adminListAuditLogs>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminListAuditLogs<TData = Awaited<ReturnType<typeof adminListAuditLogs>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminListAuditLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAuditLogs>>, TError, TData>>, }
+ params?: AdminListAuditLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAuditLogs>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -190,7 +192,7 @@ export function useAdminListAuditLogs<TData = Awaited<ReturnType<typeof adminLis
  */
 
 export function useAdminListAuditLogs<TData = Awaited<ReturnType<typeof adminListAuditLogs>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminListAuditLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAuditLogs>>, TError, TData>>, }
+ params?: AdminListAuditLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListAuditLogs>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

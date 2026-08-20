@@ -50,6 +50,8 @@ import type {
 import { adminFetch } from '../../http/fetcher';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
@@ -112,7 +114,7 @@ export const getAdminGetQueuesUrl = () => {
 /**
  * @summary Queue 状态
  */
-export const adminGetQueues = async ( options?: RequestInit): Promise<adminGetQueuesResponse> => {
+export const adminGetQueues = async ( options?: Parameters<typeof adminFetch>[1]): Promise<adminGetQueuesResponse> => {
 
   return adminFetch<adminGetQueuesResponse>(getAdminGetQueuesUrl(),
   {
@@ -134,16 +136,16 @@ export const getAdminGetQueuesQueryKey = () => {
     }
 
 
-export const getAdminGetQueuesQueryOptions = <TData = Awaited<ReturnType<typeof adminGetQueues>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetQueues>>, TError, TData>>, }
+export const getAdminGetQueuesQueryOptions = <TData = Awaited<ReturnType<typeof adminGetQueues>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetQueues>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetQueuesQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetQueues>>> = ({ signal }) => adminGetQueues({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetQueues>>> = ({ signal }) => adminGetQueues({ signal, ...requestOptions });
 
 
 
@@ -163,7 +165,7 @@ export function useAdminGetQueues<TData = Awaited<ReturnType<typeof adminGetQueu
           TError,
           Awaited<ReturnType<typeof adminGetQueues>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetQueues<TData = Awaited<ReturnType<typeof adminGetQueues>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -173,11 +175,11 @@ export function useAdminGetQueues<TData = Awaited<ReturnType<typeof adminGetQueu
           TError,
           Awaited<ReturnType<typeof adminGetQueues>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetQueues<TData = Awaited<ReturnType<typeof adminGetQueues>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetQueues>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetQueues>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -185,7 +187,7 @@ export function useAdminGetQueues<TData = Awaited<ReturnType<typeof adminGetQueu
  */
 
 export function useAdminGetQueues<TData = Awaited<ReturnType<typeof adminGetQueues>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetQueues>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetQueues>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -246,7 +248,7 @@ export const getAdminGetProvidersUrl = () => {
 /**
  * @summary Provider 状态
  */
-export const adminGetProviders = async ( options?: RequestInit): Promise<adminGetProvidersResponse> => {
+export const adminGetProviders = async ( options?: Parameters<typeof adminFetch>[1]): Promise<adminGetProvidersResponse> => {
 
   return adminFetch<adminGetProvidersResponse>(getAdminGetProvidersUrl(),
   {
@@ -268,16 +270,16 @@ export const getAdminGetProvidersQueryKey = () => {
     }
 
 
-export const getAdminGetProvidersQueryOptions = <TData = Awaited<ReturnType<typeof adminGetProviders>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProviders>>, TError, TData>>, }
+export const getAdminGetProvidersQueryOptions = <TData = Awaited<ReturnType<typeof adminGetProviders>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProviders>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminGetProvidersQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetProviders>>> = ({ signal }) => adminGetProviders({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetProviders>>> = ({ signal }) => adminGetProviders({ signal, ...requestOptions });
 
 
 
@@ -297,7 +299,7 @@ export function useAdminGetProviders<TData = Awaited<ReturnType<typeof adminGetP
           TError,
           Awaited<ReturnType<typeof adminGetProviders>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetProviders<TData = Awaited<ReturnType<typeof adminGetProviders>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -307,11 +309,11 @@ export function useAdminGetProviders<TData = Awaited<ReturnType<typeof adminGetP
           TError,
           Awaited<ReturnType<typeof adminGetProviders>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminGetProviders<TData = Awaited<ReturnType<typeof adminGetProviders>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProviders>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProviders>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -319,7 +321,7 @@ export function useAdminGetProviders<TData = Awaited<ReturnType<typeof adminGetP
  */
 
 export function useAdminGetProviders<TData = Awaited<ReturnType<typeof adminGetProviders>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProviders>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProviders>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -387,7 +389,7 @@ export const getAdminListOperationsUrl = (params?: AdminListOperationsParams,) =
 /**
  * @summary Operation 列表
  */
-export const adminListOperations = async (params?: AdminListOperationsParams, options?: RequestInit): Promise<adminListOperationsResponse> => {
+export const adminListOperations = async (params?: AdminListOperationsParams, options?: Parameters<typeof adminFetch>[1]): Promise<adminListOperationsResponse> => {
 
   return adminFetch<adminListOperationsResponse>(getAdminListOperationsUrl(params),
   {
@@ -409,16 +411,16 @@ export const getAdminListOperationsQueryKey = (params?: AdminListOperationsParam
     }
 
 
-export const getAdminListOperationsQueryOptions = <TData = Awaited<ReturnType<typeof adminListOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminListOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListOperations>>, TError, TData>>, }
+export const getAdminListOperationsQueryOptions = <TData = Awaited<ReturnType<typeof adminListOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(params?: AdminListOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListOperations>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAdminListOperationsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListOperations>>> = ({ signal }) => adminListOperations(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListOperations>>> = ({ signal }) => adminListOperations(params, { signal, ...requestOptions });
 
 
 
@@ -438,7 +440,7 @@ export function useAdminListOperations<TData = Awaited<ReturnType<typeof adminLi
           TError,
           Awaited<ReturnType<typeof adminListOperations>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminListOperations<TData = Awaited<ReturnType<typeof adminListOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
@@ -448,11 +450,11 @@ export function useAdminListOperations<TData = Awaited<ReturnType<typeof adminLi
           TError,
           Awaited<ReturnType<typeof adminListOperations>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAdminListOperations<TData = Awaited<ReturnType<typeof adminListOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminListOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListOperations>>, TError, TData>>, }
+ params?: AdminListOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListOperations>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -460,7 +462,7 @@ export function useAdminListOperations<TData = Awaited<ReturnType<typeof adminLi
  */
 
 export function useAdminListOperations<TData = Awaited<ReturnType<typeof adminListOperations>>, TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
- params?: AdminListOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListOperations>>, TError, TData>>, }
+ params?: AdminListOperationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminListOperations>>, TError, TData>>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
