@@ -49,6 +49,26 @@ type RecordQueries interface {
 // MemorySearcher 是 memory 模块公开的检索能力。
 type MemorySearcher interface {
 	Search(ctx context.Context, userID, query string, limit int32) ([]MemoryFact, error)
+	// SearchWithStats 额外返回这次检索的可观测信息。
+	//
+	// 上下文构建走这个版本：能不能检索到记忆决定了长期记忆这个功能有没有用，
+	// 而「该不该上向量检索」的判断依据就是它的失败率（见 CLAUDE.md）。
+	SearchWithStats(ctx context.Context, userID, query string, limit int32) (
+		[]MemoryFact, MemoryRetrievalStats, error)
+}
+
+// MemoryRetrievalStats 是一次记忆检索的可观测信息。
+//
+// 不含查询内容与命中内容：那些是用户资料，不进日志。
+type MemoryRetrievalStats struct {
+	Keyword   bool
+	Hits      int
+	Available int
+}
+
+// Missed 表示这是一次真正的检索失败：有记忆可用，却一条都没匹配上。
+func (s MemoryRetrievalStats) Missed() bool {
+	return s.Hits == 0 && s.Available > 0
 }
 
 // CapabilityDeps 是登记只读能力所需的全部依赖。

@@ -118,3 +118,13 @@ SELECT * FROM memory_relearn_blocks ORDER BY blocked_at DESC LIMIT sqlc.arg(row_
 -- name: DeleteRelearnBlock :one
 DELETE FROM memory_relearn_blocks WHERE id = sqlc.arg(id)
 RETURNING *;
+
+-- name: CountRetrievableMemories :one
+-- 只在检索返回 0 条时调用，用来区分两种「没检索到」：
+-- 用户本来就没有记忆（不是失败），还是有记忆但没匹配上（真失败）。
+-- 后者才是判断该不该上向量检索的信号。
+SELECT count(*)::int FROM memory_items
+WHERE status = 'active'
+  AND sensitivity = ANY (sqlc.arg(allowed_sensitivity)::text[])
+  AND (valid_from IS NULL OR valid_from <= now())
+  AND (valid_until IS NULL OR valid_until > now());

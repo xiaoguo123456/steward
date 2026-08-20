@@ -158,12 +158,23 @@ func (s *Service) buildContextBlocks(ctx context.Context,
 
 	// 优先级 5：用户确认过的长期记忆。
 	if s.memory != nil {
-		facts, err := s.memory.Search(ctx, args.UserID, seed.UserText, 8)
+		facts, stats, err := s.memory.SearchWithStats(ctx, args.UserID, seed.UserText, 8)
 		if err != nil {
 			// 记忆检索失败不该让整轮对话失败，降级成"没有记忆"继续。
 			s.logger.Warn("记忆检索失败，本轮不带记忆",
 				"turn_id", args.TurnID, "error", err)
-		} else if len(facts) > 0 {
+		} else if stats.Missed() {
+			// 有记忆却一条都没匹配上。这是「该不该上向量检索」的判断信号：
+			// CLAUDE.md 定的门槛是这类失败超过一成。
+			//
+			// 只记形状不记内容——查询与记忆正文都是用户资料。
+			s.logger.Info("记忆检索没有命中",
+				"turn_id", args.TurnID,
+				"keyword_filter", stats.Keyword,
+				"query_runes", len([]rune(seed.UserText)),
+				"available", stats.Available)
+		}
+		if err == nil && len(facts) > 0 {
 			var b strings.Builder
 			b.WriteString("用户此前确认过的长期偏好：\n")
 			for _, f := range facts {

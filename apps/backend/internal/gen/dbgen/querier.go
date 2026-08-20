@@ -38,6 +38,10 @@ type Querier interface {
 	CountPendingProposals(ctx context.Context) (int32, error)
 	CountRecipes(ctx context.Context) (int32, error)
 	CountRecordsBetween(ctx context.Context, arg CountRecordsBetweenParams) (int32, error)
+	// 只在检索返回 0 条时调用，用来区分两种「没检索到」：
+	// 用户本来就没有记忆（不是失败），还是有记忆但没匹配上（真失败）。
+	// 后者才是判断该不该上向量检索的信号。
+	CountRetrievableMemories(ctx context.Context, allowedSensitivity []string) (int32, error)
 	CountTaskLists(ctx context.Context) (int32, error)
 	CountTasksByProject(ctx context.Context, projectID *string) (CountTasksByProjectRow, error)
 	CountTasksInList(ctx context.Context, listID string) (int32, error)

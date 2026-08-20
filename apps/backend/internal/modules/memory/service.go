@@ -48,14 +48,27 @@ func New(db *database.DB, fingerprintKey []byte) *Service {
 // 先做确定性过滤（用户、状态、敏感级别、有效期），再按显式程度与
 // 最近使用时间排序。返回条数有限，不返回用户完整记忆库。
 func (s *Service) Search(ctx context.Context, userID, query string, limit int32) ([]assistant.MemoryFact, error) {
+	facts, _, err := s.SearchWithStats(ctx, userID, query, limit)
+	return facts, err
+}
+
+// SearchWithStats 与 Search 相同，另外返回这次检索的可观测信息。
+func (s *Service) SearchWithStats(ctx context.Context, userID, query string,
+	limit int32) ([]assistant.MemoryFact, assistant.MemoryRetrievalStats, error) {
+
 	if limit <= 0 || limit > 20 {
 		limit = 10
 	}
-	var out []assistant.MemoryFact
+	keyword := keywordOrNil(query)
+
+	var (
+		out   []assistant.MemoryFact
+		stats = assistant.MemoryRetrievalStats{Keyword: keyword != nil}
+	)
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		rows, err := q.SearchMemories(ctx, dbgen.SearchMemoriesParams{
 			AllowedSensitivity: retrievableSensitivity,
-			Query:              keywordOrNil(query),
+			Query:              keyword,
 			RowLimit:           limit,
 		})
 		if err != nil {
@@ -66,15 +79,26 @@ func (s *Service) Search(ctx context.Context, userID, query string, limit int32)
 			out = append(out, assistant.MemoryFact{ID: row.ID, Text: row.CanonicalText})
 			ids = append(ids, row.ID)
 		}
+		stats.Hits = len(ids)
+
 		if len(ids) > 0 {
 			// 只记录使用时间用于排序；被模型引用不提高这条记忆的可信度。
 			if err := q.TouchMemoryUsed(ctx, ids); err != nil {
 				return apperr.Internal(err)
 			}
+			return nil
 		}
+
+		// 只在没命中时才数一次：这条统计每轮都跑没有意义，
+		// 而没命中本身就不常见。
+		available, err := q.CountRetrievableMemories(ctx, retrievableSensitivity)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		stats.Available = int(available)
 		return nil
 	})
-	return out, err
+	return out, stats, err
 }
 
 // keywordOrNil 把查询语句退化成关键词。
