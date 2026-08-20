@@ -229,6 +229,45 @@ Mifflin-St Jeor 估基础代谢，乘活动系数（1.2/1.375/1.55/1.725），
 **浏览列表也要传 `exclude_allergens`。** 这是过滤链上最容易漏的一环：
 漏了不报错，只是安静地失效。
 
+## AI 调用审计
+
+每一次模型调用都往 `ai_actions` 写一条：`internal/platform/aiaudit`。
+四个入口都接了——Capture 解析、OCR／转写、Assistant 每一轮、复盘叙述。
+
+**只记形状不记正文。** 输入输出压成 SHA-256，正文一个字都不进这张表。
+审计表比日志更持久、更容易被导出分析，反而是最不该存正文的地方。
+`aiaudit.Entry` 里**压根没有能装正文的字段**，`TestEntryHasNoPlaintextFields`
+用反射守着——靠人复核「有没有人加了个 InputText」不可靠，
+加字段的人多半觉得自己有正当理由。
+
+错误也只记有限的分类（`rate_limited`、`schema_invalid`……），
+不记原始错误信息：那里面常常带着用户输入的片段，而且成千上万个
+只出现一次的取值根本聚不了合。
+
+审计写失败不影响用户，只记日志。写入脱开原 ctx 的取消信号
+（`context.WithoutCancel`）：用户关掉页面了，但那次调用是真花了钱的，
+恰恰最该记下来。
+
+`estimated_cost` 留 0。token 数是实测的，单价是各家的商务条款，
+编一个默认价会得到看起来精确、实际没依据的金额。要算钱：
+
+```sql
+-- 按功能看用量。乘你自己的单价就是钱。
+SELECT feature, provider_model, count(*) AS 次数,
+       sum(input_tokens) AS 入, sum(output_tokens) AS 出,
+       round(avg(latency_ms)) AS 均延迟,
+       count(*) FILTER (WHERE status = 'failed') AS 失败
+FROM ai_actions WHERE created_at > now() - interval '7 days'
+GROUP BY 1, 2 ORDER BY 入 DESC;
+```
+
+实测一轮对话约 6700 input tokens，一次 Capture 解析约 1200——
+**对话贵五倍以上**，要限流先限它。
+
+`status` 分 succeeded / failed / skipped。`skipped` 是「压根没调模型」
+（降级到本地确定性解析），和 failed 分开：把降级记成失败，
+失败率会永远居高不下。
+
 ## Redis 的边界
 
 Redis 只用于**临时、非权威、连接数高**的东西，目前就是进度流一处。

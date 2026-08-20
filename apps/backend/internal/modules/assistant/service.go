@@ -21,6 +21,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/assets"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
@@ -65,6 +66,8 @@ type Service struct {
 	memory MemorySearcher
 	// stream 为空时不推送实时进度，客户端退回轮询。
 	stream StreamPublisher
+	// audit 记录每一轮编排的形状。为空时不记录。
+	audit  *aiaudit.Recorder
 	logger *slog.Logger
 }
 
@@ -85,14 +88,14 @@ func (s *Service) WithStream(publisher StreamPublisher) *Service {
 // New 构造 Service。
 func New(db *database.DB, engine ai.OrchestrationEngine, registry *ai.Registry,
 	users UserProfile, jobs JobEnqueuer, proposal *ProposalService,
-	memory MemorySearcher, logger *slog.Logger) *Service {
+	memory MemorySearcher, audit *aiaudit.Recorder, logger *slog.Logger) *Service {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	return &Service{
 		db: db, engine: engine, registry: registry,
 		users: users, jobs: jobs, proposal: proposal,
-		memory: memory, logger: logger,
+		memory: memory, audit: audit, logger: logger,
 	}
 }
 
@@ -496,8 +499,9 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 	sink := s.sinkFor(ctx, args.UserID, args.TurnID)
 	sink.OnStatus("正在理解你的问题")
 
+	runID := idgen.New(idgen.PrefixRun)
 	result, runErr := s.engine.RunTurn(ctx, ai.TurnRequest{
-		RunID:         idgen.New(idgen.PrefixRun),
+		RunID:         runID,
 		UserID:        args.UserID,
 		ThreadID:      args.ThreadID,
 		TurnID:        args.TurnID,
@@ -509,6 +513,23 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		Limits:        ai.DefaultRunLimits(),
 		Ctx:           turnCtx,
 		Sink:          sink,
+	})
+
+	// 记一笔审计。**只记形状不记正文**：用户说了什么、模型答了什么都压成哈希，
+	// 会话正文本来就在 assistant_messages 里，那份有 RLS 管着。
+	s.audit.Record(ctx, aiaudit.Entry{
+		UserID:     args.UserID,
+		Feature:    aiaudit.FeatureAssistant,
+		RunID:      runID,
+		EngineType: "direct",
+		// 一轮里可能调了好几次工具，这里记的是整轮的合计用量。
+		ModelPolicy:   "chat",
+		ProviderModel: result.ProviderModel,
+		InputHash:     aiaudit.Hash(seed.UserText),
+		OutputHash:    aiaudit.Hash(result.Text),
+		Status:        aiaudit.StatusFor(runErr),
+		ErrorClass:    aiaudit.ClassifyError(runErr),
+		Usage:         result.Usage,
 	})
 
 	// 第三步：短事务保存结果。

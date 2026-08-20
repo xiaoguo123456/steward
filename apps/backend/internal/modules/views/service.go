@@ -15,6 +15,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
@@ -38,6 +39,7 @@ type Service struct {
 	// 它们为空时指标照常可用，只是没有小结。
 	chat   ai.ChatProvider
 	jobs   JobEnqueuer
+	audit  *aiaudit.Recorder
 	logger *slog.Logger
 	// now 可注入，便于测试固定时间下的收录与排序。
 	now func() time.Time
@@ -49,9 +51,11 @@ func New(db *database.DB, users UserProfile) *Service {
 }
 
 // WithNarrative 注入生成复盘叙述所需的依赖。
-func (s *Service) WithNarrative(chat ai.ChatProvider, jobs JobEnqueuer, logger *slog.Logger) *Service {
+func (s *Service) WithNarrative(chat ai.ChatProvider, jobs JobEnqueuer,
+	audit *aiaudit.Recorder, logger *slog.Logger) *Service {
 	s.chat = chat
 	s.jobs = jobs
+	s.audit = audit
 	if logger != nil {
 		s.logger = logger
 	}

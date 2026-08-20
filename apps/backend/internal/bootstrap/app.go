@@ -27,6 +27,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/fake"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/openai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/direct"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
@@ -125,8 +126,12 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	// Provider 同时实现解析与媒体处理时把它接上；fake 只做解析，媒体处理为空，
 	// 此时图片与语音会被标记为失败并提示用户改用文字，而不是伪造识别结果。
 	processor, _ := parser.(ai.MediaProcessor)
+	// 每一次模型调用都要留一条审计：走了哪个 Provider 与模型、
+	// 用了多少 token、花了多久、成没成功。**只记形状不记正文。**
+	auditor := aiaudit.New(db, logger)
+
 	capturesSvc := captures.New(db, parser, processor, mediaSvc,
-		objectsSvc, trackersSvc, listsSvc, usersSvc, activitySvc, enqueuer)
+		objectsSvc, trackersSvc, listsSvc, usersSvc, activitySvc, enqueuer, auditor)
 
 	// Assistant 与 Memory 互相需要对方的窄接口：
 	// Assistant 检索记忆，Memory 的写入由 Assistant 的建议确认触发。
@@ -154,11 +159,11 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	}
 
 	assistantSvc := assistant.New(db, engine, registry,
-		usersSvc, enqueuer, proposalSvc, memorySvc, logger)
+		usersSvc, enqueuer, proposalSvc, memorySvc, auditor, logger)
 	if stream != nil {
 		assistantSvc = assistantSvc.WithStream(stream)
 	}
-	viewsSvc.WithNarrative(chat, enqueuer, logger)
+	viewsSvc.WithNarrative(chat, enqueuer, auditor, logger)
 
 	runtime, err := jobs.New(db.Pool, jobs.Deps{
 		Captures:  capturesSvc,

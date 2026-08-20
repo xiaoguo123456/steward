@@ -56,6 +56,17 @@ type toolChatRequest struct {
 	Temperature         float64           `json:"temperature"`
 	MaxCompletionTokens int               `json:"max_completion_tokens,omitempty"`
 	Stream              bool              `json:"stream,omitempty"`
+	// StreamOptions 只在流式时带上。
+	StreamOptions *streamOptions `json:"stream_options,omitempty"`
+}
+
+// streamOptions 里目前只有一件事：让服务端在流末尾补一个用量帧。
+//
+// **流式响应默认不返回 token 用量**，不显式要就永远是 0——
+// 而 Assistant 每一轮都是流式的，等于最贵的那条链路完全没有用量数据。
+// 这个坑同样只有真连模型才看得见：审计表里延迟有值、token 是 0。
+type streamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
 }
 
 type toolChatResponse struct {

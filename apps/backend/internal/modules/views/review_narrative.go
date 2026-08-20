@@ -11,6 +11,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/assets"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
@@ -81,7 +82,7 @@ func (s *Service) RunGenerate(ctx context.Context, args GenerateArgs) error {
 	}
 
 	// 第二步：事务外调用模型。
-	narrative, suggestions, genErr := s.generateNarrative(ctx, review)
+	narrative, suggestions, genErr := s.generateNarrative(ctx, args.UserID, review)
 
 	// 第三步：短事务保存。生成失败也要落一份快照：
 	// 指标本身是有价值的，不该因为模型不可用而整份丢掉。
@@ -177,7 +178,9 @@ type narrativeOutput struct {
 }
 
 // generateNarrative 调用模型并校验来源。
-func (s *Service) generateNarrative(ctx context.Context,
+// userID 只用于写审计——叙述生成本身不按用户分支，
+// 但「谁的这次调用花了多少 token」得记得下来。
+func (s *Service) generateNarrative(ctx context.Context, userID string,
 	review httpapi.WeeklyReview) (string, []httpapi.ReviewSuggestion, error) {
 
 	if s.chat == nil {
@@ -190,13 +193,31 @@ func (s *Service) generateNarrative(ctx context.Context,
 		allowed[src.ResourceType+":"+src.ResourceId] = src
 	}
 
+	input := renderReviewInput(review)
 	result, err := s.chat.Complete(ctx, ai.CompletionRequest{
 		Messages: []ai.Message{
 			{Role: ai.RoleSystem, Content: assets.ReviewNarrativePromptV1},
-			{Role: ai.RoleUser, Content: renderReviewInput(review)},
+			{Role: ai.RoleUser, Content: input},
 		},
 		MaxOutputTokens: 800,
 	})
+
+	// 记一笔审计。**只记形状不记正文**：复盘输入含用户一周的活动摘要，
+	// 是最不该在审计表里再存一份的东西。
+	s.audit.Record(ctx, aiaudit.Entry{
+		UserID:        userID,
+		Feature:       aiaudit.FeatureReview,
+		EngineType:    "single_shot",
+		ModelPolicy:   "chat",
+		ProviderModel: s.chat.ModelName(),
+		PromptVersion: assets.ReviewNarrativePromptVersion,
+		InputHash:     aiaudit.Hash(input),
+		OutputHash:    aiaudit.Hash(result.Content),
+		Status:        aiaudit.StatusFor(err),
+		ErrorClass:    aiaudit.ClassifyError(err),
+		Usage:         result.Usage,
+	})
+
 	if err != nil {
 		return "", []httpapi.ReviewSuggestion{}, err
 	}

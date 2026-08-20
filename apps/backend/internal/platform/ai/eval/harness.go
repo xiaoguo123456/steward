@@ -68,7 +68,9 @@ func NewStack(db *database.DB) *Stack {
 
 	// 队列不参与评测：这里直接调 Respond，不经过 River。
 	assistantSvc := assistant.New(db, engine, registry,
-		usersSvc, noopEnqueuer{}, proposalSvc, memorySvc, logger)
+		usersSvc, noopEnqueuer{}, proposalSvc, memorySvc,
+		// 评测跑的是编排逻辑，不需要审计；传 nil 让写入变成空操作。
+		nil, logger)
 
 	return &Stack{
 		DB: db, Assistant: assistantSvc, Proposals: proposalSvc,

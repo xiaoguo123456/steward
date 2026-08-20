@@ -17,6 +17,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
@@ -86,6 +87,8 @@ type Service struct {
 	users     UserProfile
 	activity  ActivityRecorder
 	jobs      JobEnqueuer
+	// audit 记录每一次模型调用的形状。为空时不记录。
+	audit *aiaudit.Recorder
 }
 
 // TrackerCommands 是 trackers 模块公开的事务内写入能力。
@@ -99,11 +102,12 @@ type TrackerCommands interface {
 // New 构造 Service。
 func New(db *database.DB, parser ai.CaptureParser, processor ai.MediaProcessor,
 	mediaReader MediaReader, obj ObjectCommands, trk TrackerCommands,
-	lists ListResolver, users UserProfile, act ActivityRecorder, jobs JobEnqueuer) *Service {
+	lists ListResolver, users UserProfile, act ActivityRecorder, jobs JobEnqueuer,
+	audit *aiaudit.Recorder) *Service {
 	return &Service{
 		db: db, parser: parser, processor: processor, media: mediaReader,
 		objects: obj, trackers: trk,
-		lists: lists, users: users, activity: act, jobs: jobs,
+		lists: lists, users: users, activity: act, jobs: jobs, audit: audit,
 	}
 }
 
@@ -347,6 +351,28 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 	}
 
 	result, parseErr := s.parser.ParseCapture(ctx, req)
+
+	// 记一笔审计。**只记形状不记正文**：输入输出都压成哈希，
+	// 想知道用户说了什么去看他自己的 Capture，那份有 RLS 管着。
+	s.audit.Record(ctx, aiaudit.Entry{
+		UserID:  args.UserID,
+		Feature: aiaudit.FeatureCapture,
+		// 用 Capture 自己的 ID 当 run_id：一次整理就是一次运行，
+		// 出问题时能直接从审计跳回那条 Capture。
+		RunID:         args.CaptureID,
+		EngineType:    "single_shot",
+		Provider:      s.parser.Name(),
+		ModelPolicy:   "parse",
+		ProviderModel: result.ProviderModel,
+		PromptVersion: result.PromptVersion,
+		SchemaVersion: result.SchemaVersion,
+		InputRefs:     partIDs(parts),
+		InputHash:     aiaudit.Hash(inputTexts(req.Parts)...),
+		OutputHash:    hashCandidates(result.Candidates),
+		Status:        aiaudit.StatusFor(parseErr),
+		ErrorClass:    aiaudit.ClassifyError(parseErr),
+		Usage:         result.Usage,
+	})
 
 	// 第四步：短事务保存结果。
 	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
@@ -611,3 +637,36 @@ func (s *Service) Discard(ctx context.Context, userID, captureID string) error {
 }
 
 func strPtr(v string) *string { return &v }
+
+// partIDs 取输入项 ID，用于把审计指回具体的分片。ID 不是正文。
+func partIDs(parts []dbgen.CapturePart) []string {
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, p.ID)
+	}
+	return out
+}
+
+// inputTexts 取输入正文，**只用于当场算哈希**，不会被存下来。
+func inputTexts(parts []ai.InputPart) []string {
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, p.Text)
+	}
+	return out
+}
+
+// hashCandidates 用候选的类型与标题算摘要。
+//
+// 摘要的用途是「两次解析结果一不一样」，所以取能代表结果的少数字段即可；
+// 把整个候选序列化进去反而会因为 ID 每次不同而永远不相等。
+func hashCandidates(candidates []ai.CandidateDraft) []byte {
+	if len(candidates) == 0 {
+		return nil
+	}
+	parts := make([]string, 0, len(candidates)*2)
+	for _, c := range candidates {
+		parts = append(parts, string(c.Type), c.Title)
+	}
+	return aiaudit.Hash(parts...)
+}

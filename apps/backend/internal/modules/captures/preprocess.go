@@ -7,6 +7,7 @@ import (
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage"
 )
@@ -73,16 +74,41 @@ func (s *Service) extractText(ctx context.Context, userID string, part dbgen.Cap
 	}
 
 	input := ai.MediaInput{ContentType: asset.ContentType, Data: data}
+
+	var (
+		text   string
+		usage  ai.Usage
+		policy string
+	)
 	switch part.Kind {
 	case "image":
-		text, _, err := s.processor.ExtractFromImage(ctx, input)
-		return text, err
+		policy = "vision"
+		text, usage, err = s.processor.ExtractFromImage(ctx, input)
 	case "audio":
-		text, _, err := s.processor.Transcribe(ctx, input)
-		return text, err
+		policy = "transcribe"
+		text, usage, err = s.processor.Transcribe(ctx, input)
 	default:
 		return "", apperr.Newf(apperr.CodeValidationFailed, "不支持的输入类型。")
 	}
+
+	// OCR 与转写同样是花钱的调用，同样要记一笔。
+	//
+	// **绝对不能把识别出来的文字记进去**：图片里可能是身份证、病历、
+	// 银行流水。这里只记它的哈希与这次调用的用量。
+	s.audit.Record(ctx, aiaudit.Entry{
+		UserID:      userID,
+		Feature:     aiaudit.FeatureCapture,
+		RunID:       part.CaptureID,
+		EngineType:  "single_shot",
+		ModelPolicy: policy,
+		// 输入是媒体本身，指回资源 ID 就够，正文（二进制）更不能记。
+		InputRefs:  []string{part.ID},
+		OutputHash: aiaudit.Hash(text),
+		Status:     aiaudit.StatusFor(err),
+		ErrorClass: aiaudit.ClassifyError(err),
+		Usage:      usage,
+	})
+	return text, err
 }
 
 // markPartFailed 把单个输入项标记为失败。

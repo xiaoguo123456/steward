@@ -154,6 +154,8 @@ type TurnResult struct {
 	Usage     Usage
 	// Mode 记录本轮被判定为哪种交互，仅用于审计与展示。
 	Mode string
+	// ProviderModel 是这一轮实际用的模型，只用于审计，不参与业务判断。
+	ProviderModel string
 	// Degraded 为 true 表示因为达到上限或工具失败而给出的降级回答。
 	Degraded bool
 }

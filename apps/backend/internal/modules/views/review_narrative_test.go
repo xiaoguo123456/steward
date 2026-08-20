@@ -64,7 +64,7 @@ func TestNarrativeKeepsOnlyGroundedSuggestions(t *testing.T) {
 	})
 
 	narrative, suggestions, err := serviceWith(string(raw)).
-		generateNarrative(context.Background(), sampleReview())
+		generateNarrative(context.Background(), "usr_test", sampleReview())
 	if err != nil {
 		t.Fatalf("不该出错：%v", err)
 	}
@@ -97,7 +97,7 @@ func TestNarrativeDropsSuggestionWithAnyFabricatedSource(t *testing.T) {
 	})
 
 	_, suggestions, err := serviceWith(string(raw)).
-		generateNarrative(context.Background(), sampleReview())
+		generateNarrative(context.Background(), "usr_test", sampleReview())
 	if err != nil {
 		t.Fatalf("不该出错：%v", err)
 	}
@@ -109,7 +109,7 @@ func TestNarrativeDropsSuggestionWithAnyFabricatedSource(t *testing.T) {
 // 输出不是合法 JSON 时按契约失败，让调用方只保留指标。
 func TestNarrativeRejectsMalformedOutput(t *testing.T) {
 	_, _, err := serviceWith("这不是 JSON").
-		generateNarrative(context.Background(), sampleReview())
+		generateNarrative(context.Background(), "usr_test", sampleReview())
 	if err == nil {
 		t.Fatal("非法输出必须报错，不能当成没有叙述静默通过")
 	}
@@ -119,7 +119,7 @@ func TestNarrativeRejectsMalformedOutput(t *testing.T) {
 func TestNarrativeStripsCodeFence(t *testing.T) {
 	content := "```json\n{\"narrative\":\"好的。\",\"suggestions\":[]}\n```"
 	narrative, _, err := serviceWith(content).
-		generateNarrative(context.Background(), sampleReview())
+		generateNarrative(context.Background(), "usr_test", sampleReview())
 	if err != nil {
 		t.Fatalf("不该出错：%v", err)
 	}
@@ -131,7 +131,7 @@ func TestNarrativeStripsCodeFence(t *testing.T) {
 // 没有配置对话模型时明确报不可用，而不是返回一段空叙述冒充成功。
 func TestNarrativeWithoutProviderIsUnavailable(t *testing.T) {
 	svc := &Service{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	if _, _, err := svc.generateNarrative(context.Background(), sampleReview()); err == nil {
+	if _, _, err := svc.generateNarrative(context.Background(), "usr_test", sampleReview()); err == nil {
 		t.Fatal("没有 Provider 时必须报错")
 	}
 }
@@ -147,7 +147,7 @@ func TestNarrativeCapsSuggestions(t *testing.T) {
 	raw, _ := json.Marshal(map[string]any{"narrative": "n", "suggestions": items})
 
 	_, suggestions, err := serviceWith(string(raw)).
-		generateNarrative(context.Background(), sampleReview())
+		generateNarrative(context.Background(), "usr_test", sampleReview())
 	if err != nil {
 		t.Fatalf("不该出错：%v", err)
 	}
