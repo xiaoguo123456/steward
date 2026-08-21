@@ -25,9 +25,9 @@ generate-contracts: ## 校验并打包 OpenAPI 为单文件 bundle
 
 .PHONY: generate-backend
 generate-backend: ## 由 OpenAPI 生成 Go DTO 与 strict server，并运行 sqlc
-	cd $(BACKEND) && go tool oapi-codegen -config oapi-codegen.yaml ../../$(CONTRACTS)/dist/openapi.bundle.yaml
-	cd $(BACKEND) && go tool oapi-codegen -config oapi-codegen-admin.yaml ../../$(CONTRACTS)/dist/admin.bundle.yaml
-	cd $(BACKEND) && go tool sqlc generate
+	cd $(BACKEND) && GOWORK=off go tool oapi-codegen -config oapi-codegen.yaml ../../$(CONTRACTS)/dist/openapi.bundle.yaml
+	cd $(BACKEND) && GOWORK=off go tool oapi-codegen -config oapi-codegen-admin.yaml ../../$(CONTRACTS)/dist/admin.bundle.yaml
+	cd $(BACKEND) && GOWORK=off go tool sqlc generate
 
 .PHONY: generate-client
 generate-client: ## 由 OpenAPI 生成 TypeScript Client 与 Zod 校验器
