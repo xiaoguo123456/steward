@@ -71,8 +71,9 @@ Android Release APK 会把 JavaScript、静态资源和 API 地址写入安装�
 
 正常发布使用 GitHub Actions：
 
-- 测试部署成功后自动生成“清单测试”，在本次 Actions 的 Artifacts 下载，保留 30 天。
-- 生产部署输入 App 版本号后生成“清单”，并长期保存到对应 GitHub Release。
+- `main` 中包含移动端、公共 API 契约或 Android 打包配置的改动时，测试部署成功后自动生成“清单测试”，在本次 Actions 的 Artifacts 下载，保留 30 天；纯后端或管理台改动不打包。手工运行测试部署时可自行勾选是否生成。
+- 需要发布正式 App 时，手工运行独立的“Android 正式发布”，输入 main commit SHA 和 App 版本号；“生产环境部署”只更新服务器，不生成 APK。
+- 正式 APK 长期保存到对应 GitHub Release。
 - 测试包名为 `com.aisteward.mobile.test`，生产包名为 `com.aisteward.mobile`，可在同一台手机安装。
 
 本地构建需要 JDK 17、Android SDK Platform 36、Build Tools 36，以及 Android NDK 27。配置好 `JAVA_HOME` 与 `ANDROID_HOME` 后执行：

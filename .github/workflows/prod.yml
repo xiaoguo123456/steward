@@ -1,15 +1,11 @@
 name: 生产环境部署
-run-name: 生产部署 Android ${{ inputs.app_version }} · ${{ inputs.commit_sha }} · ${{ github.actor }}
+run-name: 生产部署 ${{ inputs.commit_sha }} · ${{ github.actor }}
 
 on:
   workflow_dispatch:
     inputs:
       commit_sha:
         description: "要发布的 main 分支 commit SHA（完整或前 12 位）"
-        required: true
-        type: string
-      app_version:
-        description: "App 版本号，例如 1.0.0"
         required: true
         type: string
 
@@ -24,6 +20,9 @@ jobs:
   checks:
     name: 校验提交、生成、迁移与全量检查
     runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.commit.outputs.commit_sha }}
+      short_sha: ${{ steps.commit.outputs.short_sha }}
     services:
       postgres:
         image: postgres:16-alpine
@@ -52,28 +51,39 @@ jobs:
       STEWARD_STORAGE_ROOT: /tmp/steward-ci-storage
       STEWARD_STREAM_DRIVER: postgres
     steps:
-      - name: 检出指定提交
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
-      - name: 校验提交属于 main
+      - name: 解析并检出 main 中的指定提交
+        id: commit
         env:
           REQUESTED_SHA: ${{ inputs.commit_sha }}
         run: |
-          set -eu
-          requested="$REQUESTED_SHA"
+          set -euo pipefail
+          requested="$(printf '%s' "$REQUESTED_SHA" | tr '[:upper:]' '[:lower:]')"
           if [[ ! "$requested" =~ ^[0-9a-fA-F]{12}([0-9a-fA-F]{28})?$ ]]; then
             echo "commit SHA 必须是 12 位或 40 位十六进制" >&2
             exit 1
           fi
-          actual="$(git rev-parse HEAD)"
+          git fetch origin main
+          actual="$(git rev-parse "${requested}^{commit}" 2>/dev/null || true)"
+          if [ -z "$actual" ]; then
+            echo "找不到提交：$requested" >&2
+            exit 1
+          fi
           case "$actual" in
             "$requested"*) ;;
-            *) echo "检出的提交 $actual 与输入 $requested 不一致" >&2; exit 1 ;;
+            *) echo "解析出的提交 $actual 与输入 $requested 不一致" >&2; exit 1 ;;
           esac
-          git fetch origin main
-          git merge-base --is-ancestor "$actual" origin/main
+          if ! git merge-base --is-ancestor "$actual" origin/main; then
+            echo "提交不属于 main：$actual" >&2
+            exit 1
+          fi
+          git checkout --detach "$actual"
+          {
+            echo "commit_sha=$actual"
+            echo "short_sha=${actual::12}"
+          } >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@v4
         with:
           version: 10.32.1
@@ -104,102 +114,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: checks
     environment: production
-    permissions:
-      contents: write
     steps:
       - name: 检出指定提交
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ needs.checks.outputs.commit_sha }}
           fetch-depth: 0
 
-      - name: 校验提交并计算不可变镜像标签
+      - name: 计算不可变镜像标签
         id: vars
         env:
-          REQUESTED_SHA: ${{ inputs.commit_sha }}
-          APP_VERSION: ${{ inputs.app_version }}
+          SHORT_SHA: ${{ needs.checks.outputs.short_sha }}
         run: |
-          set -eu
-          requested="$REQUESTED_SHA"
-          if [[ ! "$requested" =~ ^[0-9a-fA-F]{12}([0-9a-fA-F]{28})?$ ]]; then
-            echo "commit SHA 必须是 12 位或 40 位十六进制" >&2
-            exit 1
-          fi
-          actual="$(git rev-parse HEAD)"
-          case "$actual" in
-            "$requested"*) ;;
-            *) echo "检出的提交 $actual 与输入 $requested 不一致" >&2; exit 1 ;;
-          esac
-          if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
-            echo "App 版本号格式错误：$APP_VERSION" >&2
-            exit 1
-          fi
-          {
-            echo "sha=${actual::12}"
-            echo "full_sha=$actual"
-            echo "version_code=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))"
-            echo "apk_name=steward-${APP_VERSION}-${actual::12}.apk"
-            echo "release_tag=android-v${APP_VERSION}"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: 确认 Android 版本未发布
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.vars.outputs.release_tag }}
-        run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "发布版本已存在：$RELEASE_TAG" >&2
-            exit 1
-          fi
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.32.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: pnpm
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
-      - uses: android-actions/setup-android@v3
-
-      - name: 安装移动端依赖和 Android SDK
-        run: |
-          pnpm install --frozen-lockfile
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0" \
-            "ndk;27.1.12297006"
-
-      - name: 恢复生产签名
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_PRODUCTION_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_PRODUCTION_KEYSTORE_PASSWORD }}
-          KEYSTORE_PATH: ${{ runner.temp }}/steward-production.jks
-        run: |
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$ANDROID_KEYSTORE_PASSWORD"
-          umask 077
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
-
-      - name: 构建并签名生产 APK
-        env:
-          APP_VARIANT: production
-          EXPO_PUBLIC_API_URL: https://steward.qhzhiyin.com
-          STEWARD_APP_VERSION: ${{ inputs.app_version }}
-          STEWARD_ANDROID_VERSION_CODE: ${{ steps.vars.outputs.version_code }}
-          STEWARD_BUILD_SHA: ${{ steps.vars.outputs.full_sha }}
-          ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
-          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/steward-production.jks
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_PRODUCTION_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: steward-production
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_PRODUCTION_KEYSTORE_PASSWORD }}
-        run: scripts/build-android-apk.sh production "output/android/${{ steps.vars.outputs.apk_name }}"
+          echo "sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -331,32 +258,3 @@ jobs:
             $compose ps
             $compose logs --tail=100 api admin-api worker migrate nginx
             exit 1
-
-      - name: 保存生产 APK（30 天）
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.vars.outputs.apk_name }}
-          path: |
-            output/android/${{ steps.vars.outputs.apk_name }}
-            output/android/${{ steps.vars.outputs.apk_name }}.sha256
-          retention-days: 30
-          if-no-files-found: error
-          overwrite: true
-
-      - name: 创建 Android 正式发布
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.vars.outputs.release_tag }}
-          APK_NAME: ${{ steps.vars.outputs.apk_name }}
-          APP_VERSION: ${{ inputs.app_version }}
-        run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "发布版本已存在：$RELEASE_TAG" >&2
-            exit 1
-          fi
-          gh release create "$RELEASE_TAG" \
-            "output/android/$APK_NAME" \
-            "output/android/$APK_NAME.sha256" \
-            --target "$(git rev-parse HEAD)" \
-            --title "Android $APP_VERSION" \
-            --notes "生产环境 Android APK，来源提交：$(git rev-parse HEAD)"
