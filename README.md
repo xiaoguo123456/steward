@@ -104,6 +104,7 @@ make check        # gofmt + go vet + eslint + go test + tsc
 - [后端与 AI 开发指南](./docs/后端与AI开发指南.md)
 - [后台管理系统设计](./docs/后台管理系统设计.md)
 - [部署说明](./docs/部署说明.md)
+- [上线待办](./docs/TODO.md)
 - [品牌与设计原则](./PRODUCT.md)
 - [原始 PRD](./AI事管家_PRD_v1.0.md)
 

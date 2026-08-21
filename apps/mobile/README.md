@@ -67,12 +67,27 @@ pnpm mobile:live
 
 ## Android APK 预览包
 
-当前 Android Release APK 已将 JavaScript 与静态资源完整打入安装包，安装后无需连接电脑或 Metro 服务即可运行。该版本仍使用本地 Mock 数据，只用于前端视觉与交互验收。
+Android Release APK 会把 JavaScript、静态资源和 API 地址写入安装包，安装后无需连接电脑或 Metro。打包时必须明确指定环境地址。
+
+正常发布使用 GitHub Actions：
+
+- `main` 中包含移动端、公共 API 契约或 Android 打包配置的改动时，测试部署成功后自动生成“清单测试”，在本次 Actions 的 Artifacts 下载，保留 30 天；纯后端或管理台改动不打包。手工运行测试部署时可自行勾选是否生成。
+- 需要发布正式 App 时，手工运行独立的“Android 正式发布”，输入 main commit SHA 和 App 版本号；“生产环境部署”只更新服务器，不生成 APK。
+- 正式 APK 长期保存到对应 GitHub Release。
+- 测试包名为 `com.aisteward.mobile.test`，生产包名为 `com.aisteward.mobile`，可在同一台手机安装。
 
 本地构建需要 JDK 17、Android SDK Platform 36、Build Tools 36，以及 Android NDK 27。配置好 `JAVA_HOME` 与 `ANDROID_HOME` 后执行：
 
 ```bash
+# 测试包
+APP_VARIANT=test \
+EXPO_PUBLIC_API_URL=https://test-steward.qhzhiyin.com \
+pnpm --filter mobile exec expo prebuild --platform android --clean --no-install
+
 cd apps/mobile/android
+APP_VARIANT=test \
+NODE_ENV=production \
+EXPO_PUBLIC_API_URL=https://test-steward.qhzhiyin.com \
 ./gradlew :app:assembleRelease \
   -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
   --no-daemon
@@ -84,7 +99,7 @@ cd apps/mobile/android
 apps/mobile/android/app/build/outputs/apk/release/app-release.apk
 ```
 
-当前 Release 配置使用开发调试证书签名，适合直接安装和内部验收，不可作为应用商店正式发布包。正式发布前需要配置独立且妥善保管的生产签名密钥，并重新生成发行产物。
+上面的本地命令使用开发调试签名，只适合临时验收；自动流程使用固定的测试或生产签名。
 
 在 Android 手机上打开 APK 后，如果系统拦截安装，需要为当前浏览器或文件管理器临时开启“允许安装未知应用”。
 

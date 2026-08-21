@@ -20,6 +20,9 @@ jobs:
   checks:
     name: 校验提交、生成、迁移与全量检查
     runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.commit.outputs.commit_sha }}
+      short_sha: ${{ steps.commit.outputs.short_sha }}
     services:
       postgres:
         image: postgres:16-alpine
@@ -48,28 +51,39 @@ jobs:
       STEWARD_STORAGE_ROOT: /tmp/steward-ci-storage
       STEWARD_STREAM_DRIVER: postgres
     steps:
-      - name: 检出指定提交
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
-      - name: 校验提交属于 main
+      - name: 解析并检出 main 中的指定提交
+        id: commit
         env:
           REQUESTED_SHA: ${{ inputs.commit_sha }}
         run: |
-          set -eu
-          requested="$REQUESTED_SHA"
+          set -euo pipefail
+          requested="$(printf '%s' "$REQUESTED_SHA" | tr '[:upper:]' '[:lower:]')"
           if [[ ! "$requested" =~ ^[0-9a-fA-F]{12}([0-9a-fA-F]{28})?$ ]]; then
             echo "commit SHA 必须是 12 位或 40 位十六进制" >&2
             exit 1
           fi
-          actual="$(git rev-parse HEAD)"
+          git fetch origin main
+          actual="$(git rev-parse "${requested}^{commit}" 2>/dev/null || true)"
+          if [ -z "$actual" ]; then
+            echo "找不到提交：$requested" >&2
+            exit 1
+          fi
           case "$actual" in
             "$requested"*) ;;
-            *) echo "检出的提交 $actual 与输入 $requested 不一致" >&2; exit 1 ;;
+            *) echo "解析出的提交 $actual 与输入 $requested 不一致" >&2; exit 1 ;;
           esac
-          git fetch origin main
-          git merge-base --is-ancestor "$actual" origin/main
+          if ! git merge-base --is-ancestor "$actual" origin/main; then
+            echo "提交不属于 main：$actual" >&2
+            exit 1
+          fi
+          git checkout --detach "$actual"
+          {
+            echo "commit_sha=$actual"
+            echo "short_sha=${actual::12}"
+          } >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@v4
         with:
           version: 10.32.1
@@ -104,26 +118,15 @@ jobs:
       - name: 检出指定提交
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ needs.checks.outputs.commit_sha }}
           fetch-depth: 0
 
-      - name: 校验提交并计算不可变镜像标签
+      - name: 计算不可变镜像标签
         id: vars
         env:
-          REQUESTED_SHA: ${{ inputs.commit_sha }}
+          SHORT_SHA: ${{ needs.checks.outputs.short_sha }}
         run: |
-          set -eu
-          requested="$REQUESTED_SHA"
-          if [[ ! "$requested" =~ ^[0-9a-fA-F]{12}([0-9a-fA-F]{28})?$ ]]; then
-            echo "commit SHA 必须是 12 位或 40 位十六进制" >&2
-            exit 1
-          fi
-          actual="$(git rev-parse HEAD)"
-          case "$actual" in
-            "$requested"*) ;;
-            *) echo "检出的提交 $actual 与输入 $requested 不一致" >&2; exit 1 ;;
-          esac
-          echo "sha=${actual::12}" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
