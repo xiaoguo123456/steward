@@ -76,6 +76,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /v1/auth/login:
     post:
       operationId: login
@@ -2441,6 +2443,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /v1/me/diet-profile:
     get:
       operationId: getDietProfile
@@ -2947,6 +2951,7 @@ components:
         - VERIFICATION_CODE_INVALID
         - VERIFICATION_CODE_EXPIRED
         - REFRESH_TOKEN_INVALID
+        - SMS_PROVIDER_UNAVAILABLE
         - TASK_LIST_NAME_DUPLICATED
         - TASK_LIST_NOT_EMPTY
         - TASK_LIST_DEFAULT_REQUIRED
@@ -7910,6 +7915,12 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     InternalError:
       description: 服务端内部错误。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: 外部服务暂时不可用，可稍后重试。
       content:
         application/json:
           schema:

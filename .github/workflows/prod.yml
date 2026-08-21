@@ -46,6 +46,8 @@ jobs:
       STEWARD_TEST_MIGRATE_URL: postgres://postgres:postgres@127.0.0.1:5432/steward_ci?sslmode=disable
       STEWARD_JWT_SECRET: ci-only-jwt-secret
       STEWARD_MEMORY_FINGERPRINT_KEY: ci-only-fingerprint-secret
+      STEWARD_SMS_PROVIDER: dev
+      STEWARD_DEV_SMS_CODE: "123456"
       STEWARD_AI_PROVIDER: fake
       STEWARD_STORAGE_DRIVER: localfs
       STEWARD_STORAGE_ROOT: /tmp/steward-ci-storage

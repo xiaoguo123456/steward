@@ -39,6 +39,7 @@ import type {
   ErrorResponse,
   InternalErrorResponse,
   PhoneCodeResponse,
+  ServiceUnavailableResponse,
   TooManyRequestsResponse,
   UnauthorizedResponse,
   UpdateAiSettingsRequest,
@@ -684,7 +685,7 @@ export const requestCurrentPhoneCode = async ( options?: Parameters<typeof stewa
 
 
 
-export const getRequestCurrentPhoneCodeMutationOptions = <TError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse,
+export const getRequestCurrentPhoneCodeMutationOptions = <TError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCurrentPhoneCode>>, TError,void, TContext>, request?: SecondParameter<typeof stewardFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof requestCurrentPhoneCode>>, TError,void, TContext> => {
 
@@ -713,12 +714,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RequestCurrentPhoneCodeMutationResult = NonNullable<Awaited<ReturnType<typeof requestCurrentPhoneCode>>>
 
-    export type RequestCurrentPhoneCodeMutationError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse
+    export type RequestCurrentPhoneCodeMutationError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse
 
     /**
  * @summary 给当前绑定的手机号发送换绑验证码
  */
-export const useRequestCurrentPhoneCode = <TError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse,
+export const useRequestCurrentPhoneCode = <TError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCurrentPhoneCode>>, TError,void, TContext>, request?: SecondParameter<typeof stewardFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof requestCurrentPhoneCode>>,

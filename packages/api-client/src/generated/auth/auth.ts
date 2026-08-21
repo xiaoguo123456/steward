@@ -33,6 +33,7 @@ import type {
   PhoneCodeResponse,
   RefreshRequest,
   RefreshResponse,
+  ServiceUnavailableResponse,
   TooManyRequestsResponse,
   UnauthorizedResponse
 } from '../model';
@@ -70,7 +71,7 @@ export const requestPhoneCode = async (phoneCodeRequest: PhoneCodeRequest, optio
 
 
 
-export const getRequestPhoneCodeMutationOptions = <TError = BadRequestResponse | TooManyRequestsResponse | InternalErrorResponse,
+export const getRequestPhoneCodeMutationOptions = <TError = BadRequestResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestPhoneCode>>, TError,{data: PhoneCodeRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof requestPhoneCode>>, TError,{data: PhoneCodeRequest}, TContext> => {
 
@@ -99,12 +100,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RequestPhoneCodeMutationResult = NonNullable<Awaited<ReturnType<typeof requestPhoneCode>>>
     export type RequestPhoneCodeMutationBody = PhoneCodeRequest
-    export type RequestPhoneCodeMutationError = BadRequestResponse | TooManyRequestsResponse | InternalErrorResponse
+    export type RequestPhoneCodeMutationError = BadRequestResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse
 
     /**
  * @summary 发送登录验证码
  */
-export const useRequestPhoneCode = <TError = BadRequestResponse | TooManyRequestsResponse | InternalErrorResponse,
+export const useRequestPhoneCode = <TError = BadRequestResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestPhoneCode>>, TError,{data: PhoneCodeRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof requestPhoneCode>>,

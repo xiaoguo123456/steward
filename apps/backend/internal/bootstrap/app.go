@@ -34,6 +34,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/jobs"
+	aliyunsms "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/sms/aliyun"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/aliyunoss"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/localfs"
@@ -99,6 +100,11 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	}
 
 	tokens := authpkg.NewTokenService(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	codeSender, err := newCodeSender(cfg, logger)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
 
 	parser, err := newParser(cfg, logger)
 	if err != nil {
@@ -185,7 +191,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	}
 	enqueuer.inner = runtime.Enqueuer
 
-	authSvc := authmod.New(db, tokens, usersSvc, cfg.DevSMSCode)
+	authSvc := authmod.New(db, tokens, usersSvc, cfg.DevSMSCode, codeSender)
 
 	return &App{
 		Config: cfg,
@@ -216,6 +222,29 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		Stream:        stream,
 		StreamLimiter: streams.NewLimiter(streamLimit),
 	}, nil
+}
+
+func newCodeSender(cfg config.Config, logger *slog.Logger) (authmod.CodeSender, error) {
+	switch cfg.SMS.Provider {
+	case "dev":
+		logger.Info("验证码使用开发环境固定值，仅适用于本地开发")
+		return nil, nil
+	case "aliyun":
+		sender, err := aliyunsms.New(aliyunsms.Config{
+			Endpoint:        cfg.SMS.Endpoint,
+			AccessKeyID:     cfg.SMS.AccessKeyID,
+			AccessKeySecret: cfg.SMS.AccessKeySecret,
+			SignName:        cfg.SMS.SignName,
+			TemplateCode:    cfg.SMS.TemplateCode,
+		}, logger)
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("验证码使用阿里云短信", "endpoint", cfg.SMS.Endpoint)
+		return sender, nil
+	default:
+		return nil, fmt.Errorf("不支持的 STEWARD_SMS_PROVIDER=%s", cfg.SMS.Provider)
+	}
 }
 
 // newObjectStore 按配置选择对象存储适配器。

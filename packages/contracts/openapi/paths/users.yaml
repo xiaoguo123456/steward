@@ -181,5 +181,7 @@ PhoneCode:
         $ref: '../components/responses.yaml#/Unauthorized'
       '429':
         $ref: '../components/responses.yaml#/TooManyRequests'
+      '503':
+        $ref: '../components/responses.yaml#/ServiceUnavailable'
       '500':
         $ref: '../components/responses.yaml#/InternalError'
