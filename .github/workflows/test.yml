@@ -57,6 +57,7 @@ jobs:
       STEWARD_STORAGE_DRIVER: localfs
       STEWARD_STORAGE_ROOT: /tmp/steward-ci-storage
       STEWARD_STREAM_DRIVER: postgres
+      GOWORK: off
     steps:
       - uses: actions/checkout@v4
         with:
