@@ -123,12 +123,18 @@ func (s *Service) aggregateAll(ctx context.Context, day time.Time) (int, error) 
 	afterID := ""
 	written := 0
 
+	// 清扫的基准时刻。整轮跑完后，updated_at 还停在这之前的行
+	// 就是这一轮没被枚举到的用户——他们已经从 users 里消失了。
+	runStartedAt := time.Now()
+
 	for {
 		users, err := s.listUsers(ctx, afterID, pageSize)
 		if err != nil {
+			// 枚举失败就**不清扫**：没轮到的用户会被当成已删除清掉。
 			return written, err
 		}
 		if len(users) == 0 {
+			s.pruneMissing(ctx, runStartedAt)
 			return written, nil
 		}
 		for _, u := range users {
@@ -136,11 +142,54 @@ func (s *Service) aggregateAll(ctx context.Context, day time.Time) (int, error) 
 				// 单个用户失败不该拖垮整批：记下来继续。
 				// 否则一个坏数据能让整个后台永远看不到新数据。
 				s.logger.Warn("聚合单个用户失败", "user_id", u.ID, "error", err)
+				// **但仍要标记他还在。** 枚举到了就说明这个人存在，
+				// 统计算失败是另一回事；不标记的话下面的清扫会把他删掉，
+				// 一次临时故障就能抹掉一批真实用户的索引。
+				s.touch(ctx, u.ID)
 				continue
 			}
 			written++
 		}
 		afterID = users[len(users)-1].ID
+	}
+}
+
+// touch 标记用户仍然存在，不动统计值。
+func (s *Service) touch(ctx context.Context, userID string) {
+	err := s.db.InTxAnonymous(ctx, func(ctx context.Context, q *dbgen.Queries) error {
+		return q.TouchUserIndex(ctx, userID)
+	})
+	if err != nil {
+		s.logger.Warn("标记用户存在失败", "user_id", userID, "error", err)
+	}
+}
+
+// pruneMissing 清掉本轮没枚举到的用户。
+//
+// 读模型原先只增不减：用户从 users 里删掉之后，索引行永远留着。
+// 后果是后台列表一直显示不存在的人，总用户数永远虚高，
+// 点进去还会因为业务表里没有这一行而报错。
+//
+// **只在整轮枚举成功之后调用**，调用点就在 listUsers 返回空页那里。
+func (s *Service) pruneMissing(ctx context.Context, runStartedAt time.Time) {
+	err := s.db.InTxAnonymous(ctx, func(ctx context.Context, q *dbgen.Queries) error {
+		removed, err := q.PruneUserIndex(ctx, runStartedAt)
+		if err != nil {
+			return err
+		}
+		if removed > 0 {
+			usage, err := q.PruneUserDailyUsage(ctx)
+			if err != nil {
+				return err
+			}
+			s.logger.Info("清掉已删除用户的读模型行",
+				"user_index", removed, "user_daily_usage", usage)
+		}
+		return nil
+	})
+	if err != nil {
+		// 清扫失败不影响这一轮的聚合结果，下一轮会再试。
+		s.logger.Warn("清扫读模型失败", "error", err)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"errors"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/adminapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
@@ -121,6 +122,12 @@ func (a *ReadAPI) AdminGetUser(ctx context.Context,
 	// 数量要在该用户的 RLS 事务里数——这是后台唯一会碰业务表的地方，
 	// 而且**一次事务只绑一个用户**。
 	counts, sessions, version, liveStatus, err := a.userCounts(ctx, req.UserId)
+	if errors.Is(err, errUserGone) {
+		return adminapi.AdminGetUser404JSONResponse{
+			NotFoundJSONResponse: adminapi.NotFoundJSONResponse(
+				errorBody(ctx, adminapi.ADMINUSERNOTFOUND, "用户不存在。")),
+		}, nil
+	}
 	if err != nil {
 		a.logger.Error("用户明细取数失败", "user_id", req.UserId, "error", err)
 		return adminapi.AdminGetUser500JSONResponse{
@@ -159,8 +166,12 @@ func (a *ReadAPI) userCounts(ctx context.Context, userID string) (
 	adminapi.UserCounts, int, int, string, error) {
 
 	var c adminapi.UserCounts
-	var sessions, version int
-	var status string
+	var sessions int
+	// 用可空类型接：用户可能已经从 users 里删掉了，而读模型还没清扫到。
+	// 直接扫进 int/string 会因为 NULL 报错，界面上表现为 500——
+	// 而这明明是「这个人不在了」，该给 404。
+	var version *int
+	var status *string
 
 	err := a.db.InTx(ctx, userID, func(ctx context.Context, _ *dbgen.Queries) error {
 		tx, err := database.TxFrom(ctx)
@@ -188,8 +199,19 @@ func (a *ReadAPI) userCounts(ctx context.Context, userID string) (
 			Scan(&c.Tasks, &c.Events, &c.Projects, &c.Notes, &c.Captures,
 				&c.AssistantThreads, &sessions, &version, &status)
 	})
-	return c, sessions, version, status, err
+	if err != nil {
+		return c, 0, 0, "", err
+	}
+	if version == nil || status == nil {
+		// 索引里有、users 里没有：这个用户已经被删了，
+		// 读模型还没跑到下一轮清扫。对调用方来说就是不存在。
+		return c, 0, 0, "", errUserGone
+	}
+	return c, sessions, *version, *status, nil
 }
+
+// errUserGone 表示读模型里还留着行、但用户已经从 users 里删掉了。
+var errUserGone = errors.New("用户已不存在")
 
 // AdminGetUserUsage 返回用户的按天使用情况。
 func (a *ReadAPI) AdminGetUserUsage(ctx context.Context,

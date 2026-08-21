@@ -121,6 +121,13 @@ func (s *Stack) Run(ctx context.Context, c Case) (Result, error) {
 	if err != nil {
 		return result, err
 	}
+	// 用完就删。
+	//
+	// 评测每条用例造一个用户，跑一轮几百条，而这些用户以前从不清理——
+	// 实测两天攒了 947 个，把开发库和后台的用户列表整个淹掉了
+	// （真实账号只有 73 个）。清理放在这里而不是测试的 Cleanup 里：
+	// Run 是唯一造用户的地方，谁造谁负责删。
+	defer s.dropUser(context.WithoutCancel(ctx), userID)
 	fixtures, err := s.seedFixtures(ctx, userID, c)
 	if err != nil {
 		return result, err
@@ -409,4 +416,21 @@ func (s seeded) replace(text string) string {
 		text = strings.ReplaceAll(text, "$LEDGER", s.ledgerID)
 	}
 	return text
+}
+
+// dropUser 删掉这条用例的用户。级联会带走他名下的全部数据。
+//
+// 用脱开取消信号的 ctx：用例超时或失败时更要清理，
+// 否则失败越多、垃圾攒得越快。
+func (s *Stack) dropUser(ctx context.Context, userID string) {
+	// 必须走 InTx：users 是 FORCE ROW LEVEL SECURITY 的，
+	// 匿名事务里 DELETE 一行都匹配不到，而且不报错。
+	_ = s.DB.InTx(ctx, userID, func(ctx context.Context, _ *dbgen.Queries) error {
+		tx, err := database.TxFrom(ctx)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, "DELETE FROM users WHERE id = $1", userID)
+		return err
+	})
 }

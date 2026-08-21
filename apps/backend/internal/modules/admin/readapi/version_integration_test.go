@@ -2,6 +2,7 @@ package readapi
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"testing"
@@ -100,5 +101,62 @@ func bumpStatus(t *testing.T, db *database.DB, userID, status string, version in
 	})
 	if err != nil {
 		t.Fatalf("推进用户状态失败：%v", err)
+	}
+}
+
+// 用户从 users 里删掉后，读模型还留着行时，详情要给 404 而不是 500。
+//
+// 读模型是异步刷新的，「索引里有、业务表里没有」是必然会出现的中间态，
+// 不是异常。这里返回 500 的话，界面上看到的是「出错了，重试」——
+// 而重试永远不会好，因为那个人真的不在了。
+func TestUserDetailReturnsGoneForDeletedUser(t *testing.T) {
+	dsn := config.LoadForTest().DatabaseURL
+	if dsn == "" {
+		t.Skip("未设置 STEWARD_TEST_DATABASE_URL，跳过")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	db, err := database.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("连接失败：%v", err)
+	}
+	defer db.Close()
+
+	userID := seedUserForVersion(t, db)
+	deleteUser(t, db, userID)
+
+	api := NewReadAPI(db, config.AdminConfig{}, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if _, _, _, _, err := api.userCounts(ctx, userID); !errors.Is(err, errUserGone) {
+		t.Fatalf("已删除的用户应当返回 errUserGone，实际：%v", err)
+	}
+}
+
+// deleteUser 真的删掉用户。
+//
+// **必须走 InTx 而不是 InTxAnonymous。** users 是 FORCE ROW LEVEL SECURITY 的，
+// 匿名事务里没有 app.user_id，DELETE 一行都匹配不到——不报错，只是没删。
+// 断言影响行数就是为了让这种「静默不生效」当场暴露，
+// 否则测试是在验证一个从没发生过的删除。
+func deleteUser(t *testing.T, db *database.DB, userID string) {
+	t.Helper()
+	var affected int64
+	err := db.InTx(context.Background(), userID, func(ctx context.Context, _ *dbgen.Queries) error {
+		tx, err := database.TxFrom(ctx)
+		if err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, "DELETE FROM users WHERE id = $1", userID)
+		if err != nil {
+			return err
+		}
+		affected = tag.RowsAffected()
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("删除测试用户失败：%v", err)
+	}
+	if affected != 1 {
+		t.Fatalf("应当删掉 1 个用户，实际 %d——检查事务里有没有设 app.user_id", affected)
 	}
 }

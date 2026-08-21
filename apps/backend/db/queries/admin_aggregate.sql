@@ -37,6 +37,26 @@ ON CONFLICT (user_id) DO UPDATE SET
     source_version = excluded.source_version,
     updated_at = now();
 
+-- name: TouchUserIndex :exec
+-- 只把「这个用户还在」这件事记下来，不动任何统计值。
+--
+-- 存在与统计必须分开：某个用户的统计算失败了，不代表他不存在了。
+-- 只靠 upsert 的时间戳来判断存活，会把「这轮没算出来的人」当成
+-- 「已经不存在的人」删掉——一次临时故障能删掉一批真实用户的索引。
+UPDATE admin.user_index SET updated_at = now() WHERE user_id = sqlc.arg(user_id);
+
+-- name: PruneUserIndex :execrows
+-- 清掉这一轮没有被枚举到的用户。
+--
+-- **只在整轮枚举成功跑完之后调用。** 枚举中途失败时调它，
+-- 没轮到的用户会被当成已删除清掉。
+DELETE FROM admin.user_index WHERE updated_at < sqlc.arg(run_started_at);
+
+-- name: PruneUserDailyUsage :execrows
+-- 日表跟着索引走：索引里没有的用户，日报也留不住。
+DELETE FROM admin.user_daily_usage
+WHERE user_id NOT IN (SELECT user_id FROM admin.user_index);
+
 -- name: UpsertUserDailyUsage :exec
 -- 幂等：同一天重跑多少次结果都一样，因为是整行覆盖而不是累加。
 INSERT INTO admin.user_daily_usage (

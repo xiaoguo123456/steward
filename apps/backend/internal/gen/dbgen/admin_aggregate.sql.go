@@ -63,6 +63,36 @@ func (q *Queries) LatestAggregation(ctx context.Context, kind string) (AdminAggr
 	return i, err
 }
 
+const pruneUserDailyUsage = `-- name: PruneUserDailyUsage :execrows
+DELETE FROM admin.user_daily_usage
+WHERE user_id NOT IN (SELECT user_id FROM admin.user_index)
+`
+
+// 日表跟着索引走：索引里没有的用户，日报也留不住。
+func (q *Queries) PruneUserDailyUsage(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneUserDailyUsage)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const pruneUserIndex = `-- name: PruneUserIndex :execrows
+DELETE FROM admin.user_index WHERE updated_at < $1
+`
+
+// 清掉这一轮没有被枚举到的用户。
+//
+// **只在整轮枚举成功跑完之后调用。** 枚举中途失败时调它，
+// 没轮到的用户会被当成已删除清掉。
+func (q *Queries) PruneUserIndex(ctx context.Context, runStartedAt time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneUserIndex, runStartedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const startAggregationRun = `-- name: StartAggregationRun :one
 
 INSERT INTO admin.aggregation_runs (id, kind, report_date, status, started_at)
@@ -94,6 +124,20 @@ func (q *Queries) StartAggregationRun(ctx context.Context, arg StartAggregationR
 		&i.RowsWritten,
 	)
 	return i, err
+}
+
+const touchUserIndex = `-- name: TouchUserIndex :exec
+UPDATE admin.user_index SET updated_at = now() WHERE user_id = $1
+`
+
+// 只把「这个用户还在」这件事记下来，不动任何统计值。
+//
+// 存在与统计必须分开：某个用户的统计算失败了，不代表他不存在了。
+// 只靠 upsert 的时间戳来判断存活，会把「这轮没算出来的人」当成
+// 「已经不存在的人」删掉——一次临时故障能删掉一批真实用户的索引。
+func (q *Queries) TouchUserIndex(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, touchUserIndex, userID)
+	return err
 }
 
 const upsertUserDailyUsage = `-- name: UpsertUserDailyUsage :exec
