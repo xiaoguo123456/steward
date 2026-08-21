@@ -52,6 +52,9 @@ type StreamConfig struct {
 	Driver string
 	// RedisURL 形如 redis://user:pass@host:6379/0。
 	RedisURL string
+	// Namespace 隔离共享 Redis 上不同环境的 Pub/Sub 通道。
+	// Redis 逻辑 DB 不隔离 Pub/Sub，因此测试和生产必须使用不同值。
+	Namespace string
 	// MaxConcurrent 是同时允许的流连接数。
 	//
 	// 留空时按驱动取默认值：postgres 每条流独占一个数据库连接，
@@ -84,9 +87,11 @@ type StorageConfig struct {
 	Driver string
 	Root   string
 
-	OSSRegion          string
-	OSSEndpoint        string
-	OSSBucket          string
+	OSSRegion   string
+	OSSEndpoint string
+	OSSBucket   string
+	// OSSPrefix 是 Bucket 内的物理对象前缀；数据库仍只保存逻辑对象键。
+	OSSPrefix          string
 	OSSAccessKeyID     string
 	OSSAccessKeySecret string
 }
@@ -118,6 +123,7 @@ func Load() (Config, error) {
 		Stream: StreamConfig{
 			Driver:        env("STEWARD_STREAM_DRIVER", "auto"),
 			RedisURL:      env("STEWARD_REDIS_URL", ""),
+			Namespace:     env("STEWARD_STREAM_NAMESPACE", "steward"),
 			MaxConcurrent: envInt("STEWARD_STREAM_MAX_CONCURRENT", 0),
 		},
 		Storage: StorageConfig{
@@ -126,6 +132,7 @@ func Load() (Config, error) {
 			OSSRegion:          env("STEWARD_OSS_REGION", ""),
 			OSSEndpoint:        env("STEWARD_OSS_ENDPOINT", ""),
 			OSSBucket:          env("STEWARD_OSS_BUCKET", ""),
+			OSSPrefix:          env("STEWARD_OSS_PREFIX", ""),
 			OSSAccessKeyID:     env("STEWARD_OSS_ACCESS_KEY_ID", ""),
 			OSSAccessKeySecret: env("STEWARD_OSS_ACCESS_KEY_SECRET", ""),
 		},
@@ -225,10 +232,27 @@ func (c StreamConfig) validate() error {
 		if c.RedisURL == "" {
 			return errors.New("STEWARD_STREAM_DRIVER=redis 时必须设置 STEWARD_REDIS_URL")
 		}
+		if !validStreamNamespace(c.Namespace) {
+			return errors.New("STEWARD_STREAM_NAMESPACE 只能包含字母、数字、下划线和连字符，长度为 1 到 48")
+		}
 		return nil
 	default:
 		return fmt.Errorf("不支持的 STEWARD_STREAM_DRIVER=%s", c.Driver)
 	}
+}
+
+func validStreamNamespace(value string) bool {
+	if len(value) == 0 || len(value) > 48 {
+		return false
+	}
+	for _, r := range value {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // Resolve 按配置与可用依赖算出实际驱动。

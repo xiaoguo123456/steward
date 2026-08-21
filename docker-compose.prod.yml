@@ -1,0 +1,103 @@
+name: steward-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-backend-image: &backend-image
+  image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/steward-backend:${IMAGE_TAG:-prod-latest}
+
+services:
+  migrate:
+    <<: *backend-image
+    command: ["migrate", "up"]
+    env_file: ${STEWARD_ENV_FILE:-.env.production}
+    restart: "no"
+    logging: *default-logging
+
+  api:
+    <<: *backend-image
+    command: ["api"]
+    env_file: ${STEWARD_ENV_FILE:-.env.production}
+    restart: unless-stopped
+    init: true
+    logging: *default-logging
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8787/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  worker:
+    <<: *backend-image
+    command: ["worker"]
+    env_file: ${STEWARD_ENV_FILE:-.env.production}
+    restart: unless-stopped
+    init: true
+    logging: *default-logging
+    stop_grace_period: 45s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  admin-api:
+    <<: *backend-image
+    command: ["admin-api"]
+    env_file: ${STEWARD_ENV_FILE:-.env.production}
+    restart: unless-stopped
+    init: true
+    logging: *default-logging
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8788/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  mobile-web:
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/steward-mobile-web:${IMAGE_TAG:-prod-latest}
+    restart: unless-stopped
+    init: true
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:4174/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  admin-web:
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/steward-admin-web:${IMAGE_TAG:-prod-latest}
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  nginx:
+    image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/nginx:1.27-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "8088:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      admin-api:
+        condition: service_healthy
+      mobile-web:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy

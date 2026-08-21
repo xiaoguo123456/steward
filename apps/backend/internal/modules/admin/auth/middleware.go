@@ -51,9 +51,10 @@ func NewMiddleware(svc *Service, cfg config.AdminConfig, logger *slog.Logger) *M
 	return &Middleware{svc: svc, cfg: cfg, logger: logger, origins: origins}
 }
 
-// 不需要会话的路径。只有登录一条。
+// 不需要会话的路径。健康探针只报告进程和数据库状态，不包含业务数据。
 var publicPaths = map[string]bool{
 	"/admin/v1/login": true,
+	"/healthz":        true,
 }
 
 // Authenticate 校验会话。

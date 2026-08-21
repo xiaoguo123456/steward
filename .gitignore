@@ -22,6 +22,8 @@ output/
 .env
 .env.*
 !.env.example
+!.env.test.example
+!.env.production.example
 local.properties
 *.keystore
 *.jks

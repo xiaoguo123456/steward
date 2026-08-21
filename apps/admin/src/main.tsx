@@ -22,7 +22,7 @@ function Bootstrap() {
     <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#07865F' } }}>
       <AntApp>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
+          <BrowserRouter basename="/admin">
             <SessionProvider>
               <Root />
             </SessionProvider>

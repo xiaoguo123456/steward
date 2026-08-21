@@ -29,15 +29,16 @@ import (
 
 // Transport 实现 streams.Transport。
 type Transport struct {
-	client *redis.Client
-	logger *slog.Logger
+	client    *redis.Client
+	logger    *slog.Logger
+	namespace string
 }
 
 // New 连接 Redis 并构造 Transport。
 //
 // 连不上时直接返回错误：配置了 Redis 却连不上是部署问题，
 // 应当在启动时就暴露，而不是等到用户点开对话才发现没有流。
-func New(ctx context.Context, url string, logger *slog.Logger) (*Transport, error) {
+func New(ctx context.Context, url, namespace string, logger *slog.Logger) (*Transport, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -57,7 +58,7 @@ func New(ctx context.Context, url string, logger *slog.Logger) (*Transport, erro
 		_ = client.Close()
 		return nil, fmt.Errorf("连接 Redis 失败：%w", err)
 	}
-	return &Transport{client: client, logger: logger}, nil
+	return &Transport{client: client, logger: logger, namespace: namespace}, nil
 }
 
 // Name 返回传输名。
@@ -74,7 +75,7 @@ func (t *Transport) Publish(ctx context.Context, turnID string, event streams.Ev
 	if err != nil {
 		return
 	}
-	if err := t.client.Publish(ctx, streams.ChannelFor(turnID), raw).Err(); err != nil {
+	if err := t.client.Publish(ctx, t.channelFor(turnID), raw).Err(); err != nil {
 		t.logger.Debug("推送流事件失败，客户端会退回轮询",
 			"turn_id", turnID, "error", err)
 	}
@@ -84,7 +85,7 @@ func (t *Transport) Publish(ctx context.Context, turnID string, event streams.Ev
 func (t *Transport) Subscribe(ctx context.Context, turnID string,
 	emit func(streams.Event) error) error {
 
-	sub := t.client.Subscribe(ctx, streams.ChannelFor(turnID))
+	sub := t.client.Subscribe(ctx, t.channelFor(turnID))
 	defer func() { _ = sub.Close() }()
 
 	// 等订阅真正建立再返回：否则调用方以为已经在听，
@@ -115,4 +116,8 @@ func (t *Transport) Subscribe(ctx context.Context, turnID string,
 			}
 		}
 	}
+}
+
+func (t *Transport) channelFor(turnID string) string {
+	return t.namespace + ":" + streams.ChannelFor(turnID)
 }

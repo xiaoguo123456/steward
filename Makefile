@@ -119,5 +119,8 @@ format-check: ## 校验 Go 代码已格式化
 
 .PHONY: build
 build: ## 构建后端二进制
+	mkdir -p .local/bin
 	cd $(BACKEND) && go build -o ../../.local/bin/api ./cmd/api
 	cd $(BACKEND) && go build -o ../../.local/bin/worker ./cmd/worker
+	cd $(BACKEND) && go build -o ../../.local/bin/admin-api ./cmd/admin-api
+	cd $(BACKEND) && go build -o ../../.local/bin/migrate ./cmd/migrate

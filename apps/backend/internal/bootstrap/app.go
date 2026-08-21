@@ -241,6 +241,7 @@ func newObjectStore(cfg config.Config, logger *slog.Logger) (storage.ObjectStore
 			Endpoint:        cfg.Storage.OSSEndpoint,
 			Region:          cfg.Storage.OSSRegion,
 			Bucket:          cfg.Storage.OSSBucket,
+			Prefix:          cfg.Storage.OSSPrefix,
 			AccessKeyID:     cfg.Storage.OSSAccessKeyID,
 			AccessKeySecret: cfg.Storage.OSSAccessKeySecret,
 		})
@@ -248,7 +249,8 @@ func newObjectStore(cfg config.Config, logger *slog.Logger) (storage.ObjectStore
 			return nil, nil, err
 		}
 		logger.Info("媒体使用阿里云 OSS",
-			"bucket", cfg.Storage.OSSBucket, "region", cfg.Storage.OSSRegion)
+			"bucket", cfg.Storage.OSSBucket, "region", cfg.Storage.OSSRegion,
+			"prefix", cfg.Storage.OSSPrefix)
 		return store, nil, nil
 	default:
 		return nil, nil, fmt.Errorf("不支持的 STEWARD_STORAGE_DRIVER=%s", cfg.Storage.Driver)
@@ -270,7 +272,7 @@ func newStreamTransport(ctx context.Context, cfg config.Config, db *database.DB,
 		return nil, 0, nil
 
 	case "redis":
-		transport, err := redisstream.New(ctx, cfg.Stream.RedisURL, logger)
+		transport, err := redisstream.New(ctx, cfg.Stream.RedisURL, cfg.Stream.Namespace, logger)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -278,7 +280,8 @@ func newStreamTransport(ctx context.Context, cfg config.Config, db *database.DB,
 			// 订阅连接便宜，可以放得比数据库方案高一到两个数量级。
 			limit = 256
 		}
-		logger.Info("Turn 进度流使用 Redis Pub/Sub", "max_concurrent", limit)
+		logger.Info("Turn 进度流使用 Redis Pub/Sub",
+			"namespace", cfg.Stream.Namespace, "max_concurrent", limit)
 		return transport, limit, nil
 
 	default:

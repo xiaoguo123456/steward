@@ -16,8 +16,12 @@ export function resolveApiBaseUrl(): string {
     return explicit.replace(/\/+$/, '');
   }
 
-  // Web 预览与后端同机，直接用 localhost。
+  // 部署后的 Web 与 API 同源，由入口 Nginx 分流；本地静态渲染时没有 location，
+  // 才退回开发端口。这样测试和生产可以共用同一套镜像构建逻辑。
   if (Platform.OS === 'web') {
+    if (typeof globalThis.location !== 'undefined' && globalThis.location.origin) {
+      return globalThis.location.origin;
+    }
     return `http://localhost:${DEFAULT_PORT}`;
   }
 

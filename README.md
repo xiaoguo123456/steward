@@ -41,7 +41,7 @@ STEWARD_EMBEDDED_WORKER=true make api    # API 与 Worker 单进程启动，便�
 pnpm mobile:web                          # 另开一个终端
 ```
 
-生产形态是两个进程：`make api` 与 `make worker` 分开跑。
+生产后端分为公共 API、Worker 和管理 API 三个进程。
 
 验证服务是否就绪：
 
@@ -54,8 +54,10 @@ curl -s localhost:8787/healthz
 ```text
 apps/mobile       Expo / React Native App
 apps/backend      Go HTTP API 与 Go River Worker
+apps/admin        React 管理台
 packages/contracts    OpenAPI 契约、错误码与 Fixture（唯一网络事实来源）
 packages/api-client   由 OpenAPI 生成的 TypeScript Client、Query Hooks 与 Zod 校验器
+packages/admin-api-client 由 Admin OpenAPI 生成的 TypeScript Client
 packages/ai-contracts AI 结构化输入输出的 JSON Schema
 docs              产品、设计、架构与后端 AI 指南
 ```
@@ -83,6 +85,10 @@ make generate          # 打包 OpenAPI → 生成 Go Server + sqlc + TS Client
 make check        # gofmt + go vet + eslint + go test + tsc
 ```
 
+## 自动部署
+
+测试环境随 `main` 自动发布，生产环境按 commit SHA 手工发布。机器复用、端口、Secrets 和首次配置见 [部署说明](./docs/部署说明.md)。
+
 ## 安全边界
 
 - 所有用户数据访问都在受行级安全约束的短事务内进行。API 与 Worker 使用非超级用户的 `steward_app` 角色连接，因为 `FORCE ROW LEVEL SECURITY` 约束不到超级用户。
@@ -97,6 +103,7 @@ make check        # gofmt + go vet + eslint + go test + tsc
 - [整体架构设计](./docs/整体架构设计.md)
 - [后端与 AI 开发指南](./docs/后端与AI开发指南.md)
 - [后台管理系统设计](./docs/后台管理系统设计.md)
+- [部署说明](./docs/部署说明.md)
 - [品牌与设计原则](./PRODUCT.md)
 - [原始 PRD](./AI事管家_PRD_v1.0.md)
 

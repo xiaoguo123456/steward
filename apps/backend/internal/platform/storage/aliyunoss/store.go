@@ -26,6 +26,8 @@ type Config struct {
 	Endpoint string
 	Region   string
 	Bucket   string
+	// Prefix 把逻辑对象键放到 Bucket 内的独立目录，例如 steward/test。
+	Prefix string
 	// AccessKeyID 与 AccessKeySecret 只存在于服务端，不下发给客户端。
 	AccessKeyID     string
 	AccessKeySecret string
@@ -35,6 +37,7 @@ type Config struct {
 type Store struct {
 	client *oss.Client
 	bucket string
+	prefix string
 }
 
 // New 构造适配器。
@@ -48,6 +51,10 @@ func New(cfg Config) (*Store, error) {
 	if cfg.Region == "" {
 		return nil, errors.New("必须配置 STEWARD_OSS_REGION，例如 cn-hangzhou")
 	}
+	prefix, err := normalizePrefix(cfg.Prefix)
+	if err != nil {
+		return nil, err
+	}
 
 	provider := credentials.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.AccessKeySecret)
 	options := oss.LoadDefaultConfig().
@@ -57,7 +64,7 @@ func New(cfg Config) (*Store, error) {
 		options = options.WithEndpoint(cfg.Endpoint)
 	}
 
-	return &Store{client: oss.NewClient(options), bucket: cfg.Bucket}, nil
+	return &Store{client: oss.NewClient(options), bucket: cfg.Bucket, prefix: prefix}, nil
 }
 
 // Name 返回适配器名称。
@@ -68,9 +75,10 @@ func (s *Store) Name() string { return "aliyun-oss" }
 // Content-Type 参与签名：客户端上传时必须带上同一个值，
 // 否则签名不匹配，无法把图片伪装成其他类型绕过后续校验。
 func (s *Store) PresignUpload(ctx context.Context, key, contentType string, ttl time.Duration) (storage.UploadGrant, error) {
+	physicalKey := s.physicalKey(key)
 	result, err := s.client.Presign(ctx, &oss.PutObjectRequest{
 		Bucket:      oss.Ptr(s.bucket),
-		Key:         oss.Ptr(key),
+		Key:         oss.Ptr(physicalKey),
 		ContentType: oss.Ptr(contentType),
 	}, oss.PresignExpires(ttl))
 	if err != nil {
@@ -95,7 +103,7 @@ func (s *Store) PresignUpload(ctx context.Context, key, contentType string, ttl 
 func (s *Store) PresignRead(ctx context.Context, key string, ttl time.Duration) (string, error) {
 	result, err := s.client.Presign(ctx, &oss.GetObjectRequest{
 		Bucket: oss.Ptr(s.bucket),
-		Key:    oss.Ptr(key),
+		Key:    oss.Ptr(s.physicalKey(key)),
 	}, oss.PresignExpires(ttl))
 	if err != nil {
 		return "", fmt.Errorf("生成读取地址失败：%w", err)
@@ -107,7 +115,7 @@ func (s *Store) PresignRead(ctx context.Context, key string, ttl time.Duration) 
 func (s *Store) Stat(ctx context.Context, key string) (storage.Asset, error) {
 	result, err := s.client.HeadObject(ctx, &oss.HeadObjectRequest{
 		Bucket: oss.Ptr(s.bucket),
-		Key:    oss.Ptr(key),
+		Key:    oss.Ptr(s.physicalKey(key)),
 	})
 	if err != nil {
 		if isNotFound(err) {
@@ -130,7 +138,7 @@ func (s *Store) Stat(ctx context.Context, key string) (storage.Asset, error) {
 func (s *Store) Open(ctx context.Context, key string) (io.ReadCloser, error) {
 	result, err := s.client.GetObject(ctx, &oss.GetObjectRequest{
 		Bucket: oss.Ptr(s.bucket),
-		Key:    oss.Ptr(key),
+		Key:    oss.Ptr(s.physicalKey(key)),
 	})
 	if err != nil {
 		if isNotFound(err) {
@@ -146,9 +154,10 @@ func (s *Store) Open(ctx context.Context, key string) (io.ReadCloser, error) {
 // Bucket 开启版本控制时，DeleteObject 只会写一个删除标记；
 // 因此这里显式列出并删除该 key 的全部版本，保证“删除后不可恢复”。
 func (s *Store) Delete(ctx context.Context, key string) error {
+	physicalKey := s.physicalKey(key)
 	paginator := s.client.NewListObjectVersionsPaginator(&oss.ListObjectVersionsRequest{
 		Bucket: oss.Ptr(s.bucket),
-		Prefix: oss.Ptr(key),
+		Prefix: oss.Ptr(physicalKey),
 	})
 
 	deletedAny := false
@@ -158,12 +167,12 @@ func (s *Store) Delete(ctx context.Context, key string) error {
 			return fmt.Errorf("列出对象版本失败：%w", err)
 		}
 		for _, version := range page.ObjectVersions {
-			if version.Key == nil || *version.Key != key {
+			if version.Key == nil || *version.Key != physicalKey {
 				continue
 			}
 			if _, err := s.client.DeleteObject(ctx, &oss.DeleteObjectRequest{
 				Bucket:    oss.Ptr(s.bucket),
-				Key:       oss.Ptr(key),
+				Key:       oss.Ptr(physicalKey),
 				VersionId: version.VersionId,
 			}); err != nil {
 				return fmt.Errorf("删除对象版本失败：%w", err)
@@ -171,12 +180,12 @@ func (s *Store) Delete(ctx context.Context, key string) error {
 			deletedAny = true
 		}
 		for _, marker := range page.ObjectDeleteMarkers {
-			if marker.Key == nil || *marker.Key != key {
+			if marker.Key == nil || *marker.Key != physicalKey {
 				continue
 			}
 			if _, err := s.client.DeleteObject(ctx, &oss.DeleteObjectRequest{
 				Bucket:    oss.Ptr(s.bucket),
-				Key:       oss.Ptr(key),
+				Key:       oss.Ptr(physicalKey),
 				VersionId: marker.VersionId,
 			}); err != nil {
 				return fmt.Errorf("删除对象删除标记失败：%w", err)
@@ -189,12 +198,32 @@ func (s *Store) Delete(ctx context.Context, key string) error {
 	if !deletedAny {
 		if _, err := s.client.DeleteObject(ctx, &oss.DeleteObjectRequest{
 			Bucket: oss.Ptr(s.bucket),
-			Key:    oss.Ptr(key),
+			Key:    oss.Ptr(physicalKey),
 		}); err != nil && !isNotFound(err) {
 			return fmt.Errorf("删除对象失败：%w", err)
 		}
 	}
 	return nil
+}
+
+func normalizePrefix(raw string) (string, error) {
+	prefix := strings.Trim(strings.TrimSpace(raw), "/")
+	if prefix == "" {
+		return "", nil
+	}
+	for _, part := range strings.Split(prefix, "/") {
+		if part == "" || part == "." || part == ".." {
+			return "", errors.New("STEWARD_OSS_PREFIX 必须是规范的相对路径")
+		}
+	}
+	return prefix, nil
+}
+
+func (s *Store) physicalKey(key string) string {
+	if s.prefix == "" {
+		return key
+	}
+	return s.prefix + "/" + key
 }
 
 func isNotFound(err error) bool {
