@@ -251,6 +251,7 @@ export * from './reviewSuggestion';
 export * from './searchHit';
 export * from './searchParams';
 export * from './searchResponse';
+export * from './serviceUnavailableResponse';
 export * from './shoppingCategory';
 export * from './shoppingDraft';
 export * from './shoppingDraftItem';

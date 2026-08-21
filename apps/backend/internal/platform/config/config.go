@@ -38,8 +38,20 @@ type Config struct {
 	AdminReportingTimezone string
 
 	AI      AIConfig
+	SMS     SMSConfig
 	Storage StorageConfig
 	Stream  StreamConfig
+}
+
+// SMSConfig 是验证码短信 Provider 配置。
+type SMSConfig struct {
+	// Provider 取 dev 或 aliyun。dev 只允许配合固定验证码在本地使用。
+	Provider        string
+	Endpoint        string
+	AccessKeyID     string
+	AccessKeySecret string
+	SignName        string
+	TemplateCode    string
 }
 
 // StreamConfig 是 Turn 进度流的配置。
@@ -120,6 +132,14 @@ func Load() (Config, error) {
 			ModelTranscribe: env("STEWARD_AI_MODEL_TRANSCRIBE", ""),
 			MaxOutputTokens: envInt("STEWARD_AI_MAX_OUTPUT_TOKENS", 2048),
 		},
+		SMS: SMSConfig{
+			Provider:        env("STEWARD_SMS_PROVIDER", "dev"),
+			Endpoint:        env("STEWARD_ALIYUN_SMS_ENDPOINT", "dysmsapi.aliyuncs.com"),
+			AccessKeyID:     env("STEWARD_ALIYUN_SMS_ACCESS_KEY_ID", ""),
+			AccessKeySecret: env("STEWARD_ALIYUN_SMS_ACCESS_KEY_SECRET", ""),
+			SignName:        env("STEWARD_ALIYUN_SMS_SIGN_NAME", ""),
+			TemplateCode:    env("STEWARD_ALIYUN_SMS_TEMPLATE_CODE", ""),
+		},
 		Stream: StreamConfig{
 			Driver:        env("STEWARD_STREAM_DRIVER", "auto"),
 			RedisURL:      env("STEWARD_REDIS_URL", ""),
@@ -162,6 +182,9 @@ func Load() (Config, error) {
 	if err := cfg.AI.validate(); err != nil {
 		return Config{}, err
 	}
+	if err := cfg.SMS.validate(cfg.DevSMSCode); err != nil {
+		return Config{}, err
+	}
 	if err := cfg.Storage.validate(); err != nil {
 		return Config{}, err
 	}
@@ -169,6 +192,42 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	return cfg, nil
+}
+
+func (c SMSConfig) validate(devCode string) error {
+	switch c.Provider {
+	case "dev":
+		if devCode == "" {
+			return errors.New("STEWARD_SMS_PROVIDER=dev 时必须设置 STEWARD_DEV_SMS_CODE")
+		}
+		return nil
+	case "aliyun":
+		if devCode != "" {
+			return errors.New("STEWARD_SMS_PROVIDER=aliyun 时必须清空 STEWARD_DEV_SMS_CODE")
+		}
+		missing := make([]string, 0, 5)
+		if c.Endpoint == "" {
+			missing = append(missing, "STEWARD_ALIYUN_SMS_ENDPOINT")
+		}
+		if c.AccessKeyID == "" {
+			missing = append(missing, "STEWARD_ALIYUN_SMS_ACCESS_KEY_ID")
+		}
+		if c.AccessKeySecret == "" {
+			missing = append(missing, "STEWARD_ALIYUN_SMS_ACCESS_KEY_SECRET")
+		}
+		if c.SignName == "" {
+			missing = append(missing, "STEWARD_ALIYUN_SMS_SIGN_NAME")
+		}
+		if c.TemplateCode == "" {
+			missing = append(missing, "STEWARD_ALIYUN_SMS_TEMPLATE_CODE")
+		}
+		if len(missing) > 0 {
+			return fmt.Errorf("STEWARD_SMS_PROVIDER=aliyun 时必须设置：%s", strings.Join(missing, "、"))
+		}
+		return nil
+	default:
+		return fmt.Errorf("不支持的 STEWARD_SMS_PROVIDER=%s，可选 dev 或 aliyun", c.Provider)
+	}
 }
 
 // validate 检查 Provider 配置的完整性。
@@ -277,6 +336,7 @@ func LoadForTest() Config {
 		DevSMSCode:           "123456",
 		MemoryFingerprintKey: "test-fingerprint-key",
 		AI:                   AIConfig{Provider: "fake"},
+		SMS:                  SMSConfig{Provider: "dev"},
 		Storage:              StorageConfig{Driver: "localfs", Root: os.TempDir() + "/steward-test-storage"},
 	}
 }

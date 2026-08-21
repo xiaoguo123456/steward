@@ -25,11 +25,12 @@ const (
 	CodeRateLimited       Code = "RATE_LIMITED"
 	CodeInternal          Code = "INTERNAL_ERROR"
 
-	CodePhoneInvalid        Code = "PHONE_INVALID"
-	CodePhoneInUse          Code = "PHONE_ALREADY_IN_USE"
-	CodeCodeInvalid         Code = "VERIFICATION_CODE_INVALID"
-	CodeCodeExpired         Code = "VERIFICATION_CODE_EXPIRED"
-	CodeRefreshTokenInvalid Code = "REFRESH_TOKEN_INVALID"
+	CodePhoneInvalid           Code = "PHONE_INVALID"
+	CodePhoneInUse             Code = "PHONE_ALREADY_IN_USE"
+	CodeCodeInvalid            Code = "VERIFICATION_CODE_INVALID"
+	CodeCodeExpired            Code = "VERIFICATION_CODE_EXPIRED"
+	CodeRefreshTokenInvalid    Code = "REFRESH_TOKEN_INVALID"
+	CodeSMSProviderUnavailable Code = "SMS_PROVIDER_UNAVAILABLE"
 
 	CodeTaskListNameDuplicated Code = "TASK_LIST_NAME_DUPLICATED"
 	CodeTaskListNotEmpty       Code = "TASK_LIST_NOT_EMPTY"
@@ -157,7 +158,7 @@ func (e *Error) HTTPStatus() int {
 		return http.StatusTooManyRequests
 	case CodeInternal:
 		return http.StatusInternalServerError
-	case CodeAIProviderUnavailable:
+	case CodeAIProviderUnavailable, CodeSMSProviderUnavailable:
 		return http.StatusServiceUnavailable
 	default:
 		return http.StatusBadRequest
@@ -167,7 +168,8 @@ func (e *Error) HTTPStatus() int {
 // Retryable 说明客户端能否用相同参数安全重试。
 func (e *Error) Retryable() bool {
 	switch e.Code {
-	case CodeInternal, CodeRateLimited, CodeAIProviderUnavailable, CodeAIProviderRateLimited:
+	case CodeInternal, CodeRateLimited, CodeAIProviderUnavailable, CodeAIProviderRateLimited,
+		CodeSMSProviderUnavailable:
 		return true
 	default:
 		return false
@@ -217,6 +219,8 @@ func defaultMessage(code Code) string {
 		return "验证码已过期，请重新获取。"
 	case CodeRefreshTokenInvalid:
 		return "登录状态已失效，请重新登录。"
+	case CodeSMSProviderUnavailable:
+		return "短信发送暂时不可用，请稍后重试。"
 	case CodeTaskListNameDuplicated:
 		return "已有同名清单，请换一个名称。"
 	case CodeTaskListNotEmpty:

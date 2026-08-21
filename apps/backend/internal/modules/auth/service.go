@@ -6,6 +6,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"strings"
 	"time"
@@ -41,6 +42,11 @@ type UserInitializer interface {
 	EnsureDefaults(ctx context.Context, q *dbgen.Queries, userID string) error
 }
 
+// CodeSender 是验证码短信通道的最小边界。
+type CodeSender interface {
+	SendCode(ctx context.Context, phone, code, purpose string) error
+}
+
 // Service 是登录相关的应用服务。
 type Service struct {
 	db     *database.DB
@@ -48,11 +54,13 @@ type Service struct {
 	users  UserInitializer
 	// devCode 非空时跳过真实短信通道，固定使用该验证码，仅用于开发环境。
 	devCode string
+	sender  CodeSender
 }
 
 // New 构造 Service。
-func New(db *database.DB, tokens *auth.TokenService, users UserInitializer, devCode string) *Service {
-	return &Service{db: db, tokens: tokens, users: users, devCode: devCode}
+func New(db *database.DB, tokens *auth.TokenService, users UserInitializer,
+	devCode string, sender CodeSender) *Service {
+	return &Service{db: db, tokens: tokens, users: users, devCode: devCode, sender: sender}
 }
 
 // CodeResult 是发送验证码的结果。
@@ -110,6 +118,9 @@ func (s *Service) RequestCode(ctx context.Context, phone, purpose string) (CodeR
 	if purpose == "" {
 		purpose = "login"
 	}
+	if s.devCode == "" && s.sender == nil {
+		return CodeResult{}, apperr.New(apperr.CodeSMSProviderUnavailable)
+	}
 
 	code := s.devCode
 	if code == "" {
@@ -122,12 +133,13 @@ func (s *Service) RequestCode(ctx context.Context, phone, purpose string) (CodeR
 
 	now := time.Now()
 	var result CodeResult
+	verificationCodeID := idgen.New(idgen.PrefixVerificationCode)
 	err := s.db.InTxAnonymous(ctx, func(ctx context.Context, q *dbgen.Queries) error {
 		// 冷却期内重复请求直接拒绝，避免被用来轰炸短信。
 		latest, err := q.GetLatestVerificationCode(ctx, dbgen.GetLatestVerificationCodeParams{
 			Phone: phone, Purpose: purpose,
 		})
-		if err == nil && now.Sub(latest.CreatedAt) < resendCooldown {
+		if err == nil && latest.ConsumedAt == nil && now.Sub(latest.CreatedAt) < resendCooldown {
 			return apperr.Newf(apperr.CodeRateLimited, "请求过于频繁，请 %d 秒后重试。",
 				int((resendCooldown-now.Sub(latest.CreatedAt)).Seconds())+1)
 		}
@@ -136,7 +148,7 @@ func (s *Service) RequestCode(ctx context.Context, phone, purpose string) (CodeR
 		}
 
 		if _, err := q.CreateVerificationCode(ctx, dbgen.CreateVerificationCodeParams{
-			ID:        idgen.New(idgen.PrefixVerificationCode),
+			ID:        verificationCodeID,
 			Phone:     phone,
 			Purpose:   purpose,
 			CodeHash:  auth.HashToken(code),
@@ -152,7 +164,27 @@ func (s *Service) RequestCode(ctx context.Context, phone, purpose string) (CodeR
 		}
 		return nil
 	})
-	return result, err
+	if err != nil {
+		return CodeResult{}, err
+	}
+	if s.devCode != "" {
+		return result, nil
+	}
+
+	// 外部短信调用不能占着数据库事务。发送失败时立即作废本次验证码，
+	// 并允许用户立刻重试，不让一条未送达的验证码占用冷却时间。
+	if err := s.sender.SendCode(ctx, phone, code, purpose); err != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+		cleanupErr := s.db.InTxAnonymous(cleanupCtx, func(ctx context.Context, q *dbgen.Queries) error {
+			return q.ConsumeVerificationCode(ctx, verificationCodeID)
+		})
+		cancel()
+		if cleanupErr != nil {
+			err = errors.Join(err, cleanupErr)
+		}
+		return CodeResult{}, apperr.New(apperr.CodeSMSProviderUnavailable).WithCause(err)
+	}
+	return result, nil
 }
 
 // LoginResult 是登录成功的结果。

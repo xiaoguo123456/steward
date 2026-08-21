@@ -42,6 +42,13 @@ TooManyRequests:
       schema:
         $ref: './schemas/common.yaml#/ErrorResponse'
 
+ServiceUnavailable:
+  description: 外部服务暂时不可用，可稍后重试。
+  content:
+    application/json:
+      schema:
+        $ref: './schemas/common.yaml#/ErrorResponse'
+
 InternalError:
   description: 服务端内部错误。
   content:
