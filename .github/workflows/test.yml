@@ -215,3 +215,77 @@ jobs:
             $compose ps
             $compose logs --tail=100 api admin-api worker migrate nginx
             exit 1
+
+  build-android-apk:
+    name: 生成 Android 测试包
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    env:
+      ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
+      EXPO_PUBLIC_API_URL: https://test-steward.qhzhiyin.com
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: steward-test
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 计算包版本和文件名
+        id: vars
+        run: |
+          {
+            echo "version_code=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))"
+            echo "apk_name=steward-test-r${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA::12}.apk"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+
+      - name: 安装依赖和 Android SDK
+        run: |
+          pnpm install --frozen-lockfile
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.1.12297006"
+
+      - name: 恢复测试签名
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/steward-test.jks
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+
+      - name: 构建并签名测试 APK
+        env:
+          APP_VARIANT: test
+          STEWARD_ANDROID_VERSION_CODE: ${{ steps.vars.outputs.version_code }}
+          STEWARD_BUILD_SHA: ${{ github.sha }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/steward-test.jks
+        run: scripts/build-android-apk.sh test "output/android/${{ steps.vars.outputs.apk_name }}"
+
+      - name: 保存测试 APK（30 天）
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.vars.outputs.apk_name }}
+          path: |
+            output/android/${{ steps.vars.outputs.apk_name }}
+            output/android/${{ steps.vars.outputs.apk_name }}.sha256
+          retention-days: 30
+          if-no-files-found: error
+          overwrite: true
