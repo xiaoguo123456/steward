@@ -67,12 +67,23 @@ pnpm mobile:live
 
 ## Android APK 预览包
 
-当前 Android Release APK 已将 JavaScript 与静态资源完整打入安装包，安装后无需连接电脑或 Metro 服务即可运行。该版本仍使用本地 Mock 数据，只用于前端视觉与交互验收。
+Android Release APK 会把 JavaScript、静态资源和 API 地址写入安装包，安装后无需连接电脑或 Metro。打包时必须明确指定环境地址。
 
 本地构建需要 JDK 17、Android SDK Platform 36、Build Tools 36，以及 Android NDK 27。配置好 `JAVA_HOME` 与 `ANDROID_HOME` 后执行：
 
 ```bash
 cd apps/mobile/android
+
+# 测试包
+NODE_ENV=production \
+EXPO_PUBLIC_API_URL=https://test-steward.qhzhiyin.com \
+./gradlew :app:assembleRelease \
+  -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+  --no-daemon
+
+# 生产包
+NODE_ENV=production \
+EXPO_PUBLIC_API_URL=https://steward.qhzhiyin.com \
 ./gradlew :app:assembleRelease \
   -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
   --no-daemon
@@ -84,7 +95,7 @@ cd apps/mobile/android
 apps/mobile/android/app/build/outputs/apk/release/app-release.apk
 ```
 
-当前 Release 配置使用开发调试证书签名，适合直接安装和内部验收，不可作为应用商店正式发布包。正式发布前需要配置独立且妥善保管的生产签名密钥，并重新生成发行产物。
+测试包和生产包当前共用包名 `com.aisteward.mobile`，手机上不能同时安装。Release 配置使用开发调试证书签名，只适合内部验收；正式发布前需要配置生产签名。
 
 在 Android 手机上打开 APK 后，如果系统拦截安装，需要为当前浏览器或文件管理器临时开启“允许安装未知应用”。
 
