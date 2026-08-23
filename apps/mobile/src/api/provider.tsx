@@ -89,7 +89,11 @@ export function ApiProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     // 任何查询遇到登录失效都统一跳回登录页。
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      if (event.type === 'updated' && isUnauthenticated(event.query.state.error)) {
+      if (
+        session.isLoggedIn() &&
+        event.type === 'updated' &&
+        isUnauthenticated(event.query.state.error)
+      ) {
         void session.signOut();
       }
     });

@@ -17,15 +17,22 @@ import { useQueryClient } from '@tanstack/react-query';
  * 记录项按需创建：按 builtin_key 查询时服务端顺带建好，
  * 客户端不硬编码 ID，也不靠名称匹配（用户可以改名）。
  */
-export function useBuiltinTracker(key: TrackerBuiltinKey, options?: { limit?: number }) {
+export function useBuiltinTracker(
+  key: TrackerBuiltinKey,
+  options?: { limit?: number; enabled?: boolean },
+) {
   const queryClient = useQueryClient();
+  const enabled = options?.enabled ?? true;
 
-  const trackers = useListTrackers({ builtin_key: key });
+  const trackers = useListTrackers(
+    { builtin_key: key },
+    { query: { enabled } },
+  );
   const tracker = trackers.data?.data[0];
 
   const records = useListRecords(
     { tracker_id: tracker?.id, limit: options?.limit ?? 50 },
-    { query: { enabled: Boolean(tracker) } },
+    { query: { enabled: enabled && Boolean(tracker) } },
   );
 
   const create = useCreateRecord({

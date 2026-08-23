@@ -102,7 +102,7 @@ func (a *App) Handler() http.Handler {
 	r.Use(a.middleware.ProtectWrites)
 
 	// 运维探针不属于产品契约，因此不放进 Admin OpenAPI。
-	r.Get("/healthz", a.healthHandler)
+	httpx.RegisterHealthRoutes(r, "/healthz", a.healthHandler)
 
 	handler := adminapi.NewStrictHandler(a.Server, nil)
 	adminapi.HandlerFromMux(handler, r)

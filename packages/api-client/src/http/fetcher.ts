@@ -58,13 +58,20 @@ async function requestWithAuth(
   const response = await fetch(joinUrl(config.baseUrl, url), { ...init, headers });
 
   // Access Token 过期时静默续期并重放一次。只重放一次，避免无限循环。
-  if (response.status === 401 && allowRetry) {
+  // Refresh 请求本身失败时不能再次触发 Refresh，否则会等待自己完成，形成
+  // 永远不结束的 Promise 环。它应把 401 原样交给 SessionStore 清理登录态。
+  if (response.status === 401 && allowRetry && !isRefreshRequest(url)) {
     const refreshed = await config.refreshTokens();
     if (refreshed) {
       return requestWithAuth(url, init, false);
     }
   }
   return response;
+}
+
+function isRefreshRequest(url: string): boolean {
+  const path = url.split('?', 1)[0].replace(/\/+$/, '');
+  return path.endsWith('/v1/auth/refresh');
 }
 
 /** 为写请求补上幂等键；调用方已显式提供时保持不变。 */

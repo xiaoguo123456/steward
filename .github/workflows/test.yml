@@ -223,7 +223,7 @@ jobs:
 
             healthy=0
             for i in $(seq 1 36); do
-              if curl -fsS http://127.0.0.1:8088/healthz >/dev/null \
+              if curl -fsSI http://127.0.0.1:8088/healthz >/dev/null \
                 && curl -fsS http://127.0.0.1:8088/admin-healthz >/dev/null \
                 && curl -fsS http://127.0.0.1:8088/ >/dev/null \
                 && curl -fsS http://127.0.0.1:8088/admin/ >/dev/null; then
@@ -246,7 +246,7 @@ jobs:
               $compose up -d --remove-orphans
               $compose restart nginx
               for i in $(seq 1 12); do
-                if curl -fsS http://127.0.0.1:8088/healthz >/dev/null \
+                if curl -fsSI http://127.0.0.1:8088/healthz >/dev/null \
                   && curl -fsS http://127.0.0.1:8088/admin-healthz >/dev/null; then
                   echo "已回滚到 $previous_tag；本次部署仍判定失败。"
                   break

@@ -41,9 +41,14 @@ class SessionStore {
   }
 
   async signOut(): Promise<void> {
+    const wasLoggedIn = this.session !== null;
     this.session = null;
+    // 先同步切断内存会话并只通知一次。多个并发请求可能同时收到 401；
+    // 如果每个请求都清缓存、重建登录路由，就会形成可见的页面闪烁。
+    if (wasLoggedIn) {
+      this.emit();
+    }
     await clearSession();
-    this.emit();
   }
 
   /**

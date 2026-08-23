@@ -1,5 +1,6 @@
 import { type PropsWithChildren, createContext, useCallback, useContext, useMemo } from 'react';
 
+import { useBootState } from '@/api/provider';
 import {
   numberOf,
   textOf,
@@ -27,7 +28,13 @@ type FocusPrototypeValue = {
 const FocusPrototypeContext = createContext<FocusPrototypeValue | null>(null);
 
 export function FocusPrototypeProvider({ children }: PropsWithChildren) {
-  const tracker = useBuiltinTracker('focus', { limit: 50 });
+  const boot = useBootState();
+  const tracker = useBuiltinTracker('focus', {
+    limit: 50,
+    // 这个 Provider 挂在根布局，登录页也会渲染。没有会话时请求用户数据会
+    // 返回 401，进而触发清缓存和登录路由重建，形成无限闪烁循环。
+    enabled: boot === 'signed-in',
+  });
 
   const saveRecord = useCallback(
     (record: NewFocusRecord) => {

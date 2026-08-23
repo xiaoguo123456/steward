@@ -28,7 +28,7 @@ func (a *App) Router() http.Handler {
 	r.Use(httpx.AuthMiddleware(a.Tokens))
 
 	// /healthz 是运维探针，不属于产品 API 契约，因此不在 OpenAPI 中定义。
-	r.Get("/healthz", a.healthHandler)
+	httpx.RegisterHealthRoutes(r, "/healthz", a.healthHandler)
 
 	// 本地存储的传输端点。它是存储驱动的实现细节而不是产品 API：
 	// 客户端只按签名 URL 收发字节，不关心背后是 OSS 还是本地磁盘。
