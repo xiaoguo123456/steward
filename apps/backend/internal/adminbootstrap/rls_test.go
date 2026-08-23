@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
@@ -31,7 +33,7 @@ func openAdminDB(t *testing.T) *database.DB {
 	defer cancel()
 	db, err := database.Open(ctx, dsn)
 	if err != nil {
-		t.Fatalf("以 steward_admin 连接失败：%v", err)
+		t.Fatalf("以后台数据库账号连接失败：%v", err)
 	}
 	t.Cleanup(db.Close)
 	return db
@@ -40,10 +42,15 @@ func openAdminDB(t *testing.T) *database.DB {
 // 后台账号不能是超级用户，也不能带 BYPASSRLS。
 func TestAdminRoleCannotBypassRLS(t *testing.T) {
 	db := openAdminDB(t)
+	poolConfig, err := pgxpool.ParseConfig(config.AdminTestDatabaseURL())
+	if err != nil {
+		t.Fatalf("解析后台测试数据库地址失败：%v", err)
+	}
+	expectedName := poolConfig.ConnConfig.User
 
 	var isSuper, canBypass bool
 	var name string
-	err := db.InTxAnonymous(context.Background(), func(ctx context.Context, _ *dbgen.Queries) error {
+	err = db.InTxAnonymous(context.Background(), func(ctx context.Context, _ *dbgen.Queries) error {
 		tx, err := database.TxFrom(ctx)
 		if err != nil {
 			return err
@@ -56,8 +63,8 @@ func TestAdminRoleCannotBypassRLS(t *testing.T) {
 		t.Fatalf("查询角色属性失败：%v", err)
 	}
 
-	if name != "steward_admin" {
-		t.Errorf("后台应当以 steward_admin 连接，实际 %s", name)
+	if name != expectedName {
+		t.Errorf("后台应当以配置账号 %s 连接，实际 %s", expectedName, name)
 	}
 	if isSuper {
 		t.Error("后台账号不能是超级用户：FORCE ROW LEVEL SECURITY 约束不到它")

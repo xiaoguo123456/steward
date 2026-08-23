@@ -20,7 +20,7 @@ import (
 //
 //  1. 每张用户表都 ENABLE + FORCE ROW LEVEL SECURITY。
 //  2. 应用连接用的是 NOSUPERUSER NOBYPASSRLS 的 steward_app 角色——
-//     超级用户和表属主都不受 FORCE 约束，用它们连接会让所有策略形同虚设。
+//     超级用户或 BYPASSRLS 角色不受策略约束，用它们连接会让所有隔离形同虚设。
 //  3. 每个事务开始时用 set_config 写入 app.user_id。
 //
 // 因此这里不 mock 任何东西：必须连真实数据库、用真实角色跑。
@@ -344,7 +344,6 @@ func TestAllUserTablesForceRLS(t *testing.T) {
 		"recipes":          true,
 		"goose_db_version": true,
 	}
-
 	err := db.InTxAnonymous(ctx, func(ctx context.Context, _ *dbgen.Queries) error {
 		tx, err := database.TxFrom(ctx)
 		if err != nil {
@@ -389,6 +388,117 @@ func TestAllUserTablesForceRLS(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("检查表属性出错：%v", err)
+	}
+}
+
+// users 没有 user_id 列，不在上面的自动扫描中。登录前函数所需的额外策略
+// 必须保留 FORCE，只在 SECURITY DEFINER 切换身份时生效。
+func TestSecurityDefinerPoliciesStayNarrow(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	err := db.InTxAnonymous(ctx, func(ctx context.Context, _ *dbgen.Queries) error {
+		tx, err := database.TxFrom(ctx)
+		if err != nil {
+			return err
+		}
+		rows, err := tx.Query(ctx, `
+			SELECT relname, relrowsecurity, relforcerowsecurity
+			FROM pg_class
+			WHERE oid IN ('users'::regclass, 'auth_refresh_tokens'::regclass)
+			ORDER BY relname
+		`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		checked := 0
+		for rows.Next() {
+			var name string
+			var enabled, forced bool
+			if err := rows.Scan(&name, &enabled, &forced); err != nil {
+				return err
+			}
+			checked++
+			if !enabled {
+				t.Errorf("表 %s 必须 ENABLE ROW LEVEL SECURITY", name)
+			}
+			if !forced {
+				t.Errorf("表 %s 必须 FORCE ROW LEVEL SECURITY", name)
+			}
+		}
+		if checked != 2 {
+			t.Fatalf("应检查 2 张 SECURITY DEFINER 表，实际 %d", checked)
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		for _, table := range []string{"users", "auth_refresh_tokens"} {
+			var count int
+			query := fmt.Sprintf("SELECT count(*) FROM %s", table)
+			if err := tx.QueryRow(ctx, query).Scan(&count); err != nil {
+				return err
+			}
+			if count != 0 {
+				t.Errorf("匿名应用账号从表 %s 读到了 %d 行", table, count)
+			}
+		}
+
+		var selectPolicies int
+		if err := tx.QueryRow(ctx, `
+			SELECT count(*)
+			FROM pg_policies
+			WHERE schemaname = 'public'
+			  AND policyname IN (
+			      'users_auth_definer_select',
+			      'refresh_tokens_auth_definer_select'
+			  )
+			  AND qual = '(CURRENT_USER <> SESSION_USER)'
+		`).Scan(&selectPolicies); err != nil {
+			return err
+		}
+		if selectPolicies != 2 {
+			t.Errorf("应有 2 条受限的登录前读取策略，实际 %d", selectPolicies)
+		}
+
+		var insertPolicies int
+		if err := tx.QueryRow(ctx, `
+			SELECT count(*)
+			FROM pg_policies
+			WHERE schemaname = 'public'
+			  AND policyname = 'users_auth_definer_insert'
+			  AND with_check = '(CURRENT_USER <> SESSION_USER)'
+		`).Scan(&insertPolicies); err != nil {
+			return err
+		}
+		if insertPolicies != 1 {
+			t.Errorf("应有 1 条受限的用户创建策略，实际 %d", insertPolicies)
+		}
+
+		var publicExecute int
+		if err := tx.QueryRow(ctx, `
+			SELECT count(*)
+			FROM pg_proc p,
+			     aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+			WHERE p.proname IN (
+			    'auth_find_user_by_phone',
+			    'auth_create_user',
+			    'auth_find_refresh_token'
+			)
+			  AND acl.grantee = 0
+			  AND acl.privilege_type = 'EXECUTE'
+		`).Scan(&publicExecute); err != nil {
+			return err
+		}
+		if publicExecute != 0 {
+			t.Errorf("登录前 SECURITY DEFINER 函数仍有 %d 条 PUBLIC 执行授权", publicExecute)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("检查 SECURITY DEFINER 表失败：%v", err)
 	}
 }
 

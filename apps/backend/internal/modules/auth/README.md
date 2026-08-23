@@ -32,3 +32,8 @@
 登录前还没有 `app.user_id`，受 RLS 保护的 `users` 与 `auth_refresh_tokens` 无法直接读写。
 这三个查询通过迁移中定义的 SECURITY DEFINER 函数访问，并因为 sqlc 不解析
 `RETURNS TABLE` 的列类型而在 `repository.go` 中用 pgx 手写，SQL 集中在该文件内便于审计。
+
+这两张表保持 `ENABLE + FORCE ROW LEVEL SECURITY`。阿里云 RDS 的迁移账号没有
+`BYPASSRLS`，因此另有只对表属主、且仅在 `current_user != session_user` 时生效的
+最小 SELECT／INSERT 策略；该条件只会在 SECURITY DEFINER 切换执行身份时成立。
+三个函数同时撤销 `PUBLIC` 的默认执行权，只允许迁移明确授权的应用角色调用。
