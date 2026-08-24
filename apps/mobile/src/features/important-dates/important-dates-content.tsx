@@ -8,7 +8,7 @@ import {
 } from '@steward/api-client';
 import type { ComponentProps } from 'react';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -22,6 +22,14 @@ import {
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import {
+  createImportantDateYearOptions,
+  createNumberOptions,
+  getDaysInMonth,
+  parseImportantDateParts,
+  updateImportantDatePart,
+  type ImportantDatePart,
+} from '@/features/important-dates/important-date-picker';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type ImportantDateKind = 'birthday' | 'anniversary' | 'expiry' | 'other';
@@ -63,7 +71,7 @@ type KindSpec = {
   placeholder: string;
 };
 
-const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+const dateWheelItemHeight = 44;
 
 const kindSpecs: Record<ImportantDateKind, KindSpec> = {
   birthday: {
@@ -109,7 +117,7 @@ function startOfToday() {
 }
 
 function parseDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number);
+  const { year, month, day } = parseImportantDateParts(value);
   return new Date(year, month - 1, day);
 }
 
@@ -180,11 +188,6 @@ function formatDateLabel(item: ImportantDateItem) {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
-function formatSelectedDate(value: string) {
-  const date = parseDate(value);
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
-}
-
 function formatCountdown(days: number) {
   if (days < 0) return '已过期';
   if (days === 0) return '今天';
@@ -243,103 +246,134 @@ function ImportantDateRow({
   );
 }
 
-function MonthCalendar({
-  selectedDate,
-  visibleMonth,
-  onChangeMonth,
-  onSelectDate,
+function DateWheelColumn({
+  label,
+  onChange,
+  selectedValue,
+  values,
 }: {
-  selectedDate: string;
-  visibleMonth: Date;
-  onChangeMonth: (date: Date) => void;
-  onSelectDate: (date: string) => void;
+  label: string;
+  onChange: (value: number) => void;
+  selectedValue: number;
+  values: number[];
 }) {
-  const calendarDays = useMemo(() => {
-    const year = visibleMonth.getFullYear();
-    const month = visibleMonth.getMonth();
-    const firstWeekday = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const cells: (number | null)[] = Array.from({ length: firstWeekday }, () => null);
+  const scrollRef = useRef<ScrollView>(null);
+  const wheelSelectedValueRef = useRef<number | null>(null);
+  const selectedIndex = Math.max(0, values.indexOf(selectedValue));
 
-    for (let day = 1; day <= daysInMonth; day += 1) cells.push(day);
-    while (cells.length % 7 !== 0) cells.push(null);
-    return cells;
-  }, [visibleMonth]);
+  useEffect(() => {
+    if (wheelSelectedValueRef.current === selectedValue) {
+      wheelSelectedValueRef.current = null;
+      return;
+    }
 
-  const changeMonth = (offset: number) => {
-    onChangeMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1));
+    const frame = requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        animated: false,
+        y: selectedIndex * dateWheelItemHeight,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedIndex, selectedValue]);
+
+  const selectOffset = (offset: number) => {
+    const index = Math.max(0, Math.min(values.length - 1, Math.round(offset / dateWheelItemHeight)));
+    const value = values[index];
+    if (value !== undefined && value !== selectedValue) {
+      wheelSelectedValueRef.current = value;
+      onChange(value);
+    }
   };
 
-  const todayIso = toIsoDate(startOfToday());
-
   return (
-    <View style={styles.calendarPanel}>
-      <View style={styles.calendarHeader}>
-        <Pressable
-          accessibilityLabel="上个月"
-          accessibilityRole="button"
-          hitSlop={6}
-          onPress={() => changeMonth(-1)}
-          style={({ pressed }) => [styles.calendarArrow, pressed && styles.pressed]}
+    <View style={styles.dateWheelColumn}>
+      <Text style={styles.dateWheelLabel}>{label}</Text>
+      <View style={styles.dateWheelWindow}>
+        <View pointerEvents="none" style={styles.dateWheelSelection} />
+        <ScrollView
+          accessibilityLabel={`${label}选择`}
+          contentContainerStyle={styles.dateWheelContent}
+          decelerationRate="fast"
+          nestedScrollEnabled
+          onMomentumScrollEnd={(event) => selectOffset(event.nativeEvent.contentOffset.y)}
+          onScrollEndDrag={(event) => selectOffset(event.nativeEvent.contentOffset.y)}
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          snapToInterval={dateWheelItemHeight}
+          style={styles.dateWheelScroll}
         >
-          <AppIcon color={colors.text} name="chevron-back" size={18} />
-        </Pressable>
-        <Text style={styles.calendarMonth}>
-          {visibleMonth.getFullYear()}年{visibleMonth.getMonth() + 1}月
-        </Text>
-        <Pressable
-          accessibilityLabel="下个月"
-          accessibilityRole="button"
-          hitSlop={6}
-          onPress={() => changeMonth(1)}
-          style={({ pressed }) => [styles.calendarArrow, pressed && styles.pressed]}
-        >
-          <AppIcon color={colors.text} name="chevron-forward" size={18} />
-        </Pressable>
-      </View>
-
-      <View style={styles.calendarGrid}>
-        {weekDays.map((day) => (
-          <View key={day} style={styles.calendarCell}>
-            <Text style={styles.weekdayText}>{day}</Text>
-          </View>
-        ))}
-        {calendarDays.map((day, index) => {
-          if (!day) return <View key={`empty-${index}`} style={styles.calendarCell} />;
-          const value = toIsoDate(
-            new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day),
-          );
-          const selected = value === selectedDate;
-          const isToday = value === todayIso;
-
-          return (
-            <View key={value} style={styles.calendarCell}>
+          {values.map((value, index) => {
+            const selected = value === selectedValue;
+            return (
               <Pressable
-                accessibilityLabel={`${visibleMonth.getMonth() + 1}月${day}日`}
+                accessibilityLabel={`${value}${label}`}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
-                onPress={() => onSelectDate(value)}
+                key={value}
+                onPress={() => {
+                  wheelSelectedValueRef.current = value;
+                  onChange(value);
+                  scrollRef.current?.scrollTo({
+                    animated: true,
+                    y: index * dateWheelItemHeight,
+                  });
+                }}
                 style={({ pressed }) => [
-                  styles.calendarDay,
-                  isToday && styles.calendarDayToday,
-                  selected && styles.calendarDaySelected,
+                  styles.dateWheelItem,
                   pressed && styles.pressed,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.calendarDayText,
-                    isToday && styles.calendarDayTextToday,
-                    selected && styles.calendarDayTextSelected,
-                  ]}
-                >
-                  {day}
+                <Text style={[styles.dateWheelValue, selected && styles.dateWheelValueSelected]}>
+                  {value}
                 </Text>
               </Pressable>
-            </View>
-          );
-        })}
+            );
+          })}
+        </ScrollView>
       </View>
+    </View>
+  );
+}
+
+function DateWheel({
+  selectedDate,
+  onSelectDate,
+}: {
+  selectedDate: string;
+  onSelectDate: (date: string) => void;
+}) {
+  const { year, month, day } = parseImportantDateParts(selectedDate);
+  const years = useMemo(() => createImportantDateYearOptions(), []);
+  const months = useMemo(() => createNumberOptions(1, 12), []);
+  const days = useMemo(
+    () => createNumberOptions(1, getDaysInMonth(year, month)),
+    [month, year],
+  );
+
+  const changePart = (part: ImportantDatePart, value: number) => {
+    onSelectDate(updateImportantDatePart(selectedDate, part, value));
+  };
+
+  return (
+    <View style={styles.dateWheel}>
+      <DateWheelColumn
+        label="年"
+        onChange={(value) => changePart('year', value)}
+        selectedValue={year}
+        values={years}
+      />
+      <DateWheelColumn
+        label="月"
+        onChange={(value) => changePart('month', value)}
+        selectedValue={month}
+        values={months}
+      />
+      <DateWheelColumn
+        label="日"
+        onChange={(value) => changePart('day', value)}
+        selectedValue={day}
+        values={days}
+      />
     </View>
   );
 }
@@ -358,19 +392,12 @@ function CreateSheet({
   const [kind, setKind] = useState<ImportantDateKind>('birthday');
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(toIsoDate(initialDate));
-  const [visibleMonth, setVisibleMonth] = useState(
-    new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
-  );
   const [repeatYearly, setRepeatYearly] = useState(true);
   const [reminders, setReminders] = useState<ReminderValue[]>(['seven-days', 'same-day']);
 
   const selectKind = (nextKind: ImportantDateKind) => {
     setKind(nextKind);
     setRepeatYearly(nextKind === 'birthday' || nextKind === 'anniversary');
-  };
-
-  const selectDate = (value: string) => {
-    setDate(value);
   };
 
   const toggleReminder = (value: ReminderValue) => {
@@ -407,7 +434,6 @@ function CreateSheet({
             <View style={styles.sheetHeader}>
               <View style={styles.sheetHeaderCopy}>
                 <Text accessibilityRole="header" style={styles.sheetTitle}>新增重要日</Text>
-                <Text style={styles.sheetSubtitle}>设置日期和提醒方式</Text>
               </View>
               <Pressable
                 accessibilityLabel="关闭新增重要日"
@@ -462,15 +488,10 @@ function CreateSheet({
               value={title}
             />
 
-            <View style={styles.dateLabelRow}>
-              <Text style={styles.fieldLabel}>日期</Text>
-              <Text style={styles.selectedDateLabel}>{formatSelectedDate(date)}</Text>
-            </View>
-            <MonthCalendar
-              onChangeMonth={setVisibleMonth}
-              onSelectDate={selectDate}
+            <Text style={styles.fieldLabel}>日期</Text>
+            <DateWheel
+              onSelectDate={setDate}
               selectedDate={date}
-              visibleMonth={visibleMonth}
             />
 
             <Pressable
@@ -945,12 +966,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     fontWeight: '700',
   },
-  sheetSubtitle: {
-    marginTop: 2,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
   closeButton: {
     width: 44,
     height: 44,
@@ -1006,93 +1021,66 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.surfaceSubtle,
   },
-  dateLabelRow: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  selectedDateLabel: {
-    marginTop: 18,
-    marginBottom: 9,
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '600',
-  },
-  calendarPanel: {
+  dateWheel: {
     paddingHorizontal: 8,
-    paddingTop: 6,
+    paddingTop: 8,
     paddingBottom: 10,
+    flexDirection: 'row',
+    gap: 8,
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceSubtle,
   },
-  calendarHeader: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  dateWheelColumn: {
+    minWidth: 0,
+    flex: 1,
   },
-  calendarArrow: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-  },
-  calendarMonth: {
-    color: colors.text,
+  dateWheelLabel: {
+    marginBottom: 4,
+    color: colors.textSecondary,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 11,
+    lineHeight: 16,
     fontWeight: '600',
-    fontVariant: ['tabular-nums'],
+    textAlign: 'center',
   },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  dateWheelWindow: {
+    height: dateWheelItemHeight * 3,
+    overflow: 'hidden',
+    borderRadius: radius.md,
   },
-  calendarCell: {
-    width: '14.2857%',
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  weekdayText: {
-    color: colors.textTertiary,
-    fontFamily,
-    fontSize: 10,
-    lineHeight: 14,
-    fontWeight: '500',
-  },
-  calendarDay: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-  },
-  calendarDayToday: {
+  dateWheelSelection: {
+    position: 'absolute',
+    top: dateWheelItemHeight,
+    right: 0,
+    left: 0,
+    height: dateWheelItemHeight,
+    borderWidth: 1,
+    borderColor: colors.primaryTrack,
+    borderRadius: radius.sm,
     backgroundColor: colors.primarySoft,
   },
-  calendarDaySelected: {
-    backgroundColor: colors.primary,
+  dateWheelScroll: {
+    height: dateWheelItemHeight * 3,
   },
-  calendarDayText: {
-    color: colors.text,
+  dateWheelContent: {
+    paddingVertical: dateWheelItemHeight,
+  },
+  dateWheelItem: {
+    height: dateWheelItemHeight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateWheelValue: {
+    color: colors.textTertiary,
     fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 22,
     fontWeight: '500',
     fontVariant: ['tabular-nums'],
   },
-  calendarDayTextToday: {
+  dateWheelValueSelected: {
     color: colors.primaryStrong,
-    fontWeight: '700',
-  },
-  calendarDayTextSelected: {
-    color: colors.background,
+    fontSize: 17,
     fontWeight: '700',
   },
   settingRow: {
