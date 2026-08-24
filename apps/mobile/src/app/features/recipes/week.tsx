@@ -85,7 +85,10 @@ export default function WeekMenuScreen() {
         title="本周菜单"
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, hasPendingPlan && styles.contentWithoutFooter]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.intro}>
           <Text accessibilityRole="header" style={styles.title}>
             {days.length > 0 ? `${days[0].fullDate}—${days[days.length - 1].fullDate}` : '本周'}
@@ -93,9 +96,37 @@ export default function WeekMenuScreen() {
           <Text style={styles.subtitle}>每天三餐都可以单独替换，确认前不会覆盖原菜单。</Text>
         </View>
 
+        {hasPendingPlan ? (
+          <View style={styles.pendingConfirmation}>
+            <InlineNotice icon="sparkles-outline" tone="warning">
+              这是新的菜单预览。确认采用后，才会替换当前本周菜单。
+            </InlineNotice>
+            <View style={styles.pendingActions}>
+              <RecipePrimaryButton
+                disabled={planSaving}
+                icon="checkmark-circle-outline"
+                label={planSaving ? '正在保存…' : '采用本周菜单'}
+                onPress={() => void confirm()}
+                style={styles.pendingPrimary}
+              />
+              <RecipePrimaryButton
+                disabled={planSaving}
+                label="放弃更改"
+                onPress={discard}
+                style={styles.pendingSecondary}
+                tone="secondary"
+              />
+            </View>
+          </View>
+        ) : savedMessage ? (
+          <InlineNotice icon="checkmark-circle-outline">
+            新菜单已在本次预览中采用。
+          </InlineNotice>
+        ) : null}
+
         {/*
-          生成时做了什么妥协要说出来。
-          默默给一份筛剩下的菜单，用户只会觉得推荐得莫名其妙。
+          生成时做了什么妥协要说出来，但不能把确认入口推到多条说明之后。
+          用户先处理是否采用，再按需查看生成过程里的妥协。
         */}
         {planNotes.map((note) => (
           <InlineNotice icon="alert-circle-outline" key={`${note.kind}-${note.meal_slot ?? ''}`} tone="warning">
@@ -103,15 +134,7 @@ export default function WeekMenuScreen() {
           </InlineNotice>
         ))}
 
-        {hasPendingPlan ? (
-          <InlineNotice icon="sparkles-outline" tone="warning">
-            这是新的菜单预览。确认采用后，才会替换当前本周菜单。
-          </InlineNotice>
-        ) : savedMessage ? (
-          <InlineNotice icon="checkmark-circle-outline">
-            新菜单已在本次预览中采用。
-          </InlineNotice>
-        ) : null}
+        {planFailure ? <Text style={styles.failure}>{planFailure}</Text> : null}
 
         <View style={styles.weekList}>
           {days.map((day) => (
@@ -191,6 +214,7 @@ export default function WeekMenuScreen() {
                               ]}
                             >
                               <AppIcon color={colors.primaryStrong} name="refresh" size={17} />
+                              <Text style={styles.swapText}>换一道</Text>
                             </Pressable>
                           </View>
                         );
@@ -204,42 +228,23 @@ export default function WeekMenuScreen() {
         </View>
       </ScrollView>
 
-      {planFailure ? <Text style={styles.failure}>{planFailure}</Text> : null}
-
-      <View style={styles.footer}>
-        {hasPendingPlan ? (
-          <>
-            <RecipePrimaryButton
-              label="放弃更改"
-              onPress={discard}
-              style={styles.footerSecondary}
-              tone="secondary"
-            />
-            <RecipePrimaryButton
-              disabled={planSaving}
-              icon="checkmark-circle-outline"
-              label={planSaving ? '正在保存…' : '采用本周菜单'}
-              onPress={() => void confirm()}
-              style={styles.footerPrimary}
-            />
-          </>
-        ) : (
+      {!hasPendingPlan ? (
+        <View style={styles.footer}>
           <RecipePrimaryButton
             icon="cart-outline"
             label="生成整周购物清单"
             onPress={() => router.push('/features/recipes/shopping?scope=week' as Href)}
             style={styles.footerPrimary}
           />
-        )}
-      </View>
+        </View>
+      ) : null}
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   failure: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    marginTop: 10,
     color: colors.danger,
     fontFamily,
     fontSize: 13,
@@ -248,6 +253,9 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingBottom: 130,
+  },
+  contentWithoutFooter: {
+    paddingBottom: 32,
   },
   headerIconButtonBusy: {
     opacity: 0.6,
@@ -278,6 +286,19 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: 13,
     lineHeight: 20,
+  },
+  pendingConfirmation: {
+    gap: 10,
+  },
+  pendingActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  pendingPrimary: {
+    flex: 1.4,
+  },
+  pendingSecondary: {
+    flex: 0.8,
   },
   weekList: {
     marginTop: 22,
@@ -378,10 +399,22 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   swapButton: {
-    width: 44,
-    height: 44,
+    minWidth: 82,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+  },
+  swapText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
   },
   footer: {
     position: 'absolute',
@@ -396,9 +429,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: recipeColors.line,
     backgroundColor: recipeColors.background,
-  },
-  footerSecondary: {
-    flex: 0.8,
   },
   footerPrimary: {
     flex: 1.4,

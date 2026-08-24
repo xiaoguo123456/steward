@@ -18,6 +18,7 @@ import {
   RecipeImage,
   RecipePrimaryButton,
   RecipeSectionTitle,
+  RecipeStepImage,
 } from '@/features/recipes/components/recipe-ui';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
 import { recipeColors } from '@/features/recipes/theme';
@@ -167,7 +168,6 @@ export default function RecipeDetailScreen() {
                 ['热量', `${recipe.calories} 千卡`],
                 ['蛋白质', `${recipe.protein} 克`],
                 ['碳水', `${recipe.carbs} 克`],
-                ['膳食纤维', `${recipe.fiber} 克`],
               ].map(([label, value]) => (
                 <View key={label} style={styles.nutritionItem}>
                   <Text style={styles.nutritionValue}>{value}</Text>
@@ -242,19 +242,13 @@ export default function RecipeDetailScreen() {
                 <View key={`${step.title}-${index}`} style={styles.stepRow}>
                   <Text style={styles.stepNumber}>{index + 1}</Text>
                   <View style={styles.stepCopy}>
+                    <RecipeStepImage recipe={recipe} stepIndex={index} style={styles.stepPhoto} />
                     <Text style={styles.stepTitle}>{step.title}</Text>
                     <Text style={styles.stepDescription}>{step.description}</Text>
                   </View>
                 </View>
               ))}
             </View>
-          </View>
-
-          <View style={styles.sourceBlock}>
-            <Text style={styles.sourceTitle}>内容来源</Text>
-            <Text style={styles.sourceCopy}>
-              {recipe.sourceLabel} · {recipe.imageCredit}
-            </Text>
           </View>
         </View>
       </ScrollView>
@@ -559,6 +553,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  stepPhoto: {
+    width: '100%',
+    height: 164,
+    marginBottom: 12,
+    borderRadius: radius.md,
+  },
   stepTitle: {
     color: recipeColors.ink,
     fontFamily,
@@ -572,26 +572,6 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: 12,
     lineHeight: 19,
-  },
-  sourceBlock: {
-    marginTop: 30,
-    paddingTop: 18,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: recipeColors.line,
-  },
-  sourceTitle: {
-    color: recipeColors.ink,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  sourceCopy: {
-    marginTop: 4,
-    color: recipeColors.faint,
-    fontFamily,
-    fontSize: 10,
-    lineHeight: 16,
   },
   footer: {
     position: 'absolute',

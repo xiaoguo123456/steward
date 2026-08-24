@@ -16,6 +16,12 @@ python3 tools/recipe-import/upload_images.py --verify   # 抽查对象确实在
 # 3. 映射：SQLite → PG 的 recipes 表。
 python3 tools/recipe-import/to_postgres.py --dry-run
 python3 tools/recipe-import/to_postgres.py
+
+# 从其他工作树复用现有归档库时显式传入路径。
+python3 tools/recipe-import/to_postgres.py \
+  --archive-path /path/to/recipes.sqlite3 \
+  --env-file /path/to/.env \
+  --dry-run
 ```
 
 ## 为什么中间要有 SQLite
@@ -53,9 +59,12 @@ python3 tools/recipe-import/upload_images.py --backup-archive
 酱油同时含大豆与小麦，而中餐离不开它，所以小麦命中 67%、大豆 59%。
 这是事实——对大豆过敏的人确实吃不了那些菜。
 
-**膳食纤维留空，不填 0。** 源数据给的是脂肪没有纤维。
-「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，
-而控糖目标恰恰要看纤维。客户端对空值显示「—」。
+**不抽取膳食纤维。** 源数据只提供脂肪，没有膳食纤维；导入脚本既不推测、
+也不写入该字段。数据库保留可空字段，供未来确实带有可信纤维数据的来源使用，
+当前客户端不展示这一项，菜单生成也不把缺失值当作筛选依据。
+
+**步骤图跟步骤一起入库。** 归档里的 `steps.image` 与已上传的 `images.oss_key`
+按菜谱和文件名关联；只有上传成功且权利已确认的步骤图才写入 `steps.image_url`。
 
 **耗时取区间上限。** 「约10-20分钟」记 20：让人以为 10 分钟能做完、
 实际要 20 分钟，比反过来更容易把一顿饭搞砸。

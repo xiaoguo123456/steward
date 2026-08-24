@@ -100,7 +100,7 @@ def nutrition_per_serving(rows: list[tuple], servings: int) -> dict:
     """把食材营养求和再除以份数。
 
     源数据每条食材都带营养，所以这是算出来的而不是估出来的。
-    膳食纤维源数据没有，留空——填 0 会变成一句假话。
+    膳食纤维源数据没有，因此不读取也不返回该项。
     """
     servings = max(1, servings or 1)
     total = {"calories": 0.0, "protein": 0.0, "fat": 0.0, "carbohydrate": 0.0}
@@ -129,6 +129,19 @@ def ingredient_group(name: str) -> str:
     return "produce"
 
 
+def build_steps(rows: list[tuple[int, str | None, str | None]], fallback: str) -> list[dict]:
+    steps = []
+    for idx, text, image_key in rows:
+        description = (text or "").strip()
+        if not description:
+            continue
+        step = {"title": f"第 {idx} 步", "description": description}
+        if image_key:
+            step["image_url"] = f"{CDN_BASE}/{image_key}"
+        steps.append(step)
+    return steps or [{"title": "做法", "description": fallback.strip()}]
+
+
 def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
     r = conn.execute(
         """SELECT name, name_adj, url, difficulty_text, time_consuming,
@@ -151,7 +164,15 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
         return None
 
     steps = conn.execute(
-        "SELECT idx, text FROM steps WHERE recipe_id = ? ORDER BY idx", (rid,)
+        """SELECT s.idx, s.text, i.oss_key
+           FROM steps AS s
+           LEFT JOIN images AS i
+             ON i.recipe_id = s.recipe_id
+            AND i.kind = 'step'
+            AND i.filename = s.image
+           WHERE s.recipe_id = ?
+           ORDER BY s.idx""",
+        (rid,),
     ).fetchall()
     cats = [c[0] for c in conn.execute("SELECT name FROM categories WHERE recipe_id = ?", (rid,))]
 
@@ -176,7 +197,6 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
         "protein_g": nutri["protein"],
         "carbs_g": nutri["carbohydrate"],
         "fat_g": nutri["fat"],
-        "fiber_g": None,  # 源数据没有。留空表示不知道，不是 0。
         "meal_slots": build_meal_slots(cats),
         "categories": build_categories(cats),
         "goals": [],  # 从营养反推目标是猜测，不做。
@@ -189,15 +209,7 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
             ],
             ensure_ascii=False,
         ),
-        "steps": json.dumps(
-            [
-                {"title": f"第 {idx} 步", "description": (text or "").strip()}
-                for idx, text in steps
-                if (text or "").strip()
-            ]
-            or [{"title": "做法", "description": (tips or name).strip()}],
-            ensure_ascii=False,
-        ),
+        "steps": json.dumps(build_steps(steps, tips or name), ensure_ascii=False),
         "source_name": SOURCE_NAME,
         "source_author": None,
         "license": LICENSE,
@@ -220,14 +232,14 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
 UPSERT = """
 INSERT INTO recipes (
     id, title, summary, image_key, image_url, servings, duration_minutes, difficulty,
-    calories, protein_g, carbs_g, fat_g, fiber_g,
+    calories, protein_g, carbs_g, fat_g,
     meal_slots, categories, goals, tags, allergens,
     ingredients, steps,
     source_name, source_author, license, license_url,
     image_credit, content_version, component, plan_excluded_reason
 ) VALUES (
     %(id)s, %(title)s, %(summary)s, %(image_key)s, %(image_url)s, %(servings)s, %(duration_minutes)s, %(difficulty)s,
-    %(calories)s, %(protein_g)s, %(carbs_g)s, %(fat_g)s, %(fiber_g)s,
+    %(calories)s, %(protein_g)s, %(carbs_g)s, %(fat_g)s,
     %(meal_slots)s, %(categories)s, %(goals)s, %(tags)s, %(allergens)s,
     %(ingredients)s, %(steps)s,
     %(source_name)s, %(source_author)s, %(license)s, %(license_url)s,
@@ -239,7 +251,7 @@ ON CONFLICT (id) DO UPDATE SET
     servings = EXCLUDED.servings, duration_minutes = EXCLUDED.duration_minutes,
     difficulty = EXCLUDED.difficulty, calories = EXCLUDED.calories,
     protein_g = EXCLUDED.protein_g, carbs_g = EXCLUDED.carbs_g,
-    fat_g = EXCLUDED.fat_g, fiber_g = EXCLUDED.fiber_g,
+    fat_g = EXCLUDED.fat_g,
     meal_slots = EXCLUDED.meal_slots, categories = EXCLUDED.categories,
     goals = EXCLUDED.goals, tags = EXCLUDED.tags, allergens = EXCLUDED.allergens,
     ingredients = EXCLUDED.ingredients, steps = EXCLUDED.steps,
@@ -250,22 +262,34 @@ ON CONFLICT (id) DO UPDATE SET
 """
 
 
-def database_url() -> str:
-    for line in (REPO / ".env").read_text(encoding="utf-8").splitlines():
+def database_url(env_file: Path) -> str:
+    for line in env_file.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line.startswith("STEWARD_MIGRATE_DATABASE_URL="):
             return line.split("=", 1)[1].strip()
-    raise SystemExit("在 .env 里找不到 STEWARD_MIGRATE_DATABASE_URL")
+    raise SystemExit(f"在 {env_file} 里找不到 STEWARD_MIGRATE_DATABASE_URL")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument(
+        "--archive-path",
+        type=Path,
+        default=DB_PATH,
+        help="SQLite 菜谱归档路径；默认读取当前仓库的 tools/recipe-import/recipes.sqlite3",
+    )
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        default=REPO / ".env",
+        help="包含 STEWARD_MIGRATE_DATABASE_URL 的环境文件",
+    )
     parser.add_argument("--database-url", default=os.environ.get("STEWARD_MIGRATE_DATABASE_URL"))
     args = parser.parse_args()
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(f"file:{args.archive_path}?mode=ro&immutable=1", uri=True)
     ids = [r[0] for r in conn.execute("SELECT id FROM recipes ORDER BY id")]
     if args.limit:
         ids = ids[: args.limit]
@@ -282,7 +306,7 @@ def main() -> int:
     if args.dry_run:
         sample = rows[0]
         for key in ("id", "title", "duration_minutes", "difficulty", "servings",
-                    "calories", "protein_g", "fat_g", "fiber_g",
+                    "calories", "protein_g", "fat_g",
                     "meal_slots", "categories", "allergens", "image_url",
                     "source_name", "license"):
             print(f"  {key} = {sample[key]}")
@@ -293,7 +317,7 @@ def main() -> int:
         print(f"\n有封面图 {with_images}/{len(rows)}，无餐段 {no_meal}")
         return 0
 
-    url = args.database_url or database_url()
+    url = args.database_url or database_url(args.env_file)
     with psycopg.connect(url) as pg:
         with pg.cursor() as cur:
             for i, row in enumerate(rows, 1):
@@ -305,7 +329,14 @@ def main() -> int:
         with pg.cursor() as cur:
             cur.execute("SELECT count(*) FROM recipes")
             total = cur.fetchone()[0]
-    print(f"\n完成。recipes 表现有 {total} 条")
+            cur.execute(
+                """SELECT count(*)
+                   FROM recipes AS r
+                   CROSS JOIN LATERAL jsonb_array_elements(r.steps) AS step
+                   WHERE NULLIF(step->>'image_url', '') IS NOT NULL"""
+            )
+            step_images = cur.fetchone()[0]
+    print(f"\n完成。recipes 表现有 {total} 条，已关联步骤图片 {step_images} 张")
     return 0
 
 

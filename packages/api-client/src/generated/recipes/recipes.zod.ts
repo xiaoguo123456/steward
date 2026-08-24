@@ -57,7 +57,7 @@ export const ListRecipesResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源给出的营养项不一样，导入流程不得推测或补零。\n客户端只展示来源确实提供的数据项；当前菜谱来源未提供膳食纤维，\n因此界面不展示该项，推荐与菜单抽取也不使用它。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -72,6 +72,7 @@ export const ListRecipesResponse = zod.object({
   "steps": zod.array(zod.object({
   "title": zod.string(),
   "description": zod.string(),
+  "image_url": zod.string().nullish().describe('这一步对应的操作图片；没有步骤图或图片权利未确认时为空。'),
   "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
 })).min(1),
   "source": zod.object({
@@ -121,7 +122,7 @@ export const GetRecipeResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源给出的营养项不一样，导入流程不得推测或补零。\n客户端只展示来源确实提供的数据项；当前菜谱来源未提供膳食纤维，\n因此界面不展示该项，推荐与菜单抽取也不使用它。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -136,6 +137,7 @@ export const GetRecipeResponse = zod.object({
   "steps": zod.array(zod.object({
   "title": zod.string(),
   "description": zod.string(),
+  "image_url": zod.string().nullish().describe('这一步对应的操作图片；没有步骤图或图片权利未确认时为空。'),
   "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
 })).min(1),
   "source": zod.object({
@@ -276,7 +278,7 @@ export const ListFavoriteRecipesResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源给出的营养项不一样，导入流程不得推测或补零。\n客户端只展示来源确实提供的数据项；当前菜谱来源未提供膳食纤维，\n因此界面不展示该项，推荐与菜单抽取也不使用它。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -291,6 +293,7 @@ export const ListFavoriteRecipesResponse = zod.object({
   "steps": zod.array(zod.object({
   "title": zod.string(),
   "description": zod.string(),
+  "image_url": zod.string().nullish().describe('这一步对应的操作图片；没有步骤图或图片权利未确认时为空。'),
   "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
 })).min(1),
   "source": zod.object({
@@ -477,7 +480,7 @@ export const GetMealPlanResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源给出的营养项不一样，导入流程不得推测或补零。\n客户端只展示来源确实提供的数据项；当前菜谱来源未提供膳食纤维，\n因此界面不展示该项，推荐与菜单抽取也不使用它。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -492,6 +495,7 @@ export const GetMealPlanResponse = zod.object({
   "steps": zod.array(zod.object({
   "title": zod.string(),
   "description": zod.string(),
+  "image_url": zod.string().nullish().describe('这一步对应的操作图片；没有步骤图或图片权利未确认时为空。'),
   "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
 })).min(1),
   "source": zod.object({
@@ -511,7 +515,7 @@ export const GetMealPlanResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n').describe('\*\*这份菜单本身的能量\*\*，由服务端按菜谱营养求和。\n\n它说的是「照这个方案做出来有多少」，不是用户吃了多少——\n用户加不加餐、在外面吃什么，我们不追踪，也不该拿这个数去暗示。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源给出的营养项不一样，导入流程不得推测或补零。\n客户端只展示来源确实提供的数据项；当前菜谱来源未提供膳食纤维，\n因此界面不展示该项，推荐与菜单抽取也不使用它。\n').describe('\*\*这份菜单本身的能量\*\*，由服务端按菜谱营养求和。\n\n它说的是「照这个方案做出来有多少」，不是用户吃了多少——\n用户加不加餐、在外面吃什么，我们不追踪，也不该拿这个数去暗示。\n'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
   "version": zod.number().int()
@@ -575,7 +579,7 @@ export const ConfirmMealPlanResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源给出的营养项不一样，导入流程不得推测或补零。\n客户端只展示来源确实提供的数据项；当前菜谱来源未提供膳食纤维，\n因此界面不展示该项，推荐与菜单抽取也不使用它。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -590,6 +594,7 @@ export const ConfirmMealPlanResponse = zod.object({
   "steps": zod.array(zod.object({
   "title": zod.string(),
   "description": zod.string(),
+  "image_url": zod.string().nullish().describe('这一步对应的操作图片；没有步骤图或图片权利未确认时为空。'),
   "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
 })).min(1),
   "source": zod.object({
@@ -609,7 +614,7 @@ export const ConfirmMealPlanResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n').describe('\*\*这份菜单本身的能量\*\*，由服务端按菜谱营养求和。\n\n它说的是「照这个方案做出来有多少」，不是用户吃了多少——\n用户加不加餐、在外面吃什么，我们不追踪，也不该拿这个数去暗示。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源给出的营养项不一样，导入流程不得推测或补零。\n客户端只展示来源确实提供的数据项；当前菜谱来源未提供膳食纤维，\n因此界面不展示该项，推荐与菜单抽取也不使用它。\n').describe('\*\*这份菜单本身的能量\*\*，由服务端按菜谱营养求和。\n\n它说的是「照这个方案做出来有多少」，不是用户吃了多少——\n用户加不加餐、在外面吃什么，我们不追踪，也不该拿这个数去暗示。\n'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
   "version": zod.number().int()
@@ -665,7 +670,7 @@ export const GetMealPlanSuggestionResponse = zod.object({
   "carbs_g": zod.number(),
   "fat_g": zod.number().nullish(),
   "fiber_g": zod.number().nullish()
-}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源的菜谱给出的营养项不一样：手写内容有膳食纤维没有脂肪，\n导入内容反过来。把没有的那项填成 0 是个假声明——\n「这道菜 0g 膳食纤维」和「不知道多少」是完全不同的两句话，\n而控糖目标恰恰要看膳食纤维。客户端对空值显示「—」，不显示 0。\n'),
+}).describe('每份的营养估算。它是估算值，不是营养档案，也不构成任何健康承诺。\n\n\*\*fat_g 与 fiber_g 可能为空，空表示「不知道」而不是 0。\*\*\n不同来源给出的营养项不一样，导入流程不得推测或补零。\n客户端只展示来源确实提供的数据项；当前菜谱来源未提供膳食纤维，\n因此界面不展示该项，推荐与菜单抽取也不使用它。\n'),
   "meal_slots": zod.array(zod.enum(['breakfast', 'lunch', 'dinner'])),
   "categories": zod.array(zod.enum(['recommended', 'quick', 'seasonal', 'fat_loss', 'muscle_gain', 'steady_sugar'])),
   "goals": zod.array(zod.enum(['balanced', 'fat_loss', 'muscle_gain', 'steady_sugar']).describe('steady_sugar 只用于推荐少添加糖、优先全谷物、增加膳食纤维的日常菜谱，\n不提供疾病诊断、治疗承诺或用药建议。\n')),
@@ -680,6 +685,7 @@ export const GetMealPlanSuggestionResponse = zod.object({
   "steps": zod.array(zod.object({
   "title": zod.string(),
   "description": zod.string(),
+  "image_url": zod.string().nullish().describe('这一步对应的操作图片；没有步骤图或图片权利未确认时为空。'),
   "timer_minutes": zod.number().int().nullish().describe('这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。')
 })).min(1),
   "source": zod.object({
