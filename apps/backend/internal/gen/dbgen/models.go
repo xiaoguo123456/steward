@@ -225,17 +225,18 @@ type AssistantMessage struct {
 }
 
 type AssistantThread struct {
-	ID             string
-	UserID         string
-	Title          string
-	Status         string
-	LastMessageSeq int32
-	LastTurnSeq    int32
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	ArchivedAt     *time.Time
-	DeletedAt      *time.Time
-	Version        int32
+	ID                string
+	UserID            string
+	Title             string
+	Status            string
+	LastMessageSeq    int32
+	LastTurnSeq       int32
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	ArchivedAt        *time.Time
+	DeletedAt         *time.Time
+	Version           int32
+	CreatedForDefault bool
 }
 
 type AssistantTurn struct {

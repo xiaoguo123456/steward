@@ -125,6 +125,8 @@ paths:
 
   /v1/assistant/threads:
     $ref: './paths/assistant.yaml#/Threads'
+  /v1/assistant/threads/current:
+    $ref: './paths/assistant.yaml#/CurrentThread'
   /v1/assistant/threads/{thread_id}:
     $ref: './paths/assistant.yaml#/Thread'
   /v1/assistant/threads/{thread_id}/messages:

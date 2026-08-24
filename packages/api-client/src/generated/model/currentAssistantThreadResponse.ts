@@ -13,14 +13,11 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { AssistantThread } from './assistantThread';
+import type { ResponseMeta } from './responseMeta';
 
-export interface CreateThreadRequest {
-  title?: string;
-  /**
-     * 为 true 时一定新建。缺省时按用户时区复用当地自然日内
-     * 最近发生用户消息的 active Thread。
-     * @maxLength 60
-     * @nullable
-     */
-  force_new?: boolean | null;
+export interface CurrentAssistantThreadResponse {
+  /** 当天还没有发生用户消息时为 null。 */
+  data: AssistantThread | null;
+  meta: ResponseMeta;
 }

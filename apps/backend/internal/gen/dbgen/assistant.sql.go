@@ -124,20 +124,26 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (A
 
 const createThread = `-- name: CreateThread :one
 
-INSERT INTO assistant_threads (id, user_id, title)
-VALUES ($1, $2, $3)
-RETURNING id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version
+INSERT INTO assistant_threads (id, user_id, title, created_for_default)
+VALUES ($1, $2, $3, $4)
+RETURNING id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version, created_for_default
 `
 
 type CreateThreadParams struct {
-	ID     string
-	UserID string
-	Title  string
+	ID                string
+	UserID            string
+	Title             string
+	CreatedForDefault bool
 }
 
 // Assistant 对话。系统权威会话是这些表，Provider 状态只是可丢弃的优化列。
 func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (AssistantThread, error) {
-	row := q.db.QueryRow(ctx, createThread, arg.ID, arg.UserID, arg.Title)
+	row := q.db.QueryRow(ctx, createThread,
+		arg.ID,
+		arg.UserID,
+		arg.Title,
+		arg.CreatedForDefault,
+	)
 	var i AssistantThread
 	err := row.Scan(
 		&i.ID,
@@ -151,6 +157,7 @@ func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Ass
 		&i.ArchivedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.CreatedForDefault,
 	)
 	return i, err
 }
@@ -281,17 +288,27 @@ func (q *Queries) FinishTurn(ctx context.Context, arg FinishTurnParams) (Assista
 	return i, err
 }
 
-const getLatestThread = `-- name: GetLatestThread :one
-SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version FROM assistant_threads
-WHERE deleted_at IS NULL AND status = 'active' AND last_message_seq > 0
-ORDER BY updated_at DESC
+const getCurrentDayEmptyThread = `-- name: GetCurrentDayEmptyThread :one
+SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version, created_for_default FROM assistant_threads
+WHERE deleted_at IS NULL
+  AND status = 'active'
+  AND last_message_seq = 0
+  AND created_for_default
+  AND created_at >= $1::timestamptz
+  AND created_at < $2::timestamptz
+ORDER BY created_at DESC, id DESC
 LIMIT 1
 `
 
-// 面板重新打开时用：最近一次说过话的对话。
-// 调用方据此决定是续上这一次，还是开一个新的。
-func (q *Queries) GetLatestThread(ctx context.Context) (AssistantThread, error) {
-	row := q.db.QueryRow(ctx, getLatestThread)
+type GetCurrentDayEmptyThreadParams struct {
+	DayStart time.Time
+	DayEnd   time.Time
+}
+
+// 创建 Thread 后发送可能因网络失败没有发生；当天重试时复用这个不可见空壳，
+// 不让并发设备或重试不断产生新的空 Thread。
+func (q *Queries) GetCurrentDayEmptyThread(ctx context.Context, arg GetCurrentDayEmptyThreadParams) (AssistantThread, error) {
+	row := q.db.QueryRow(ctx, getCurrentDayEmptyThread, arg.DayStart, arg.DayEnd)
 	var i AssistantThread
 	err := row.Scan(
 		&i.ID,
@@ -305,12 +322,58 @@ func (q *Queries) GetLatestThread(ctx context.Context) (AssistantThread, error) 
 		&i.ArchivedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.CreatedForDefault,
+	)
+	return i, err
+}
+
+const getCurrentDayThread = `-- name: GetCurrentDayThread :one
+WITH current_day_activity AS (
+    SELECT thread_id, max(created_at) AS last_user_message_at
+    FROM assistant_messages
+    WHERE deleted_at IS NULL
+      AND role = 'user'
+      AND created_at >= $1::timestamptz
+      AND created_at < $2::timestamptz
+    GROUP BY thread_id
+)
+SELECT t.id, t.user_id, t.title, t.status, t.last_message_seq, t.last_turn_seq, t.created_at, t.updated_at, t.archived_at, t.deleted_at, t.version, t.created_for_default
+FROM assistant_threads t
+JOIN current_day_activity a ON a.thread_id = t.id
+WHERE t.deleted_at IS NULL AND t.status = 'active'
+ORDER BY a.last_user_message_at DESC, t.id DESC
+LIMIT 1
+`
+
+type GetCurrentDayThreadParams struct {
+	DayStart time.Time
+	DayEnd   time.Time
+}
+
+// 默认入口只认当地自然日内真正发生过的用户消息。
+// Assistant 回复跨过午夜完成不能把昨天的 Thread 变成今天的默认对话。
+func (q *Queries) GetCurrentDayThread(ctx context.Context, arg GetCurrentDayThreadParams) (AssistantThread, error) {
+	row := q.db.QueryRow(ctx, getCurrentDayThread, arg.DayStart, arg.DayEnd)
+	var i AssistantThread
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Status,
+		&i.LastMessageSeq,
+		&i.LastTurnSeq,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.CreatedForDefault,
 	)
 	return i, err
 }
 
 const getThread = `-- name: GetThread :one
-SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version FROM assistant_threads
+SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version, created_for_default FROM assistant_threads
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -329,6 +392,7 @@ func (q *Queries) GetThread(ctx context.Context, id string) (AssistantThread, er
 		&i.ArchivedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.CreatedForDefault,
 	)
 	return i, err
 }
@@ -456,7 +520,7 @@ func (q *Queries) ListRecentMessages(ctx context.Context, arg ListRecentMessages
 }
 
 const listThreads = `-- name: ListThreads :many
-SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version FROM assistant_threads
+SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version, created_for_default FROM assistant_threads
 WHERE deleted_at IS NULL
   AND last_message_seq > 0
   AND ($1::bool OR status = 'active')
@@ -501,6 +565,7 @@ func (q *Queries) ListThreads(ctx context.Context, arg ListThreadsParams) ([]Ass
 			&i.ArchivedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.CreatedForDefault,
 		); err != nil {
 			return nil, err
 		}
@@ -550,6 +615,17 @@ func (q *Queries) ListToolCalls(ctx context.Context, turnID string) ([]AiToolCal
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockAssistantThreadCreation = `-- name: LockAssistantThreadCreation :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
+`
+
+// 同一用户的默认 Thread 创建必须串行：两个设备同时发出当天第一条消息时，
+// 都要先完成「查询当天 Thread → 必要时创建」这段临界区。
+func (q *Queries) LockAssistantThreadCreation(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, lockAssistantThreadCreation, userID)
+	return err
 }
 
 const recordToolCall = `-- name: RecordToolCall :exec
@@ -659,7 +735,7 @@ func (q *Queries) SoftDeleteMessagesByThread(ctx context.Context, threadID strin
 const softDeleteThread = `-- name: SoftDeleteThread :one
 UPDATE assistant_threads SET status = 'deleted', deleted_at = now(), updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version
+RETURNING id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version, created_for_default
 `
 
 func (q *Queries) SoftDeleteThread(ctx context.Context, id string) (AssistantThread, error) {
@@ -677,6 +753,7 @@ func (q *Queries) SoftDeleteThread(ctx context.Context, id string) (AssistantThr
 		&i.ArchivedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.CreatedForDefault,
 	)
 	return i, err
 }
@@ -754,7 +831,7 @@ UPDATE assistant_threads SET
     updated_at = now(),
     version    = version + 1
 WHERE id = $3 AND deleted_at IS NULL
-RETURNING id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version
+RETURNING id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version, created_for_default
 `
 
 type UpdateThreadParams struct {
@@ -778,6 +855,7 @@ func (q *Queries) UpdateThread(ctx context.Context, arg UpdateThreadParams) (Ass
 		&i.ArchivedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.CreatedForDefault,
 	)
 	return i, err
 }

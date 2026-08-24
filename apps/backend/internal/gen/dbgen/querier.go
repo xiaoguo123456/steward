@@ -178,6 +178,12 @@ type Querier interface {
 	GetCapture(ctx context.Context, id string) (Capture, error)
 	GetCaptureCandidate(ctx context.Context, arg GetCaptureCandidateParams) (CaptureCandidate, error)
 	GetCaptureQuestion(ctx context.Context, id string) (CaptureQuestion, error)
+	// 创建 Thread 后发送可能因网络失败没有发生；当天重试时复用这个不可见空壳，
+	// 不让并发设备或重试不断产生新的空 Thread。
+	GetCurrentDayEmptyThread(ctx context.Context, arg GetCurrentDayEmptyThreadParams) (AssistantThread, error)
+	// 默认入口只认当地自然日内真正发生过的用户消息。
+	// Assistant 回复跨过午夜完成不能把昨天的 Thread 变成今天的默认对话。
+	GetCurrentDayThread(ctx context.Context, arg GetCurrentDayThreadParams) (AssistantThread, error)
 	GetDefaultTaskList(ctx context.Context) (TaskList, error)
 	// ---- 用户自己的食谱数据 ----
 	//
@@ -186,9 +192,6 @@ type Querier interface {
 	GetDietProfile(ctx context.Context, userID string) (RecipeDietProfile, error)
 	GetEvent(ctx context.Context, id string) (Event, error)
 	GetIdempotencyRecord(ctx context.Context, arg GetIdempotencyRecordParams) (IdempotencyKey, error)
-	// 面板重新打开时用：最近一次说过话的对话。
-	// 调用方据此决定是续上这一次，还是开一个新的。
-	GetLatestThread(ctx context.Context) (AssistantThread, error)
 	GetLatestVerificationCode(ctx context.Context, arg GetLatestVerificationCodeParams) (AuthVerificationCode, error)
 	GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (MealPlan, error)
 	GetMediaAsset(ctx context.Context, id string) (MediaAsset, error)
@@ -314,6 +317,9 @@ type Querier interface {
 	ListTrackerStats(ctx context.Context) ([]ListTrackerStatsRow, error)
 	// Tracker 与 Record 查询。Record 的 values 结构由 Go Domain 依据 Tracker fields 校验。
 	ListTrackers(ctx context.Context, arg ListTrackersParams) ([]Tracker, error)
+	// 同一用户的默认 Thread 创建必须串行：两个设备同时发出当天第一条消息时，
+	// 都要先完成「查询当天 Thread → 必要时创建」这段临界区。
+	LockAssistantThreadCreation(ctx context.Context, userID string) error
 	// 确认执行前先锁住这一行：并发的两次确认里只有一个能拿到锁，
 	// 另一个会看到状态已变成 executed 而被拒绝。
 	LockProposal(ctx context.Context, id string) (ActionProposal, error)

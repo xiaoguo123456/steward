@@ -69,6 +69,8 @@ type Service struct {
 	// audit 记录每一轮编排的形状。为空时不记录。
 	audit  *aiaudit.Recorder
 	logger *slog.Logger
+	// now 只用于需要用户时区的确定性时间边界，测试可固定时钟。
+	now func() time.Time
 }
 
 // StreamPublisher 把一次 Turn 的进度推给正在监听的 API 进程。
@@ -96,6 +98,7 @@ func New(db *database.DB, engine ai.OrchestrationEngine, registry *ai.Registry,
 		db: db, engine: engine, registry: registry,
 		users: users, jobs: jobs, proposal: proposal,
 		memory: memory, audit: audit, logger: logger,
+		now: time.Now,
 	}
 }
 
@@ -112,8 +115,8 @@ const DefaultThreadTitle = "新对话"
 // 客户端应当在用户真正发出第一条消息时才调用它：打开面板就建对话，
 // 会在历史里堆一串没有内容的空壳。
 //
-// 最近一次对话仍在续用窗口内时直接返回那一次——用户问完出去看一眼任务
-// 再回来，那还是同一次对话。forceNew 用于显式的「开始新对话」。
+// 无标题且未显式新建时，复用用户当地自然日内最近发生用户消息的 Thread。
+// forceNew 用于显式的「开始新对话」。
 func (s *Service) CreateThread(ctx context.Context, userID string,
 	title *string, forceNew bool) (dbgen.AssistantThread, error) {
 
@@ -121,15 +124,29 @@ func (s *Service) CreateThread(ctx context.Context, userID string,
 	if title != nil && strings.TrimSpace(*title) != "" {
 		name = strings.TrimSpace(*title)
 	}
+	createdForDefault := !forceNew && (title == nil || strings.TrimSpace(*title) == "")
 
 	var out dbgen.AssistantThread
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		if !forceNew && (title == nil || strings.TrimSpace(*title) == "") {
-			if thread, err := q.GetLatestThread(ctx); err == nil {
-				if time.Since(thread.UpdatedAt) <= ResumeWindow {
-					out = thread
-					return nil
-				}
+		if createdForDefault {
+			if err := q.LockAssistantThreadCreation(ctx, userID); err != nil {
+				return apperr.Internal(err)
+			}
+			dayStart, dayEnd, err := s.currentConversationDay(ctx, q, userID)
+			if err != nil {
+				return err
+			}
+			day := dbgen.GetCurrentDayThreadParams{DayStart: dayStart, DayEnd: dayEnd}
+			if thread, err := q.GetCurrentDayThread(ctx, day); err == nil {
+				out = thread
+				return nil
+			} else if !database.IsNoRows(err) {
+				return apperr.Internal(err)
+			}
+			if thread, err := q.GetCurrentDayEmptyThread(ctx,
+				dbgen.GetCurrentDayEmptyThreadParams(day)); err == nil {
+				out = thread
+				return nil
 			} else if !database.IsNoRows(err) {
 				return apperr.Internal(err)
 			}
@@ -142,11 +159,37 @@ func (s *Service) CreateThread(ctx context.Context, userID string,
 
 		thread, err := q.CreateThread(ctx, dbgen.CreateThreadParams{
 			ID: idgen.New(idgen.PrefixThread), UserID: userID, Title: name,
+			CreatedForDefault: createdForDefault,
 		})
 		if err != nil {
 			return apperr.Internal(err)
 		}
 		out = thread
+		return nil
+	})
+	return out, err
+}
+
+// CurrentThread 返回用户当地自然日内最近发生用户消息的 active Thread。
+// 没有时返回 nil；读取本身不创建任何数据。
+func (s *Service) CurrentThread(ctx context.Context, userID string) (*dbgen.AssistantThread, error) {
+	var out *dbgen.AssistantThread
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		dayStart, dayEnd, err := s.currentConversationDay(ctx, q, userID)
+		if err != nil {
+			return err
+		}
+		thread, err := q.GetCurrentDayThread(ctx, dbgen.GetCurrentDayThreadParams{
+			DayStart: dayStart,
+			DayEnd:   dayEnd,
+		})
+		if err != nil {
+			if database.IsNoRows(err) {
+				return nil
+			}
+			return apperr.Internal(err)
+		}
+		out = &thread
 		return nil
 	})
 	return out, err
@@ -928,12 +971,6 @@ func inferMode(result ai.TurnResult) string {
 	}
 	return "conversation"
 }
-
-// ResumeWindow 是「同一次对话」的时间窗。
-//
-// 用户问完出去看一眼任务再回来，那还是同一次；隔了一段时间再打开，
-// 接着上一次的上下文只会让他困惑于助理记得一些他看不见的东西。
-const ResumeWindow = 30 * time.Minute
 
 // summarizeTitle 用首条用户消息生成对话标题。
 func summarizeTitle(text string) string {

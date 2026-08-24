@@ -65,6 +65,28 @@ func (h *AssistantAPI) ListThreads(ctx context.Context, req httpapi.ListThreadsR
 	}, nil
 }
 
+// GetCurrentThread 读取用户当地自然日内默认恢复的对话。
+func (h *AssistantAPI) GetCurrentThread(ctx context.Context,
+	_ httpapi.GetCurrentThreadRequestObject) (httpapi.GetCurrentThreadResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	thread, err := h.svc.CurrentThread(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	var data *httpapi.AssistantThread
+	if thread != nil {
+		mapped := MapThread(*thread)
+		data = &mapped
+	}
+	return httpapi.GetCurrentThread200JSONResponse{
+		Data: data,
+		Meta: httpx.Meta(ctx),
+	}, nil
+}
+
 // CreateThread 新建对话。
 func (h *AssistantAPI) CreateThread(ctx context.Context, req httpapi.CreateThreadRequestObject) (httpapi.CreateThreadResponseObject, error) {
 	userID, err := httpx.UserID(ctx)

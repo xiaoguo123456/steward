@@ -78,3 +78,10 @@ pgnotify 的三个代价都是结构性的，不是实现不好：LISTEN 是连�
 独占一个数据库连接；PgBouncer 的 transaction 模式会让它彻底失效；单条 NOTIFY
 载荷上限 8000 字节。最后一条尤其要小心——delta 是替换语义，超限时只能截断成
 **前缀**并打 `truncated` 标记，切成多段会让客户端只显示最后一段。
+
+## 默认对话连续性
+
+- `GET /assistant/threads/current` 按 Users 提供的时区计算当地自然日，只读取当天最近发生用户消息的 active Thread；没有时返回空，不创建 Thread。
+- `POST /assistant/threads` 仅在用户发送第一条消息时调用。无标题且未设置 `force_new` 时复用当天 Thread；`force_new=true` 始终创建新 Thread。
+- 默认 Thread 的判断依据是用户消息时间，不是 Thread 的 `updated_at`。因此 Worker 在午夜后补完 Assistant 回复不会把昨天的对话变成今天的默认对话。
+- 默认创建路径使用用户级事务 advisory lock，并只复用 `created_for_default=true` 的当天空 Thread，避免两个设备同时发首条消息时堆出空壳，也不会接管尚未发送的显式“新对话”。

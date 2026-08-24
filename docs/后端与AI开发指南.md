@@ -510,6 +510,8 @@ expires_at
 
 Thread 可以归档或软删除。归档只影响默认列表展示，不让待确认 Proposal 自动执行；删除 Thread 时按保留策略清理消息和派生摘要，但已执行业务实体及其 Activity 不随 Thread 删除。
 
+默认入口按用户时区的自然日恢复对话。服务端以当天最近一条 `role=user` Message 选择 active Thread；只完成了 Assistant 回复不能改变当天归属。当天没有用户消息时 `GET /assistant/threads/current` 返回 `data: null`，且不创建空 Thread。无标题、未设置 `force_new` 的创建请求复用当天 Thread；`force_new=true` 始终创建新 Thread。用户从历史 Thread 在当天继续发送后，该 Thread 自然成为当天最近使用的对话。
+
 ## 8.2 Turn 状态
 
 ```text
@@ -1264,6 +1266,7 @@ id
 user_id
 title
 status                  active / archived / deleted
+created_for_default     是否由默认入口创建；只用于复用尚无消息的空 Thread
 last_message_seq
 last_turn_seq
 summary_version
@@ -1299,6 +1302,7 @@ deleted_at
 规则：
 
 - 唯一 `(thread_id, message_seq)`。
+- 部分索引 `(user_id, created_at desc, thread_id) WHERE deleted_at IS NULL AND role = 'user'` 支撑当天默认 Thread 查询。
 - `content_json` 只用于判别联合 Content Block；可查询标题、角色、状态和时间保持关系列。
 - Provider 原始响应不直接当 Message 保存。
 - 不保存隐藏思维过程。
@@ -1675,6 +1679,7 @@ review_narrative
 |---|---|---|
 | POST | `/v1/assistant/threads` | 创建 Thread |
 | GET | `/v1/assistant/threads` | 分页读取当前用户 Thread |
+| GET | `/v1/assistant/threads/current` | 按用户时区读取今天默认恢复的 Thread；没有时返回 `data: null` |
 | GET | `/v1/assistant/threads/{thread_id}` | 读取 Thread 摘要和状态 |
 | PATCH | `/v1/assistant/threads/{thread_id}` | 修改标题或归档状态 |
 | DELETE | `/v1/assistant/threads/{thread_id}` | 删除 Thread 对话内容 |

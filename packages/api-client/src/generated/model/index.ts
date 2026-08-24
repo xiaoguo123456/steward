@@ -99,6 +99,7 @@ export * from './createTrackerRequestColor';
 export * from './createTurnRequest';
 export * from './createUploadGrantsRequest';
 export * from './createUploadGrantsResponse';
+export * from './currentAssistantThreadResponse';
 export * from './cursorParameter';
 export * from './dailyNutritionAchieved';
 export * from './dailyNutritionTarget';
