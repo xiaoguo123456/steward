@@ -227,7 +227,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 func newCodeSender(cfg config.Config, logger *slog.Logger) (authmod.CodeSender, error) {
 	switch cfg.SMS.Provider {
 	case "dev":
-		logger.Info("验证码使用开发环境固定值，仅适用于本地开发")
+		logger.Info("验证码使用固定测试值，不调用短信 Provider", "environment", cfg.Environment)
 		return nil, nil
 	case "aliyun":
 		sender, err := aliyunsms.New(aliyunsms.Config{

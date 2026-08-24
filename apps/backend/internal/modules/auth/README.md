@@ -18,6 +18,7 @@
 - `users.EnsureDefaults`（通过 `UserInitializer` 接口注入）
 - `platform/auth` 的令牌与哈希能力
 - `CodeSender` 验证码发送接口；服务器环境由阿里云短信适配器实现
+- 测试环境使用固定验证码适配器，不调用外部短信；生产环境禁止启用
 
 ## 禁止
 

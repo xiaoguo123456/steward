@@ -7,6 +7,7 @@ export type RouteMapProps = {
   distanceMeters: number;
   trackingStatus: OutdoorTrackingStatus;
   statusMessage: string;
+  locationMessageBottomInset?: number;
   actionLabel?: string;
   onAction?: () => void;
 };

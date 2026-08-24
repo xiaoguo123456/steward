@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { session } from '@/api/session';
 import { PrimaryButton } from '@/features/auth/components/auth-actions';
 import { AuthInput, AuthShell } from '@/features/auth/components/auth-shell';
+import { resolvePhoneCodeDelivery } from '@/features/auth/phone-code';
 import { colors, fontFamily } from '@/theme/tokens';
 
 const PHONE_PATTERN = /^1[3-9]\d{9}$/;
@@ -20,6 +21,7 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const phoneRef = useRef('');
 
   useEffect(() => {
     return () => {
@@ -46,17 +48,17 @@ export default function LoginScreen() {
 
   const handleSendCode = async () => {
     if (!phoneValid || sending || cooldown > 0) return;
+    const requestedPhone = phone;
     setError(null);
     setSending(true);
     try {
-      const response = await requestPhoneCode({ phone });
+      const response = await requestPhoneCode({ phone: requestedPhone });
       startCooldown(response.data.resend_after_seconds);
-      // 开发环境返回固定验证码，直接提示出来省去查看日志。
-      setHint(
-        response.data.dev_code
-          ? `开发环境验证码：${response.data.dev_code}`
-          : '验证码已发送，请查收短信',
-      );
+      // 请求期间若改了手机号，旧号码的验证码不能填进新号码表单。
+      if (phoneRef.current !== requestedPhone) return;
+      const delivery = resolvePhoneCodeDelivery(response.data);
+      setCode(delivery.code);
+      setHint(delivery.hint);
     } catch (err) {
       setError(errorMessage(err, '验证码发送失败，请稍后重试。'));
     } finally {
@@ -90,8 +92,12 @@ export default function LoginScreen() {
         keyboardType="number-pad"
         maxLength={11}
         onChangeText={(value) => {
-          setPhone(value.replace(/\D/g, ''));
+          const normalized = value.replace(/\D/g, '');
+          phoneRef.current = normalized;
+          setPhone(normalized);
+          setCode('');
           setError(null);
+          setHint(null);
         }}
         placeholder="请输入手机号"
         value={phone}
@@ -99,6 +105,7 @@ export default function LoginScreen() {
       <View style={styles.codeRow}>
         <View style={styles.codeInput}>
           <AuthInput
+            containerStyle={styles.codeInputShell}
             icon="keypad-outline"
             keyboardType="number-pad"
             maxLength={6}
@@ -147,6 +154,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   codeRow: {
+    marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -154,9 +162,12 @@ const styles = StyleSheet.create({
   codeInput: {
     flex: 1,
   },
+  codeInputShell: {
+    marginBottom: 0,
+  },
   codeButton: {
     minWidth: 96,
-    minHeight: 48,
+    height: 54,
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',

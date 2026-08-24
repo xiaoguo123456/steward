@@ -45,6 +45,9 @@ import {
 import { useClientReady } from '@/hooks/use-client-ready';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
+const OUTDOOR_TRAY_OVERLAP = 18;
+const OUTDOOR_MAP_MESSAGE_GAP = 14;
+
 type ActiveStatus = 'active' | 'paused';
 
 export default function ActiveWorkoutScreen() {
@@ -155,6 +158,7 @@ function OutdoorActiveWorkout({
             actionLabel={trackingActionLabel}
             currentPoint={tracking.currentPoint}
             distanceMeters={tracking.distanceMeters}
+            locationMessageBottomInset={OUTDOOR_TRAY_OVERLAP + OUTDOOR_MAP_MESSAGE_GAP}
             onAction={trackingActionLabel ? handleTrackingAction : undefined}
             routeSegments={tracking.routeSegments}
             statusMessage={tracking.message}
@@ -617,7 +621,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   outdoorTray: {
-    marginTop: -18,
+    marginTop: -OUTDOOR_TRAY_OVERLAP,
     paddingTop: 24,
     paddingHorizontal: 16,
     paddingBottom: 18,

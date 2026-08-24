@@ -2950,7 +2950,8 @@ components:
             dev_code:
               type: string
               nullable: true
-              description: 仅在开发环境返回的固定验证码，生产环境恒为 null。
+              pattern: ^[0-9]{6}$
+              description: 仅在本地或测试环境返回的固定验证码，生产环境恒为 null。
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     ErrorCode:

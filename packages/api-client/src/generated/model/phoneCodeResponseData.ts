@@ -20,8 +20,9 @@ export type PhoneCodeResponseData = {
   /** 允许再次发送前需要等待的秒数。 */
   resend_after_seconds: number;
   /**
-     * 仅在开发环境返回的固定验证码，生产环境恒为 null。
+     * 仅在本地或测试环境返回的固定验证码，生产环境恒为 null。
      * @nullable
+     * @pattern ^[0-9]{6}$
      */
   dev_code?: string | null;
 };

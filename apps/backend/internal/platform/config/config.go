@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,8 @@ import (
 type Config struct {
 	HTTPAddr    string
 	CORSOrigins []string
+	// Environment 用于阻止生产环境误启用测试 Provider。
+	Environment string
 	// PublicBaseURL 是 API 对外可达的地址，本地存储用它生成签名 URL。
 	PublicBaseURL string
 
@@ -43,9 +46,11 @@ type Config struct {
 	Stream  StreamConfig
 }
 
+var fixedSMSCodePattern = regexp.MustCompile(`^[0-9]{6}$`)
+
 // SMSConfig 是验证码短信 Provider 配置。
 type SMSConfig struct {
-	// Provider 取 dev 或 aliyun。dev 只允许配合固定验证码在本地使用。
+	// Provider 取 dev 或 aliyun。dev 只允许在本地和测试环境使用。
 	Provider        string
 	Endpoint        string
 	AccessKeyID     string
@@ -116,6 +121,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		HTTPAddr:               env("STEWARD_HTTP_ADDR", ":8787"),
 		CORSOrigins:            splitAndTrim(env("STEWARD_CORS_ORIGINS", "http://localhost:8081,http://localhost:4174")),
+		Environment:            strings.ToLower(strings.TrimSpace(env("STEWARD_ENVIRONMENT", "development"))),
 		PublicBaseURL:          env("STEWARD_PUBLIC_BASE_URL", "http://localhost:8787"),
 		DatabaseURL:            env("STEWARD_DATABASE_URL", ""),
 		JWTSecret:              env("STEWARD_JWT_SECRET", ""),
@@ -182,7 +188,7 @@ func Load() (Config, error) {
 	if err := cfg.AI.validate(); err != nil {
 		return Config{}, err
 	}
-	if err := cfg.SMS.validate(cfg.DevSMSCode); err != nil {
+	if err := cfg.SMS.validate(cfg.DevSMSCode, cfg.Environment); err != nil {
 		return Config{}, err
 	}
 	if err := cfg.Storage.validate(); err != nil {
@@ -194,14 +200,20 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-func (c SMSConfig) validate(devCode string) error {
+func (c SMSConfig) validate(devCode, environment string) error {
 	switch c.Provider {
 	case "dev":
-		if devCode == "" {
-			return errors.New("STEWARD_SMS_PROVIDER=dev 时必须设置 STEWARD_DEV_SMS_CODE")
+		if environment == "production" {
+			return errors.New("生产环境禁止使用 STEWARD_SMS_PROVIDER=dev")
+		}
+		if !fixedSMSCodePattern.MatchString(devCode) {
+			return errors.New("STEWARD_SMS_PROVIDER=dev 时必须设置 6 位 STEWARD_DEV_SMS_CODE")
 		}
 		return nil
 	case "aliyun":
+		if environment == "test" {
+			return errors.New("测试环境必须使用 STEWARD_SMS_PROVIDER=dev，避免发送真实短信")
+		}
 		if devCode != "" {
 			return errors.New("STEWARD_SMS_PROVIDER=aliyun 时必须清空 STEWARD_DEV_SMS_CODE")
 		}
@@ -329,6 +341,7 @@ func (c StreamConfig) Resolve() string {
 func LoadForTest() Config {
 	_ = godotenv.Load(findEnvFile()...)
 	return Config{
+		Environment:          "test",
 		DatabaseURL:          os.Getenv("STEWARD_TEST_DATABASE_URL"),
 		JWTSecret:            "test-secret",
 		AccessTokenTTL:       time.Hour,

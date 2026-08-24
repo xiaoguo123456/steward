@@ -27,11 +27,14 @@ export const RequestPhoneCodeBody = zod.object({
   "purpose": zod.enum(['login', 'change_phone']).default(requestPhoneCodeBodyPurposeDefault).describe('验证码用途，用于区分登录与换绑等场景的限流口径。')
 })
 
+export const requestPhoneCodeResponseDataDevCodeRegExp = new RegExp('^[0-9]{6}$');
+
+
 export const RequestPhoneCodeResponse = zod.object({
   "data": zod.object({
   "expires_in_seconds": zod.number().int().describe('验证码有效期。'),
   "resend_after_seconds": zod.number().int().describe('允许再次发送前需要等待的秒数。'),
-  "dev_code": zod.string().nullish().describe('仅在开发环境返回的固定验证码，生产环境恒为 null。')
+  "dev_code": zod.string().regex(requestPhoneCodeResponseDataDevCodeRegExp).nullish().describe('仅在本地或测试环境返回的固定验证码，生产环境恒为 null。')
 }),
   "meta": zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')

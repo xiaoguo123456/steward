@@ -1,5 +1,14 @@
 import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
@@ -37,13 +46,14 @@ export function AuthShell({ children, heading, subtitle, compactLogo = false }: 
 }
 
 type AuthInputProps = ComponentProps<typeof TextInput> & {
+  containerStyle?: StyleProp<ViewStyle>;
   icon: ComponentProps<typeof AppIcon>['name'];
   trailing?: ReactNode;
 };
 
-export function AuthInput({ icon, trailing, style, ...props }: AuthInputProps) {
+export function AuthInput({ containerStyle, icon, trailing, style, ...props }: AuthInputProps) {
   return (
-    <View style={styles.inputShell}>
+    <View style={[styles.inputShell, containerStyle]}>
       <AppIcon color={colors.textTertiary} name={icon} size={19} />
       <TextInput
         autoCapitalize="none"

@@ -52,7 +52,7 @@ type Service struct {
 	db     *database.DB
 	tokens *auth.TokenService
 	users  UserInitializer
-	// devCode 非空时跳过真实短信通道，固定使用该验证码，仅用于开发环境。
+	// devCode 非空时跳过真实短信通道，固定使用该验证码，仅用于本地和测试环境。
 	devCode string
 	sender  CodeSender
 }
@@ -67,7 +67,7 @@ func New(db *database.DB, tokens *auth.TokenService, users UserInitializer,
 type CodeResult struct {
 	ExpiresInSeconds   int
 	ResendAfterSeconds int
-	// DevCode 只在开发环境返回，生产环境恒为空。
+	// DevCode 只在本地和测试环境返回，生产环境恒为空。
 	DevCode string
 }
 

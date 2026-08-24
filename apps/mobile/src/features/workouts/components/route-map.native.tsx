@@ -24,6 +24,7 @@ export function RouteMap({
   distanceMeters,
   trackingStatus,
   statusMessage,
+  locationMessageBottomInset = 14,
   actionLabel,
   onAction,
 }: RouteMapProps) {
@@ -148,7 +149,7 @@ export function RouteMap({
       ) : null}
 
       {mapState !== 'error' && showLocationMessage ? (
-        <View style={styles.locationMessage}>
+        <View style={[styles.locationMessage, { bottom: locationMessageBottomInset }]}>
           <Text style={styles.locationMessageText}>{statusMessage}</Text>
           {actionLabel && onAction ? (
             <Pressable
@@ -265,7 +266,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 14,
     right: 14,
-    bottom: 14,
     minHeight: 42,
     paddingLeft: 13,
     paddingRight: 7,

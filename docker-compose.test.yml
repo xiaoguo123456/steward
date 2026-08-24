@@ -9,6 +9,12 @@ x-logging: &default-logging
 x-backend-image: &backend-image
   image: ${ACR_REGISTRY}/${ACR_NAMESPACE}/steward-backend:${IMAGE_TAG:-test-latest}
 
+x-test-sms: &test-sms
+  # 测试环境显式覆盖服务器旧配置，禁止误发真实短信。
+  STEWARD_ENVIRONMENT: test
+  STEWARD_SMS_PROVIDER: dev
+  STEWARD_DEV_SMS_CODE: "123456"
+
 services:
   migrate:
     <<: *backend-image
@@ -21,6 +27,7 @@ services:
     <<: *backend-image
     command: ["api"]
     env_file: ${STEWARD_ENV_FILE:-.env.test}
+    environment: *test-sms
     restart: unless-stopped
     init: true
     logging: *default-logging
@@ -38,6 +45,7 @@ services:
     <<: *backend-image
     command: ["worker"]
     env_file: ${STEWARD_ENV_FILE:-.env.test}
+    environment: *test-sms
     restart: unless-stopped
     init: true
     logging: *default-logging

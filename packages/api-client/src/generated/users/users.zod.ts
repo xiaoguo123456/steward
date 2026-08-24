@@ -189,11 +189,14 @@ export const ChangePhoneResponse = zod.object({
  * 发出的验证码用途是 `change_phone`，登录码不能拿来换绑，反之亦然。
  * @summary 给当前绑定的手机号发送换绑验证码
  */
+export const requestCurrentPhoneCodeResponseDataDevCodeRegExp = new RegExp('^[0-9]{6}$');
+
+
 export const RequestCurrentPhoneCodeResponse = zod.object({
   "data": zod.object({
   "expires_in_seconds": zod.number().int().describe('验证码有效期。'),
   "resend_after_seconds": zod.number().int().describe('允许再次发送前需要等待的秒数。'),
-  "dev_code": zod.string().nullish().describe('仅在开发环境返回的固定验证码，生产环境恒为 null。')
+  "dev_code": zod.string().regex(requestCurrentPhoneCodeResponseDataDevCodeRegExp).nullish().describe('仅在本地或测试环境返回的固定验证码，生产环境恒为 null。')
 }),
   "meta": zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
