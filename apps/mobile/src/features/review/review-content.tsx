@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -13,11 +13,13 @@ import { useRouter, type Href } from 'expo-router';
 
 import { ProposalCard } from '@/features/assistant/proposal-card';
 import {
+  recentCompletedPeriods,
+  type ReviewPeriod,
+} from '@/features/review/review-period';
+import {
   formatDelta,
   formatMetric,
-  recentPeriods,
   useWeeklyReview,
-  type ReviewPeriod,
 } from '@/features/review/use-weekly-review';
 import { formatRelativeTime } from '@/utils/format';
 
@@ -139,7 +141,7 @@ function ReviewPeriodPickerSheet({
 }
 
 export function ReviewContent() {
-  const periods = useMemo(() => recentPeriods(8), []);
+  const periods = recentCompletedPeriods(8);
   const [periodIndex, setPeriodIndex] = useState(0);
   const [periodPickerVisible, setPeriodPickerVisible] = useState(false);
   const [expandedObservationId, setExpandedObservationId] = useState<string | null>(null);
@@ -217,18 +219,30 @@ export function ReviewContent() {
         )}
       </View>
 
-      <View accessibilityLabel="本周数据概览" style={styles.metricStrip}>
-        {review.metrics.map((metric) => {
-          const delta = formatDelta(metric);
-          return (
-            <View key={metric.key} style={styles.metricItem}>
-              <Text style={styles.metricValue}>{formatMetric(metric)}</Text>
-              <Text style={styles.metricLabel}>{metric.label}</Text>
-              {delta ? <Text style={styles.metricDelta}>{delta}</Text> : null}
-            </View>
-          );
-        })}
-      </View>
+      {review.metrics.length > 0 ? (
+        <View accessibilityLabel="本周数据概览" style={styles.metricStrip}>
+          {review.metrics.map((metric) => {
+            const value = formatMetric(metric);
+            const delta = formatDelta(metric);
+            return (
+              <View
+                accessible
+                accessibilityLabel={`${metric.label}，${value}${delta ? `，${delta}` : ''}`}
+                key={metric.key}
+                style={styles.metricItem}
+              >
+                <View style={styles.metricPrimaryRow}>
+                  <Text numberOfLines={1} style={styles.metricValue}>{value}</Text>
+                  <Text numberOfLines={1} style={styles.metricLabel}>{metric.label}</Text>
+                </View>
+                {delta ? (
+                  <Text numberOfLines={1} style={styles.metricDelta}>{delta}</Text>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
 
       {/* 观察全部带来源：没有来源的结论在服务端就被丢掉了，不会到这里。 */}
       {review.observations.length > 0 ? (
@@ -364,7 +378,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: colors.textTertiary,
     fontFamily,
-    ...typography.meta,
+    ...typography.caption,
   },
   proposalList: {
     gap: 12,
@@ -417,16 +431,23 @@ const styles = StyleSheet.create({
     letterSpacing: -0.15,
   },
   metricStrip: {
-    minHeight: 50,
-    paddingHorizontal: 2,
+    paddingVertical: 7,
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
   metricItem: {
-    flex: 1,
+    minWidth: 88,
+    minHeight: 52,
+    paddingHorizontal: 4,
+    paddingVertical: 7,
+    flexBasis: 88,
+    flexGrow: 1,
+    alignItems: 'center',
+  },
+  metricPrimaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

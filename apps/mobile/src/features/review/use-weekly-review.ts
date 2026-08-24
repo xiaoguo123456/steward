@@ -25,36 +25,12 @@ import { useEffect, useMemo, useState } from 'react';
  * Proposal 的形状，因此直接复用它，而不是另造一套。
  */
 
-/** 一周的时间范围，用于周期选择器。 */
-export type ReviewPeriod = {
-  /** 传给接口的 week_of：该周内任意一天。 */
-  weekOf: string;
-  label: string;
-  isCurrent: boolean;
-};
-
 /** 界面用的观察条目：一句话加上它的依据。 */
 export type ReviewObservation = {
   id: string;
   text: string;
   sources: { label: string; resourceType: string; resourceId: string }[];
 };
-
-/** 最近 N 周。周一为一周起点，与服务端的 WeekBounds 口径一致。 */
-export function recentPeriods(count = 8): ReviewPeriod[] {
-  const out: ReviewPeriod[] = [];
-  const today = new Date();
-  for (let i = 0; i < count; i += 1) {
-    const day = new Date(today);
-    day.setDate(day.getDate() - i * 7);
-    out.push({
-      weekOf: toDateParam(day),
-      label: i === 0 ? '本周' : `${i} 周前`,
-      isCurrent: i === 0,
-    });
-  }
-  return out;
-}
 
 export function useWeeklyReview(weekOf: string) {
   const queryClient = useQueryClient();
@@ -180,10 +156,4 @@ function toSourceLabel(source: ReviewSource) {
     resourceType: source.resource_type,
     resourceId: source.resource_id,
   };
-}
-
-function toDateParam(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
 }

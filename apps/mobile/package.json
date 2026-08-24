@@ -54,7 +54,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "preview:web": "node scripts/serve-preview.mjs --host 0.0.0.0 --port 4174 --dir dist",
+    "test": "pnpm run test:important-dates && pnpm run test:review && pnpm run test:workouts",
     "test:important-dates": "node --experimental-strip-types --test src/features/important-dates/important-date-picker.test.mjs",
+    "test:review": "node --experimental-strip-types --test src/features/review/review-period.test.mjs",
     "test:workouts": "node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web"
