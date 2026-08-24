@@ -6,8 +6,8 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import {
-  RecipeImage,
   RecipePrimaryButton,
+  RecipeStepImage,
 } from '@/features/recipes/components/recipe-ui';
 import { recipeColors } from '@/features/recipes/theme';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
@@ -143,7 +143,12 @@ export default function CookingModeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <RecipeImage recipe={recipe} style={styles.stepImage} />
+        <RecipeStepImage
+          fallbackToRecipe
+          recipe={recipe}
+          stepIndex={stepIndex}
+          style={styles.stepImage}
+        />
 
         <View style={styles.stepHeading}>
           <Text style={styles.stepCount}>第 {stepIndex + 1} 步</Text>

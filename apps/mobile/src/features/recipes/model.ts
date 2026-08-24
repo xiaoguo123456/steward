@@ -32,6 +32,7 @@ export type RecipeIngredient = {
 export type RecipeStep = {
   title: string;
   description: string;
+  image?: string;
   timerMinutes?: number;
   ingredients?: string[];
 };
@@ -41,16 +42,14 @@ export type Recipe = {
   title: string;
   image: string;
   imageDescription: string;
-  imageCredit: string;
   timeMinutes: number;
   difficulty: RecipeDifficulty;
   servings: number;
   calories: number;
   protein: number;
   carbs: number;
-  /** 脂肪与膳食纤维可能没有。空表示「不知道」，界面显示「—」而不是 0。 */
+  /** 脂肪可能没有。空表示「不知道」，不能当成 0。 */
   fat?: number;
-  fiber?: number;
   recommendation: string;
   description: string;
   mealSlots: MealSlot[];
@@ -62,7 +61,6 @@ export type Recipe = {
   component?: RecipeComponent;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
-  sourceLabel: string;
 };
 
 export type WeekDay = {

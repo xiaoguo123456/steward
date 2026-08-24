@@ -67,7 +67,6 @@ export function toRecipe(recipe: ApiRecipe): Recipe {
     // 没有明确图片权利的菜谱不带图，客户端展示占位。
     image: recipe.image_url ?? '',
     imageDescription: recipe.title,
-    imageCredit: recipe.source.image_credit ?? '',
     timeMinutes: recipe.duration_minutes,
     difficulty: difficultyLabels[recipe.difficulty] ?? '适中',
     servings: recipe.servings,
@@ -75,7 +74,6 @@ export function toRecipe(recipe: ApiRecipe): Recipe {
     protein: recipe.nutrition.protein_g,
     carbs: recipe.nutrition.carbs_g,
     fat: recipe.nutrition.fat_g ?? undefined,
-    fiber: recipe.nutrition.fiber_g ?? undefined,
     recommendation: recipe.summary ?? '',
     description: recipe.summary ?? '',
     mealSlots: recipe.meal_slots as MealSlot[],
@@ -86,16 +84,7 @@ export function toRecipe(recipe: ApiRecipe): Recipe {
     component: recipe.component ?? undefined,
     ingredients: recipe.ingredients.map(toIngredient),
     steps: recipe.steps.map(toStep),
-    sourceLabel: sourceLabelOf(recipe),
   };
-}
-
-/** 来源标签要能让用户看出这条内容从哪来、按什么授权展示。 */
-function sourceLabelOf(recipe: ApiRecipe): string {
-  const parts = [recipe.source.name];
-  if (recipe.source.author) parts.push(recipe.source.author);
-  parts.push(recipe.source.license);
-  return parts.join(' · ');
 }
 
 function toIngredient(item: ApiRecipe['ingredients'][number], index: number): RecipeIngredient {
@@ -111,6 +100,7 @@ function toStep(item: ApiRecipe['steps'][number]): RecipeStep {
   return {
     title: item.title,
     description: item.description,
+    image: item.image_url ?? undefined,
     timerMinutes: item.timer_minutes ?? undefined,
   };
 }

@@ -37,6 +37,35 @@ export function RecipeImage({
   );
 }
 
+export function RecipeStepImage({
+  recipe,
+  stepIndex,
+  fallbackToRecipe = false,
+  style,
+}: {
+  recipe: Recipe;
+  stepIndex: number;
+  fallbackToRecipe?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const step = recipe.steps[stepIndex];
+  const uri = step?.image || (fallbackToRecipe ? recipe.image : '');
+  if (!step || !uri) return null;
+
+  return (
+    <View style={[styles.imageFrame, style]}>
+      <Image
+        accessibilityLabel={`${recipe.title}，第 ${stepIndex + 1} 步图片`}
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        source={{ uri }}
+        style={styles.image}
+        transition={180}
+      />
+    </View>
+  );
+}
+
 export function RecipeTabs({
   value,
   onChange,
@@ -189,16 +218,6 @@ export function RecipeSectionTitle({
   );
 }
 
-/** 全部都有才求和；缺一项就返回 undefined，由调用方显示「—」。 */
-function sumOrUnknown(values: (number | undefined)[]): number | undefined {
-  let total = 0;
-  for (const value of values) {
-    if (value === undefined) return undefined;
-    total += value;
-  }
-  return total;
-}
-
 export function NutritionStrip({
   recipes,
   target,
@@ -211,9 +230,6 @@ export function NutritionStrip({
   // 用户加不加餐、在外面吃什么我们不追踪，文案上不要写成「你的摄入」。
   const calories = recipes.reduce((total, recipe) => total + recipe.calories, 0);
   const protein = recipes.reduce((total, recipe) => total + recipe.protein, 0);
-  // 有一道菜缺膳食纤维，这一项就显示「—」。
-  // 把缺的当 0 加进去会得到一个偏低、且从数字上看不出偏低的结果。
-  const fiber = sumOrUnknown(recipes.map((recipe) => recipe.fiber));
   const metrics = [
     {
       label: '热量',
@@ -228,12 +244,6 @@ export function NutritionStrip({
       value: `${Math.round(protein)}`,
       unit: '克',
       target: target ? `目标 ${Math.round(target.proteinG)}` : undefined,
-    },
-    {
-      label: '膳食纤维',
-      value: fiber === undefined ? '—' : `${Math.round(fiber)}`,
-      unit: '克',
-      target: undefined,
     },
   ];
 
@@ -253,8 +263,7 @@ export function NutritionStrip({
           key={metric.label}
           style={[
             styles.nutritionMetric,
-            index === 1 && styles.nutritionMetricCenter,
-            index === 2 && styles.nutritionMetricEnd,
+            index === metrics.length - 1 && styles.nutritionMetricEnd,
           ]}
         >
           <Text style={styles.nutritionLabel}>{metric.label}</Text>
@@ -591,9 +600,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     alignItems: 'flex-start',
   },
-  nutritionMetricCenter: {
-    alignItems: 'center',
-  },
   nutritionMetricEnd: {
     alignItems: 'flex-end',
   },
@@ -628,7 +634,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   mealDish: {
-    gap: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   mealTitleRow: {
     flexDirection: 'row',
@@ -675,6 +683,8 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   mealMain: {
+    flex: 1,
+    minWidth: 0,
     minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
@@ -707,12 +717,15 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   swapButton: {
-    minWidth: 76,
+    minWidth: 82,
     minHeight: 44,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     gap: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
   },
   swapText: {
     color: colors.primaryStrong,

@@ -18,6 +18,11 @@ export interface RecipeStep {
   title: string;
   description: string;
   /**
+     * 这一步对应的操作图片；没有步骤图或图片权利未确认时为空。
+     * @nullable
+     */
+  image_url?: string | null;
+  /**
      * 这一步需要计时时给出分钟数，烹饪模式据此提供倒计时。
      * @nullable
      */
