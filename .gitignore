@@ -12,6 +12,8 @@ output/
 *.aab
 *.log
 *.tsbuildinfo
+__pycache__/
+*.pyc
 
 # OpenAPI bundle 是两端代码生成的唯一输入，也是可比较的契约快照，
 # 必须入库：CI 才能在运行 make generate 后检查工作区是否漂移。
