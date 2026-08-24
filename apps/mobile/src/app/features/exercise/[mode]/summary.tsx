@@ -17,6 +17,10 @@ import {
   getWorkoutMode,
   isOutdoorWorkoutMode,
 } from '@/features/workouts/model';
+import {
+  formatAveragePace,
+  formatAverageSpeed,
+} from '@/features/workouts/workout-location';
 import { useBuiltinTracker } from '@/features/trackers/use-builtin-tracker';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -32,31 +36,42 @@ export default function WorkoutSummaryScreen() {
   const params = useLocalSearchParams<{
     mode?: string | string[];
     seconds?: string | string[];
+    distanceMeters?: string | string[];
   }>();
   const rawMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const rawSeconds = Array.isArray(params.seconds) ? params.seconds[0] : params.seconds;
+  const rawDistanceMeters = Array.isArray(params.distanceMeters)
+    ? params.distanceMeters[0]
+    : params.distanceMeters;
   const mode = getWorkoutMode(rawMode);
   const outdoor = isOutdoorWorkoutMode(mode);
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
   const [feeling, setFeeling] = useState<(typeof feelings)[number]['id']>('good');
   const workout = useBuiltinTracker('workout', { limit: 1 });
 
-  // 这一版能诚实测到的只有经过的时间；距离与步数要用户自己填。
   const elapsedSeconds = Number(rawSeconds ?? 0) || 0;
   const durationMin = Math.max(1, Math.round(elapsedSeconds / 60));
-  const [distance, setDistance] = useState('');
+  const measuredDistanceMeters = positiveNumberOrUndefined(rawDistanceMeters) ?? 0;
+  const hasMeasuredDistance = measuredDistanceMeters > 0;
+  const [distance, setDistance] = useState(() =>
+    hasMeasuredDistance ? (measuredDistanceMeters / 1000).toFixed(2) : '',
+  );
   const [steps, setSteps] = useState('');
 
   const distanceValue = numberOrUndefined(distance);
   const stepsValue = numberOrUndefined(steps);
+  const confirmedDistanceMeters = (distanceValue ?? 0) * 1000;
+  const paceOrSpeed =
+    mode === 'cycling'
+      ? `${formatAverageSpeed(elapsedSeconds, confirmedDistanceMeters)} km/h`
+      : formatAveragePace(elapsedSeconds, confirmedDistanceMeters);
   const inputInvalid =
     (distance.trim() !== '' && distanceValue === undefined) ||
     (steps.trim() !== '' && stepsValue === undefined);
 
   const saveRecord = () => {
     if (inputInvalid || workout.saving) return;
-    // 只写测到的和用户填的。没填的字段不落库——
-    // 编一个数字进去，用户之后就再也分不清哪条记录是真的。
+    // GPS 距离仍允许用户在总结页修正；未测到也未补填的字段不落库。
     workout.save(
       {
         duration_min: durationMin,
@@ -102,12 +117,23 @@ export default function WorkoutSummaryScreen() {
             value={formatWorkoutDuration(elapsedSeconds)}
           />
           <View style={styles.metricDivider} />
-          <WorkoutMetric label="运动方式" value={modeDefinition.label} />
+          {outdoor ? (
+            <>
+              <WorkoutMetric label="距离（公里）" value={distanceValue?.toFixed(2) ?? '--'} />
+              <View style={styles.metricDivider} />
+              <WorkoutMetric
+                label={mode === 'cycling' ? '平均速度' : '平均配速'}
+                value={paceOrSpeed}
+              />
+            </>
+          ) : (
+            <WorkoutMetric label="运动方式" value={modeDefinition.label} />
+          )}
         </View>
 
         {outdoor ? (
           <>
-            <WorkoutSectionTitle title="补填这次的数据" />
+            <WorkoutSectionTitle title={hasMeasuredDistance ? '确认这次的数据' : '补填这次的数据'} />
             <View style={styles.manualFields}>
               <ManualField
                 label="距离"
@@ -126,7 +152,11 @@ export default function WorkoutSummaryScreen() {
                 />
               ) : null}
             </View>
-            <Text style={styles.manualHint}>不填就不记这一项，之后也可以在打卡里补。</Text>
+            <Text style={styles.manualHint}>
+              {hasMeasuredDistance
+                ? '距离来自本次 GPS 轨迹，可以按实际情况修正。'
+                : '没有取得有效 GPS 距离；不填就不记这一项。'}
+            </Text>
           </>
         ) : null}
 
@@ -160,8 +190,9 @@ export default function WorkoutSummaryScreen() {
         </View>
 
         <WorkoutNotice icon="information-circle-outline" tone="neutral">
-          这一版不申请定位与计步权限，只记录了运动时长。
-          距离和步数需要你自己填，保存后会出现在「打卡」里。
+          {outdoor
+            ? '距离由前台 GPS 轨迹计算并经你确认后保存；原始定位点不会上传。步数仍需手动填写。'
+            : '本次训练时长会在你确认后保存到「打卡」。'}
         </WorkoutNotice>
 
         <View style={styles.footerActions}>
@@ -222,6 +253,12 @@ function numberOrUndefined(raw: string): number | undefined {
   const text = raw.trim();
   if (text === '') return undefined;
   const value = Number(text);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function positiveNumberOrUndefined(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const value = Number(raw);
   return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 

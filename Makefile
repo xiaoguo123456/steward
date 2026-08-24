@@ -82,11 +82,15 @@ lint-mobile: ## 移动端 ESLint
 	pnpm mobile:lint
 
 .PHONY: test
-test: test-backend ## 运行全部测试
+test: test-backend test-mobile ## 运行全部测试
 
 .PHONY: test-backend
 test-backend: ## Go 单元测试
 	cd $(BACKEND) && go test ./...
+
+.PHONY: test-mobile
+test-mobile: ## 运行移动端确定性逻辑测试
+	pnpm mobile:test
 
 .PHONY: test-race
 test-race: ## 核心并发路径 race 检测

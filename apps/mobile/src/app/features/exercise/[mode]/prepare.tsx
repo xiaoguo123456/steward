@@ -111,7 +111,7 @@ function OutdoorWorkoutPrepare({
           <WorkoutSectionTitle title="开始前" />
           <View style={styles.readinessBar}>
             <View style={styles.readinessDivider} />
-            <ReadinessItem icon="navigate-outline" label="路线已准备" value="等待开始" />
+            <ReadinessItem icon="navigate-outline" label="GPS 路线" value="开始后授权定位" />
           </View>
         </View>
 
@@ -136,7 +136,7 @@ function OutdoorWorkoutPrepare({
 
         <View style={styles.noticeWrap}>
           <WorkoutNotice icon="information-circle-outline" tone="neutral">
-            这一版不申请定位权限，只记录运动时长；距离结束后可以自己补填。
+            开始后只申请“使用 App 时”的定位权限；暂停或离开运动页就停止采集。
           </WorkoutNotice>
         </View>
       </ScrollView>

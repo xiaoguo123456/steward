@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~57.0.10",
     "@expo/vector-icons": "^15.0.2",
+    "@maplibre/maplibre-react-native": "^11.3.7",
     "@react-native-community/slider": "5.2.0",
     "@steward/api-client": "workspace:*",
     "@tanstack/react-query": "^5.101.4",
@@ -20,6 +21,7 @@
     "expo-image-picker": "~57.0.11",
     "expo-linear-gradient": "~57.0.1",
     "expo-linking": "~57.0.5",
+    "expo-location": "~57.0.12",
     "expo-router": "~57.0.12",
     "expo-secure-store": "^57.0.1",
     "expo-splash-screen": "~57.0.6",
@@ -38,6 +40,7 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@types/geojson": "7946.0.16",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.1",
@@ -51,6 +54,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "preview:web": "node scripts/serve-preview.mjs --host 0.0.0.0 --port 4174 --dir dist",
+    "test:workouts": "node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web"
   },

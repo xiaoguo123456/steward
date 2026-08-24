@@ -1,6 +1,15 @@
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  BackHandler,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
@@ -27,6 +36,12 @@ import {
   isOutdoorWorkoutMode,
   type OutdoorWorkoutMode,
 } from '@/features/workouts/model';
+import { useOutdoorWorkoutTracking } from '@/features/workouts/use-outdoor-workout-tracking';
+import {
+  formatAveragePace,
+  formatAverageSpeed,
+  formatDistanceKilometers,
+} from '@/features/workouts/workout-location';
 import { useClientReady } from '@/hooks/use-client-ready';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -43,11 +58,21 @@ export default function ActiveWorkoutScreen() {
   const mode = getWorkoutMode(rawMode);
 
   if (isOutdoorWorkoutMode(mode)) {
-    return <OutdoorActiveWorkout mode={mode} params={params} />;
+    return (
+      <>
+        <Stack.Screen options={{ gestureEnabled: false }} />
+        <OutdoorActiveWorkout mode={mode} params={params} />
+      </>
+    );
   }
 
   const planId = Array.isArray(params.plan) ? params.plan[0] : params.plan;
-  return <StrengthActiveWorkout planId={planId} />;
+  return (
+    <>
+      <Stack.Screen options={{ gestureEnabled: false }} />
+      <StrengthActiveWorkout planId={planId} />
+    </>
+  );
 }
 
 function OutdoorActiveWorkout({
@@ -64,30 +89,61 @@ function OutdoorActiveWorkout({
   const clientReady = useClientReady();
   const [status, setStatus] = useState<ActiveStatus>('active');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [confirmIntent, setConfirmIntent] = useState<'back' | 'finish' | null>(null);
   const goalParam = Array.isArray(params.goal) ? params.goal[0] : params.goal;
   const voiceParam = Array.isArray(params.voice) ? params.voice[0] : params.voice;
   const goal = clientReady ? goalParam : undefined;
   const voice = clientReady ? voiceParam : undefined;
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
+  const tracking = useOutdoorWorkoutTracking({
+    enabled: status === 'active' && confirmIntent === null,
+    mode,
+  });
+  const distanceText = formatDistanceKilometers(tracking.distanceMeters);
+  const isCycling = mode === 'cycling';
+  const paceOrSpeed = isCycling
+    ? formatAverageSpeed(elapsedSeconds, tracking.distanceMeters)
+    : formatAveragePace(elapsedSeconds, tracking.distanceMeters);
+  const trackingActionLabel =
+    tracking.action === 'settings' ? '打开设置' : tracking.action === 'retry' ? '重试' : undefined;
 
   useEffect(() => {
-    if (status !== 'active' || showEndConfirm) return;
+    if (status !== 'active' || confirmIntent !== null) return;
     const timer = setInterval(() => setElapsedSeconds((current) => current + 1), 1000);
     return () => clearInterval(timer);
-  }, [showEndConfirm, status]);
+  }, [confirmIntent, status]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setConfirmIntent((current) => (current === null ? 'back' : null));
+      return true;
+    });
+    return () => subscription.remove();
+  }, []);
 
   const finishWorkout = () => {
     router.replace({
       pathname: '/features/exercise/[mode]/summary',
-      params: { mode, seconds: String(elapsedSeconds) },
+      params: {
+        mode,
+        seconds: String(elapsedSeconds),
+        distanceMeters: String(Math.round(tracking.distanceMeters)),
+      },
     } as Href);
+  };
+
+  const handleTrackingAction = () => {
+    if (tracking.action === 'settings') {
+      void Linking.openSettings();
+      return;
+    }
+    tracking.retry();
   };
 
   return (
     <AppScreen backgroundColor={workoutAccent.background} includeBottomInset>
       <NavHeader
-        onBack={() => setShowEndConfirm(true)}
+        onBack={() => setConfirmIntent('back')}
         right={
           <View style={styles.lockButton}>
             <AppIcon color={workoutAccent.ink} name="lock-closed-outline" size={19} />
@@ -98,7 +154,15 @@ function OutdoorActiveWorkout({
 
       <View style={styles.outdoorBody}>
         <View style={styles.mapWrap}>
-          <RouteMap />
+          <RouteMap
+            actionLabel={trackingActionLabel}
+            currentPoint={tracking.currentPoint}
+            distanceMeters={tracking.distanceMeters}
+            onAction={trackingActionLabel ? handleTrackingAction : undefined}
+            routeSegments={tracking.routeSegments}
+            statusMessage={tracking.message}
+            trackingStatus={tracking.status}
+          />
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.liveBadgeText}>{status === 'active' ? '记录中' : '已暂停'}</Text>
@@ -111,18 +175,21 @@ function OutdoorActiveWorkout({
         </View>
 
         <View style={styles.outdoorTray}>
-          {/*
-            主数字是用时，不是距离。
-            这一版不申请定位与计步权限，能诚实测到的只有经过的时间；
-            把一个不会变的「5.24 公里」摆在最显眼处，比不显示更糟。
-          */}
           <View style={styles.distanceLine}>
-            <Text style={styles.distanceValue}>{formatWorkoutDuration(elapsedSeconds)}</Text>
+            <Text style={styles.distanceValue}>{distanceText}</Text>
+            <Text style={styles.distanceUnit}>公里</Text>
           </View>
 
-          <Text style={styles.currentMetric}>
-            {modeDefinition.label}进行中 · 距离与配速这一版不记录，结束后可以自己补填
-          </Text>
+          <View style={styles.metricStrip}>
+            <OutdoorMetric label="运动时间" value={formatWorkoutDuration(elapsedSeconds)} />
+            <View style={styles.metricDivider} />
+            <OutdoorMetric
+              label={isCycling ? '平均速度（公里/时）' : '平均配速（每公里）'}
+              value={paceOrSpeed}
+            />
+          </View>
+
+          <Text style={styles.currentMetric}>{tracking.message}</Text>
 
           <View style={styles.outdoorControls}>
             <Pressable
@@ -141,7 +208,7 @@ function OutdoorActiveWorkout({
             <Pressable
               accessibilityLabel="结束运动"
               accessibilityRole="button"
-              onPress={() => setShowEndConfirm(true)}
+              onPress={() => setConfirmIntent('finish')}
               style={({ pressed }) => [styles.stopButton, pressed && styles.controlPressed]}
             >
               <View style={styles.stopSquare} />
@@ -158,14 +225,28 @@ function OutdoorActiveWorkout({
         </View>
       </View>
 
-      {showEndConfirm ? (
+      {confirmIntent ? (
         <EndWorkoutSheet
-          onContinue={() => setShowEndConfirm(false)}
+          finishLabel={confirmIntent === 'back' ? '停止并退出' : '结束并查看总结'}
+          onContinue={() => setConfirmIntent(null)}
           onFinish={finishWorkout}
-          title={`结束${modeDefinition.label}？`}
+          title={
+            confirmIntent === 'back'
+              ? `停止并退出${modeDefinition.label}？`
+              : `结束${modeDefinition.label}？`
+          }
         />
       ) : null}
     </AppScreen>
+  );
+}
+
+function OutdoorMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.outdoorMetric}>
+      <Text style={styles.outdoorMetricValue}>{value}</Text>
+      <Text style={styles.outdoorMetricLabel}>{label}</Text>
+    </View>
   );
 }
 
@@ -198,6 +279,15 @@ function StrengthActiveWorkout({ planId }: { planId?: string }) {
     const timer = setInterval(() => setRestSeconds((current) => Math.max(0, current - 1)), 1000);
     return () => clearInterval(timer);
   }, [restSeconds, showEndConfirm, status]);
+
+  useEffect(() => {
+    if (!currentExercise) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setShowEndConfirm((current) => !current);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [currentExercise]);
 
   const finishWorkout = () => {
     router.replace({
@@ -412,6 +502,7 @@ function StrengthActiveWorkout({ planId }: { planId?: string }) {
 
       {showEndConfirm ? (
         <EndWorkoutSheet
+          finishLabel="结束并查看总结"
           onContinue={() => setShowEndConfirm(false)}
           onFinish={finishWorkout}
           title="结束力量训练？"
@@ -423,32 +514,46 @@ function StrengthActiveWorkout({ planId }: { planId?: string }) {
 
 function EndWorkoutSheet({
   title,
+  finishLabel,
   onContinue,
   onFinish,
 }: {
   title: string;
+  finishLabel: string;
   onContinue: () => void;
   onFinish: () => void;
 }) {
   return (
-    <View accessibilityViewIsModal style={styles.sheetLayer}>
-      <Pressable accessibilityLabel="关闭结束确认" onPress={onContinue} style={styles.sheetBackdrop} />
-      <View style={styles.endSheet}>
-        <View style={styles.sheetHandle} />
-        <Text accessibilityRole="header" style={styles.sheetTitle}>
-          {title}
-        </Text>
-        <Text style={styles.sheetCopy}>结束后仍可以查看本次总结并选择是否保存记录。</Text>
-        <WorkoutPrimaryButton label="继续运动" onPress={onContinue} />
+    <Modal
+      animationType="slide"
+      onRequestClose={onContinue}
+      statusBarTranslucent
+      transparent
+      visible
+    >
+      <View accessibilityViewIsModal style={styles.sheetLayer}>
         <Pressable
-          accessibilityRole="button"
-          onPress={onFinish}
-          style={({ pressed }) => [styles.finishButton, pressed && styles.finishButtonPressed]}
-        >
-          <Text style={styles.finishButtonText}>结束并查看总结</Text>
-        </Pressable>
+          accessibilityLabel="关闭结束确认"
+          onPress={onContinue}
+          style={styles.sheetBackdrop}
+        />
+        <View style={styles.endSheet}>
+          <View style={styles.sheetHandle} />
+          <Text accessibilityRole="header" style={styles.sheetTitle}>
+            {title}
+          </Text>
+          <Text style={styles.sheetCopy}>停止后会进入运动总结，由你确认是否保存记录。</Text>
+          <WorkoutPrimaryButton label="继续运动" onPress={onContinue} />
+          <Pressable
+            accessibilityRole="button"
+            onPress={onFinish}
+            style={({ pressed }) => [styles.finishButton, pressed && styles.finishButtonPressed]}
+          >
+            <Text style={styles.finishButtonText}>{finishLabel}</Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </Modal>
   );
 }
 
@@ -506,7 +611,7 @@ const styles = StyleSheet.create({
   goalBadge: {
     position: 'absolute',
     right: 14,
-    bottom: 14,
+    top: 14,
     minHeight: 32,
     paddingHorizontal: 11,
     alignItems: 'center',
@@ -523,9 +628,9 @@ const styles = StyleSheet.create({
   },
   outdoorTray: {
     flex: 1,
-    minHeight: 390,
+    minHeight: 350,
     marginTop: -18,
-    paddingTop: 25,
+    paddingTop: 22,
     paddingHorizontal: 16,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
@@ -539,8 +644,8 @@ const styles = StyleSheet.create({
   distanceValue: {
     color: colors.primaryStrong,
     fontFamily,
-    fontSize: 64,
-    lineHeight: 72,
+    fontSize: 58,
+    lineHeight: 66,
     fontWeight: '700',
     letterSpacing: -2,
     fontVariant: ['tabular-nums'],
@@ -554,9 +659,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   metricStrip: {
-    minHeight: 76,
-    marginTop: 8,
-    paddingVertical: 10,
+    minHeight: 68,
+    marginTop: 5,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: radius.lg,
@@ -567,12 +672,32 @@ const styles = StyleSheet.create({
     height: 38,
     backgroundColor: workoutAccent.hairline,
   },
-  currentMetric: {
-    marginTop: 14,
+  outdoorMetric: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outdoorMetricValue: {
+    color: workoutAccent.ink,
+    fontFamily,
+    fontSize: 21,
+    lineHeight: 28,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  outdoorMetricLabel: {
+    marginTop: 2,
     color: workoutAccent.muted,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  currentMetric: {
+    marginTop: 9,
+    color: workoutAccent.muted,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
@@ -581,16 +706,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   outdoorControls: {
-    minHeight: 112,
-    marginTop: 12,
+    minHeight: 102,
+    marginTop: 7,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 24,
   },
   pauseButton: {
-    width: 96,
-    height: 96,
+    width: 90,
+    height: 90,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
@@ -605,8 +730,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   stopButton: {
-    width: 96,
-    height: 96,
+    width: 90,
+    height: 90,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',

@@ -27,6 +27,13 @@
     },
     "plugins": [
       "expo-router",
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "用于在户外运动页面记录你的实时路线、距离和配速；暂停或离开页面后停止采集。"
+        }
+      ],
       [
         "expo-splash-screen",
         {
