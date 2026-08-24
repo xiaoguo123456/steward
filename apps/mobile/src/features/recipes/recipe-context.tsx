@@ -30,6 +30,8 @@ import {
 type RecipeContextValue = {
   recipes: Recipe[];
   recipesLoading: boolean;
+  recipesLoadFailure: string | null;
+  reloadRecipes: () => void;
   getRecipe: (recipeId: string) => Recipe | undefined;
 
   /** 本周七天，由服务端给出的周起始日推出。 */
@@ -40,6 +42,8 @@ type RecipeContextValue = {
 
   plan: WeekPlan;
   planLoading: boolean;
+  planLoadFailure: string | null;
+  reloadPlan: () => void;
   hasPendingPlan: boolean;
   planSaving: boolean;
   planFailure: string | null;
@@ -122,6 +126,8 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
     () => ({
       recipes: content.recipes,
       recipesLoading: content.loading,
+      recipesLoadFailure: content.loadFailure,
+      reloadRecipes: content.refetch,
       // 菜单里的菜谱不一定在浏览列表的前 100 条里，
       // 已确认菜单与建议各自带回了自己的那些，合起来查。
       getRecipe: (recipeId: string) =>
@@ -136,6 +142,8 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
 
       plan: mealPlan.plan,
       planLoading: mealPlan.loading,
+      planLoadFailure: mealPlan.loadFailure,
+      reloadPlan: mealPlan.refetch,
       hasPendingPlan: mealPlan.hasPendingPlan,
       planSaving: mealPlan.saving,
       planFailure: mealPlan.failure ?? suggestion.failure,

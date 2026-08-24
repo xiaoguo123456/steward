@@ -1,4 +1,4 @@
-import { useListRecipes, type Recipe as ApiRecipe } from '@steward/api-client';
+import { errorMessage, useListRecipes, type Recipe as ApiRecipe } from '@steward/api-client';
 import { useMemo } from 'react';
 
 import type {
@@ -43,6 +43,8 @@ export function useRecipeContent(allergens: string[] = []) {
   return {
     recipes,
     loading: query.isLoading,
+    loadFailure: query.isError ? errorMessage(query.error, '菜谱没能加载。') : null,
+    refetch: () => void query.refetch(),
     getRecipe: (recipeId: string) => byId.get(recipeId),
   };
 }

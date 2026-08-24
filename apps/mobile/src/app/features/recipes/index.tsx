@@ -42,6 +42,64 @@ function recipeRoute(recipeId: string) {
 
 type PlannedDishView = { recipe: Recipe; component?: RecipeComponent };
 
+function WeekHomeLoading() {
+  return (
+    <View accessibilityLabel="正在加载本周菜单" accessibilityRole="progressbar" style={styles.loadingState}>
+      <View style={styles.loadingDateRow}>
+        {Array.from({ length: 7 }).map((_, index) => (
+          <View key={index} style={styles.loadingDateCell} />
+        ))}
+      </View>
+      <View style={styles.loadingTitle} />
+      <View style={styles.loadingNutrition} />
+      <View style={styles.loadingMeal} />
+      <View style={styles.loadingMeal} />
+    </View>
+  );
+}
+
+function DiscoverHomeLoading() {
+  return (
+    <View accessibilityLabel="正在加载菜谱" accessibilityRole="progressbar" style={styles.loadingGrid}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <View key={index} style={styles.loadingRecipeCard}>
+          <View style={styles.loadingRecipeImage} />
+          <View style={styles.loadingRecipeTitle} />
+          <View style={styles.loadingRecipeMeta} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function RecipeUnavailableState({
+  actionLabel = '重新加载',
+  body,
+  onAction,
+  title,
+}: {
+  actionLabel?: string;
+  body: string;
+  onAction: () => void;
+  title: string;
+}) {
+  return (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIcon}>
+        <AppIcon color={recipeColors.faint} name="cloud-offline-outline" size={27} />
+      </View>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptyCopy}>{body}</Text>
+      <RecipePrimaryButton
+        label={actionLabel}
+        onPress={onAction}
+        style={styles.emptyButton}
+        tone="secondary"
+      />
+    </View>
+  );
+}
+
 function WeekHome() {
   const router = useRouter();
   const {
@@ -51,6 +109,8 @@ function WeekHome() {
     setSelectedDayId,
     plan,
     planLoading,
+    planLoadFailure,
+    reloadPlan,
     planGenerating,
     planFailure,
     hasPendingPlan,
@@ -60,6 +120,18 @@ function WeekHome() {
     dailyTarget,
   } = useRecipePrototype();
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
+
+  if (!selectedDay) {
+    if (planLoading) return <WeekHomeLoading />;
+    return (
+      <RecipeUnavailableState
+        body={planLoadFailure ?? '服务端没有返回本周日期，请重新加载后再试。'}
+        onAction={reloadPlan}
+        title="本周菜单暂时无法显示"
+      />
+    );
+  }
+
   // 一格是一组菜，摊平之后拿去算当天的营养合计。
   //
   // 菜谱可能还没取回来（菜单里的菜多半不在浏览列表的前 100 条里），
@@ -137,7 +209,7 @@ function WeekHome() {
       ) : (
         <View style={styles.mealList}>
           {mealSlotOrder.map((meal, mealIndex) => {
-            const dishes = dayDishes[mealIndex];
+            const dishes = dayDishes[mealIndex] ?? [];
             if (dishes.length === 0) return null;
             return (
               <MealRow
@@ -179,7 +251,13 @@ function WeekHome() {
 
 function DiscoverHome() {
   const router = useRouter();
-  const { profile, recipes } = useRecipePrototype();
+  const {
+    profile,
+    recipes,
+    recipesLoading,
+    recipesLoadFailure,
+    reloadRecipes,
+  } = useRecipePrototype();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<RecipeCategory>('recommended');
   const normalizedSearch = search.trim().toLowerCase();
@@ -205,6 +283,8 @@ function DiscoverHome() {
 
   // 头图取当前筛选下的第一条：内容来自服务端，不该在客户端写死某个 ID。
   const featured = visibleRecipes[0] ?? recipes[0];
+  const waitingForRecipes = recipesLoading && recipes.length === 0;
+  const recipesUnavailable = Boolean(recipesLoadFailure) && recipes.length === 0;
 
   return (
     <>
@@ -256,7 +336,15 @@ function DiscoverHome() {
         })}
       </ScrollView>
 
-      {!normalizedSearch && category === 'recommended' ? (
+      {recipesLoadFailure && recipes.length > 0 ? (
+        <View style={styles.contentNotice}>
+          <InlineNotice icon="cloud-offline-outline" tone="neutral">
+            菜谱更新失败，正在显示已有内容。
+          </InlineNotice>
+        </View>
+      ) : null}
+
+      {!normalizedSearch && category === 'recommended' && featured ? (
         <View style={styles.featuredSection}>
           <RecipeSectionTitle aside="适合当前目标" title="今日精选" />
           <Pressable
@@ -282,11 +370,19 @@ function DiscoverHome() {
       ) : null}
 
       <RecipeSectionTitle
-        aside={`${visibleRecipes.length} 道`}
+        aside={waitingForRecipes ? '加载中' : `${visibleRecipes.length} 道`}
         title={normalizedSearch ? '搜索结果' : '继续浏览'}
       />
 
-      {visibleRecipes.length > 0 ? (
+      {waitingForRecipes ? (
+        <DiscoverHomeLoading />
+      ) : recipesUnavailable ? (
+        <RecipeUnavailableState
+          body={recipesLoadFailure ?? '请检查网络后重试。'}
+          onAction={reloadRecipes}
+          title="菜谱暂时无法加载"
+        />
+      ) : visibleRecipes.length > 0 ? (
         <View style={styles.recipeGrid}>
           {visibleRecipes.map((recipe) => (
             <RecipeCard
@@ -302,11 +398,21 @@ function DiscoverHome() {
           <View style={styles.emptyIcon}>
             <AppIcon color={recipeColors.faint} name="search-outline" size={27} />
           </View>
-          <Text style={styles.emptyTitle}>没有找到合适的菜谱</Text>
-          <Text style={styles.emptyCopy}>试试缩短关键词，或者切换到“精选”。</Text>
+          <Text style={styles.emptyTitle}>
+            {recipes.length === 0 ? '暂时还没有可浏览的菜谱' : '没有找到合适的菜谱'}
+          </Text>
+          <Text style={styles.emptyCopy}>
+            {recipes.length === 0
+              ? '可以稍后重新加载，或者先返回本周菜单。'
+              : '试试缩短关键词，或者切换到“精选”。'}
+          </Text>
           <RecipePrimaryButton
-            label="查看推荐"
+            label={recipes.length === 0 ? '重新加载' : '查看推荐'}
             onPress={() => {
+              if (recipes.length === 0) {
+                reloadRecipes();
+                return;
+              }
               setSearch('');
               setCategory('recommended');
             }}
@@ -408,6 +514,9 @@ const styles = StyleSheet.create({
   },
   pendingNotice: {
     marginTop: 12,
+  },
+  contentNotice: {
+    marginBottom: 14,
   },
   dateBlock: {
     marginTop: 6,
@@ -581,6 +690,64 @@ const styles = StyleSheet.create({
   emptyButton: {
     minWidth: 140,
     marginTop: 16,
+  },
+  loadingState: {
+    paddingTop: 10,
+    gap: 18,
+  },
+  loadingDateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  loadingDateCell: {
+    width: 38,
+    height: 54,
+    borderRadius: radius.md,
+    backgroundColor: recipeColors.surfaceMuted,
+  },
+  loadingTitle: {
+    width: '42%',
+    height: 22,
+    borderRadius: radius.sm,
+    backgroundColor: recipeColors.surfaceMuted,
+  },
+  loadingNutrition: {
+    height: 92,
+    borderRadius: radius.lg,
+    backgroundColor: recipeColors.surfaceMuted,
+  },
+  loadingMeal: {
+    height: 104,
+    borderRadius: radius.lg,
+    backgroundColor: recipeColors.surfaceMuted,
+  },
+  loadingGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 22,
+  },
+  loadingRecipeCard: {
+    width: '48.2%',
+    gap: 8,
+  },
+  loadingRecipeImage: {
+    width: '100%',
+    aspectRatio: 1.16,
+    borderRadius: radius.lg,
+    backgroundColor: recipeColors.surfaceMuted,
+  },
+  loadingRecipeTitle: {
+    width: '78%',
+    height: 18,
+    borderRadius: radius.sm,
+    backgroundColor: recipeColors.surfaceMuted,
+  },
+  loadingRecipeMeta: {
+    width: '56%',
+    height: 14,
+    borderRadius: radius.sm,
+    backgroundColor: recipeColors.surfaceMuted,
   },
   pressed: {
     opacity: 0.56,

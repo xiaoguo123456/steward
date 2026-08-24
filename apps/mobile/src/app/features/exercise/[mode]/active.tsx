@@ -186,13 +186,12 @@ function StrengthActiveWorkout({ planId }: { planId?: string }) {
     (sum: number, item: StrengthExercise) => sum + item.sets,
     0,
   );
-  const progress = Math.min(1, completedTotal / totalSets);
 
   useEffect(() => {
-    if (status !== 'active' || showEndConfirm) return;
+    if (!currentExercise || status !== 'active' || showEndConfirm) return;
     const timer = setInterval(() => setElapsedSeconds((current) => current + 1), 1000);
     return () => clearInterval(timer);
-  }, [showEndConfirm, status]);
+  }, [currentExercise, showEndConfirm, status]);
 
   useEffect(() => {
     if (restSeconds <= 0 || status !== 'active' || showEndConfirm) return;
@@ -206,6 +205,30 @@ function StrengthActiveWorkout({ planId }: { planId?: string }) {
       params: { mode: 'strength', seconds: String(elapsedSeconds) },
     } as Href);
   };
+
+  if (!currentExercise) {
+    return (
+      <AppScreen backgroundColor={workoutAccent.background} includeBottomInset>
+        <NavHeader title="力量训练" />
+        <View style={styles.unavailableState}>
+          <View style={styles.unavailableIcon}>
+            <AppIcon color={workoutAccent.muted} name="alert-circle-outline" size={30} />
+          </View>
+          <Text accessibilityRole="header" style={styles.unavailableTitle}>
+            训练计划暂时不可用
+          </Text>
+          <Text style={styles.unavailableCopy}>
+            这份计划没有可执行的动作，请返回训练准备页重新选择。
+          </Text>
+          <View style={styles.unavailableButton}>
+            <WorkoutPrimaryButton label="返回训练准备" onPress={() => router.back()} />
+          </View>
+        </View>
+      </AppScreen>
+    );
+  }
+
+  const progress = totalSets > 0 ? Math.min(1, completedTotal / totalSets) : 0;
 
   const completeSet = () => {
     if (completedSets + 1 < currentExercise.sets) {
@@ -244,9 +267,10 @@ function StrengthActiveWorkout({ planId }: { planId?: string }) {
       <ScrollView contentContainerStyle={styles.strengthContent} showsVerticalScrollIndicator={false}>
         <View style={styles.planProgressHeader}>
           <View>
-            <Text style={styles.planName}>全身入门 · 25 分钟</Text>
+            <Text style={styles.planName}>{plan.label} · {plan.duration}</Text>
             <Text style={styles.planProgressValue}>
-              <Text style={styles.planProgressCurrent}>{exerciseIndex + 1}</Text> / 6 个动作
+              <Text style={styles.planProgressCurrent}>{exerciseIndex + 1}</Text> /{' '}
+              {strengthExercises.length} 个动作
             </Text>
           </View>
           <View style={styles.elapsedWrap}>
@@ -635,6 +659,40 @@ const styles = StyleSheet.create({
   },
   headerActionPressed: {
     opacity: 0.55,
+  },
+  unavailableState: {
+    flex: 1,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unavailableIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  unavailableTitle: {
+    marginTop: 16,
+    color: workoutAccent.ink,
+    fontFamily,
+    fontSize: 18,
+    lineHeight: 25,
+    fontWeight: '700',
+  },
+  unavailableCopy: {
+    marginTop: 7,
+    color: workoutAccent.muted,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  unavailableButton: {
+    minWidth: 168,
+    marginTop: 20,
   },
   strengthContent: {
     paddingHorizontal: 16,

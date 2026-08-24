@@ -85,6 +85,7 @@ export function useMealPlan() {
     loading: query.isPending,
     failed: query.isError,
     error: query.error,
+    loadFailure: query.isError ? errorMessage(query.error, '本周菜单没能加载。') : null,
     saving,
     failure,
     plannedNutrition: plan?.planned_nutrition,
