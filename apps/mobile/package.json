@@ -55,7 +55,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "preview:web": "node scripts/serve-preview.mjs --host 0.0.0.0 --port 4174 --dir dist",
-    "test:assistant": "node --experimental-strip-types --test src/features/assistant/assistant-markdown-policy.test.mjs",
+    "test:assistant": "node --experimental-strip-types --test src/features/assistant/assistant-markdown-policy.test.mjs src/features/assistant/assistant-thread-session.test.mjs",
     "test:workouts": "node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web"

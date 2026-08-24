@@ -54,7 +54,8 @@ export const ListThreadsResponse = zod.object({
 /**
  * 客户端应当在用户真正发出第一条消息时才调用它：
  * 打开面板就建对话会在历史里堆一串没有内容的空壳。
- * 最近一次对话仍在续用窗口内时直接返回那一次，除非显式要求新建。
+ * 无标题且未显式要求新建时，按用户时区复用当地自然日内
+ * 最近发生用户消息的 active Thread；不是按滚动分钟数判断。
  * @summary 开始一次对话
  */
 export const createThreadHeaderIdempotencyKeyMin = 8;
@@ -70,7 +71,7 @@ export const createThreadBodyForceNewDefault = false;
 
 export const CreateThreadBody = zod.object({
   "title": zod.string().optional(),
-  "force_new": zod.boolean().nullish().default(createThreadBodyForceNewDefault).describe('为 true 时一定新建。缺省时若最近一次对话仍在续用窗口内，\n直接返回那一次，而不是每次打开面板都堆一个新对话。\n')
+  "force_new": zod.boolean().nullish().default(createThreadBodyForceNewDefault).describe('为 true 时一定新建。缺省时按用户时区复用当地自然日内\n最近发生用户消息的 active Thread。\n')
 })
 
 export const CreateThreadResponse = zod.object({
@@ -83,6 +84,27 @@ export const CreateThreadResponse = zod.object({
   "updated_at": zod.string().datetime({"offset":true}),
   "version": zod.number().int()
 }),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 按用户资料中的 IANA 时区计算当地自然日，返回当天最近发生用户消息的
+ * active Thread。没有时返回 `data: null`，且不会创建空 Thread。
+ * Assistant 回复跨过午夜完成不会单独改变 Thread 的自然日归属。
+ * @summary 读取今天默认恢复的对话
+ */
+export const GetCurrentThreadResponse = zod.object({
+  "data": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string().describe('由首条用户消息生成，用户可以修改。'),
+  "status": zod.enum(['active', 'archived', 'deleted']),
+  "last_message_seq": zod.number().int().optional().describe('Thread 内最新消息序号，客户端据此判断是否有新内容。'),
+  "created_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "version": zod.number().int()
+}),zod.null()]).describe('当天还没有发生用户消息时为 null。'),
   "meta": zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
 }).describe('所有成功响应共有的元信息。')

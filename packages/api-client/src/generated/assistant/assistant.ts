@@ -44,6 +44,7 @@ import type {
   ConflictResponse,
   CreateThreadRequest,
   CreateTurnRequest,
+  CurrentAssistantThreadResponse,
   EmptyResponse,
   ErrorResponse,
   InternalErrorResponse,
@@ -200,7 +201,8 @@ export const getCreateThreadUrl = () => {
 /**
  * 客户端应当在用户真正发出第一条消息时才调用它：
  * 打开面板就建对话会在历史里堆一串没有内容的空壳。
- * 最近一次对话仍在续用窗口内时直接返回那一次，除非显式要求新建。
+ * 无标题且未显式要求新建时，按用户时区复用当地自然日内
+ * 最近发生用户消息的 active Thread；不是按滚动分钟数判断。
  * @summary 开始一次对话
  */
 export const createThread = async (createThreadRequest?: CreateThreadRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<AssistantThreadResponse> => {
@@ -262,7 +264,110 @@ export const useCreateThread = <TError = BadRequestResponse | UnauthorizedRespon
       > => {
       return useMutation(getCreateThreadMutationOptions(options), queryClient);
     }
-    export const getGetThreadUrl = (threadId: string,) => {
+    export const getGetCurrentThreadUrl = () => {
+
+
+
+
+  return `/v1/assistant/threads/current`
+}
+
+/**
+ * 按用户资料中的 IANA 时区计算当地自然日，返回当天最近发生用户消息的
+ * active Thread。没有时返回 `data: null`，且不会创建空 Thread。
+ * Assistant 回复跨过午夜完成不会单独改变 Thread 的自然日归属。
+ * @summary 读取今天默认恢复的对话
+ */
+export const getCurrentThread = async ( options?: Parameters<typeof stewardFetch>[1]): Promise<CurrentAssistantThreadResponse> => {
+
+  return stewardFetch<CurrentAssistantThreadResponse>(getGetCurrentThreadUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentThreadQueryKey = () => {
+    return [
+    `/v1/assistant/threads/current`
+    ] as const;
+    }
+
+
+export const getGetCurrentThreadQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentThread>>, TError = UnauthorizedResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCurrentThread>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentThreadQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentThread>>> = ({ signal }) => getCurrentThread({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentThread>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCurrentThreadQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentThread>>>
+export type GetCurrentThreadQueryError = UnauthorizedResponse | InternalErrorResponse
+
+
+export function useGetCurrentThread<TData = Awaited<ReturnType<typeof getCurrentThread>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCurrentThread>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCurrentThread>>,
+          TError,
+          Awaited<ReturnType<typeof getCurrentThread>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCurrentThread<TData = Awaited<ReturnType<typeof getCurrentThread>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCurrentThread>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCurrentThread>>,
+          TError,
+          Awaited<ReturnType<typeof getCurrentThread>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCurrentThread<TData = Awaited<ReturnType<typeof getCurrentThread>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCurrentThread>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 读取今天默认恢复的对话
+ */
+
+export function useGetCurrentThread<TData = Awaited<ReturnType<typeof getCurrentThread>>, TError = UnauthorizedResponse | InternalErrorResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCurrentThread>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCurrentThreadQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetThreadUrl = (threadId: string,) => {
 
 
 

@@ -1,9 +1,46 @@
 -- Assistant 对话。系统权威会话是这些表，Provider 状态只是可丢弃的优化列。
 
 -- name: CreateThread :one
-INSERT INTO assistant_threads (id, user_id, title)
-VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(title))
+INSERT INTO assistant_threads (id, user_id, title, created_for_default)
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(title), sqlc.arg(created_for_default))
 RETURNING *;
+
+-- name: LockAssistantThreadCreation :exec
+-- 同一用户的默认 Thread 创建必须串行：两个设备同时发出当天第一条消息时，
+-- 都要先完成「查询当天 Thread → 必要时创建」这段临界区。
+SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(user_id)::text, 0));
+
+-- name: GetCurrentDayThread :one
+-- 默认入口只认当地自然日内真正发生过的用户消息。
+-- Assistant 回复跨过午夜完成不能把昨天的 Thread 变成今天的默认对话。
+WITH current_day_activity AS (
+    SELECT thread_id, max(created_at) AS last_user_message_at
+    FROM assistant_messages
+    WHERE deleted_at IS NULL
+      AND role = 'user'
+      AND created_at >= sqlc.arg(day_start)::timestamptz
+      AND created_at < sqlc.arg(day_end)::timestamptz
+    GROUP BY thread_id
+)
+SELECT t.*
+FROM assistant_threads t
+JOIN current_day_activity a ON a.thread_id = t.id
+WHERE t.deleted_at IS NULL AND t.status = 'active'
+ORDER BY a.last_user_message_at DESC, t.id DESC
+LIMIT 1;
+
+-- name: GetCurrentDayEmptyThread :one
+-- 创建 Thread 后发送可能因网络失败没有发生；当天重试时复用这个不可见空壳，
+-- 不让并发设备或重试不断产生新的空 Thread。
+SELECT * FROM assistant_threads
+WHERE deleted_at IS NULL
+  AND status = 'active'
+  AND last_message_seq = 0
+  AND created_for_default
+  AND created_at >= sqlc.arg(day_start)::timestamptz
+  AND created_at < sqlc.arg(day_end)::timestamptz
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
 
 -- name: GetThread :one
 SELECT * FROM assistant_threads
@@ -142,14 +179,6 @@ WHERE id = sqlc.arg(id);
 
 -- name: SetTurnEngine :exec
 UPDATE assistant_turns SET engine_version = sqlc.arg(engine_version) WHERE id = sqlc.arg(id);
-
--- name: GetLatestThread :one
--- 面板重新打开时用：最近一次说过话的对话。
--- 调用方据此决定是续上这一次，还是开一个新的。
-SELECT * FROM assistant_threads
-WHERE deleted_at IS NULL AND status = 'active' AND last_message_seq > 0
-ORDER BY updated_at DESC
-LIMIT 1;
 
 -- name: SetThreadTitleIfDefault :exec
 -- 首条消息定标题。只在标题还是默认值时写，用户改过就不再覆盖。

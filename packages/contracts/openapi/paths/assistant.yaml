@@ -32,7 +32,8 @@ Threads:
     description: |
       客户端应当在用户真正发出第一条消息时才调用它：
       打开面板就建对话会在历史里堆一串没有内容的空壳。
-      最近一次对话仍在续用窗口内时直接返回那一次，除非显式要求新建。
+      无标题且未显式要求新建时，按用户时区复用当地自然日内
+      最近发生用户消息的 active Thread；不是按滚动分钟数判断。
     tags: [assistant]
     parameters:
       - $ref: '../components/parameters.yaml#/IdempotencyKey'
@@ -51,6 +52,27 @@ Threads:
               $ref: '../components/schemas/assistant.yaml#/AssistantThreadResponse'
       '400':
         $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+CurrentThread:
+  get:
+    operationId: getCurrentThread
+    summary: 读取今天默认恢复的对话
+    description: |
+      按用户资料中的 IANA 时区计算当地自然日，返回当天最近发生用户消息的
+      active Thread。没有时返回 `data: null`，且不会创建空 Thread。
+      Assistant 回复跨过午夜完成不会单独改变 Thread 的自然日归属。
+    tags: [assistant]
+    responses:
+      '200':
+        description: 查询成功；当天没有对话时 data 为 null。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/assistant.yaml#/CurrentAssistantThreadResponse'
       '401':
         $ref: '../components/responses.yaml#/Unauthorized'
       '500':

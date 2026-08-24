@@ -2,6 +2,7 @@ import {
   errorMessage,
   useCreateThread,
   useCreateTurn,
+  useGetCurrentThread,
   useGetOperation,
   useListMessages,
   useListProposals,
@@ -10,7 +11,7 @@ import {
 } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -25,6 +26,10 @@ import { AiAssistantAvatar } from '@/components/ui/ai-assistant-avatar';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { AssistantMarkdown } from '@/features/assistant/assistant-markdown';
+import {
+  assistantThreadSessionReducer,
+  createAssistantThreadSession,
+} from '@/features/assistant/assistant-thread-session';
 import { ProposalCard } from '@/features/assistant/proposal-card';
 import { useTurnStream } from '@/features/assistant/use-turn-stream';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
@@ -45,14 +50,39 @@ export default function AiConversationScreen() {
   const listRef = useRef<ScrollView>(null);
 
   const params = useLocalSearchParams<{ threadId?: string }>();
-  const [threadId, setThreadId] = useState(params.threadId ?? '');
+  const [threadSession, dispatchThread] = useReducer(
+    assistantThreadSessionReducer,
+    createAssistantThreadSession(params.threadId),
+  );
+  const threadId = threadSession.threadId;
   const [turnId, setTurnId] = useState('');
   const [operationId, setOperationId] = useState('');
   const [input, setInput] = useState('');
   const [failure, setFailure] = useState<string | null>(null);
 
-  // 对话在用户真正发出第一条消息时才创建：打开面板就建，
-  // 历史里会堆一串没有内容的空壳。服务端在续用窗口内会返回上一次的对话。
+  // 打开面板只读取今天的默认对话，不创建空 Thread。
+  const currentThread = useGetCurrentThread({
+    query: {
+      enabled: threadSession.mode === 'default' && !threadId,
+      refetchOnMount: 'always',
+    },
+  });
+
+  useEffect(() => {
+    const currentId = currentThread.data?.data?.id;
+    if (currentId) {
+      dispatchThread({ type: 'restore_current', threadId: currentId });
+    }
+  }, [currentThread.data?.data?.id]);
+
+  useEffect(() => {
+    const selectedId = params.threadId?.trim();
+    if (selectedId) {
+      dispatchThread({ type: 'select_thread', threadId: selectedId });
+    }
+  }, [params.threadId]);
+
+  // Thread 仍然只在用户真正发出第一条消息时创建。
   const createThread = useCreateThread({
     mutation: {
       onError: (error) => setFailure(errorMessage(error, '没能打开对话，请稍后再试。')),
@@ -108,11 +138,15 @@ export default function AiConversationScreen() {
     turnStatus === 'failed'
       ? errorMessage(operation.data?.data.error, '助理这次没能回复，请稍后再试。')
       : null;
+  const restoring =
+    threadSession.mode === 'default' &&
+    !threadId &&
+    (currentThread.isFetching || Boolean(currentThread.data?.data));
 
   const createTurn = useCreateTurn({
     mutation: {
       onSuccess: (result) => {
-        setThreadId(result.data.thread_id);
+        dispatchThread({ type: 'attach_thread', threadId: result.data.thread_id });
         setTurnId(result.data.turn_id);
         setOperationId(result.data.operation_id);
         void messages.refetch();
@@ -123,16 +157,21 @@ export default function AiConversationScreen() {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || thinking || createThread.isPending) return;
+    if (!text || thinking || restoring || createThread.isPending || createTurn.isPending) return;
     setFailure(null);
     setInput('');
     try {
-      // 还没有对话就先要一个。服务端在续用窗口内会把上一次还给我们。
-      const id = threadId || (await createThread.mutateAsync({ data: {} })).data.id;
-      setThreadId(id);
-      createTurn.mutate({ threadId: id, data: { text } });
+      // 服务端按用户时区复用当天 Thread；只有用户点过“新对话”才强制新建。
+      const id = threadId || (
+        await createThread.mutateAsync({
+          data: threadSession.mode === 'fresh' ? { force_new: true } : {},
+        })
+      ).data.id;
+      dispatchThread({ type: 'attach_thread', threadId: id });
+      await createTurn.mutateAsync({ threadId: id, data: { text } });
     } catch {
-      // onError 已经写过提示，这里只是别让 Promise 悬着。
+      // onError 已经写过提示；没有新输入时把发送失败的正文还给用户。
+      setInput((current) => current || text);
     }
   };
 
@@ -143,7 +182,13 @@ export default function AiConversationScreen() {
   // 契约按 message_seq 倒序返回，展示要按时间正序。
   const ordered = [...(messages.data?.data ?? [])].reverse();
   const pending = proposals.data?.data ?? [];
-  const canSend = Boolean(input.trim()) && !thinking && !createThread.isPending;
+  const sending = createThread.isPending || createTurn.isPending;
+  const canSend = Boolean(input.trim()) && !thinking && !restoring && !sending;
+  const canStartFresh = Boolean(threadId) && !thinking && !sending;
+  const restoreFailure = threadSession.mode === 'default' && !threadId && currentThread.isError
+    ? errorMessage(currentThread.error, '没能恢复今天的对话，发送时会再试。')
+    : null;
+  const visibleFailure = failure ?? turnFailure ?? restoreFailure;
 
   return (
     <ModalSheet maxHeight="84%" onClose={() => router.back()}>
@@ -153,12 +198,42 @@ export default function AiConversationScreen() {
         </View>
         <View style={styles.headerCopy}>
           <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
-          <Text style={styles.headerStatus}>
+          <Text numberOfLines={1} style={styles.headerStatus}>
             {thinking
               ? stream.label || '正在查你的数据…'
-              : '问我今天要做什么，或者让我帮你安排'}
+              : restoring
+                ? '正在恢复今天的对话…'
+                : threadSession.mode === 'fresh'
+                  ? '新对话'
+                  : threadSession.mode === 'default'
+                    ? '今天的对话'
+                    : '历史对话'}
           </Text>
         </View>
+        <Pressable
+          accessibilityLabel="开始新对话"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canStartFresh }}
+          disabled={!canStartFresh}
+          onPress={() => {
+            dispatchThread({ type: 'start_fresh' });
+            setTurnId('');
+            setOperationId('');
+            setInput('');
+            setFailure(null);
+          }}
+          style={({ pressed }) => [
+            styles.closeButton,
+            !canStartFresh && styles.headerButtonDisabled,
+            pressed && canStartFresh && styles.iconPressed,
+          ]}
+        >
+          <AppIcon
+            color={canStartFresh ? colors.text : colors.textTertiary}
+            name="create-outline"
+            size={21}
+          />
+        </Pressable>
         <Pressable
           accessibilityLabel="历史对话"
           accessibilityRole="button"
@@ -186,7 +261,14 @@ export default function AiConversationScreen() {
         onContentSizeChange={scrollToLatest}
         showsVerticalScrollIndicator={false}
       >
-        {ordered.length === 0 && !messages.isLoading ? (
+        {restoring ? (
+          <View accessibilityLabel="正在恢复今天的对话" style={styles.restoreState}>
+            <ActivityIndicator color={colors.textSecondary} size="small" />
+            <Text style={styles.restoreText}>正在恢复今天的对话…</Text>
+          </View>
+        ) : null}
+
+        {!restoring && ordered.length === 0 && !messages.isLoading ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>我能帮你看你自己的内容</Text>
             <Text style={styles.emptyCopy}>
@@ -232,8 +314,8 @@ export default function AiConversationScreen() {
           </View>
         ) : null}
 
-        {failure ?? turnFailure ? (
-          <Text style={styles.failure}>{failure ?? turnFailure}</Text>
+        {visibleFailure ? (
+          <Text style={styles.failure}>{visibleFailure}</Text>
         ) : null}
       </ScrollView>
 
@@ -244,7 +326,9 @@ export default function AiConversationScreen() {
             editable
             multiline
             onChangeText={setInput}
-            placeholder={thinking ? '正在回复…' : '说点什么…'}
+            placeholder={
+              thinking || sending ? '正在回复…' : restoring ? '正在恢复对话…' : '说点什么…'
+            }
             placeholderTextColor={colors.textTertiary}
             style={styles.input}
             value={input}
@@ -348,6 +432,9 @@ const styles = StyleSheet.create({
   iconPressed: {
     backgroundColor: colors.surface,
   },
+  headerButtonDisabled: {
+    opacity: 0.55,
+  },
   messages: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -367,6 +454,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyCopy: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  restoreState: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+  },
+  restoreText: {
     color: colors.textSecondary,
     fontFamily,
     ...typography.meta,
