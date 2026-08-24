@@ -1,5 +1,4 @@
 import { type Href, useRouter } from 'expo-router';
-import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
@@ -32,29 +31,15 @@ export default function WeekMenuScreen() {
     days,
     plan,
     hasPendingPlan,
-    planSaving,
     planFailure,
     planGenerating,
     planNotes,
+    profileCompleted,
     swapRecipe,
     regenerateWeek,
-    confirmPlan,
-    discardPlan,
     setSelectedDayId,
     getRecipe,
   } = useRecipePrototype();
-  const [savedMessage, setSavedMessage] = useState(false);
-
-  // 采用菜单要等服务端确认成功才提示已保存：
-  // 先弹「已采用」再失败，用户会以为存住了。
-  const confirm = async () => {
-    if (await confirmPlan()) setSavedMessage(true);
-  };
-
-  const discard = () => {
-    discardPlan();
-    setSavedMessage(false);
-  };
 
   return (
     <AppScreen backgroundColor={recipeColors.background} includeBottomInset>
@@ -66,7 +51,10 @@ export default function WeekMenuScreen() {
             disabled={planGenerating}
             hitSlop={8}
             onPress={() => {
-              setSavedMessage(false);
+              if (!profileCompleted) {
+                router.push('/features/recipes/questionnaire' as Href);
+                return;
+              }
               void regenerateWeek();
             }}
             style={({ pressed }) => [
@@ -93,41 +81,9 @@ export default function WeekMenuScreen() {
           <Text accessibilityRole="header" style={styles.title}>
             {days.length > 0 ? `${days[0].fullDate}—${days[days.length - 1].fullDate}` : '本周'}
           </Text>
-          <Text style={styles.subtitle}>每天三餐都可以单独替换，确认前不会覆盖原菜单。</Text>
         </View>
 
-        {hasPendingPlan ? (
-          <View style={styles.pendingConfirmation}>
-            <InlineNotice icon="sparkles-outline" tone="warning">
-              这是新的菜单预览。确认采用后，才会替换当前本周菜单。
-            </InlineNotice>
-            <View style={styles.pendingActions}>
-              <RecipePrimaryButton
-                disabled={planSaving}
-                icon="checkmark-circle-outline"
-                label={planSaving ? '正在保存…' : '采用本周菜单'}
-                onPress={() => void confirm()}
-                style={styles.pendingPrimary}
-              />
-              <RecipePrimaryButton
-                disabled={planSaving}
-                label="放弃更改"
-                onPress={discard}
-                style={styles.pendingSecondary}
-                tone="secondary"
-              />
-            </View>
-          </View>
-        ) : savedMessage ? (
-          <InlineNotice icon="checkmark-circle-outline">
-            新菜单已在本次预览中采用。
-          </InlineNotice>
-        ) : null}
-
-        {/*
-          生成时做了什么妥协要说出来，但不能把确认入口推到多条说明之后。
-          用户先处理是否采用，再按需查看生成过程里的妥协。
-        */}
+        {/* 只保留会影响判断的生成妥协，不重复解释预览与确认机制。 */}
         {planNotes.map((note) => (
           <InlineNotice icon="alert-circle-outline" key={`${note.kind}-${note.meal_slot ?? ''}`} tone="warning">
             {note.message}
@@ -204,16 +160,12 @@ export default function WeekMenuScreen() {
                               accessibilityLabel={`更换${day.label}${mealSlotLabels[meal]}的${recipe.title}`}
                               accessibilityRole="button"
                               hitSlop={6}
-                              onPress={() => {
-                                swapRecipe(day.id, meal, index);
-                                setSavedMessage(false);
-                              }}
+                              onPress={() => swapRecipe(day.id, meal, index)}
                               style={({ pressed }) => [
                                 styles.swapButton,
                                 pressed && styles.pressed,
                               ]}
                             >
-                              <AppIcon color={colors.primaryStrong} name="refresh" size={17} />
                               <Text style={styles.swapText}>换一道</Text>
                             </Pressable>
                           </View>
@@ -270,7 +222,7 @@ const styles = StyleSheet.create({
   },
   intro: {
     paddingTop: 14,
-    paddingBottom: 18,
+    paddingBottom: 8,
   },
   title: {
     color: recipeColors.ink,
@@ -280,28 +232,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.4,
   },
-  subtitle: {
-    marginTop: 5,
-    color: recipeColors.muted,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  pendingConfirmation: {
-    gap: 10,
-  },
-  pendingActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  pendingPrimary: {
-    flex: 1.4,
-  },
-  pendingSecondary: {
-    flex: 0.8,
-  },
   weekList: {
-    marginTop: 22,
+    marginTop: 10,
   },
   daySection: {
     marginBottom: 24,
@@ -399,21 +331,20 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   swapButton: {
-    minWidth: 82,
+    minWidth: 62,
     minHeight: 44,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
     borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,
   },
   swapText: {
     color: colors.primaryStrong,
     fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 18,
     fontWeight: '600',
   },
   footer: {

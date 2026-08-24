@@ -104,6 +104,7 @@ function WeekHome() {
   const router = useRouter();
   const {
     profile,
+    profileCompleted,
     days,
     selectedDayId,
     setSelectedDayId,
@@ -114,12 +115,30 @@ function WeekHome() {
     planGenerating,
     planFailure,
     hasPendingPlan,
+    planSaving,
     generateWeek,
+    confirmPlan,
     swapRecipe,
     getRecipe,
     dailyTarget,
   } = useRecipePrototype();
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
+
+  const generateOrCompleteProfile = () => {
+    if (!profileCompleted) {
+      router.push('/features/recipes/questionnaire' as Href);
+      return;
+    }
+    void generateWeek();
+  };
+
+  const confirmOrCreateShoppingList = () => {
+    if (hasPendingPlan) {
+      void confirmPlan();
+      return;
+    }
+    router.push('/features/recipes/shopping?scope=day' as Href);
+  };
 
   if (!selectedDay) {
     if (planLoading) return <WeekHomeLoading />;
@@ -167,14 +186,6 @@ function WeekHome() {
         </Pressable>
       ) : null}
 
-      {hasPendingPlan ? (
-        <View style={styles.pendingNotice}>
-          <InlineNotice icon="information-circle-outline" tone="neutral">
-            新菜单待确认，确认前不会替换当前菜单。
-          </InlineNotice>
-        </View>
-      ) : null}
-
       <View style={styles.dateBlock}>
         <WeekDateSelector days={days} onSelect={setSelectedDayId} selectedDayId={selectedDayId} />
       </View>
@@ -202,7 +213,7 @@ function WeekHome() {
             disabled={planGenerating}
             icon="sparkles-outline"
             label={planGenerating ? '正在生成…' : '生成本周菜单'}
-            onPress={() => void generateWeek()}
+            onPress={generateOrCompleteProfile}
           />
           {planFailure ? <Text style={styles.emptyPlanError}>{planFailure}</Text> : null}
         </View>
@@ -234,17 +245,15 @@ function WeekHome() {
         />
         <RecipePrimaryButton
           icon={hasPendingPlan ? 'checkmark-circle-outline' : 'cart-outline'}
-          label={hasPendingPlan ? '查看并确认' : '生成购物清单'}
-          onPress={() =>
-            router.push(
-              (hasPendingPlan
-                ? '/features/recipes/week'
-                : '/features/recipes/shopping?scope=day') as Href,
-            )
-          }
+          disabled={hasPendingPlan && planSaving}
+          label={hasPendingPlan ? (planSaving ? '正在确认…' : '确认食谱') : '生成购物清单'}
+          onPress={confirmOrCreateShoppingList}
           style={styles.homeActionButton}
         />
       </View>
+      {hasPendingPlan && dayRecipes.length > 0 && planFailure ? (
+        <Text style={styles.homeActionError}>{planFailure}</Text>
+      ) : null}
     </>
   );
 }
@@ -512,9 +521,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '600',
   },
-  pendingNotice: {
-    marginTop: 12,
-  },
   contentNotice: {
     marginBottom: 14,
   },
@@ -558,6 +564,13 @@ const styles = StyleSheet.create({
   homeActionButton: {
     flex: 1,
     paddingHorizontal: 10,
+  },
+  homeActionError: {
+    marginTop: 8,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
   },
   searchField: {
     minHeight: 48,

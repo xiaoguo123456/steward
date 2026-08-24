@@ -191,7 +191,7 @@ export default function CookingModeScreen() {
           tone="secondary"
         />
         <RecipePrimaryButton
-          icon={isLast ? 'checkmark-circle-outline' : 'arrow-forward'}
+          icon={isLast ? 'checkmark-circle-outline' : undefined}
           label={isLast ? '完成烹饪' : '下一步'}
           onPress={next}
           style={styles.footerPrimary}

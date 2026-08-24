@@ -348,7 +348,6 @@ export function MealRow({
               onPress={() => onSwap(index)}
               style={({ pressed }) => [styles.swapButton, pressed && styles.pressed]}
             >
-              <AppIcon color={colors.primaryStrong} name="refresh" size={16} />
               <Text style={styles.swapText}>换一道</Text>
             </Pressable>
           </View>
@@ -717,21 +716,20 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   swapButton: {
-    minWidth: 82,
+    minWidth: 62,
     minHeight: 44,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
     borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,
   },
   swapText: {
     color: colors.primaryStrong,
     fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 18,
     fontWeight: '600',
   },
   recipeCard: {

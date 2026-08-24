@@ -503,7 +503,7 @@ export default function RecipeQuestionnaireScreen() {
             />
           ) : null}
           <RecipePrimaryButton
-            icon={step === 3 ? 'checkmark-circle-outline' : 'arrow-forward'}
+            icon={step === 3 ? 'checkmark-circle-outline' : undefined}
             label={step === 3 ? (profileSaving ? '正在保存…' : '保存饮食档案') : '下一步'}
             onPress={() => (step === 3 ? void save() : setStep((current) => current + 1))}
             style={styles.footerPrimary}

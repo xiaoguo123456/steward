@@ -23,7 +23,7 @@ import {
  * 菜谱内容是平台的只读内容；本周菜单、收藏与饮食档案都是用户自己的数据，
  * 各自走契约接口并受行级安全约束。
  *
- * 只有一样东西留在本地：**还没点「采用」的菜单草稿**。
+ * 只有一样东西留在本地：**还没点「确认食谱」的菜单草稿**。
  * 规格 8.2.2 要求 AI 预览必须先经用户确认才能保存，所以草稿不落库——
  * 用户改到一半退出去，下次看到的仍是他上次确认过的那份。
  */
@@ -68,7 +68,6 @@ type RecipeContextValue = {
    */
   dailyTarget: { calories: number; proteinG: number } | null;
   confirmPlan: () => Promise<boolean>;
-  discardPlan: () => void;
 
   profile: RecipeProfile | null;
   profileCompleted: boolean;
@@ -167,10 +166,12 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
       // 客户端手里只有前 100 条菜谱，在那里面轮播既筛不掉过敏原，
       // 也谈不上按目标选菜——之前就是这么做的，等于问卷白填了。
       generateWeek: async () => {
+        if (!diet.completed) return;
         const next = await suggestion.generate(mealPlan.weekStart);
         if (next) mealPlan.replaceWeek(next);
       },
       regenerateWeek: async () => {
+        if (!diet.completed) return;
         const next = await suggestion.regenerate(mealPlan.weekStart);
         if (next) mealPlan.replaceWeek(next);
       },
@@ -178,7 +179,6 @@ export function RecipePrototypeProvider({ children }: PropsWithChildren) {
       planNotes: suggestion.notes,
       dailyTarget: suggestion.dailyTarget,
       confirmPlan: mealPlan.confirm,
-      discardPlan: mealPlan.discard,
 
       profile: diet.profile,
       profileCompleted: diet.completed,

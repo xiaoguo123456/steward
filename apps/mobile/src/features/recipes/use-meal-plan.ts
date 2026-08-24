@@ -21,7 +21,7 @@ import type {
 /**
  * 本周菜单。
  *
- * 已确认的菜单在服务端；用户正在调整、还没点「采用」的那一版留在本地。
+ * 已确认的菜单在服务端；用户正在调整、还没点「确认食谱」的那一版留在本地。
  * 规格 8.2.2 要求预览只是预览，所以草稿不落库——用户改到一半退出去，
  * 下次看到的应当仍是他上次确认过的那份，而不是一个改了一半的东西。
  *
@@ -113,10 +113,6 @@ export function useMealPlan() {
     },
     replaceWeek: (next: WeekPlan) => setDraft(next),
     confirm,
-    discard: () => {
-      setDraft(null);
-      setFailure(null);
-    },
     refetch: () => void query.refetch(),
   };
 }
