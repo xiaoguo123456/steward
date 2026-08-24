@@ -84,11 +84,11 @@ export default function WorkoutSummaryScreen() {
       // 不该收集完就丢掉。放进 note，打卡详情里看得见。
       `感觉：${feelings.find((item) => item.id === feeling)?.label ?? ''}`,
     );
-    returnHome(true);
+    returnToExerciseHome(true);
   };
 
-  const returnHome = (saved = false) => {
-    router.replace({
+  const returnToExerciseHome = (saved = false) => {
+    router.dismissTo({
       pathname: '/features/exercise',
       params: saved ? { saved: '1' } : {},
     } as Href);
@@ -96,7 +96,7 @@ export default function WorkoutSummaryScreen() {
 
   return (
     <AppScreen backgroundColor={workoutAccent.background} includeBottomInset>
-      <NavHeader onBack={() => returnHome(false)} title="运动总结" />
+      <NavHeader onBack={() => returnToExerciseHome(false)} title="运动总结" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.successHeader}>
           <View style={styles.successIcon}>
@@ -206,7 +206,7 @@ export default function WorkoutSummaryScreen() {
           />
           <Pressable
             accessibilityRole="button"
-            onPress={() => returnHome(false)}
+            onPress={() => returnToExerciseHome(false)}
             style={({ pressed }) => [styles.skipSave, pressed && styles.skipSavePressed]}
           >
             <Text style={styles.skipSaveText}>不保存，返回运动首页</Text>

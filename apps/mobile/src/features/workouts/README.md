@@ -29,6 +29,9 @@
 | 运动总结 | `/features/exercise/[mode]/summary` | 真实时长、GPS 距离确认、可选步数、感受选择和保存确认 |
 | 历史记录 | `/features/exercise/history` | 按模式筛选并查看历史摘要 |
 
+总结页保存或放弃后，会清理本次运动的准备、进行中和总结页历史并返回原运动首页。
+运动首页的左上角返回和 Android 系统返回键统一进入 App 首页。
+
 ## 力量训练的动作库
 
 `strength-library.ts` 是平台内容，全部为徒手动作——产品没问过用户家里有什么

@@ -29,7 +29,7 @@ export function RouteMap({ statusMessage, actionLabel, onAction }: RouteMapProps
 
 const styles = StyleSheet.create({
   map: {
-    height: 330,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceSubtle,

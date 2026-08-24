@@ -1,5 +1,14 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect } from 'react';
+import {
+  BackHandler,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
@@ -32,10 +41,25 @@ export default function ExerciseHomeScreen() {
 
   const openPrepare = (mode: WorkoutMode) => router.push(getPrepareRoute(mode));
   const openHistory = () => router.push('/features/exercise/history' as Href);
+  const returnToToday = useCallback(() => {
+    router.dismissTo('/today' as Href);
+  }, [router]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      returnToToday();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [returnToToday]);
 
   return (
     <AppScreen backgroundColor={colors.background} includeBottomInset>
       <NavHeader
+        onBack={returnToToday}
         right={
           <Pressable
             accessibilityRole="button"

@@ -203,7 +203,7 @@ function createPointData(
 
 const styles = StyleSheet.create({
   container: {
-    height: 330,
+    flex: 1,
     overflow: 'hidden',
     backgroundColor: colors.surfaceSubtle,
   },

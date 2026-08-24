@@ -82,7 +82,6 @@ function OutdoorActiveWorkout({
   mode: OutdoorWorkoutMode;
   params: {
     goal?: string | string[];
-    voice?: string | string[];
   };
 }) {
   const router = useRouter();
@@ -91,9 +90,7 @@ function OutdoorActiveWorkout({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [confirmIntent, setConfirmIntent] = useState<'back' | 'finish' | null>(null);
   const goalParam = Array.isArray(params.goal) ? params.goal[0] : params.goal;
-  const voiceParam = Array.isArray(params.voice) ? params.voice[0] : params.voice;
   const goal = clientReady ? goalParam : undefined;
-  const voice = clientReady ? voiceParam : undefined;
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
   const tracking = useOutdoorWorkoutTracking({
     enabled: status === 'active' && confirmIntent === null,
@@ -189,8 +186,6 @@ function OutdoorActiveWorkout({
             />
           </View>
 
-          <Text style={styles.currentMetric}>{tracking.message}</Text>
-
           <View style={styles.outdoorControls}>
             <Pressable
               accessibilityLabel={status === 'active' ? '暂停运动' : '继续运动'}
@@ -214,13 +209,6 @@ function OutdoorActiveWorkout({
               <View style={styles.stopSquare} />
               <Text style={styles.stopLabel}>结束</Text>
             </Pressable>
-          </View>
-
-          <View style={styles.announcement}>
-            <AppIcon color={colors.primaryStrong} name="volume-medium-outline" size={18} />
-            <Text style={styles.announcementText}>
-              {voice === '0' ? '语音播报 · 已关闭' : '每公里播报 · 已开启'}
-            </Text>
           </View>
         </View>
       </View>
@@ -581,6 +569,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mapWrap: {
+    flex: 1,
+    minHeight: 240,
     position: 'relative',
   },
   liveBadge: {
@@ -627,11 +617,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   outdoorTray: {
-    flex: 1,
-    minHeight: 350,
     marginTop: -18,
-    paddingTop: 22,
+    paddingTop: 24,
     paddingHorizontal: 16,
+    paddingBottom: 18,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     backgroundColor: workoutAccent.background,
@@ -692,26 +681,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
   },
-  currentMetric: {
-    marginTop: 9,
-    color: workoutAccent.muted,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  currentMetricValue: {
-    color: colors.primaryStrong,
-    fontWeight: '700',
-  },
   outdoorControls: {
     minHeight: 102,
-    marginTop: 7,
+    marginTop: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 24,
+    gap: 48,
   },
   pauseButton: {
     width: 90,
@@ -756,24 +732,6 @@ const styles = StyleSheet.create({
   controlPressed: {
     opacity: 0.72,
     transform: [{ scale: 0.97 }],
-  },
-  announcement: {
-    alignSelf: 'center',
-    minHeight: 42,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: workoutAccent.hairline,
-    borderRadius: radius.pill,
-    backgroundColor: colors.background,
-  },
-  announcementText: {
-    color: workoutAccent.muted,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
   },
   endHeaderAction: {
     color: workoutAccent.coral,
