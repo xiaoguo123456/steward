@@ -9,7 +9,7 @@
     "mobile:web": "pnpm --filter mobile web",
     "mobile:lint": "pnpm --filter mobile lint",
     "mobile:preview": "pnpm --filter mobile preview:web",
-    "mobile:test": "pnpm --filter mobile test:workouts",
+    "mobile:test": "pnpm --filter mobile test:workouts && pnpm --filter mobile test:assistant",
     "mobile:typecheck": "pnpm --filter mobile typecheck",
     "contracts:bundle": "pnpm --filter @steward/contracts run bundle",
     "contracts:lint": "pnpm --filter @steward/contracts run lint",

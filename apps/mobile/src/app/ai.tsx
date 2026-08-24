@@ -24,6 +24,7 @@ import {
 import { AiAssistantAvatar } from '@/components/ui/ai-assistant-avatar';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import { AssistantMarkdown } from '@/features/assistant/assistant-markdown';
 import { ProposalCard } from '@/features/assistant/proposal-card';
 import { useTurnStream } from '@/features/assistant/use-turn-stream';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
@@ -292,7 +293,11 @@ function MessageRow({
           </View>
         )}
         <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
-          <Text style={[styles.messageText, isUser && styles.userText]}>{message.content}</Text>
+          {isUser ? (
+            <Text style={[styles.messageText, styles.userText]}>{message.content}</Text>
+          ) : (
+            <AssistantMarkdown content={message.content} />
+          )}
         </View>
       </View>
 
