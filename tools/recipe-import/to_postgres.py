@@ -24,17 +24,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from allergens import detect as detect_allergens
 from classify import classify as classify_component, excluded_reason  # noqa: E402
 
-try:
-    import psycopg
-except ImportError:  # pragma: no cover
-    print("需要 psycopg：pip install 'psycopg[binary]'", file=sys.stderr)
-    raise SystemExit(1)
-
 REPO = Path(__file__).resolve().parents[2]
 DB_PATH = REPO / "tools" / "recipe-import" / "recipes.sqlite3"
 
 # 内容版本。映射规则改了就要改它，便于分辨库里是哪一版规则导入的。
-CONTENT_VERSION = "lanfan-2026-08"
+CONTENT_VERSION = "lanfan-2026-08.1"
 
 # 图片分发域名。steward/recipes/ 这个前缀在 CDN 上配了免鉴权，
 # 因此可以直接拼出永久地址；其余前缀仍然要签名。
@@ -129,6 +123,19 @@ def ingredient_group(name: str) -> str:
     return "produce"
 
 
+def build_ingredients(rows: list[tuple]) -> list[dict]:
+    """逐项保留食材信息，并标出这项食材实际命中的过敏原。"""
+    return [
+        {
+            "name": name,
+            "amount": amount or "适量",
+            "group": ingredient_group(name),
+            "allergens": detect_allergens([name]),
+        }
+        for name, amount, *_ in rows
+    ]
+
+
 def build_steps(rows: list[tuple[int, str | None, str | None]], fallback: str) -> list[dict]:
     steps = []
     for idx, text, image_key in rows:
@@ -202,13 +209,7 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
         "goals": [],  # 从营养反推目标是猜测，不做。
         "tags": sorted(set(cats)),
         "allergens": detect_allergens([i[0] for i in ings]),
-        "ingredients": json.dumps(
-            [
-                {"name": n, "amount": a or "适量", "group": ingredient_group(n)}
-                for n, a, *_ in ings
-            ],
-            ensure_ascii=False,
-        ),
+        "ingredients": json.dumps(build_ingredients(ings), ensure_ascii=False),
         "steps": json.dumps(build_steps(steps, tips or name), ensure_ascii=False),
         "source_name": SOURCE_NAME,
         "source_author": None,
@@ -316,6 +317,12 @@ def main() -> int:
         no_meal = sum(1 for r in rows if not r["meal_slots"])
         print(f"\n有封面图 {with_images}/{len(rows)}，无餐段 {no_meal}")
         return 0
+
+    try:
+        import psycopg
+    except ImportError:  # pragma: no cover
+        print("需要 psycopg：pip install 'psycopg[binary]'", file=sys.stderr)
+        return 1
 
     url = args.database_url or database_url(args.env_file)
     with psycopg.connect(url) as pg:

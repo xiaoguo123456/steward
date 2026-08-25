@@ -1,9 +1,20 @@
 import unittest
 
-from to_postgres import CDN_BASE, build_steps, nutrition_per_serving
+from to_postgres import CDN_BASE, build_ingredients, build_steps, nutrition_per_serving
 
 
 class RecipeImportMappingTest(unittest.TestCase):
+    def test_build_ingredients_attributes_allergens_to_each_item(self):
+        ingredients = build_ingredients(
+            [
+                ("生抽", "1 勺", 0, 0, 0, 0),
+                ("土豆", "1 个", 0, 0, 0, 0),
+            ]
+        )
+
+        self.assertEqual(ingredients[0]["allergens"], ["大豆", "小麦"])
+        self.assertEqual(ingredients[1]["allergens"], [])
+
     def test_build_steps_includes_only_uploaded_step_images(self):
         steps = build_steps(
             [

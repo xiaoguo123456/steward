@@ -93,6 +93,7 @@ function toIngredient(item: ApiRecipe['ingredients'][number], index: number): Re
     name: item.name,
     amount: item.amount,
     group: item.group,
+    allergens: item.allergens ?? [],
   };
 }
 

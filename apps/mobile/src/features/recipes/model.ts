@@ -27,6 +27,7 @@ export type RecipeIngredient = {
   name: string;
   amount: string;
   group: IngredientGroup;
+  allergens: string[];
 };
 
 export type RecipeStep = {

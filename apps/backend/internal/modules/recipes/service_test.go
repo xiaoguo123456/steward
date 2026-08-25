@@ -13,3 +13,19 @@ func TestDecodeStepsPreservesImageURL(t *testing.T) {
 		t.Fatalf("步骤图片没有被保留：%v", steps[0].ImageUrl)
 	}
 }
+
+func TestDecodeIngredientsPreservesAllergens(t *testing.T) {
+	raw := []byte(`[{"name":"生抽","amount":"1 勺","group":"seasoning","allergens":["大豆","小麦"]}]`)
+
+	ingredients := decodeIngredients(raw)
+	if len(ingredients) != 1 {
+		t.Fatalf("食材数量应为 1，实际为 %d", len(ingredients))
+	}
+	if ingredients[0].Allergens == nil {
+		t.Fatal("食材过敏原不应为空")
+	}
+	allergens := *ingredients[0].Allergens
+	if len(allergens) != 2 || allergens[0] != "大豆" || allergens[1] != "小麦" {
+		t.Fatalf("食材过敏原没有被保留：%v", allergens)
+	}
+}

@@ -67,7 +67,8 @@ export const ListRecipesResponse = zod.object({
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
   "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
-  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。'),
+  "allergens": zod.array(zod.string()).optional().describe('这项食材命中的过敏原，用于在食材行就近提示。它由内容导入的确定性规则生成，\n不替代 Recipe.allergens 的整道菜硬过滤；旧内容没有逐项归因时可不返回。\n')
 })).min(1),
   "steps": zod.array(zod.object({
   "title": zod.string(),
@@ -132,7 +133,8 @@ export const GetRecipeResponse = zod.object({
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
   "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
-  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。'),
+  "allergens": zod.array(zod.string()).optional().describe('这项食材命中的过敏原，用于在食材行就近提示。它由内容导入的确定性规则生成，\n不替代 Recipe.allergens 的整道菜硬过滤；旧内容没有逐项归因时可不返回。\n')
 })).min(1),
   "steps": zod.array(zod.object({
   "title": zod.string(),
@@ -288,7 +290,8 @@ export const ListFavoriteRecipesResponse = zod.object({
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
   "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
-  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。'),
+  "allergens": zod.array(zod.string()).optional().describe('这项食材命中的过敏原，用于在食材行就近提示。它由内容导入的确定性规则生成，\n不替代 Recipe.allergens 的整道菜硬过滤；旧内容没有逐项归因时可不返回。\n')
 })).min(1),
   "steps": zod.array(zod.object({
   "title": zod.string(),
@@ -490,7 +493,8 @@ export const GetMealPlanResponse = zod.object({
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
   "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
-  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。'),
+  "allergens": zod.array(zod.string()).optional().describe('这项食材命中的过敏原，用于在食材行就近提示。它由内容导入的确定性规则生成，\n不替代 Recipe.allergens 的整道菜硬过滤；旧内容没有逐项归因时可不返回。\n')
 })).min(1),
   "steps": zod.array(zod.object({
   "title": zod.string(),
@@ -589,7 +593,8 @@ export const ConfirmMealPlanResponse = zod.object({
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
   "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
-  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。'),
+  "allergens": zod.array(zod.string()).optional().describe('这项食材命中的过敏原，用于在食材行就近提示。它由内容导入的确定性规则生成，\n不替代 Recipe.allergens 的整道菜硬过滤；旧内容没有逐项归因时可不返回。\n')
 })).min(1),
   "steps": zod.array(zod.object({
   "title": zod.string(),
@@ -680,7 +685,8 @@ export const GetMealPlanSuggestionResponse = zod.object({
   "ingredients": zod.array(zod.object({
   "name": zod.string(),
   "amount": zod.string().describe('自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。'),
-  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。')
+  "group": zod.enum(['produce', 'protein', 'staple', 'seasoning']).describe('与购物清单的品类分开：这里是做菜时的分组，不是超市货架。'),
+  "allergens": zod.array(zod.string()).optional().describe('这项食材命中的过敏原，用于在食材行就近提示。它由内容导入的确定性规则生成，\n不替代 Recipe.allergens 的整道菜硬过滤；旧内容没有逐项归因时可不返回。\n')
 })).min(1),
   "steps": zod.array(zod.object({
   "title": zod.string(),

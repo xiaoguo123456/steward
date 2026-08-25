@@ -214,7 +214,17 @@ export default function RecipeDetailScreen() {
             <View style={styles.ingredientList}>
               {recipe.ingredients.map((ingredient) => (
                 <View key={ingredient.id} style={styles.ingredientRow}>
-                  <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                  <View style={styles.ingredientIdentity}>
+                    <Text style={styles.ingredientName}>{ingredient.name}</Text>
+                    {ingredient.allergens.length > 0 ? (
+                      <Text
+                        accessibilityLabel={`易敏食材，可能含${ingredient.allergens.join('、')}`}
+                        style={styles.allergenBadge}
+                      >
+                        易敏
+                      </Text>
+                    ) : null}
+                  </View>
                   <Text style={styles.ingredientAmount}>
                     {servingFactor === 1
                       ? ingredient.amount
@@ -223,13 +233,6 @@ export default function RecipeDetailScreen() {
                 </View>
               ))}
             </View>
-
-            {recipe.allergens.length > 0 ? (
-              <View style={styles.allergenNotice}>
-                <AppIcon color={recipeColors.warning} name="alert-circle-outline" size={18} />
-                <Text style={styles.allergenText}>含有：{recipe.allergens.join('、')}</Text>
-              </View>
-            ) : null}
           </View>
 
           <View style={styles.section}>
@@ -242,9 +245,8 @@ export default function RecipeDetailScreen() {
                 <View key={`${step.title}-${index}`} style={styles.stepRow}>
                   <Text style={styles.stepNumber}>{index + 1}</Text>
                   <View style={styles.stepCopy}>
-                    <RecipeStepImage recipe={recipe} stepIndex={index} style={styles.stepPhoto} />
-                    <Text style={styles.stepTitle}>{step.title}</Text>
                     <Text style={styles.stepDescription}>{step.description}</Text>
+                    <RecipeStepImage recipe={recipe} stepIndex={index} style={styles.stepPhoto} />
                   </View>
                 </View>
               ))}
@@ -496,8 +498,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: recipeColors.line,
   },
-  ingredientName: {
+  ingredientIdentity: {
     flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  ingredientName: {
     color: recipeColors.ink,
     fontFamily,
     fontSize: 13,
@@ -511,23 +520,17 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontVariant: ['tabular-nums'],
   },
-  allergenNotice: {
-    minHeight: 46,
-    marginTop: 12,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: radius.md,
-    backgroundColor: recipeColors.warningSoft,
-  },
-  allergenText: {
-    flex: 1,
+  allergenBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     color: recipeColors.warning,
     fontFamily,
-    fontSize: 11,
-    lineHeight: 17,
+    fontSize: 10,
+    lineHeight: 14,
     fontWeight: '600',
+    overflow: 'hidden',
+    borderRadius: radius.pill,
+    backgroundColor: recipeColors.warningSoft,
   },
   stepList: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -556,22 +559,14 @@ const styles = StyleSheet.create({
   stepPhoto: {
     width: '100%',
     height: 164,
-    marginBottom: 12,
+    marginTop: 12,
     borderRadius: radius.md,
   },
-  stepTitle: {
+  stepDescription: {
     color: recipeColors.ink,
     fontFamily,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-  stepDescription: {
-    marginTop: 4,
-    color: recipeColors.muted,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 21,
   },
   footer: {
     position: 'absolute',
