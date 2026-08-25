@@ -28,8 +28,8 @@ export default function RecipeShoppingScreen() {
   const clientReady = useClientReady();
   const scope = clientReady && params.scope === 'week' ? 'week' : 'day';
   const { weekStart, selectedDayId, hasPendingPlan, getRecipe } = useRecipePrototype();
-  // 「家里已有」由用户自己勾。别预置任何一项——他没勾过的东西不该是勾上的。
-  const [ownedIds, setOwnedIds] = useState<Set<string>>(new Set());
+  // 默认全部加入购物清单；用户取消勾选的项目才会在创建时排除。
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
 
   const draft = useShoppingDraft({
     weekStart,
@@ -37,15 +37,15 @@ export default function RecipeShoppingScreen() {
   });
   const items = draft.items;
   const [createdCount, setCreatedCount] = useState<number | null>(null);
-  const selectedCount = items.filter((item) => !ownedIds.has(item.id)).length;
+  const selectedCount = items.filter((item) => !excludedIds.has(item.id)).length;
 
   const submit = async () => {
     const count = selectedCount;
-    if (await draft.create(ownedIds)) setCreatedCount(count);
+    if (await draft.create(excludedIds)) setCreatedCount(count);
   };
 
-  const toggleOwned = (itemId: string) => {
-    setOwnedIds((current) => {
+  const toggleSelected = (itemId: string) => {
+    setExcludedIds((current) => {
       const next = new Set(current);
       if (next.has(itemId)) next.delete(itemId);
       else next.add(itemId);
@@ -92,7 +92,6 @@ export default function RecipeShoppingScreen() {
           <Text accessibilityRole="header" style={styles.title}>
             {scope === 'week' ? '本周需要准备什么' : '今天需要准备什么'}
           </Text>
-          <Text style={styles.subtitle}>重复食材已经合并，点选家中已有的物品即可排除。</Text>
         </View>
 
         {hasPendingPlan ? (
@@ -103,7 +102,7 @@ export default function RecipeShoppingScreen() {
 
         <View style={styles.summaryRow}>
           <Text style={styles.summaryTitle}>{selectedCount} 项待购买</Text>
-          <Text style={styles.summaryMeta}>{ownedIds.size} 项家中已有</Text>
+          <Text style={styles.summaryMeta}>{excludedIds.size} 项已排除</Text>
         </View>
 
         {groupOrder.map((group) => {
@@ -114,26 +113,26 @@ export default function RecipeShoppingScreen() {
               <Text style={styles.groupTitle}>{ingredientGroupLabels[group]}</Text>
               <View style={styles.itemList}>
                 {groupItems.map((item) => {
-                  const owned = ownedIds.has(item.id);
+                  const selected = !excludedIds.has(item.id);
                   return (
                     <Pressable
-                      accessibilityLabel={`${item.name}，${item.amount}，${owned ? '家中已有' : '需要购买'}`}
+                      accessibilityLabel={`${item.name}，${item.amount}，${selected ? '已选择购买' : '已排除'}`}
                       accessibilityRole="checkbox"
-                      accessibilityState={{ checked: owned }}
+                      accessibilityState={{ checked: selected }}
                       key={item.id}
-                      onPress={() => toggleOwned(item.id)}
+                      onPress={() => toggleSelected(item.id)}
                       style={({ pressed }) => [styles.itemRow, pressed && styles.pressed]}
                     >
-                      <View style={[styles.checkbox, owned && styles.checkboxSelected]}>
-                        {owned ? <AppIcon color={colors.background} name="checkmark" size={15} /> : null}
+                      <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+                        {selected ? <AppIcon color={colors.background} name="checkmark" size={15} /> : null}
                       </View>
                       <View style={styles.itemCopy}>
-                        <Text style={[styles.itemName, owned && styles.itemNameOwned]}>{item.name}</Text>
+                        <Text style={[styles.itemName, !selected && styles.itemNameExcluded]}>{item.name}</Text>
                         <Text numberOfLines={1} style={styles.itemSource}>
                           {describeSources(item.recipeIds, getRecipe)}
                         </Text>
                       </View>
-                      <Text style={[styles.itemAmount, owned && styles.itemAmountOwned]}>{item.amount}</Text>
+                      <Text style={[styles.itemAmount, !selected && styles.itemAmountExcluded]}>{item.amount}</Text>
                     </Pressable>
                   );
                 })}
@@ -192,13 +191,6 @@ const styles = StyleSheet.create({
     lineHeight: 33,
     fontWeight: '700',
     letterSpacing: -0.35,
-  },
-  subtitle: {
-    marginTop: 6,
-    color: recipeColors.muted,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 20,
   },
   summaryRow: {
     minHeight: 58,
@@ -269,7 +261,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '600',
   },
-  itemNameOwned: {
+  itemNameExcluded: {
     color: recipeColors.faint,
     textDecorationLine: 'line-through',
   },
@@ -291,7 +283,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontVariant: ['tabular-nums'],
   },
-  itemAmountOwned: {
+  itemAmountExcluded: {
     color: recipeColors.faint,
   },
   footer: {

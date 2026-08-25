@@ -51,7 +51,7 @@ export function useShoppingDraft(options: { weekStart?: string; date?: string })
     [query.data],
   );
 
-  /** 用选中的食材创建清单。excluded 是用户勾掉的「家里已有」。 */
+  /** 用选中的食材创建清单；excluded 是用户取消勾选、不准备购买的项目。 */
   const create = async (excluded: Set<string>) => {
     const selected = items.filter((item) => !excluded.has(item.id));
     if (selected.length === 0 || !options.weekStart) return false;

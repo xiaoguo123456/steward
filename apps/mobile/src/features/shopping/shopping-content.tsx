@@ -314,7 +314,7 @@ export function ShoppingContent({
         </View>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push('/features/recipes')}
+          onPress={() => router.push('/features/recipes/shopping?scope=day')}
           style={({ pressed }) => [styles.recipeAction, pressed && styles.pressed]}
         >
           <AppIcon color={colors.primaryStrong} name="restaurant-outline" size={17} />
@@ -341,7 +341,7 @@ export function ShoppingContent({
         </View>
       ) : (
         <View style={styles.emptyState}>
-          <AppIcon color={colors.primaryStrong} name="checkmark-circle-outline" size={28} />
+          <AppIcon color={colors.primaryStrong} name="checkmark-circle-outline" size={22} />
           <Text style={styles.emptyTitle}>清单已完成</Text>
         </View>
       )}
@@ -566,8 +566,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyState: {
-    minHeight: 132,
-    marginTop: 22,
+    minHeight: 72,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
