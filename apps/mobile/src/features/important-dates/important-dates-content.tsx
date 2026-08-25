@@ -733,10 +733,7 @@ export function ImportantDatesContent({
 
       {!nextItem && !importantDates.isLoading ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>还没有重要日</Text>
-          <Text style={styles.emptyCopy}>
-            用右上角的「＋」记下生日、纪念日或到期日，到点会提醒你。
-          </Text>
+          <Text style={styles.emptyTitle}>还没有添加重要日</Text>
         </View>
       ) : null}
 
@@ -793,18 +790,12 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceSubtle,
-    gap: 7,
   },
   emptyTitle: {
     color: colors.text,
     fontFamily,
     ...typography.body,
     fontWeight: '600',
-  },
-  emptyCopy: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
   },
   failureText: {
     marginTop: 10,
