@@ -1,0 +1,131 @@
+name: Android 测试包
+run-name: Android 测试包 · ${{ inputs.commit_sha }} · ${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "要打包的 main 分支 commit SHA（完整或前 12 位）"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steward-android-test
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建 Android 测试 APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
+      EXPO_PUBLIC_API_URL: https://test-steward.qhzhiyin.com
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: steward-test
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 校验并检出 main 中的指定提交
+        id: vars
+        env:
+          REQUESTED_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          requested="$(printf '%s' "$REQUESTED_SHA" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$requested" =~ ^[0-9a-f]{12}([0-9a-f]{28})?$ ]]; then
+            echo "commit SHA 必须是 12 位或 40 位十六进制" >&2
+            exit 1
+          fi
+
+          git fetch origin main
+          actual="$(git rev-parse "${requested}^{commit}" 2>/dev/null || true)"
+          if [ -z "$actual" ]; then
+            echo "找不到提交：$requested" >&2
+            exit 1
+          fi
+          case "$actual" in
+            "$requested"*) ;;
+            *) echo "解析出的提交 $actual 与输入 $requested 不一致" >&2; exit 1 ;;
+          esac
+          if ! git merge-base --is-ancestor "$actual" origin/main; then
+            echo "提交不属于 main：$actual" >&2
+            exit 1
+          fi
+          git checkout --detach "$actual"
+
+          current_epoch="$(date -u +%s)"
+          version_code="$((current_epoch - 1577836800))"
+          if [ "$version_code" -le 0 ] || [ "$version_code" -gt 2100000000 ]; then
+            echo "生成的 Android versionCode 超出有效范围：$version_code" >&2
+            exit 1
+          fi
+          {
+            echo "full_sha=$actual"
+            echo "version_code=$version_code"
+            echo "apk_name=steward-test-${actual::12}.apk"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+
+      - name: 安装依赖并检查移动端
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm mobile:lint
+          pnpm mobile:typecheck
+
+      - name: 安装 Android SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.1.12297006"
+
+      - name: 恢复测试签名
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/steward-test.jks
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+
+      - name: 构建并签名测试 APK
+        env:
+          APP_VARIANT: test
+          STEWARD_ANDROID_VERSION_CODE: ${{ steps.vars.outputs.version_code }}
+          STEWARD_BUILD_SHA: ${{ steps.vars.outputs.full_sha }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/steward-test.jks
+        run: scripts/build-android-apk.sh test "output/android/${{ steps.vars.outputs.apk_name }}"
+
+      - name: 保存测试 APK（30 天）
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.vars.outputs.apk_name }}
+          path: |
+            output/android/${{ steps.vars.outputs.apk_name }}
+            output/android/${{ steps.vars.outputs.apk_name }}.sha256
+          retention-days: 30
+          if-no-files-found: error
+          overwrite: true
