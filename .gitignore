@@ -60,6 +60,7 @@ apps/mobile/ios/
 # 不进版本库是因为：每次重新生成再提交都会永久增加 28M 历史，想删要改写历史。
 # 需要长期留存时，它和 OSS 上的图片一起构成完整备份。
 /tools/recipe-import/recipes.sqlite3*
+/tools/recipe-import/.seasonal-cache/
 
 # 后台前端构建产物
 apps/admin/dist/

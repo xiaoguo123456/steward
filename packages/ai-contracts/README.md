@@ -4,14 +4,19 @@
 
 ## 当前状态
 
-只定义了 Capture 解析这一条链路：
+当前定义两条链路：
 
 ```text
 schemas/capture/capture-parse-result.v1.schema.json
+schemas/recipes/seasonal-ingredient-tags.v1.schema.json
 ```
 
-它描述的是 `apps/backend/internal/platform/ai` 中 `CaptureParseResult` 的完整契约。
+前者描述 `apps/backend/internal/platform/ai` 中 `CaptureParseResult` 的完整契约。
 当前的 `fake` Provider 是进程内的确定性实现，输出结构由 Go 类型保证，因此还没有接入运行时 Schema 校验。
+
+后者供 `tools/recipe-import/generate_seasonal_tags.py` 离线生成时令食材库。
+工具会校验模型原始 JSON、输入覆盖和重复项，并把自然上市月份确定性归并为
+春、夏、秋、冬四季；线上菜谱查询不调用模型。
 
 ## 接入真实 Provider 时必须补上的环节
 

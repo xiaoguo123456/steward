@@ -1,5 +1,5 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -25,6 +25,7 @@ import {
 } from '@/features/recipes/components/recipe-ui';
 import { categoryOptions } from '@/features/recipes/category-options';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
+import { useRecipeDiscovery } from '@/features/recipes/use-recipe-discovery';
 import { useClientReady } from '@/hooks/use-client-ready';
 import {
   goalLabels,
@@ -260,40 +261,19 @@ function WeekHome() {
 
 function DiscoverHome() {
   const router = useRouter();
-  const {
-    profile,
-    recipes,
-    recipesLoading,
-    recipesLoadFailure,
-    reloadRecipes,
-  } = useRecipePrototype();
+  const { profile } = useRecipePrototype();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<RecipeCategory>('recommended');
   const normalizedSearch = search.trim().toLowerCase();
-
-  const visibleRecipes = useMemo(() => {
-    return recipes.filter((recipe) => {
-      const matchesCategory =
-        category === 'recommended'
-          ? (profile ? recipe.goals.includes(profile.goal) : false) ||
-            recipe.categories.includes('recommended')
-          : recipe.categories.includes(category);
-      const haystack = [
-        recipe.title,
-        recipe.description,
-        ...recipe.tags,
-        ...recipe.ingredients.map((ingredient) => ingredient.name),
-      ]
-        .join(' ')
-        .toLowerCase();
-      return matchesCategory && (!normalizedSearch || haystack.includes(normalizedSearch));
-    });
-  }, [category, normalizedSearch, profile, recipes]);
+  const discovery = useRecipeDiscovery(category, search, profile?.allergies ?? []);
+  const visibleRecipes = discovery.recipes;
 
   // 头图取当前筛选下的第一条：内容来自服务端，不该在客户端写死某个 ID。
-  const featured = visibleRecipes[0] ?? recipes[0];
-  const waitingForRecipes = recipesLoading && recipes.length === 0;
-  const recipesUnavailable = Boolean(recipesLoadFailure) && recipes.length === 0;
+  const featured =
+    visibleRecipes.find((recipe) => profile && recipe.goals.includes(profile.goal)) ??
+    visibleRecipes[0];
+  const waitingForRecipes = discovery.loading && visibleRecipes.length === 0;
+  const recipesUnavailable = Boolean(discovery.loadFailure) && visibleRecipes.length === 0;
 
   return (
     <>
@@ -345,7 +325,7 @@ function DiscoverHome() {
         })}
       </ScrollView>
 
-      {recipesLoadFailure && recipes.length > 0 ? (
+      {discovery.loadFailure && visibleRecipes.length > 0 ? (
         <View style={styles.contentNotice}>
           <InlineNotice icon="cloud-offline-outline" tone="neutral">
             菜谱更新失败，正在显示已有内容。
@@ -387,8 +367,8 @@ function DiscoverHome() {
         <DiscoverHomeLoading />
       ) : recipesUnavailable ? (
         <RecipeUnavailableState
-          body={recipesLoadFailure ?? '请检查网络后重试。'}
-          onAction={reloadRecipes}
+          body={discovery.loadFailure ?? '请检查网络后重试。'}
+          onAction={discovery.refetch}
           title="菜谱暂时无法加载"
         />
       ) : visibleRecipes.length > 0 ? (
@@ -408,20 +388,14 @@ function DiscoverHome() {
             <AppIcon color={recipeColors.faint} name="search-outline" size={27} />
           </View>
           <Text style={styles.emptyTitle}>
-            {recipes.length === 0 ? '暂时还没有可浏览的菜谱' : '没有找到合适的菜谱'}
+            {normalizedSearch ? '没有找到合适的菜谱' : '这个分类暂时没有菜谱'}
           </Text>
           <Text style={styles.emptyCopy}>
-            {recipes.length === 0
-              ? '可以稍后重新加载，或者先返回本周菜单。'
-              : '试试缩短关键词，或者切换到“精选”。'}
+            {normalizedSearch ? '试试缩短关键词，或者切换到“精选”。' : '可以先看看其他分类。'}
           </Text>
           <RecipePrimaryButton
-            label={recipes.length === 0 ? '重新加载' : '查看推荐'}
+            label="查看推荐"
             onPress={() => {
-              if (recipes.length === 0) {
-                reloadRecipes();
-                return;
-              }
               setSearch('');
               setCategory('recommended');
             }}

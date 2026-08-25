@@ -489,18 +489,28 @@ WHERE ($1::text IS NULL
        OR EXISTS (
             SELECT 1 FROM jsonb_array_elements(ingredients) AS ing
             WHERE ing ->> 'name' ILIKE '%' || $1::text || '%'))
-  AND ($2::text IS NULL OR $2::text = ANY (categories))
-  AND ($3::text IS NULL OR $3::text = ANY (meal_slots))
-  AND ($4::int IS NULL OR duration_minutes <= $4::int)
+  AND (
+       $2::text IS NULL
+       OR (
+            $2::text = 'seasonal'
+            AND $3::text = ANY (tags)
+       )
+       OR (
+            $2::text <> 'seasonal'
+            AND $2::text = ANY (categories)
+       ))
+  AND ($4::text IS NULL OR $4::text = ANY (meal_slots))
+  AND ($5::int IS NULL OR duration_minutes <= $5::int)
   -- 过敏原是硬过滤，不是排序权重：命中一个就整条排除。
-  AND NOT (allergens && $5::text[])
+  AND NOT (allergens && $6::text[])
 ORDER BY duration_minutes, id
-LIMIT $6
+LIMIT $7
 `
 
 type ListRecipesParams struct {
 	Query            *string
 	Category         *string
+	SeasonalTag      *string
 	MealSlot         *string
 	MaxMinutes       *int32
 	ExcludeAllergens []string
@@ -512,6 +522,7 @@ func (q *Queries) ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Rec
 	rows, err := q.db.Query(ctx, listRecipes,
 		arg.Query,
 		arg.Category,
+		arg.SeasonalTag,
 		arg.MealSlot,
 		arg.MaxMinutes,
 		arg.ExcludeAllergens,

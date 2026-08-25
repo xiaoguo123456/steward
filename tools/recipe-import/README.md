@@ -3,7 +3,7 @@
 把 `菜谱数据/`（4271 条，含 25897 张图，共 11G）导进 steward。
 源素材和归档库都不进版本库，见根 `.gitignore`。
 
-## 三步
+## 四步
 
 ```bash
 # 1. 归档：源 JSON → SQLite。忠实保存源数据形状，不做领域映射。
@@ -13,9 +13,13 @@ python3 tools/recipe-import/archive.py
 python3 tools/recipe-import/upload_images.py
 python3 tools/recipe-import/upload_images.py --verify   # 抽查对象确实在
 
-# 3. 映射：SQLite → PG 的 recipes 表。
+# 3. 生成时令标签库。调用 .env 已配置的真实 AI Provider；结果写入版本库。
+python3 tools/recipe-import/generate_seasonal_tags.py
+
+# 4. 映射：SQLite → PG 的 recipes 表。
 python3 tools/recipe-import/to_postgres.py --dry-run
 python3 tools/recipe-import/to_postgres.py
+python3 tools/recipe-import/verify_postgres.py --env-file .env
 
 # 从其他工作树复用现有归档库时显式传入路径。
 python3 tools/recipe-import/to_postgres.py \
@@ -56,9 +60,6 @@ python3 tools/recipe-import/upload_images.py --backup-archive
 所以每条排除项都是实际数据里踩到的坑：土豆/绿豆不是大豆、蟹味菇不是蟹、
 打蛋器不是鸡蛋（它确实出现在食材表里）。改规则前先跑 `python3 allergens.py` 自检。
 
-导入时既保存整道菜的过敏原并用于硬过滤，也在每项食材中保存该项命中的
-过敏原供客户端就近提示。两者必须使用同一个确定性规则，不允许客户端再猜一遍。
-
 酱油同时含大豆与小麦，而中餐离不开它，所以小麦命中 67%、大豆 59%。
 这是事实——对大豆过敏的人确实吃不了那些菜。
 
@@ -71,6 +72,19 @@ python3 tools/recipe-import/upload_images.py --backup-archive
 
 **耗时取区间上限。** 「约10-20分钟」记 20：让人以为 10 分钟能做完、
 实际要 20 分钟，比反过来更容易把一顿饭搞砸。
+
+**发现页标签使用确定性规则，见 `discovery_tags.py`。** 快手菜沿用来源标签；
+减脂要求来源明确标为减肥餐并通过能量与菜单排除校验；增肌要求每份蛋白质至少
+25g、蛋白供能占比至少 25%；健康控糖只从来源“清淡”且每份碳水不高、没有
+明确添加糖的菜中保守筛选，不用于疾病饮食建议。
+
+时令是唯一需要模型补知识的标签：`generate_seasonal_tags.py` 按版本化 Prompt
+调用 API，原始 JSON 先通过 Schema 和输入完整性校验，再生成
+`tags/seasonal-ingredients.v2.json`。模型返回的自然上市月份会一次性归并为春、夏、
+秋、冬四季；导入脚本只按这个库和主要食材确定性打季节标签。线上请求不调用模型，
+也不允许模型直接写库，不需要每月重新生成或修改数据。导入时暂时同时生成隐藏的
+`seasonal_month_MM` 兼容标签，保证尚未滚动升级的测试服务仍能得到同一季节集合；
+四季标签是权威结果。
 
 **图片存对象键不存 URL。** 桶是私有的，签名地址会过期；键是稳定的，
 URL 由服务端按当前分发方式拼。CDN 放开免鉴权就拼域名，没放开就临时签名，

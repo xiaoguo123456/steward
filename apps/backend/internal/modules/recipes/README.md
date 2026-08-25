@@ -55,11 +55,15 @@ AND NOT (allergens && sqlc.arg(exclude_allergens)::text[])
 任何推荐、排序或个性化都不得让一条含过敏原的菜谱重新出现。这条规则放在
 查询里而不是应用层，就是为了让它没有被绕过的余地。
 
-`RecipeIngredient.allergens` 使用同一套导入规则保存逐项归因，只用于在对应食材
-旁就近展示；整道菜的 `Recipe.allergens` 仍是硬过滤依据。客户端不得根据食材名称
-自行推断，旧内容没有逐项归因时可以不返回该字段。
-
 ## 中文搜索
 
 按菜名与食材搜索用 `pg_trgm` + `ILIKE`。Postgres 默认分词器不切分中文，
 `to_tsvector` 会把整句当成一个 token，搜不到子串。
+
+## 发现分类
+
+发现页按分类直接查询全库，不能先取前 100 条再由客户端筛选。`seasonal` 还会
+按中国时间选择当前季节内部标签（`season_spring`、`season_summer`、
+`season_autumn`、`season_winter`），所以只返回当前自然旺季的菜。四季边界固定为
+春季 3—5 月、夏季 6—8 月、秋季 9—11 月、冬季 12—2 月。
+减脂、增肌和健康控糖标签由导入工具的版本化确定性规则生成；线上请求不调用模型。

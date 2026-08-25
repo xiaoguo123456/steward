@@ -79,7 +79,10 @@ export function toRecipe(recipe: ApiRecipe): Recipe {
     mealSlots: recipe.meal_slots as MealSlot[],
     categories: recipe.categories.map(toLocalKey) as RecipeCategory[],
     goals: recipe.goals.map(toLocalKey) as RecipeGoal[],
-    tags: recipe.tags,
+    // season_* 是服务端当季过滤索引，不是给用户看的标签；兼容迁移前的月份标签。
+    tags: recipe.tags.filter(
+      (tag) => !tag.startsWith('season_') && !tag.startsWith('seasonal_month_'),
+    ),
     allergens: recipe.allergens,
     component: recipe.component ?? undefined,
     ingredients: recipe.ingredients.map(toIngredient),
@@ -93,7 +96,6 @@ function toIngredient(item: ApiRecipe['ingredients'][number], index: number): Re
     name: item.name,
     amount: item.amount,
     group: item.group,
-    allergens: item.allergens ?? [],
   };
 }
 

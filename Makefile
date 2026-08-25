@@ -82,7 +82,7 @@ lint-mobile: ## 移动端 ESLint
 	pnpm mobile:lint
 
 .PHONY: test
-test: test-backend test-mobile ## 运行全部测试
+test: test-backend test-mobile test-recipe-import ## 运行全部测试
 
 .PHONY: test-backend
 test-backend: ## Go 单元测试
@@ -91,6 +91,13 @@ test-backend: ## Go 单元测试
 .PHONY: test-mobile
 test-mobile: ## 运行移动端确定性逻辑测试
 	pnpm mobile:test
+
+.PHONY: test-recipe-import
+test-recipe-import: ## 运行菜谱导入与分类规则测试
+	python3 tools/recipe-import/test_to_postgres.py
+	python3 tools/recipe-import/test_discovery_tags.py
+	python3 tools/recipe-import/allergens.py
+	python3 tools/recipe-import/classify.py
 
 .PHONY: test-race
 test-race: ## 核心并发路径 race 检测

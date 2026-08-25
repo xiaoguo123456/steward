@@ -23,12 +23,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from allergens import detect as detect_allergens
 from classify import classify as classify_component, excluded_reason  # noqa: E402
+from discovery_tags import build_discovery_tags, load_seasonal_library  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 DB_PATH = REPO / "tools" / "recipe-import" / "recipes.sqlite3"
 
 # 内容版本。映射规则改了就要改它，便于分辨库里是哪一版规则导入的。
-CONTENT_VERSION = "lanfan-2026-08.1"
+CONTENT_VERSION = "lanfan-2026-08.2"
 
 # 图片分发域名。steward/recipes/ 这个前缀在 CDN 上配了免鉴权，
 # 因此可以直接拼出永久地址；其余前缀仍然要签名。
@@ -55,10 +56,8 @@ MEAL_TAGS = {"早餐": "breakfast", "午餐": "lunch", "晚餐": "dinner"}
 # 甜品饮品那些不补——奥利奥奶昔不是晚饭。
 MAIN_DISH_TAGS = {"家常菜", "下饭菜", "快手菜", "素菜", "便当", "炒菜", "汤羹", "主食"}
 
-# steward 的分类枚举有限，只映射能确定的那几个，其余归精选。
-CATEGORY_MAP = {"快手菜": "quick", "时令": "seasonal"}
-
 MEAL_SLOT_ORDER = ["breakfast", "lunch", "dinner"]
+SEASONAL_LIBRARY = load_seasonal_library()
 
 
 def parse_minutes(text: str | None) -> int:
@@ -82,12 +81,6 @@ def build_meal_slots(categories: list[str]) -> list[str]:
     if not slots and any(c in MAIN_DISH_TAGS for c in categories):
         slots = {"lunch", "dinner"}
     return [s for s in MEAL_SLOT_ORDER if s in slots]
-
-
-def build_categories(categories: list[str]) -> list[str]:
-    mapped = {CATEGORY_MAP[c] for c in categories if c in CATEGORY_MAP}
-    mapped.add("recommended")
-    return sorted(mapped)
 
 
 def nutrition_per_serving(rows: list[tuple], servings: int) -> dict:
@@ -121,19 +114,6 @@ def ingredient_group(name: str) -> str:
     if any(k in name for k in STAPLE):
         return "staple"
     return "produce"
-
-
-def build_ingredients(rows: list[tuple]) -> list[dict]:
-    """逐项保留食材信息，并标出这项食材实际命中的过敏原。"""
-    return [
-        {
-            "name": name,
-            "amount": amount or "适量",
-            "group": ingredient_group(name),
-            "allergens": detect_allergens([name]),
-        }
-        for name, amount, *_ in rows
-    ]
 
 
 def build_steps(rows: list[tuple[int, str | None, str | None]], fallback: str) -> list[dict]:
@@ -185,6 +165,27 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
 
     servings = servings or 2
     nutri = nutrition_per_serving([(c, p, f, cb) for _, _, c, p, f, cb in ings], servings)
+    ingredient_names = [item[0] for item in ings]
+    source_tags = sorted(set(cats))
+    component = classify_component(
+        name,
+        source_tags,
+        ingredient_names,
+        nutri["calories"],
+        nutri["protein"],
+        nutri["carbohydrate"],
+    )
+    plan_excluded_reason = excluded_reason(name, source_tags, nutri["calories"])
+    categories, goals, derived_tags = build_discovery_tags(
+        title=name,
+        source_tags=source_tags,
+        ingredient_names=ingredient_names,
+        calories=nutri["calories"],
+        protein_g=nutri["protein"],
+        carbs_g=nutri["carbohydrate"],
+        plan_excluded_reason=plan_excluded_reason,
+        seasonal_library=SEASONAL_LIBRARY,
+    )
 
     cover = conn.execute(
         "SELECT oss_key FROM images WHERE recipe_id = ? AND kind = 'cover'", (rid,)
@@ -205,11 +206,18 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
         "carbs_g": nutri["carbohydrate"],
         "fat_g": nutri["fat"],
         "meal_slots": build_meal_slots(cats),
-        "categories": build_categories(cats),
-        "goals": [],  # 从营养反推目标是猜测，不做。
-        "tags": sorted(set(cats)),
-        "allergens": detect_allergens([i[0] for i in ings]),
-        "ingredients": json.dumps(build_ingredients(ings), ensure_ascii=False),
+        "categories": categories,
+        "goals": goals,
+        # 中文来源标签用于审计；season_* 是四季查询标签，月份标签仅用于滚动升级兼容。
+        "tags": sorted(set(source_tags) | set(derived_tags)),
+        "allergens": detect_allergens(ingredient_names),
+        "ingredients": json.dumps(
+            [
+                {"name": n, "amount": a or "适量", "group": ingredient_group(n)}
+                for n, a, *_ in ings
+            ],
+            ensure_ascii=False,
+        ),
         "steps": json.dumps(build_steps(steps, tips or name), ensure_ascii=False),
         "source_name": SOURCE_NAME,
         "source_author": None,
@@ -220,13 +228,8 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
         "content_version": CONTENT_VERSION,
         # 这道菜在一餐里扮演什么角色，以及要不要排除出周菜单。
         # 规则见 classify.py；那里以来源自带的分类标签为主，营养只做兜底。
-        "component": classify_component(
-            name, sorted(set(cats)), [i[0] for i in ings],
-            nutri["calories"], nutri["protein"], nutri["carbohydrate"],
-        ),
-        "plan_excluded_reason": excluded_reason(
-            name, sorted(set(cats)), nutri["calories"]
-        ),
+        "component": component,
+        "plan_excluded_reason": plan_excluded_reason,
     }
 
 
@@ -267,7 +270,7 @@ def database_url(env_file: Path) -> str:
     for line in env_file.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line.startswith("STEWARD_MIGRATE_DATABASE_URL="):
-            return line.split("=", 1)[1].strip()
+            return line.split("=", 1)[1].strip().strip("'\"")
     raise SystemExit(f"在 {env_file} 里找不到 STEWARD_MIGRATE_DATABASE_URL")
 
 

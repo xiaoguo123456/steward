@@ -7,7 +7,16 @@ WHERE (sqlc.narg(query)::text IS NULL
        OR EXISTS (
             SELECT 1 FROM jsonb_array_elements(ingredients) AS ing
             WHERE ing ->> 'name' ILIKE '%' || sqlc.narg(query)::text || '%'))
-  AND (sqlc.narg(category)::text IS NULL OR sqlc.narg(category)::text = ANY (categories))
+  AND (
+       sqlc.narg(category)::text IS NULL
+       OR (
+            sqlc.narg(category)::text = 'seasonal'
+            AND sqlc.narg(seasonal_tag)::text = ANY (tags)
+       )
+       OR (
+            sqlc.narg(category)::text <> 'seasonal'
+            AND sqlc.narg(category)::text = ANY (categories)
+       ))
   AND (sqlc.narg(meal_slot)::text IS NULL OR sqlc.narg(meal_slot)::text = ANY (meal_slots))
   AND (sqlc.narg(max_minutes)::int IS NULL OR duration_minutes <= sqlc.narg(max_minutes)::int)
   -- 过敏原是硬过滤，不是排序权重：命中一个就整条排除。

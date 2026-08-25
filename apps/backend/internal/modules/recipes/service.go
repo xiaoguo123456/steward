@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
@@ -56,12 +57,18 @@ func (s *Service) List(ctx context.Context, userID string, f Filter) ([]dbgen.Re
 	if f.ExcludeAllergens == nil {
 		f.ExcludeAllergens = []string{}
 	}
+	var seasonalTag *string
+	if f.Category != nil && *f.Category == "seasonal" {
+		value := seasonalTagAt(time.Now())
+		seasonalTag = &value
+	}
 
 	var out []dbgen.Recipe
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		rows, err := q.ListRecipes(ctx, dbgen.ListRecipesParams{
 			Query:            f.Query,
 			Category:         f.Category,
+			SeasonalTag:      seasonalTag,
 			MealSlot:         f.MealSlot,
 			MaxMinutes:       f.MaxMinute,
 			ExcludeAllergens: f.ExcludeAllergens,
@@ -74,6 +81,22 @@ func (s *Service) List(ctx context.Context, userID string, f Filter) ([]dbgen.Re
 		return nil
 	})
 	return out, err
+}
+
+// seasonalTagAt 把时刻换算成中国自然时令库使用的四季标签。
+// 服务部署在哪个时区都不影响结果，季节边界也不会按机器本地时间提前切换。
+func seasonalTagAt(now time.Time) string {
+	china := time.FixedZone("China Standard Time", 8*60*60)
+	switch now.In(china).Month() {
+	case time.March, time.April, time.May:
+		return "season_spring"
+	case time.June, time.July, time.August:
+		return "season_summer"
+	case time.September, time.October, time.November:
+		return "season_autumn"
+	default:
+		return "season_winter"
+	}
 }
 
 // Get 读取单个菜谱。

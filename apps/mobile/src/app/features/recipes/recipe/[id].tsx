@@ -214,17 +214,7 @@ export default function RecipeDetailScreen() {
             <View style={styles.ingredientList}>
               {recipe.ingredients.map((ingredient) => (
                 <View key={ingredient.id} style={styles.ingredientRow}>
-                  <View style={styles.ingredientIdentity}>
-                    <Text style={styles.ingredientName}>{ingredient.name}</Text>
-                    {ingredient.allergens.length > 0 ? (
-                      <Text
-                        accessibilityLabel={`易敏食材，可能含${ingredient.allergens.join('、')}`}
-                        style={styles.allergenBadge}
-                      >
-                        易敏
-                      </Text>
-                    ) : null}
-                  </View>
+                  <Text style={styles.ingredientName}>{ingredient.name}</Text>
                   <Text style={styles.ingredientAmount}>
                     {servingFactor === 1
                       ? ingredient.amount
@@ -498,15 +488,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: recipeColors.line,
   },
-  ingredientIdentity: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 7,
-  },
   ingredientName: {
+    flex: 1,
     color: recipeColors.ink,
     fontFamily,
     fontSize: 13,
@@ -519,18 +502,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontVariant: ['tabular-nums'],
-  },
-  allergenBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    color: recipeColors.warning,
-    fontFamily,
-    fontSize: 10,
-    lineHeight: 14,
-    fontWeight: '600',
-    overflow: 'hidden',
-    borderRadius: radius.pill,
-    backgroundColor: recipeColors.warningSoft,
   },
   stepList: {
     borderTopWidth: StyleSheet.hairlineWidth,

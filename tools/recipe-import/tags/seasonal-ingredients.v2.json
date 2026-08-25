@@ -1,0 +1,1899 @@
+{
+  "version": "seasonal-ingredients.v2",
+  "prompt_version": "recipe-seasonality@v1",
+  "schema_version": "seasonal-ingredient-tags.v1",
+  "region": "中国大陆华东、华中",
+  "basis": "自然上市旺季，模型月份结果归并为春夏秋冬",
+  "model": "gpt-5.6-luna",
+  "generated_at": "2026-08-25T03:38:49.404302+00:00",
+  "source_ingredient_count": 1411,
+  "source_hash": "24b49ecf40db9d8d8cd2a920f8cdcbcc9075dd86859b0df3cbc9191d74074edc",
+  "ingredients": {
+    "丝瓜": {
+      "normalized_name": "丝瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "中等大小西红柿": {
+      "normalized_name": "西红柿",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "中等熟柿子": {
+      "normalized_name": "柿子",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然成熟上市，适合作为鲜果主料"
+    },
+    "儿菜": {
+      "normalized_name": "儿菜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "冬春季自然上市，适合作为菜品主料"
+    },
+    "冬瓜": {
+      "normalized_name": "冬瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "冬瓜块": {
+      "normalized_name": "冬瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "冬瓜切块，旺季为夏秋季"
+    },
+    "冬笋": {
+      "normalized_name": "冬笋",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "冬季自然上市，适合作为菜品主料"
+    },
+    "冬笋（去皮）": {
+      "normalized_name": "冬笋",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "去皮冬笋仍属冬季鲜笋"
+    },
+    "凤梨": {
+      "normalized_name": "凤梨",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春夏季自然上市，适合作为鲜果主料"
+    },
+    "包菜": {
+      "normalized_name": "卷心菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为鲜蔬主料"
+    },
+    "南瓜": {
+      "normalized_name": "南瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏末秋季自然成熟，适合作为菜品主料"
+    },
+    "南瓜丁": {
+      "normalized_name": "南瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "南瓜切丁，旺季为夏末秋季"
+    },
+    "卷心菜丝": {
+      "normalized_name": "卷心菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "卷心菜切丝，原料旺季为秋冬季"
+    },
+    "卷心菜（圆白菜）": {
+      "normalized_name": "卷心菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为鲜蔬主料"
+    },
+    "去壳板栗": {
+      "normalized_name": "板栗",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然成熟上市，适合作为菜品主料"
+    },
+    "去皮去籽南瓜": {
+      "normalized_name": "南瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏末秋季集中上市，适合作为菜品主料"
+    },
+    "去皮番茄": {
+      "normalized_name": "番茄",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市量大，适合作为菜品主料"
+    },
+    "去皮红薯": {
+      "normalized_name": "红薯",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季集中收获上市，适合作为菜品主料"
+    },
+    "口蘑": {
+      "normalized_name": "口蘑",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "鲜菌秋季品质和供应通常较好，适合作为菜品主料"
+    },
+    "哈密瓜": {
+      "normalized_name": "哈密瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季至初秋自然上市，适合作为菜品主料"
+    },
+    "四季豆": {
+      "normalized_name": "四季豆",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市量大，适合作为菜品主料"
+    },
+    "圆生菜": {
+      "normalized_name": "圆生菜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "春秋季自然生长品质较好，适合作为菜品主料"
+    },
+    "圆白菜": {
+      "normalized_name": "圆白菜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "春秋季供应和口感通常较好，适合作为菜品主料"
+    },
+    "圆白菜丝": {
+      "normalized_name": "圆白菜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "圆白菜切丝后仍属于春秋季较适宜的鲜蔬"
+    },
+    "圆白菜条": {
+      "normalized_name": "圆白菜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "圆白菜切条后仍属于春秋季较适宜的鲜蔬"
+    },
+    "圆茄子": {
+      "normalized_name": "茄子",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季至初秋自然上市，适合作为菜品主料"
+    },
+    "土豆": {
+      "normalized_name": "土豆",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季新土豆集中上市，适合作为菜品主料"
+    },
+    "圣女果": {
+      "normalized_name": "圣女果",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "大白菜": {
+      "normalized_name": "大白菜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "奇异果": {
+      "normalized_name": "奇异果",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "娃娃菜": {
+      "normalized_name": "娃娃菜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "小土豆": {
+      "normalized_name": "小土豆",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "初夏自然上市，适合作为菜品主料"
+    },
+    "小油菜": {
+      "normalized_name": "小油菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至早春自然上市，适合作为菜品主料"
+    },
+    "小番茄": {
+      "normalized_name": "小番茄",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "小白菜": {
+      "normalized_name": "小白菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季口感较好，适合作为鲜蔬主料"
+    },
+    "小白菜苗": {
+      "normalized_name": "小白菜苗",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然生长，适合作为鲜蔬主料"
+    },
+    "小芋头": {
+      "normalized_name": "小芋头",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季集中上市，适合作为菜品主料"
+    },
+    "小青柠": {
+      "normalized_name": "小青柠",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为鲜果使用"
+    },
+    "小青菜": {
+      "normalized_name": "小青菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季口感较好，适合作为鲜蔬主料"
+    },
+    "小黄瓜": {
+      "normalized_name": "小黄瓜",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为鲜蔬主料"
+    },
+    "小黄鱼": {
+      "normalized_name": "小黄鱼",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春夏捕捞较集中，鲜品口感较好"
+    },
+    "小龙虾": {
+      "normalized_name": "小龙虾",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季自然上市量大，适合作为菜品主料"
+    },
+    "山楂": {
+      "normalized_name": "山楂",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季成熟上市，适合作为鲜果或菜品主料"
+    },
+    "山药": {
+      "normalized_name": "山药",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季采收上市，适合作为菜品主料"
+    },
+    "平菇": {
+      "normalized_name": "平菇",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "鲜食菌类，秋冬自然上市品质较好"
+    },
+    "彩椒": {
+      "normalized_name": "彩椒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "鲜食蔬菜，夏秋自然上市品质较好"
+    },
+    "彩椒丁": {
+      "normalized_name": "彩椒丁",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "彩椒切制品，原料夏秋自然上市品质较好"
+    },
+    "彩椒丝": {
+      "normalized_name": "彩椒丝",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "彩椒切制品，原料夏秋自然上市品质较好"
+    },
+    "彩椒块": {
+      "normalized_name": "彩椒块",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "彩椒切制品，原料夏秋自然上市品质较好"
+    },
+    "彩椒粒": {
+      "normalized_name": "彩椒粒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "彩椒切制品，原料夏秋自然上市品质较好"
+    },
+    "恩施小土豆": {
+      "normalized_name": "恩施小土豆",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "鲜食块茎类，夏秋自然上市品质较好"
+    },
+    "扁豆": {
+      "normalized_name": "扁豆",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "鲜食豆类蔬菜，夏秋自然上市品质较好"
+    },
+    "提子": {
+      "normalized_name": "提子",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "鲜食水果，夏末秋季自然上市品质较好"
+    },
+    "春笋": {
+      "normalized_name": "春笋",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "木瓜": {
+      "normalized_name": "木瓜",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然上市，果肉风味通常较好"
+    },
+    "杨桃": {
+      "normalized_name": "杨桃",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为鲜果食用"
+    },
+    "杨梅": {
+      "normalized_name": "杨梅",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "初夏自然上市，鲜果风味通常较好"
+    },
+    "板栗": {
+      "normalized_name": "板栗",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季集中上市，适合作为菜品主料"
+    },
+    "板栗仁": {
+      "normalized_name": "板栗仁",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "板栗秋季集中上市，鲜仁风味通常较好"
+    },
+    "柚子": {
+      "normalized_name": "柚子",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，果实风味通常较好"
+    },
+    "柠檬": {
+      "normalized_name": "柠檬",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为鲜果或菜品主料"
+    },
+    "柿子": {
+      "normalized_name": "柿子",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然上市，果实成熟度和风味较好"
+    },
+    "树莓": {
+      "normalized_name": "树莓",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季鲜果上市，适合作为菜品或甜品主料"
+    },
+    "栗子": {
+      "normalized_name": "栗子",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季集中上市，鲜果风味通常较好"
+    },
+    "栗面南瓜": {
+      "normalized_name": "栗面南瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏末秋季上市，适合作为蔬菜主料"
+    },
+    "桃子": {
+      "normalized_name": "桃子",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，果实风味通常较好"
+    },
+    "梨": {
+      "normalized_name": "梨",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏末秋季自然上市，果实风味通常较好"
+    },
+    "樱桃": {
+      "normalized_name": "樱桃",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "初夏自然上市，适合作为菜品主料"
+    },
+    "樱桃萝卜": {
+      "normalized_name": "樱桃萝卜",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "橘子": {
+      "normalized_name": "橘子",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "橙子": {
+      "normalized_name": "橙子",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "冬季自然上市，适合作为菜品主料"
+    },
+    "毛豆仁": {
+      "normalized_name": "毛豆仁",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "毛豆（带壳）": {
+      "normalized_name": "毛豆",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "水果黄瓜": {
+      "normalized_name": "水果黄瓜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "水蜜桃": {
+      "normalized_name": "水蜜桃",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "河虾": {
+      "normalized_name": "河虾",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "河虾通常在初夏至盛夏自然上市较多"
+    },
+    "油菜": {
+      "normalized_name": "油菜",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为蔬菜主料"
+    },
+    "油菜心": {
+      "normalized_name": "油菜心",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为蔬菜主料"
+    },
+    "油麦菜": {
+      "normalized_name": "油麦菜",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春末夏初自然上市，适合作为蔬菜主料"
+    },
+    "洋白菜": {
+      "normalized_name": "洋白菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至早春自然上市较旺，适合作为蔬菜主料"
+    },
+    "洋葱": {
+      "normalized_name": "洋葱",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "初夏自然上市，适合作为蔬菜主料"
+    },
+    "洋葱丝": {
+      "normalized_name": "洋葱",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "洋葱初夏自然上市，切丝后仍可作为主料"
+    },
+    "洋葱块": {
+      "normalized_name": "洋葱",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "洋葱初夏自然上市，切块后仍可作为主料"
+    },
+    "洋葱末": {
+      "normalized_name": "洋葱",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "洋葱初夏自然上市，切末后仍可作为主料"
+    },
+    "混合生菜": {
+      "normalized_name": "混合生菜",
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "reason": "凉爽季节自然上市较好，适合作为鲜蔬主料"
+    },
+    "牛油果": {
+      "normalized_name": "牛油果",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "猕猴桃": {
+      "normalized_name": "猕猴桃",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "玉米": {
+      "normalized_name": "玉米",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "玉米粒": {
+      "normalized_name": "玉米粒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "鲜玉米粒夏秋季自然上市，适合作为菜品主料"
+    },
+    "甜玉米": {
+      "normalized_name": "甜玉米",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "甜瓜": {
+      "normalized_name": "甜瓜",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然成熟上市，口感和价格通常较好"
+    },
+    "甜豆": {
+      "normalized_name": "甜豆",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季鲜豆自然上市，适合作为菜品主料"
+    },
+    "生菜": {
+      "normalized_name": "生菜",
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "reason": "春秋季自然生长较旺，适合作为鲜蔬主料"
+    },
+    "生蚝": {
+      "normalized_name": "生蚝",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至初春肉质较肥，适合作为菜品主料"
+    },
+    "生蚝肉": {
+      "normalized_name": "生蚝肉",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至初春肉质较肥，适合作为菜品主料"
+    },
+    "田螺": {
+      "normalized_name": "田螺",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "春末至秋季鲜活上市较旺，适合作为菜品主料"
+    },
+    "番茄": {
+      "normalized_name": "番茄",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然成熟上市，适合作为菜品主料"
+    },
+    "白心火龙果": {
+      "normalized_name": "白心火龙果",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市较旺，适合作为鲜果主料"
+    },
+    "白洋葱": {
+      "normalized_name": "白洋葱",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "初夏自然采收上市，适合作为鲜蔬主料"
+    },
+    "白菜": {
+      "normalized_name": "白菜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为鲜蔬主料"
+    },
+    "白菜叶": {
+      "normalized_name": "白菜叶",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季白菜自然上市，叶部适合作为鲜蔬主料"
+    },
+    "白菜帮": {
+      "normalized_name": "白菜帮",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季白菜自然上市，帮部适合作为鲜蔬主料"
+    },
+    "白萝卜": {
+      "normalized_name": "白萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为鲜蔬主料"
+    },
+    "白贝": {
+      "normalized_name": "白贝",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春夏季鲜活上市较旺，适合作为菜品主料"
+    },
+    "百香果": {
+      "normalized_name": "百香果",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "石榴": {
+      "normalized_name": "石榴",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "砂糖橘": {
+      "normalized_name": "砂糖橘",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "冬季自然上市，适合作为菜品主料"
+    },
+    "秋葵": {
+      "normalized_name": "秋葵",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "空心菜": {
+      "normalized_name": "空心菜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "粉藕": {
+      "normalized_name": "粉藕",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "紫洋葱": {
+      "normalized_name": "紫洋葱",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "初夏自然上市，适合作为菜品主料"
+    },
+    "紫甘蓝": {
+      "normalized_name": "紫甘蓝",
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "reason": "春秋季自然上市，适合作为鲜蔬主料"
+    },
+    "紫薯": {
+      "normalized_name": "紫薯",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为鲜薯主料"
+    },
+    "紫薯（去皮）": {
+      "normalized_name": "紫薯",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，去皮不改变其鲜薯属性"
+    },
+    "紫薯（带皮）": {
+      "normalized_name": "紫薯",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为鲜薯主料"
+    },
+    "红彩椒": {
+      "normalized_name": "红彩椒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为鲜蔬主料"
+    },
+    "红心火龙果": {
+      "normalized_name": "红心火龙果",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为鲜果主料"
+    },
+    "红苹果": {
+      "normalized_name": "红苹果",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然成熟上市，适合作为鲜果主料"
+    },
+    "红菜苔": {
+      "normalized_name": "红菜苔",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "冬春季自然上市，适合作为鲜蔬主料"
+    },
+    "红薯": {
+      "normalized_name": "红薯",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季收获上市，适合作为鲜薯主料"
+    },
+    "红薯叶": {
+      "normalized_name": "红薯叶",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季鲜嫩上市，适合作为鲜蔬主料"
+    },
+    "红薯（地瓜）": {
+      "normalized_name": "红薯",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季收获上市，适合作为鲜薯主料"
+    },
+    "红薯（带皮）": {
+      "normalized_name": "红薯",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季收获上市，带皮不改变其鲜薯属性"
+    },
+    "红黄彩椒": {
+      "normalized_name": "红黄彩椒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为鲜蔬主料"
+    },
+    "线茄": {
+      "normalized_name": "线茄",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为鲜蔬主料"
+    },
+    "老南瓜": {
+      "normalized_name": "南瓜",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然成熟上市，适合作为菜品主料"
+    },
+    "胡萝卜": {
+      "normalized_name": "胡萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "胡萝卜丁": {
+      "normalized_name": "胡萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "胡萝卜的切配形态，秋冬季自然上市"
+    },
+    "胡萝卜丝": {
+      "normalized_name": "胡萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "胡萝卜的切配形态，秋冬季自然上市"
+    },
+    "胡萝卜块": {
+      "normalized_name": "胡萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "胡萝卜的切配形态，秋冬季自然上市"
+    },
+    "胡萝卜末": {
+      "normalized_name": "胡萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "胡萝卜的切配形态，秋冬季自然上市"
+    },
+    "胡萝卜片": {
+      "normalized_name": "胡萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "胡萝卜的切配形态，秋冬季自然上市"
+    },
+    "胡萝卜碎": {
+      "normalized_name": "胡萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "胡萝卜的切配形态，秋冬季自然上市"
+    },
+    "脆柿子": {
+      "normalized_name": "脆柿",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然成熟上市，适合作为菜品主料"
+    },
+    "芋头": {
+      "normalized_name": "芋头",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然成熟上市，适合作为菜品主料"
+    },
+    "芒果": {
+      "normalized_name": "芒果",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "芒果肉": {
+      "normalized_name": "芒果",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "芥蓝": {
+      "normalized_name": "芥蓝",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至早春自然上市，适合作为菜品主料"
+    },
+    "芦笋": {
+      "normalized_name": "芦笋",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春末初夏自然上市，适合作为菜品主料"
+    },
+    "芦蒿": {
+      "normalized_name": "芦蒿",
+      "seasons": [
+        "spring",
+        "winter"
+      ],
+      "reason": "早春自然上市，适合作为菜品主料"
+    },
+    "花菜": {
+      "normalized_name": "花菜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "芸豆": {
+      "normalized_name": "芸豆",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "芹菜": {
+      "normalized_name": "芹菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至早春自然上市，适合作为菜品主料"
+    },
+    "芹菜叶": {
+      "normalized_name": "芹菜叶",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "随芹菜在秋冬至早春上市，属于鲜蔬部分"
+    },
+    "芹菜梗": {
+      "normalized_name": "芹菜梗",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "随芹菜在秋冬至早春上市，适合作为菜品主料"
+    },
+    "苋菜": {
+      "normalized_name": "苋菜",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "苦瓜": {
+      "normalized_name": "苦瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "苦苣": {
+      "normalized_name": "苦苣",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "苦菊": {
+      "normalized_name": "苦菊",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "苹果": {
+      "normalized_name": "苹果",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然成熟上市，适合作为菜品主料"
+    },
+    "茄子": {
+      "normalized_name": "茄子",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "茭白": {
+      "normalized_name": "茭白",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "茼蒿": {
+      "normalized_name": "茼蒿",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至早春自然上市，适合作为菜品主料"
+    },
+    "草莓": {
+      "normalized_name": "草莓",
+      "seasons": [
+        "spring",
+        "winter"
+      ],
+      "reason": "冬春季自然上市，适合作为菜品主料"
+    },
+    "荔枝": {
+      "normalized_name": "荔枝",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为鲜果主料"
+    },
+    "荔浦芋头": {
+      "normalized_name": "荔浦芋头",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季集中采收，适合作为鲜食材主料"
+    },
+    "荷兰豆": {
+      "normalized_name": "荷兰豆",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为鲜蔬主料"
+    },
+    "荸荠（马蹄）": {
+      "normalized_name": "荸荠",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "冬季至早春上市，适合作为鲜食材主料"
+    },
+    "莴笋": {
+      "normalized_name": "莴笋",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为鲜蔬主料"
+    },
+    "菜心": {
+      "normalized_name": "菜心",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至早春品质较好，适合作为鲜蔬主料"
+    },
+    "菜花": {
+      "normalized_name": "菜花",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然供应较盛，适合作为鲜蔬主料"
+    },
+    "菠菜": {
+      "normalized_name": "菠菜",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至早春口感和价格通常较好"
+    },
+    "菠萝": {
+      "normalized_name": "菠萝",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春夏初自然上市，适合作为鲜果主料"
+    },
+    "菠萝丁": {
+      "normalized_name": "菠萝丁",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "鲜菠萝切丁供应旺季在春夏初"
+    },
+    "菠萝块": {
+      "normalized_name": "菠萝块",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "鲜菠萝切块供应旺季在春夏初"
+    },
+    "葡萄": {
+      "normalized_name": "葡萄",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然成熟，适合作为鲜果主料"
+    },
+    "葡萄柚": {
+      "normalized_name": "葡萄柚",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然成熟，适合作为鲜果主料"
+    },
+    "蒜苔": {
+      "normalized_name": "蒜苔",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季集中上市，适合作为鲜蔬主料"
+    },
+    "蒿子杆": {
+      "normalized_name": "蒿子杆",
+      "seasons": [
+        "spring",
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬至早春自然供应较盛，适合作为鲜蔬主料"
+    },
+    "蓝莓": {
+      "normalized_name": "蓝莓",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季前后自然成熟，适合作为鲜果主料"
+    },
+    "藕": {
+      "normalized_name": "藕",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "藕带": {
+      "normalized_name": "藕带",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "藕（脆）": {
+      "normalized_name": "藕",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "属于藕的口感描述，秋季自然上市"
+    },
+    "蛏子": {
+      "normalized_name": "蛏子",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春末夏初常见鲜食上市，适合作为菜品主料"
+    },
+    "蛤蜊": {
+      "normalized_name": "蛤蜊",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春末夏初常见鲜食上市，适合作为菜品主料"
+    },
+    "蜜桃": {
+      "normalized_name": "蜜桃",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "螃蟹": {
+      "normalized_name": "螃蟹",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季鲜食品质和供应通常较好"
+    },
+    "蟹味菇": {
+      "normalized_name": "蟹味菇",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季鲜菌品质和供应通常较好，适合作为菜品主料"
+    },
+    "裙带菜": {
+      "normalized_name": "裙带菜",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季鲜品集中上市，适合作为菜品主料"
+    },
+    "西兰花": {
+      "normalized_name": "西兰花",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "西兰花碎末": {
+      "normalized_name": "西兰花",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "属于西兰花的切碎形态，秋冬季自然上市"
+    },
+    "西柚": {
+      "normalized_name": "西柚",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "西瓜": {
+      "normalized_name": "西瓜",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "西红柿": {
+      "normalized_name": "西红柿",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "西红柿块": {
+      "normalized_name": "西红柿",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "属于西红柿的切块形态，夏季自然上市"
+    },
+    "西红柿（大）": {
+      "normalized_name": "西红柿",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "属于西红柿品类，夏季自然上市"
+    },
+    "西芹": {
+      "normalized_name": "西芹",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "西葫芦": {
+      "normalized_name": "西葫芦",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "豆角": {
+      "normalized_name": "豆角",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "豇豆": {
+      "normalized_name": "豇豆",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "豌豆": {
+      "normalized_name": "豌豆",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "豌豆尖": {
+      "normalized_name": "豌豆尖",
+      "seasons": [
+        "spring",
+        "winter"
+      ],
+      "reason": "冬春季自然上市，适合作为菜品主料"
+    },
+    "豌豆苗": {
+      "normalized_name": "豌豆苗",
+      "seasons": [
+        "spring",
+        "winter"
+      ],
+      "reason": "冬春季自然上市，适合作为菜品主料"
+    },
+    "贝贝南瓜": {
+      "normalized_name": "贝贝南瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "车厘子": {
+      "normalized_name": "车厘子",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为鲜果主料"
+    },
+    "金桔": {
+      "normalized_name": "金桔",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "冬季自然上市，适合作为菜品主料"
+    },
+    "金针菇": {
+      "normalized_name": "金针菇",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季鲜菌品质较好，适合作为菜品主料"
+    },
+    "铁棍山药": {
+      "normalized_name": "铁棍山药",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "银耳（湿）": {
+      "normalized_name": "银耳",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "鲜菌在夏季供应较好，适合作为菜品主料"
+    },
+    "长叶生菜": {
+      "normalized_name": "长叶生菜",
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "reason": "春秋季自然生长较旺，适合作为菜品主料"
+    },
+    "长茄子": {
+      "normalized_name": "长茄子",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "长茄子块": {
+      "normalized_name": "长茄子",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "雪花梨": {
+      "normalized_name": "雪花梨",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏末秋季自然上市，适合作为菜品主料"
+    },
+    "青、红彩椒": {
+      "normalized_name": "彩椒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "青提": {
+      "normalized_name": "青提",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "青柠檬": {
+      "normalized_name": "青柠檬",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "青桔": {
+      "normalized_name": "青桔",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "青梅": {
+      "normalized_name": "青梅",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春末初夏自然上市，适合作为菜品主料"
+    },
+    "青苹果": {
+      "normalized_name": "青苹果",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "青萝卜": {
+      "normalized_name": "青萝卜",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "青豌豆": {
+      "normalized_name": "青豌豆",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "reason": "春末至初夏自然上市，适合作为菜品主料"
+    },
+    "韭菜": {
+      "normalized_name": "韭菜",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "韭菜段": {
+      "normalized_name": "韭菜",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "属于切段鲜韭菜，春季自然上市较好"
+    },
+    "韭菜花": {
+      "normalized_name": "韭菜花",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏末秋季自然上市，适合作为菜品主料"
+    },
+    "韭菜苔": {
+      "normalized_name": "韭菜苔",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季至初秋自然上市，适合作为菜品主料"
+    },
+    "韭黄": {
+      "normalized_name": "韭黄",
+      "seasons": [
+        "spring",
+        "winter"
+      ],
+      "reason": "冬末春初品质较好，适合作为菜品主料"
+    },
+    "香椿": {
+      "normalized_name": "香椿",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季嫩芽自然上市，适合作为菜品主料"
+    },
+    "香水柠檬": {
+      "normalized_name": "香水柠檬",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏末至秋季自然上市，鲜食品质较好"
+    },
+    "香芹": {
+      "normalized_name": "香芹",
+      "seasons": [
+        "autumn",
+        "winter"
+      ],
+      "reason": "秋冬季自然上市，适合作为菜品主料"
+    },
+    "香蕉": {
+      "normalized_name": "香蕉",
+      "seasons": [
+        "autumn"
+      ],
+      "reason": "秋季自然上市量较大，口感和价格通常较好"
+    },
+    "鲜百合": {
+      "normalized_name": "百合",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "秋季自然上市，适合作为菜品主料"
+    },
+    "鲜羊肚菌": {
+      "normalized_name": "羊肚菌",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "鲜荠菜": {
+      "normalized_name": "荠菜",
+      "seasons": [
+        "spring",
+        "winter"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "鲜豌豆": {
+      "normalized_name": "豌豆",
+      "seasons": [
+        "spring"
+      ],
+      "reason": "春季自然上市，适合作为菜品主料"
+    },
+    "鲜香菇": {
+      "normalized_name": "香菇",
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "reason": "自然出产季节鲜食口感较好，适合作为菜品主料"
+    },
+    "鲜香菇片": {
+      "normalized_name": "香菇片",
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "reason": "鲜香菇切片，随香菇自然出产季上市"
+    },
+    "鲜香菇粒": {
+      "normalized_name": "香菇粒",
+      "seasons": [
+        "spring",
+        "autumn"
+      ],
+      "reason": "鲜香菇切粒，随香菇自然出产季上市"
+    },
+    "黄彩椒": {
+      "normalized_name": "黄彩椒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "黄桃": {
+      "normalized_name": "黄桃",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏末秋初自然上市，适合作为菜品主料"
+    },
+    "黄椒": {
+      "normalized_name": "黄椒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "黄椒丝": {
+      "normalized_name": "黄椒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "黄椒的切制形态，旺季为夏秋季"
+    },
+    "黄椒条": {
+      "normalized_name": "黄椒",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "黄椒的切制形态，旺季为夏秋季"
+    },
+    "黄瓜": {
+      "normalized_name": "黄瓜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏季自然上市，适合作为菜品主料"
+    },
+    "黄瓜丁": {
+      "normalized_name": "黄瓜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "黄瓜的切制形态，旺季为夏季"
+    },
+    "黄瓜丝": {
+      "normalized_name": "黄瓜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "黄瓜的切制形态，旺季为夏季"
+    },
+    "黄瓜条": {
+      "normalized_name": "黄瓜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "黄瓜的切制形态，旺季为夏季"
+    },
+    "黄瓜片": {
+      "normalized_name": "黄瓜",
+      "seasons": [
+        "spring",
+        "summer",
+        "autumn"
+      ],
+      "reason": "黄瓜的切制形态，旺季为夏季"
+    },
+    "黄色小南瓜": {
+      "normalized_name": "黄色小南瓜",
+      "seasons": [
+        "summer",
+        "autumn"
+      ],
+      "reason": "夏秋季自然上市，适合作为菜品主料"
+    },
+    "黑莓": {
+      "normalized_name": "黑莓",
+      "seasons": [
+        "summer"
+      ],
+      "reason": "夏季自然上市，适合作为鲜果主料"
+    }
+  }
+}

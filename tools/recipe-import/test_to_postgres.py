@@ -1,20 +1,11 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from to_postgres import CDN_BASE, build_ingredients, build_steps, nutrition_per_serving
+from to_postgres import CDN_BASE, build_steps, database_url, nutrition_per_serving
 
 
 class RecipeImportMappingTest(unittest.TestCase):
-    def test_build_ingredients_attributes_allergens_to_each_item(self):
-        ingredients = build_ingredients(
-            [
-                ("生抽", "1 勺", 0, 0, 0, 0),
-                ("土豆", "1 个", 0, 0, 0, 0),
-            ]
-        )
-
-        self.assertEqual(ingredients[0]["allergens"], ["大豆", "小麦"])
-        self.assertEqual(ingredients[1]["allergens"], [])
-
     def test_build_steps_includes_only_uploaded_step_images(self):
         steps = build_steps(
             [
@@ -35,6 +26,19 @@ class RecipeImportMappingTest(unittest.TestCase):
 
         self.assertNotIn("fiber", nutrition)
         self.assertNotIn("fiber_g", nutrition)
+
+    def test_database_url_removes_env_quotes(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / ".env.test"
+            path.write_text(
+                "STEWARD_MIGRATE_DATABASE_URL='postgres://user:pass@db/steward_test'\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                database_url(path),
+                "postgres://user:pass@db/steward_test",
+            )
 
 
 if __name__ == "__main__":

@@ -6726,13 +6726,6 @@ components:
           description: 自由文本，例如「300 克」「适量」。生成购物清单时按名称合并。
         group:
           $ref: '#/components/schemas/RecipeIngredientGroup'
-        allergens:
-          type: array
-          description: |
-            这项食材命中的过敏原，用于在食材行就近提示。它由内容导入的确定性规则生成，
-            不替代 Recipe.allergens 的整道菜硬过滤；旧内容没有逐项归因时可不返回。
-          items:
-            type: string
     RecipeStep:
       type: object
       additionalProperties: false

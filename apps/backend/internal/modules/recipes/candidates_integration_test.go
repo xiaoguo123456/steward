@@ -367,3 +367,61 @@ func TestCandidateQuerySkipsUnclassified(t *testing.T) {
 		}
 	}
 }
+
+func TestListRecipesSeasonalCategoryOnlyReturnsRequestedSeason(t *testing.T) {
+	db := candidateTestDB(t)
+	seedCandidateFixtures(t, db, []fixture{
+		{"rcp_test_seasonal_now", "夏季时蔬", 10, []string{}, "时蔬", "vegetable", ""},
+		{"rcp_test_seasonal_other", "春季时蔬", 10, []string{}, "时蔬", "vegetable", ""},
+		{"rcp_test_quick", "快手时蔬", 10, []string{}, "时蔬", "vegetable", ""},
+	})
+
+	err := db.InTxAnonymous(context.Background(), func(ctx context.Context, _ *dbgen.Queries) error {
+		tx, err := database.TxFrom(ctx)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE recipes
+			SET categories = CASE
+				WHEN id = 'rcp_test_quick' THEN ARRAY['quick']::text[]
+				ELSE ARRAY['seasonal']::text[]
+			END,
+			tags = CASE
+				WHEN id = 'rcp_test_seasonal_now' THEN ARRAY['season_summer']::text[]
+				WHEN id = 'rcp_test_seasonal_other' THEN ARRAY['season_spring']::text[]
+				ELSE ARRAY[]::text[]
+			END
+			WHERE id IN ('rcp_test_seasonal_now', 'rcp_test_seasonal_other', 'rcp_test_quick')`)
+		return err
+	})
+	if err != nil {
+		t.Fatalf("准备发现分类数据失败：%v", err)
+	}
+
+	category := "seasonal"
+	season := "season_summer"
+	var got []dbgen.Recipe
+	err = db.InTxAnonymous(context.Background(), func(ctx context.Context, q *dbgen.Queries) error {
+		var queryErr error
+		got, queryErr = q.ListRecipes(ctx, dbgen.ListRecipesParams{
+			Category: &category, SeasonalTag: &season,
+			ExcludeAllergens: []string{}, RowLimit: 100,
+		})
+		return queryErr
+	})
+	if err != nil {
+		t.Fatalf("查询当季时令菜失败：%v", err)
+	}
+
+	seen := map[string]bool{}
+	for _, recipe := range got {
+		seen[recipe.ID] = true
+	}
+	if !seen["rcp_test_seasonal_now"] {
+		t.Error("命中当季标签的时令菜应当返回")
+	}
+	if seen["rcp_test_seasonal_other"] || seen["rcp_test_quick"] {
+		t.Error("其他季节和其他分类的菜不应返回")
+	}
+}
