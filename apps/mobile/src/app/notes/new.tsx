@@ -37,7 +37,6 @@ export default function NewNoteScreen() {
       <NavHeader title="新建笔记" />
       <NoteEditor
         failure={failure}
-        onCancel={() => router.back()}
         onSubmit={(draft) => void submit(draft)}
         saving={saving}
         submitLabel="保存"

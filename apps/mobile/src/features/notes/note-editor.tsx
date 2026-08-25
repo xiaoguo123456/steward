@@ -24,19 +24,18 @@ export function NoteEditor({
   failure,
   submitLabel,
   onSubmit,
-  onCancel,
 }: {
   initial?: NoteDraft;
   saving: boolean;
   failure?: string | null;
   submitLabel: string;
   onSubmit: (draft: NoteDraft) => void;
-  onCancel: () => void;
 }) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [tagDraft, setTagDraft] = useState('');
+  const [tagInputOpen, setTagInputOpen] = useState(false);
 
   // 正文是唯一必填项，与契约一致。
   const canSubmit = Boolean(content.trim()) && !saving;
@@ -92,33 +91,46 @@ export function NoteEditor({
             <AppIcon color={colors.primaryStrong} name="close" size={13} />
           </Pressable>
         ))}
+        {!tagInputOpen ? (
+          <Pressable
+            accessibilityLabel="添加标签"
+            accessibilityRole="button"
+            onPress={() => setTagInputOpen(true)}
+            style={({ pressed }) => [styles.tagTrigger, pressed && styles.pressed]}
+          >
+            <AppIcon color={colors.textSecondary} name="add" size={16} />
+            <Text style={styles.tagTriggerText}>添加标签</Text>
+          </Pressable>
+        ) : null}
       </View>
-      <View style={styles.tagInputRow}>
-        <TextInput
-          accessibilityLabel="新增标签"
-          maxLength={20}
-          onChangeText={setTagDraft}
-          onSubmitEditing={addTag}
-          placeholder="加个标签"
-          placeholderTextColor={colors.textTertiary}
-          returnKeyType="done"
-          style={styles.tagInput}
-          value={tagDraft}
-        />
-        <Pressable
-          accessibilityLabel="确认添加标签"
-          accessibilityRole="button"
-          disabled={!tagDraft.trim()}
-          onPress={addTag}
-          style={({ pressed }) => [styles.tagAdd, pressed && styles.pressed]}
-        >
-          <AppIcon
-            color={tagDraft.trim() ? colors.primaryStrong : colors.borderStrong}
-            name="add"
-            size={20}
+      {tagInputOpen ? (
+        <View style={styles.tagInputRow}>
+          <TextInput
+            accessibilityLabel="新增标签"
+            autoFocus
+            maxLength={20}
+            onChangeText={setTagDraft}
+            onSubmitEditing={addTag}
+            placeholder="输入标签"
+            placeholderTextColor={colors.textSecondary}
+            returnKeyType="done"
+            style={styles.tagInput}
+            value={tagDraft}
           />
-        </Pressable>
-      </View>
+          <Pressable
+            accessibilityLabel="确认添加标签"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !tagDraft.trim() }}
+            disabled={!tagDraft.trim()}
+            onPress={addTag}
+            style={({ pressed }) => [styles.tagAdd, pressed && styles.pressed]}
+          >
+            <Text style={[styles.tagAddText, !tagDraft.trim() && styles.tagAddTextDisabled]}>
+              添加
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {failure ? <Text style={styles.failure}>{failure}</Text> : null}
 
@@ -128,7 +140,6 @@ export function NoteEditor({
           label={saving ? '正在保存…' : submitLabel}
           onPress={() => onSubmit({ title: title.trim(), content: content.trim(), tags })}
         />
-        <AppButton label="取消" onPress={onCancel} variant="text" />
       </View>
     </ScrollView>
   );
@@ -181,29 +192,51 @@ const styles = StyleSheet.create({
     ...typography.meta,
     fontWeight: '600',
   },
-  tagInputRow: {
-    marginTop: 10,
+  tagTrigger: {
+    minHeight: 34,
+    paddingHorizontal: 11,
+    borderRadius: radius.pill,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  tagTriggerText: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+    fontWeight: '500',
+  },
+  tagInputRow: {
+    marginTop: 10,
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
   },
   tagInput: {
     flex: 1,
     minHeight: 44,
     paddingHorizontal: 14,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
     color: colors.text,
     fontFamily,
     ...typography.input,
   },
   tagAdd: {
-    width: 44,
+    minWidth: 60,
     height: 44,
-    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+  },
+  tagAddText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.label,
+    fontWeight: '600',
+  },
+  tagAddTextDisabled: {
+    color: colors.textTertiary,
   },
   failure: {
     marginTop: 14,

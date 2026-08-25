@@ -87,14 +87,16 @@ export default function NoteDetailScreen() {
   if (editing) {
     return (
       <AppScreen includeBottomInset>
-        <NavHeader title="编辑笔记" />
-        <NoteEditor
-          failure={error}
-          initial={{ title: note.title, content: note.content, tags: note.tags }}
-          onCancel={() => {
+        <NavHeader
+          onBack={() => {
             setError(null);
             setEditing(false);
           }}
+          title="编辑笔记"
+        />
+        <NoteEditor
+          failure={error}
+          initial={{ title: note.title, content: note.content, tags: note.tags }}
           onSubmit={(draft) => void save(draft)}
           saving={saving}
           submitLabel="保存修改"
