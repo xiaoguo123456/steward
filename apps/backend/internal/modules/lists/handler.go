@@ -24,8 +24,13 @@ func (h *ListAPI) ListTaskLists(ctx context.Context, req httpapi.ListTaskListsRe
 		return nil, err
 	}
 	includeArchived := req.Params.IncludeArchived != nil && *req.Params.IncludeArchived
+	var listKind *string
+	if req.Params.ListKind != nil {
+		value := string(*req.Params.ListKind)
+		listKind = &value
+	}
 
-	rows, err := h.svc.List(ctx, userID, includeArchived)
+	rows, err := h.svc.List(ctx, userID, includeArchived, listKind)
 	if err != nil {
 		return nil, err
 	}

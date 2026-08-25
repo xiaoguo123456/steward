@@ -40,6 +40,10 @@ func (h *ObjectAPI) ListTasks(ctx context.Context, req httpapi.ListTasksRequestO
 		// 多取一条用于判断是否还有下一页。
 		Limit: limit + 1,
 	}
+	if req.Params.ListKind != nil {
+		value := string(*req.Params.ListKind)
+		filter.ListKind = &value
+	}
 	if req.Params.Status != nil {
 		for _, s := range *req.Params.Status {
 			filter.Statuses = append(filter.Statuses, string(s))
@@ -67,6 +71,16 @@ func (h *ObjectAPI) ListTasks(ctx context.Context, req httpapi.ListTasksRequestO
 		day := timeutil.DayOf(req.Params.ScheduledOn.Time, timeutil.LoadLocation(tz))
 		filter.ScheduledFrom = &day.Start
 		filter.ScheduledTo = &day.End
+	}
+	if req.Params.CompletedToday != nil && *req.Params.CompletedToday {
+		tz, err := h.svc.userTimezone(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		day := timeutil.DayOf(time.Now(), timeutil.LoadLocation(tz))
+		filter.CompletedFrom = &day.Start
+		filter.CompletedTo = &day.End
+		filter.Statuses = []string{"done"}
 	}
 	if cursor != nil {
 		filter.CursorTime = &cursor.Time

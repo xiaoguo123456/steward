@@ -34,6 +34,53 @@ func (q *Queries) CountTasksInList(ctx context.Context, listID string) (int32, e
 	return column_1, err
 }
 
+const createShoppingTaskListIfAbsent = `-- name: CreateShoppingTaskListIfAbsent :one
+INSERT INTO task_lists (id, user_id, name, color, icon, position, is_default, list_kind)
+VALUES (
+    $1, $2, $3,
+    $4, $5, $6, false, 'shopping'
+)
+ON CONFLICT DO NOTHING
+RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind
+`
+
+type CreateShoppingTaskListIfAbsentParams struct {
+	ID       string
+	UserID   string
+	Name     string
+	Color    *string
+	Icon     *string
+	Position int32
+}
+
+func (q *Queries) CreateShoppingTaskListIfAbsent(ctx context.Context, arg CreateShoppingTaskListIfAbsentParams) (TaskList, error) {
+	row := q.db.QueryRow(ctx, createShoppingTaskListIfAbsent,
+		arg.ID,
+		arg.UserID,
+		arg.Name,
+		arg.Color,
+		arg.Icon,
+		arg.Position,
+	)
+	var i TaskList
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.Icon,
+		&i.Position,
+		&i.IsDefault,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ListKind,
+	)
+	return i, err
+}
+
 const createTaskList = `-- name: CreateTaskList :one
 INSERT INTO task_lists (id, user_id, name, color, icon, position, is_default, list_kind)
 VALUES (
@@ -66,6 +113,36 @@ func (q *Queries) CreateTaskList(ctx context.Context, arg CreateTaskListParams) 
 		arg.IsDefault,
 		arg.ListKind,
 	)
+	var i TaskList
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.Icon,
+		&i.Position,
+		&i.IsDefault,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ListKind,
+	)
+	return i, err
+}
+
+const getActiveShoppingTaskList = `-- name: GetActiveShoppingTaskList :one
+SELECT id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind FROM task_lists
+WHERE user_id = $1
+  AND list_kind = 'shopping'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
+LIMIT 1
+`
+
+func (q *Queries) GetActiveShoppingTaskList(ctx context.Context, userID string) (TaskList, error) {
+	row := q.db.QueryRow(ctx, getActiveShoppingTaskList, userID)
 	var i TaskList
 	err := row.Scan(
 		&i.ID,
@@ -199,6 +276,76 @@ func (q *Queries) ListTaskLists(ctx context.Context, includeArchived bool) ([]Li
 	items := []ListTaskListsRow{}
 	for rows.Next() {
 		var i ListTaskListsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.Color,
+			&i.Icon,
+			&i.Position,
+			&i.IsDefault,
+			&i.ArchivedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Version,
+			&i.ListKind,
+			&i.TaskCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskListsByKind = `-- name: ListTaskListsByKind :many
+SELECT tl.id, tl.user_id, tl.name, tl.color, tl.icon, tl.position, tl.is_default, tl.archived_at, tl.created_at, tl.updated_at, tl.deleted_at, tl.version, tl.list_kind,
+       (SELECT count(*) FROM tasks t
+        WHERE t.list_id = tl.id
+          AND t.deleted_at IS NULL
+          AND t.status IN ('todo', 'doing'))::int AS task_count
+FROM task_lists tl
+WHERE tl.deleted_at IS NULL
+  AND ($1::bool OR tl.archived_at IS NULL)
+  AND tl.list_kind = $2::text
+ORDER BY tl.position, tl.id
+`
+
+type ListTaskListsByKindParams struct {
+	IncludeArchived bool
+	ListKind        string
+}
+
+type ListTaskListsByKindRow struct {
+	ID         string
+	UserID     string
+	Name       string
+	Color      *string
+	Icon       *string
+	Position   int32
+	IsDefault  bool
+	ArchivedAt *time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  *time.Time
+	Version    int32
+	ListKind   string
+	TaskCount  int32
+}
+
+func (q *Queries) ListTaskListsByKind(ctx context.Context, arg ListTaskListsByKindParams) ([]ListTaskListsByKindRow, error) {
+	rows, err := q.db.Query(ctx, listTaskListsByKind, arg.IncludeArchived, arg.ListKind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTaskListsByKindRow{}
+	for rows.Next() {
+		var i ListTaskListsByKindRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,

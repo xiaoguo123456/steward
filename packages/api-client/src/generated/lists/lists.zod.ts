@@ -22,7 +22,8 @@ import * as zod from 'zod';
 export const listTaskListsQueryIncludeArchivedDefault = false;
 
 export const ListTaskListsQueryParams = zod.object({
-  "include_archived": zod.boolean().default(listTaskListsQueryIncludeArchivedDefault)
+  "include_archived": zod.boolean().default(listTaskListsQueryIncludeArchivedDefault),
+  "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('按清单用途筛选。计划页只读取 tasks，购物场景只读取 shopping。')
 })
 
 export const ListTaskListsResponse = zod.object({

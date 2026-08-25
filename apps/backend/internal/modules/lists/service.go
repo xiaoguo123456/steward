@@ -84,12 +84,27 @@ func (s *Service) ResolveListID(ctx context.Context, q *dbgen.Queries, userID st
 }
 
 // List 返回当前用户的全部清单。
-func (s *Service) List(ctx context.Context, userID string, includeArchived bool) ([]dbgen.ListTaskListsRow, error) {
+func (s *Service) List(ctx context.Context, userID string, includeArchived bool,
+	listKind *string) ([]dbgen.ListTaskListsRow, error) {
 	var out []dbgen.ListTaskListsRow
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		// 首次访问时补齐默认清单，避免新用户看到空白页。
 		if _, err := s.EnsureDefaultList(ctx, q, userID); err != nil {
 			return err
+		}
+		if listKind != nil {
+			rows, err := q.ListTaskListsByKind(ctx, dbgen.ListTaskListsByKindParams{
+				IncludeArchived: includeArchived,
+				ListKind:        listKindOr(*listKind),
+			})
+			if err != nil {
+				return apperr.Internal(err)
+			}
+			out = make([]dbgen.ListTaskListsRow, 0, len(rows))
+			for _, row := range rows {
+				out = append(out, dbgen.ListTaskListsRow(row))
+			}
+			return nil
 		}
 		rows, err := q.ListTaskLists(ctx, includeArchived)
 		if err != nil {
@@ -122,6 +137,11 @@ func (s *Service) CreateInTx(ctx context.Context, q *dbgen.Queries, userID strin
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return dbgen.TaskList{}, apperr.Validation(apperr.Field("name", "清单名称不能为空。"))
+	}
+	if listKindOr(in.ListKind) == "shopping" {
+		return s.EnsureShoppingList(ctx, q, userID, ShoppingListInput{
+			Name: name, Color: in.Color, Icon: in.Icon,
+		})
 	}
 
 	var out dbgen.TaskList
@@ -157,6 +177,60 @@ func (s *Service) CreateInTx(ctx context.Context, q *dbgen.Queries, userID strin
 		return nil
 	}()
 	return out, err
+}
+
+// ShoppingListInput 是首次创建活动购物清单时使用的展示字段。
+type ShoppingListInput struct {
+	Name  string
+	Color *string
+	Icon  *string
+}
+
+// EnsureShoppingList 返回用户唯一的活动购物清单；不存在时创建。
+// 数据库部分唯一索引负责并发下最多只有一份活动清单。
+func (s *Service) EnsureShoppingList(ctx context.Context, q *dbgen.Queries,
+	userID string, in ShoppingListInput) (dbgen.TaskList, error) {
+
+	existing, err := q.GetActiveShoppingTaskList(ctx, userID)
+	if err == nil {
+		return existing, nil
+	}
+	if !database.IsNoRows(err) {
+		return dbgen.TaskList{}, apperr.Internal(err)
+	}
+
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		name = "购物清单"
+	}
+	position, err := q.CountTaskLists(ctx)
+	if err != nil {
+		return dbgen.TaskList{}, apperr.Internal(err)
+	}
+	created, err := q.CreateShoppingTaskListIfAbsent(ctx, dbgen.CreateShoppingTaskListIfAbsentParams{
+		ID:       idgen.New(idgen.PrefixTaskList),
+		UserID:   userID,
+		Name:     name,
+		Color:    in.Color,
+		Icon:     in.Icon,
+		Position: position,
+	})
+	if err == nil {
+		return created, nil
+	}
+	if !database.IsNoRows(err) {
+		return dbgen.TaskList{}, apperr.Internal(err)
+	}
+
+	// 并发请求可能已经先创建成功；重新读取即可。
+	existing, err = q.GetActiveShoppingTaskList(ctx, userID)
+	if err == nil {
+		return existing, nil
+	}
+	if database.IsNoRows(err) {
+		return dbgen.TaskList{}, apperr.New(apperr.CodeTaskListNameDuplicated)
+	}
+	return dbgen.TaskList{}, apperr.Internal(err)
 }
 
 // Update 修改清单。

@@ -10,7 +10,6 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists"
-	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
@@ -595,14 +594,14 @@ func trimmedList(values *[]string) []string {
 
 // ListCommands 是本模块需要的清单能力，由 bootstrap 注入。
 type ListCommands interface {
-	CreateInTx(ctx context.Context, q *dbgen.Queries, userID string,
-		in lists.CreateInput) (dbgen.TaskList, error)
+	EnsureShoppingList(ctx context.Context, q *dbgen.Queries, userID string,
+		in lists.ShoppingListInput) (dbgen.TaskList, error)
 }
 
 // TaskCommands 是本模块需要的任务能力。
 type TaskCommands interface {
-	CreateTaskInTx(ctx context.Context, q *dbgen.Queries, userID string,
-		cmd objects.CreateTaskCommand) (dbgen.Task, error)
+	AddOrMergeShoppingTaskInTx(ctx context.Context, q *dbgen.Queries, userID, listID string,
+		title, quantity string, recipeIDs []string) (dbgen.Task, error)
 }
 
 // CreateShoppingList 把选中的食材创建成正式购物清单。
@@ -618,15 +617,10 @@ func (s *Service) CreateShoppingList(ctx context.Context, userID string,
 			apperr.Field("items", "至少要选一项食材。"))
 	}
 
-	name := strings.TrimSpace(valueOr(body.ListName))
-	if name == "" {
-		name = fmt.Sprintf("%s那周的采购", timeutil.FormatDate(body.WeekStart.Time))
-	}
-
 	var out dbgen.TaskList
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		list, err := s.lists.CreateInTx(ctx, q, userID, lists.CreateInput{
-			Name: name, ListKind: "shopping",
+		list, err := s.lists.EnsureShoppingList(ctx, q, userID, lists.ShoppingListInput{
+			Name: "购物清单",
 		})
 		if err != nil {
 			return err
@@ -637,26 +631,10 @@ func (s *Service) CreateShoppingList(ctx context.Context, userID string,
 			if title == "" {
 				continue
 			}
-			// 份量写进描述而不是标题：标题是「买什么」，
-			// 拼成「鸡蛋 6 个 + 少许」会让勾选列表变得很难扫。
-			description := strings.TrimSpace(item.QuantityText)
-
-			cmd := objects.CreateTaskCommand{
-				Title:     title,
-				Priority:  "normal",
-				ListID:    list.ID,
-				CreatedBy: "user",
-			}
-			if description != "" {
-				cmd.Description = &description
-			}
-			// 记下这项是为哪几道菜买的，用户在清单里看得到来源。
-			for _, recipeID := range valueOrEmpty(item.RecipeIds) {
-				cmd.Provenance = append(cmd.Provenance, objects.ProvenanceInput{
-					SourceType: "recipe", SourceID: recipeID, Action: "created",
-				})
-			}
-			if _, err := s.objects.CreateTaskInTx(ctx, q, userID, cmd); err != nil {
+			if _, err := s.objects.AddOrMergeShoppingTaskInTx(
+				ctx, q, userID, list.ID, title, strings.TrimSpace(item.QuantityText),
+				valueOrEmpty(item.RecipeIds),
+			); err != nil {
 				return err
 			}
 		}

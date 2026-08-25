@@ -23,6 +23,12 @@ Collection:
         required: false
         schema:
           type: string
+      - name: list_kind
+        in: query
+        required: false
+        description: 按清单用途筛选。计划页传 tasks，购物场景传 shopping。
+        schema:
+          $ref: '../components/schemas/objects.yaml#/TaskListKind'
       - name: project_id
         in: query
         required: false
@@ -55,6 +61,15 @@ Collection:
         in: query
         required: false
         description: 为 true 时只返回 todo 且没有任何截止、计划与 focus_date 的 Task。
+        schema:
+          type: boolean
+      - name: completed_today
+        in: query
+        required: false
+        description: |
+          为 true 时只返回在用户当前时区今天完成的 Task。
+          此时服务端固定按 done 查询，不受 status 参数影响。
+          主要用于购物场景保留当天已买到的商品，次日自动停止展示。
         schema:
           type: boolean
       - name: q

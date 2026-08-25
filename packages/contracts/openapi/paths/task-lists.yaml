@@ -12,6 +12,12 @@ Collection:
         schema:
           type: boolean
           default: false
+      - name: list_kind
+        in: query
+        required: false
+        description: 按清单用途筛选。计划页只读取 tasks，购物场景只读取 shopping。
+        schema:
+          $ref: '../components/schemas/objects.yaml#/TaskListKind'
     responses:
       '200':
         description: 按 position 升序返回。

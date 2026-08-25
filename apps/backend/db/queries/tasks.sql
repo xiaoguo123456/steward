@@ -5,6 +5,10 @@ SELECT * FROM tasks
 WHERE deleted_at IS NULL
   AND (cardinality(sqlc.arg(statuses)::text[]) = 0 OR status = ANY (sqlc.arg(statuses)::text[]))
   AND (sqlc.narg(list_id)::text IS NULL OR list_id = sqlc.narg(list_id)::text)
+  AND (sqlc.narg(list_kind)::text IS NULL OR EXISTS (
+       SELECT 1 FROM task_lists tl
+       WHERE tl.id = tasks.list_id AND tl.list_kind = sqlc.narg(list_kind)::text
+  ))
   AND (sqlc.narg(project_id)::text IS NULL OR project_id = sqlc.narg(project_id)::text)
   AND (sqlc.narg(due_before)::date IS NULL OR due_date <= sqlc.narg(due_before)::date)
   AND (sqlc.narg(due_from)::date IS NULL OR due_date >= sqlc.narg(due_from)::date)
@@ -16,6 +20,9 @@ WHERE deleted_at IS NULL
        OR (status = 'todo' AND due_date IS NULL AND due_at IS NULL
            AND scheduled_start_at IS NULL AND focus_date IS NULL))
   AND (sqlc.narg(query)::text IS NULL OR title ILIKE '%' || sqlc.narg(query)::text || '%')
+  AND (sqlc.narg(completed_from)::timestamptz IS NULL
+       OR (completed_at >= sqlc.narg(completed_from)::timestamptz
+           AND completed_at <= sqlc.narg(completed_to)::timestamptz))
   -- day：与 Today 相同的收录规则，用于“明天”等按天视图。
   AND (sqlc.narg(day)::date IS NULL
        OR (status IN ('todo', 'doing')
@@ -136,6 +143,7 @@ WITH scoped AS (
     JOIN task_lists tl ON tl.id = t.list_id
     WHERE t.deleted_at IS NULL
       AND t.status IN ('todo', 'doing')
+      AND tl.list_kind = 'tasks'
       AND (
             t.focus_date = sqlc.arg(today)::date
          OR (t.scheduled_start_at IS NOT NULL
@@ -166,6 +174,10 @@ ORDER BY
 SELECT * FROM tasks
 WHERE deleted_at IS NULL
   AND status IN ('todo', 'doing', 'done')
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND (sqlc.narg(project_id)::text IS NULL OR project_id = sqlc.narg(project_id)::text)
   AND (
         (due_date IS NOT NULL AND due_date BETWEEN sqlc.arg(from_date)::date AND sqlc.arg(to_date)::date)
@@ -190,25 +202,42 @@ WHERE project_id = sqlc.arg(project_id) AND deleted_at IS NULL;
 
 -- name: SearchTasks :many
 SELECT id, title, updated_at FROM tasks
-WHERE deleted_at IS NULL AND title ILIKE '%' || sqlc.arg(query)::text || '%'
+WHERE deleted_at IS NULL
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
+  AND title ILIKE '%' || sqlc.arg(query)::text || '%'
 ORDER BY updated_at DESC
 LIMIT sqlc.arg(row_limit);
 
 -- name: CountCompletedTasksBetween :one
 SELECT count(*)::int FROM tasks
 WHERE deleted_at IS NULL AND status = 'done'
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND completed_at >= sqlc.arg(from_at)::timestamptz
   AND completed_at < sqlc.arg(to_at)::timestamptz;
 
 -- name: CountCreatedTasksBetween :one
 SELECT count(*)::int FROM tasks
 WHERE deleted_at IS NULL
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND created_at >= sqlc.arg(from_at)::timestamptz
   AND created_at < sqlc.arg(to_at)::timestamptz;
 
 -- name: ListCompletedTasksBetween :many
 SELECT id, title, completed_at FROM tasks
 WHERE deleted_at IS NULL AND status = 'done'
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND completed_at >= sqlc.arg(from_at)::timestamptz
   AND completed_at < sqlc.arg(to_at)::timestamptz
 ORDER BY completed_at DESC
@@ -217,5 +246,28 @@ LIMIT sqlc.arg(row_limit);
 -- name: CountOverdueTasks :one
 SELECT count(*)::int FROM tasks
 WHERE deleted_at IS NULL AND status IN ('todo', 'doing')
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND ((due_date IS NOT NULL AND due_date < sqlc.arg(today)::date)
        OR (due_at IS NOT NULL AND due_at < sqlc.arg(now_at)::timestamptz));
+
+-- name: FindOpenShoppingTaskByTitle :one
+SELECT * FROM tasks
+WHERE list_id = sqlc.arg(list_id)
+  AND deleted_at IS NULL
+  AND status IN ('todo', 'doing')
+  AND lower(btrim(title)) = lower(btrim(sqlc.arg(title)::text))
+ORDER BY created_at, id
+LIMIT 1;
+
+-- name: UpdateShoppingTaskDetails :one
+UPDATE tasks SET
+    quantity_text = sqlc.narg(quantity_text),
+    shopping_category = sqlc.arg(shopping_category),
+    provenance_refs = sqlc.arg(provenance_refs),
+    updated_at = now(),
+    version = version + 1
+WHERE id = sqlc.arg(id) AND deleted_at IS NULL
+RETURNING *;

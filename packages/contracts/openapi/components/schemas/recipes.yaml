@@ -740,7 +740,7 @@ CreateShoppingListRequest:
   type: object
   additionalProperties: false
   description: |
-    把选中的食材创建成正式购物清单（TaskList + Task）。
+    把选中的食材合并进唯一的活动购物清单（TaskList + Task）。
     用户排除家中已有食材之后才提交，服务端不替他决定买什么。
   required: [week_start, items]
   properties:
@@ -750,7 +750,8 @@ CreateShoppingListRequest:
     list_name:
       type: string
       maxLength: 40
-      description: 不传时服务端按周生成，例如“8月17日那周的采购”。
+      deprecated: true
+      description: 兼容旧客户端；已有活动购物清单时不会新建或改名。
     items:
       type: array
       minItems: 1

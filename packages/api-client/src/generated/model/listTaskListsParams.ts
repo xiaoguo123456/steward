@@ -13,7 +13,12 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { TaskListKind } from './taskListKind';
 
 export type ListTaskListsParams = {
 include_archived?: boolean;
+/**
+ * 按清单用途筛选。计划页只读取 tasks，购物场景只读取 shopping。
+ */
+list_kind?: TaskListKind;
 };

@@ -15,6 +15,7 @@
  */
 import type { CursorParameter } from './cursorParameter';
 import type { LimitParameter } from './limitParameter';
+import type { TaskListKind } from './taskListKind';
 import type { TaskStatus } from './taskStatus';
 
 export type ListTasksParams = {
@@ -33,6 +34,10 @@ limit?: LimitParameter;
  */
 status?: TaskStatus[];
 list_id?: string;
+/**
+ * 按清单用途筛选。计划页传 tasks，购物场景传 shopping。
+ */
+list_kind?: TaskListKind;
 project_id?: string;
 /**
  * 以用户时区解释的当地日期上界，含当日。
@@ -49,6 +54,12 @@ day?: string;
  * 为 true 时只返回 todo 且没有任何截止、计划与 focus_date 的 Task。
  */
 unscheduled?: boolean;
+/**
+ * 为 true 时只返回在用户当前时区今天完成的 Task。
+ * 此时服务端固定按 done 查询，不受 status 参数影响。
+ * 主要用于购物场景保留当天已买到的商品，次日自动停止展示。
+ */
+completed_today?: boolean;
 /**
  * 标题关键词。
  */

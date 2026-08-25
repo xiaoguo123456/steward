@@ -23,6 +23,10 @@ func (q *Queries) ClearProjectFromTasks(ctx context.Context, projectID *string) 
 const countCompletedTasksBetween = `-- name: CountCompletedTasksBetween :one
 SELECT count(*)::int FROM tasks
 WHERE deleted_at IS NULL AND status = 'done'
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND completed_at >= $1::timestamptz
   AND completed_at < $2::timestamptz
 `
@@ -42,6 +46,10 @@ func (q *Queries) CountCompletedTasksBetween(ctx context.Context, arg CountCompl
 const countCreatedTasksBetween = `-- name: CountCreatedTasksBetween :one
 SELECT count(*)::int FROM tasks
 WHERE deleted_at IS NULL
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND created_at >= $1::timestamptz
   AND created_at < $2::timestamptz
 `
@@ -61,6 +69,10 @@ func (q *Queries) CountCreatedTasksBetween(ctx context.Context, arg CountCreated
 const countOverdueTasks = `-- name: CountOverdueTasks :one
 SELECT count(*)::int FROM tasks
 WHERE deleted_at IS NULL AND status IN ('todo', 'doing')
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND ((due_date IS NOT NULL AND due_date < $1::date)
        OR (due_at IS NOT NULL AND due_at < $2::timestamptz))
 `
@@ -202,6 +214,55 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 	return i, err
 }
 
+const findOpenShoppingTaskByTitle = `-- name: FindOpenShoppingTaskByTitle :one
+SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category FROM tasks
+WHERE list_id = $1
+  AND deleted_at IS NULL
+  AND status IN ('todo', 'doing')
+  AND lower(btrim(title)) = lower(btrim($2::text))
+ORDER BY created_at, id
+LIMIT 1
+`
+
+type FindOpenShoppingTaskByTitleParams struct {
+	ListID string
+	Title  string
+}
+
+func (q *Queries) FindOpenShoppingTaskByTitle(ctx context.Context, arg FindOpenShoppingTaskByTitleParams) (Task, error) {
+	row := q.db.QueryRow(ctx, findOpenShoppingTaskByTitle, arg.ListID, arg.Title)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+		&i.DueDate,
+		&i.DueAt,
+		&i.DueTimezone,
+		&i.ScheduledStartAt,
+		&i.ScheduledEndAt,
+		&i.ScheduledTimezone,
+		&i.EstimatedMinutes,
+		&i.FocusDate,
+		&i.ListID,
+		&i.ProjectID,
+		&i.Reminders,
+		&i.CompletedAt,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.QuantityText,
+		&i.ShoppingCategory,
+	)
+	return i, err
+}
+
 const getTask = `-- name: GetTask :one
 SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category FROM tasks WHERE id = $1 AND deleted_at IS NULL
 `
@@ -243,6 +304,10 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 const listCompletedTasksBetween = `-- name: ListCompletedTasksBetween :many
 SELECT id, title, completed_at FROM tasks
 WHERE deleted_at IS NULL AND status = 'done'
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND completed_at >= $1::timestamptz
   AND completed_at < $2::timestamptz
 ORDER BY completed_at DESC
@@ -287,38 +352,46 @@ SELECT id, user_id, title, description, status, priority, due_date, due_at, due_
 WHERE deleted_at IS NULL
   AND (cardinality($1::text[]) = 0 OR status = ANY ($1::text[]))
   AND ($2::text IS NULL OR list_id = $2::text)
-  AND ($3::text IS NULL OR project_id = $3::text)
-  AND ($4::date IS NULL OR due_date <= $4::date)
-  AND ($5::date IS NULL OR due_date >= $5::date)
-  AND ($6::timestamptz IS NULL
-       OR (scheduled_start_at >= $6::timestamptz
-           AND scheduled_start_at <= $7::timestamptz))
+  AND ($3::text IS NULL OR EXISTS (
+       SELECT 1 FROM task_lists tl
+       WHERE tl.id = tasks.list_id AND tl.list_kind = $3::text
+  ))
+  AND ($4::text IS NULL OR project_id = $4::text)
+  AND ($5::date IS NULL OR due_date <= $5::date)
+  AND ($6::date IS NULL OR due_date >= $6::date)
+  AND ($7::timestamptz IS NULL
+       OR (scheduled_start_at >= $7::timestamptz
+           AND scheduled_start_at <= $8::timestamptz))
   -- 未安排：todo 且没有任何截止、计划与 focus_date。
-  AND (NOT $8::bool
+  AND (NOT $9::bool
        OR (status = 'todo' AND due_date IS NULL AND due_at IS NULL
            AND scheduled_start_at IS NULL AND focus_date IS NULL))
-  AND ($9::text IS NULL OR title ILIKE '%' || $9::text || '%')
+  AND ($10::text IS NULL OR title ILIKE '%' || $10::text || '%')
+  AND ($11::timestamptz IS NULL
+       OR (completed_at >= $11::timestamptz
+           AND completed_at <= $12::timestamptz))
   -- day：与 Today 相同的收录规则，用于“明天”等按天视图。
-  AND ($10::date IS NULL
+  AND ($13::date IS NULL
        OR (status IN ('todo', 'doing')
-           AND (focus_date = $10::date
+           AND (focus_date = $13::date
                 OR (scheduled_start_at IS NOT NULL
-                    AND scheduled_start_at >= $11::timestamptz
-                    AND scheduled_start_at <= $12::timestamptz)
-                OR due_date = $10::date
+                    AND scheduled_start_at >= $14::timestamptz
+                    AND scheduled_start_at <= $15::timestamptz)
+                OR due_date = $13::date
                 OR (due_at IS NOT NULL
-                    AND due_at >= $11::timestamptz
-                    AND due_at <= $12::timestamptz))))
+                    AND due_at >= $14::timestamptz
+                    AND due_at <= $15::timestamptz))))
   -- 键集分页游标：按 (created_at, id) 递减推进。
-  AND ($13::timestamptz IS NULL
-       OR (created_at, id) < ($13::timestamptz, $14::text))
+  AND ($16::timestamptz IS NULL
+       OR (created_at, id) < ($16::timestamptz, $17::text))
 ORDER BY created_at DESC, id DESC
-LIMIT $15
+LIMIT $18
 `
 
 type ListTasksParams struct {
 	Statuses        []string
 	ListID          *string
+	ListKind        *string
 	ProjectID       *string
 	DueBefore       *time.Time
 	DueFrom         *time.Time
@@ -326,6 +399,8 @@ type ListTasksParams struct {
 	ScheduledTo     *time.Time
 	Unscheduled     bool
 	Query           *string
+	CompletedFrom   *time.Time
+	CompletedTo     *time.Time
 	Day             *time.Time
 	DayStart        *time.Time
 	DayEnd          *time.Time
@@ -339,6 +414,7 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 	rows, err := q.db.Query(ctx, listTasks,
 		arg.Statuses,
 		arg.ListID,
+		arg.ListKind,
 		arg.ProjectID,
 		arg.DueBefore,
 		arg.DueFrom,
@@ -346,6 +422,8 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 		arg.ScheduledTo,
 		arg.Unscheduled,
 		arg.Query,
+		arg.CompletedFrom,
+		arg.CompletedTo,
 		arg.Day,
 		arg.DayStart,
 		arg.DayEnd,
@@ -402,6 +480,10 @@ const listTasksInRange = `-- name: ListTasksInRange :many
 SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category FROM tasks
 WHERE deleted_at IS NULL
   AND status IN ('todo', 'doing', 'done')
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
   AND ($1::text IS NULL OR project_id = $1::text)
   AND (
         (due_date IS NOT NULL AND due_date BETWEEN $2::date AND $3::date)
@@ -497,6 +579,7 @@ WITH scoped AS (
     JOIN task_lists tl ON tl.id = t.list_id
     WHERE t.deleted_at IS NULL
       AND t.status IN ('todo', 'doing')
+      AND tl.list_kind = 'tasks'
       AND (
             t.focus_date = $2::date
          OR (t.scheduled_start_at IS NOT NULL
@@ -664,7 +747,12 @@ func (q *Queries) RestoreTask(ctx context.Context, id string) (Task, error) {
 
 const searchTasks = `-- name: SearchTasks :many
 SELECT id, title, updated_at FROM tasks
-WHERE deleted_at IS NULL AND title ILIKE '%' || $1::text || '%'
+WHERE deleted_at IS NULL
+  AND EXISTS (
+      SELECT 1 FROM task_lists tl
+      WHERE tl.id = tasks.list_id AND tl.list_kind = 'tasks'
+  )
+  AND title ILIKE '%' || $1::text || '%'
 ORDER BY updated_at DESC
 LIMIT $2
 `
@@ -708,6 +796,63 @@ RETURNING id, user_id, title, description, status, priority, due_date, due_at, d
 
 func (q *Queries) SoftDeleteTask(ctx context.Context, id string) (Task, error) {
 	row := q.db.QueryRow(ctx, softDeleteTask, id)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+		&i.DueDate,
+		&i.DueAt,
+		&i.DueTimezone,
+		&i.ScheduledStartAt,
+		&i.ScheduledEndAt,
+		&i.ScheduledTimezone,
+		&i.EstimatedMinutes,
+		&i.FocusDate,
+		&i.ListID,
+		&i.ProjectID,
+		&i.Reminders,
+		&i.CompletedAt,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.QuantityText,
+		&i.ShoppingCategory,
+	)
+	return i, err
+}
+
+const updateShoppingTaskDetails = `-- name: UpdateShoppingTaskDetails :one
+UPDATE tasks SET
+    quantity_text = $1,
+    shopping_category = $2,
+    provenance_refs = $3,
+    updated_at = now(),
+    version = version + 1
+WHERE id = $4 AND deleted_at IS NULL
+RETURNING id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category
+`
+
+type UpdateShoppingTaskDetailsParams struct {
+	QuantityText     *string
+	ShoppingCategory *string
+	ProvenanceRefs   []byte
+	ID               string
+}
+
+func (q *Queries) UpdateShoppingTaskDetails(ctx context.Context, arg UpdateShoppingTaskDetailsParams) (Task, error) {
+	row := q.db.QueryRow(ctx, updateShoppingTaskDetails,
+		arg.QuantityText,
+		arg.ShoppingCategory,
+		arg.ProvenanceRefs,
+		arg.ID,
+	)
 	var i Task
 	err := row.Scan(
 		&i.ID,

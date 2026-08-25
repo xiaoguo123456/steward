@@ -16,13 +16,14 @@
 import type { ShoppingListItemInput } from './shoppingListItemInput';
 
 /**
- * 把选中的食材创建成正式购物清单（TaskList + Task）。
+ * 把选中的食材合并进唯一的活动购物清单（TaskList + Task）。
  * 用户排除家中已有食材之后才提交，服务端不替他决定买什么。
  */
 export interface CreateShoppingListRequest {
   week_start: string;
   /**
-     * 不传时服务端按周生成，例如“8月17日那周的采购”。
+     * 兼容旧客户端；已有活动购物清单时不会新建或改名。
+     * @deprecated
      * @maxLength 40
      */
   list_name?: string;

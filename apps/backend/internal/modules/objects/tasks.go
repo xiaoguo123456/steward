@@ -18,12 +18,15 @@ import (
 type TaskFilter struct {
 	Statuses      []string
 	ListID        *string
+	ListKind      *string
 	ProjectID     *string
 	DueFrom       *time.Time
 	DueBefore     *time.Time
 	ScheduledFrom *time.Time
 	ScheduledTo   *time.Time
 	Unscheduled   bool
+	CompletedFrom *time.Time
+	CompletedTo   *time.Time
 	// Day 复用 Today 的收录规则，按当地日期筛选需要关注的 Task。
 	Day        *time.Time
 	DayStart   *time.Time
@@ -47,12 +50,15 @@ func (s *Service) ListTasks(ctx context.Context, userID string, f TaskFilter) ([
 		rows, err := q.ListTasks(ctx, dbgen.ListTasksParams{
 			Statuses:        statuses,
 			ListID:          f.ListID,
+			ListKind:        f.ListKind,
 			ProjectID:       f.ProjectID,
 			DueFrom:         f.DueFrom,
 			DueBefore:       f.DueBefore,
 			ScheduledFrom:   f.ScheduledFrom,
 			ScheduledTo:     f.ScheduledTo,
 			Unscheduled:     f.Unscheduled,
+			CompletedFrom:   f.CompletedFrom,
+			CompletedTo:     f.CompletedTo,
 			Day:             f.Day,
 			DayStart:        f.DayStart,
 			DayEnd:          f.DayEnd,

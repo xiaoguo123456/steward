@@ -773,13 +773,13 @@ export const createShoppingListFromMealPlanBodyListNameMax = 40;
 
 export const CreateShoppingListFromMealPlanBody = zod.object({
   "week_start": zod.string().date(),
-  "list_name": zod.string().max(createShoppingListFromMealPlanBodyListNameMax).optional().describe('不传时服务端按周生成，例如“8月17日那周的采购”。'),
+  "list_name": zod.string().max(createShoppingListFromMealPlanBodyListNameMax).optional().describe('兼容旧客户端；已有活动购物清单时不会新建或改名。'),
   "items": zod.array(zod.object({
   "name": zod.string(),
   "quantity_text": zod.string(),
   "recipe_ids": zod.array(zod.string()).optional()
 })).min(1)
-}).describe('把选中的食材创建成正式购物清单（TaskList + Task）。\n用户排除家中已有食材之后才提交，服务端不替他决定买什么。\n')
+}).describe('把选中的食材合并进唯一的活动购物清单（TaskList + Task）。\n用户排除家中已有食材之后才提交，服务端不替他决定买什么。\n')
 
 export const CreateShoppingListFromMealPlanResponse = zod.object({
   "data": zod.object({

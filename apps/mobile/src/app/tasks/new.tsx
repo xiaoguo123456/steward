@@ -43,7 +43,7 @@ const dueChoices: { value: DueChoice; label: string }[] = [
 export default function NewTaskScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const listsQuery = useListTaskLists();
+  const listsQuery = useListTaskLists({ list_kind: 'tasks' });
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

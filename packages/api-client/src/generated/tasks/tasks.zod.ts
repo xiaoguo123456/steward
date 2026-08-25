@@ -29,11 +29,13 @@ export const ListTasksQueryParams = zod.object({
   "limit": zod.number().int().min(1).max(listTasksQueryLimitMax).default(listTasksQueryLimitDefault).describe('单页条数。'),
   "status": zod.array(zod.enum(['todo', 'doing', 'done', 'cancelled'])).optional().describe('不传时默认返回 todo 与 doing。'),
   "list_id": zod.string().optional(),
+  "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('按清单用途筛选。计划页传 tasks，购物场景传 shopping。'),
   "project_id": zod.string().optional(),
   "due_before": zod.string().date().optional().describe('以用户时区解释的当地日期上界，含当日。'),
   "scheduled_on": zod.string().date().optional(),
   "day": zod.string().date().optional().describe('该当地日期需要关注的 Task，收录规则与 Today 完全一致：\n当日截止、当日有计划时间、已逾期，或被明确加入当天。\n用于“明天”等按天视图，避免客户端自行推导收录条件。\n'),
   "unscheduled": zod.boolean().optional().describe('为 true 时只返回 todo 且没有任何截止、计划与 focus_date 的 Task。'),
+  "completed_today": zod.boolean().optional().describe('为 true 时只返回在用户当前时区今天完成的 Task。\n此时服务端固定按 done 查询，不受 status 参数影响。\n主要用于购物场景保留当天已买到的商品，次日自动停止展示。\n'),
   "q": zod.string().optional().describe('标题关键词。')
 })
 

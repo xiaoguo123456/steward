@@ -41,17 +41,22 @@ export type ShoppingDraft = {
 export function useShoppingList() {
   const queryClient = useQueryClient();
 
-  const lists = useListTaskLists();
-  // 购物清单只会有一个：多个同类清单会让「从食谱添加」不知道该往哪加。
-  const shoppingList = lists.data?.data.find((list) => list.list_kind === 'shopping');
+  const lists = useListTaskLists({ list_kind: 'shopping' });
+  // 唯一活动购物清单由服务端和数据库共同保证。
+  const shoppingList = lists.data?.data[0];
 
-  const tasks = useListTasks(
-    { list_id: shoppingList?.id, status: ['todo', 'doing', 'done'], limit: 100 },
+  const pendingTasks = useListTasks(
+    { list_id: shoppingList?.id, status: ['todo', 'doing'], limit: 100 },
+    { query: { enabled: Boolean(shoppingList) } },
+  );
+  const completedTasks = useListTasks(
+    { list_id: shoppingList?.id, status: ['done'], completed_today: true, limit: 100 },
     { query: { enabled: Boolean(shoppingList) } },
   );
 
   const invalidate = () => {
-    void tasks.refetch();
+    void pendingTasks.refetch();
+    void completedTasks.refetch();
     void queryClient.invalidateQueries();
   };
 
@@ -59,7 +64,10 @@ export function useShoppingList() {
   const createTask = useCreateTask({ mutation: { onSuccess: invalidate } });
   const updateTask = useUpdateTask({ mutation: { onSuccess: invalidate } });
 
-  const items: ShoppingListItem[] = (tasks.data?.data ?? []).map(toItem);
+  const items: ShoppingListItem[] = [
+    ...(pendingTasks.data?.data ?? []),
+    ...(completedTasks.data?.data ?? []),
+  ].map(toItem);
 
   /** 确保购物清单存在。第一次用的时候才建，不在初始化时凭空造一个。 */
   const ensureList = async (): Promise<string> => {
@@ -73,7 +81,7 @@ export function useShoppingList() {
 
   return {
     items,
-    loading: lists.isLoading || tasks.isLoading,
+    loading: lists.isLoading || pendingTasks.isLoading || completedTasks.isLoading,
     ready: Boolean(shoppingList),
 
     create: (draft: ShoppingDraft) => {

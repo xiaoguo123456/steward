@@ -64,10 +64,10 @@ export default function ListsScreen() {
 
   // 各入口的数量都来自服务端：客户端不自行推导收录条件。
   const today = useGetToday();
-  const tomorrowTasks = useListTasks({ day: tomorrow, limit: 100 });
-  const completedTasks = useListTasks({ status: ['done'], limit: 100 });
-  const unscheduledTasks = useListTasks({ unscheduled: true, limit: 100 });
-  const taskLists = useListTaskLists();
+  const tomorrowTasks = useListTasks({ day: tomorrow, list_kind: 'tasks', limit: 100 });
+  const completedTasks = useListTasks({ status: ['done'], list_kind: 'tasks', limit: 100 });
+  const unscheduledTasks = useListTasks({ unscheduled: true, list_kind: 'tasks', limit: 100 });
+  const taskLists = useListTaskLists({ list_kind: 'tasks' });
   const [listManagerVisible, setListManagerVisible] = useState(false);
 
   const counts = {

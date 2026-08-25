@@ -9,6 +9,18 @@ WHERE tl.deleted_at IS NULL
   AND (sqlc.arg(include_archived)::bool OR tl.archived_at IS NULL)
 ORDER BY tl.position, tl.id;
 
+-- name: ListTaskListsByKind :many
+SELECT tl.*,
+       (SELECT count(*) FROM tasks t
+        WHERE t.list_id = tl.id
+          AND t.deleted_at IS NULL
+          AND t.status IN ('todo', 'doing'))::int AS task_count
+FROM task_lists tl
+WHERE tl.deleted_at IS NULL
+  AND (sqlc.arg(include_archived)::bool OR tl.archived_at IS NULL)
+  AND tl.list_kind = sqlc.arg(list_kind)::text
+ORDER BY tl.position, tl.id;
+
 -- name: GetTaskList :one
 SELECT tl.*,
        (SELECT count(*) FROM tasks t
@@ -23,6 +35,14 @@ SELECT * FROM task_lists
 WHERE is_default AND deleted_at IS NULL
 LIMIT 1;
 
+-- name: GetActiveShoppingTaskList :one
+SELECT * FROM task_lists
+WHERE user_id = sqlc.arg(user_id)
+  AND list_kind = 'shopping'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
+LIMIT 1;
+
 -- name: CreateTaskList :one
 INSERT INTO task_lists (id, user_id, name, color, icon, position, is_default, list_kind)
 VALUES (
@@ -30,6 +50,15 @@ VALUES (
     sqlc.narg(color), sqlc.narg(icon), sqlc.arg(position), sqlc.arg(is_default),
     sqlc.arg(list_kind)
 )
+RETURNING *;
+
+-- name: CreateShoppingTaskListIfAbsent :one
+INSERT INTO task_lists (id, user_id, name, color, icon, position, is_default, list_kind)
+VALUES (
+    sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name),
+    sqlc.narg(color), sqlc.narg(icon), sqlc.arg(position), false, 'shopping'
+)
+ON CONFLICT DO NOTHING
 RETURNING *;
 
 -- name: UpdateTaskList :one

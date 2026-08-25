@@ -55,3 +55,17 @@ func TestClassifyIsDeterministic(t *testing.T) {
 		}
 	}
 }
+
+func TestMergeQuantityKeepsDistinctParts(t *testing.T) {
+	existing := "2 个 + 少许"
+	got := mergeQuantity(&existing, "少许 + 3 个")
+	if got == nil || *got != "2 个 + 少许 + 3 个" {
+		t.Fatalf("份量应去重并保持顺序，实际 %v", got)
+	}
+}
+
+func TestMergeQuantityLeavesEmptyAsNil(t *testing.T) {
+	if got := mergeQuantity(nil, "  "); got != nil {
+		t.Fatalf("空份量应保持为空，实际 %q", *got)
+	}
+}

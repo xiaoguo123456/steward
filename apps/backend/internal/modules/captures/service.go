@@ -291,7 +291,10 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 			return apperr.Internal(err)
 		}
 
-		listRows, err := q.ListTaskLists(ctx, false)
+		listRows, err := q.ListTaskListsByKind(ctx, dbgen.ListTaskListsByKindParams{
+			IncludeArchived: false,
+			ListKind:        "tasks",
+		})
 		if err != nil {
 			return apperr.Internal(err)
 		}

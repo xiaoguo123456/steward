@@ -283,6 +283,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: list_kind
+          in: query
+          required: false
+          description: 按清单用途筛选。计划页只读取 tasks，购物场景只读取 shopping。
+          schema:
+            $ref: '#/components/schemas/TaskListKind'
       responses:
         '200':
           description: 按 position 升序返回。
@@ -412,6 +418,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: list_kind
+          in: query
+          required: false
+          description: 按清单用途筛选。计划页传 tasks，购物场景传 shopping。
+          schema:
+            $ref: '#/components/schemas/TaskListKind'
         - name: project_id
           in: query
           required: false
@@ -444,6 +456,15 @@ paths:
           in: query
           required: false
           description: 为 true 时只返回 todo 且没有任何截止、计划与 focus_date 的 Task。
+          schema:
+            type: boolean
+        - name: completed_today
+          in: query
+          required: false
+          description: |
+            为 true 时只返回在用户当前时区今天完成的 Task。
+            此时服务端固定按 done 查询，不受 status 参数影响。
+            主要用于购物场景保留当天已买到的商品，次日自动停止展示。
           schema:
             type: boolean
         - name: q
@@ -7564,7 +7585,7 @@ components:
       type: object
       additionalProperties: false
       description: |
-        把选中的食材创建成正式购物清单（TaskList + Task）。
+        把选中的食材合并进唯一的活动购物清单（TaskList + Task）。
         用户排除家中已有食材之后才提交，服务端不替他决定买什么。
       required:
         - week_start
@@ -7576,7 +7597,8 @@ components:
         list_name:
           type: string
           maxLength: 40
-          description: 不传时服务端按周生成，例如“8月17日那周的采购”。
+          deprecated: true
+          description: 兼容旧客户端；已有活动购物清单时不会新建或改名。
         items:
           type: array
           minItems: 1

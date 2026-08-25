@@ -52,7 +52,7 @@ export default function TaskDetailScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const taskQuery = useGetTask(id ?? '', { query: { enabled: Boolean(id) } });
-  const listsQuery = useListTaskLists();
+  const listsQuery = useListTaskLists({ list_kind: 'tasks' });
   const task = taskQuery.data?.data;
 
   const listName = listsQuery.data?.data.find((list) => list.id === task?.list_id)?.name ?? '—';

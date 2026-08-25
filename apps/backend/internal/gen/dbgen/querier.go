@@ -134,6 +134,7 @@ type Querier interface {
 	// 重复消掉同一条不报错：客户端网络重试很常见，
 	// 而「消掉」本来就是幂等的意图。
 	CreateReminderDismissal(ctx context.Context, arg CreateReminderDismissalParams) error
+	CreateShoppingTaskListIfAbsent(ctx context.Context, arg CreateShoppingTaskListIfAbsentParams) (TaskList, error)
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
 	CreateTaskList(ctx context.Context, arg CreateTaskListParams) (TaskList, error)
 	// Assistant 对话。系统权威会话是这些表，Provider 状态只是可丢弃的优化列。
@@ -168,11 +169,13 @@ type Querier interface {
 	// 各自给出的提示不一样。
 	FindAdminSession(ctx context.Context, sessionTokenHash []byte) (AdminSession, error)
 	FindAdminSessionByID(ctx context.Context, id string) (AdminSession, error)
+	FindOpenShoppingTaskByTitle(ctx context.Context, arg FindOpenShoppingTaskByTitleParams) (Task, error)
 	// 同一用户上传相同内容时复用已有资产，避免重复占用存储。
 	FindUploadedMediaByHash(ctx context.Context, contentHash *string) (MediaAsset, error)
 	FinishAggregationRun(ctx context.Context, arg FinishAggregationRunParams) error
 	FinishTurn(ctx context.Context, arg FinishTurnParams) (AssistantTurn, error)
 	GetActiveMemoryByKey(ctx context.Context, memoryKey string) (MemoryItem, error)
+	GetActiveShoppingTaskList(ctx context.Context, userID string) (TaskList, error)
 	GetActivityBatch(ctx context.Context, id string) (ActivityBatch, error)
 	GetAiSettings(ctx context.Context, userID string) (UserAiSetting, error)
 	GetCapture(ctx context.Context, id string) (Capture, error)
@@ -290,6 +293,7 @@ type Querier interface {
 	// 本来就不会再浮出来。
 	ListReminderDismissals(ctx context.Context, since time.Time) ([]ListReminderDismissalsRow, error)
 	ListTaskLists(ctx context.Context, includeArchived bool) ([]ListTaskListsRow, error)
+	ListTaskListsByKind(ctx context.Context, arg ListTaskListsByKindParams) ([]ListTaskListsByKindRow, error)
 	// Task 查询。Today 的收录与排序完全由这里的确定性 SQL 决定，客户端不得重排。
 	ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, error)
 	// 日历用：当天截止或当天有计划时间的 Task。
@@ -428,6 +432,7 @@ type Querier interface {
 	UpdateOperationStatus(ctx context.Context, arg UpdateOperationStatusParams) (AsyncOperation, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateRecord(ctx context.Context, arg UpdateRecordParams) (Record, error)
+	UpdateShoppingTaskDetails(ctx context.Context, arg UpdateShoppingTaskDetailsParams) (Task, error)
 	// clear_* 参数对应契约里的 clear 数组：显式清空一个可空字段。
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (Task, error)
 	UpdateTaskList(ctx context.Context, arg UpdateTaskListParams) (TaskList, error)

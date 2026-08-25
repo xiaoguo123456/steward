@@ -29,6 +29,7 @@
   但 `original_month_day` 保留原值。
 - Task 状态只能按 `todo/doing → done/cancelled`、`done/cancelled → todo` 流转。
 - Project 的 `progress` 由 Task 计数实时计算，不落库；没有有效 Task 时为 null。
+- `list_kind=shopping` 的 Task 只进入购物读模型，不进入计划、Today、日历、搜索和复盘任务统计。
 
 ## 禁止
 
