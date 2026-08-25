@@ -16,6 +16,7 @@ import {
   recentCompletedPeriods,
   type ReviewPeriod,
 } from '@/features/review/review-period';
+import { groupReviewMetrics } from '@/features/review/review-metrics';
 import {
   formatDelta,
   formatMetric,
@@ -150,6 +151,7 @@ export function ReviewContent() {
 
   const period = periods[periodIndex];
   const review = useWeeklyReview(period.weekOf);
+  const metricGroups = groupReviewMetrics(review.metrics);
 
   const openPeriod = (nextIndex: number) => {
     setPeriodIndex(nextIndex);
@@ -205,9 +207,7 @@ export function ReviewContent() {
           <Text style={styles.summaryText}>{review.narrative}</Text>
         ) : (
           <>
-            <Text style={styles.summaryEmpty}>
-              还没有这一周的小结。下面的数据不依赖它，随时可以看。
-            </Text>
+            <Text style={styles.summaryEmpty}>本周暂无小结</Text>
             <AppButton
               compact
               disabled={review.generating || review.loading}
@@ -221,26 +221,32 @@ export function ReviewContent() {
 
       {review.metrics.length > 0 ? (
         <View accessibilityLabel="本周数据概览" style={styles.metricStrip}>
-          {review.metrics.map((metric) => {
-            const value = formatMetric(metric);
-            const delta = formatDelta(metric);
-            return (
-              <View
-                accessible
-                accessibilityLabel={`${metric.label}，${value}${delta ? `，${delta}` : ''}`}
-                key={metric.key}
-                style={styles.metricItem}
-              >
-                <View style={styles.metricPrimaryRow}>
-                  <Text numberOfLines={1} style={styles.metricValue}>{value}</Text>
-                  <Text numberOfLines={1} style={styles.metricLabel}>{metric.label}</Text>
-                </View>
-                {delta ? (
-                  <Text numberOfLines={1} style={styles.metricDelta}>{delta}</Text>
-                ) : null}
-              </View>
-            );
-          })}
+          {metricGroups.map((metrics, groupIndex) => (
+            <View
+              key={metrics.map((metric) => metric.key).join('-')}
+              style={[styles.metricRow, groupIndex > 0 && styles.metricRowDivider]}
+            >
+              {metrics.map((metric, metricIndex) => {
+                const value = formatMetric(metric);
+                const delta = formatDelta(metric);
+                return (
+                  <View
+                    accessible
+                    accessibilityLabel={`${metric.label}，${value}${delta ? `，${delta}` : ''}`}
+                    key={metric.key}
+                    style={[
+                      styles.metricItem,
+                      metricIndex < metrics.length - 1 && styles.metricItemDivider,
+                    ]}
+                  >
+                    <Text style={styles.metricValue}>{value}</Text>
+                    <Text style={styles.metricLabel}>{metric.label}</Text>
+                    {delta ? <Text style={styles.metricDelta}>{delta}</Text> : null}
+                  </View>
+                );
+              })}
+            </View>
+          ))}
         </View>
       ) : null}
 
@@ -376,7 +382,7 @@ const styles = StyleSheet.create({
   },
   metricDelta: {
     marginTop: 2,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     fontFamily,
     ...typography.caption,
   },
@@ -431,41 +437,47 @@ const styles = StyleSheet.create({
     letterSpacing: -0.15,
   },
   metricStrip: {
-    paddingVertical: 7,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  metricItem: {
-    minWidth: 88,
-    minHeight: 52,
-    paddingHorizontal: 4,
-    paddingVertical: 7,
-    flexBasis: 88,
-    flexGrow: 1,
-    alignItems: 'center',
-  },
-  metricPrimaryRow: {
+  metricRow: {
     flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  metricRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  metricItem: {
+    minWidth: 0,
+    minHeight: 62,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+  },
+  metricItemDivider: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: colors.border,
   },
   metricValue: {
     color: colors.text,
     fontFamily,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 21,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
+    textAlign: 'center',
   },
   metricLabel: {
+    marginTop: 1,
     color: colors.textSecondary,
     fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
   },
   sectionHeader: {
     minHeight: 50,
