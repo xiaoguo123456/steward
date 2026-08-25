@@ -716,9 +716,9 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   swapButton: {
-    minWidth: 62,
-    minHeight: 44,
-    paddingHorizontal: 10,
+    minWidth: 52,
+    height: 32,
+    paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
