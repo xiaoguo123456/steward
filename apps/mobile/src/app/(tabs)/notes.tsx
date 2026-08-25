@@ -89,6 +89,10 @@ export default function NotesScreen() {
     setQuery('');
   };
 
+  const openNewNote = () => {
+    router.push('/notes/new');
+  };
+
   const toggleSearch = () => {
     setSearchOpen((current) => {
       if (current) setQuery('');
@@ -128,7 +132,7 @@ export default function NotesScreen() {
               <Pressable
                 accessibilityLabel="新建笔记"
                 accessibilityRole="button"
-                onPress={() => router.push('/notes/new')}
+                onPress={openNewNote}
                 style={({ pressed }) => [styles.searchButton, pressed && styles.controlPressed]}
               >
                 <AppIcon color={colors.text} name="add" size={24} />
@@ -207,7 +211,7 @@ export default function NotesScreen() {
             actionLabel={hasFilters ? '清除筛选' : '记一件事'}
             icon="document-text-outline"
             message={hasFilters ? '换个标签或关键词再看看。' : '从底部新增记录想法和资料。'}
-            onAction={hasFilters ? clearFilters : () => router.push('/capture/new')}
+            onAction={hasFilters ? clearFilters : openNewNote}
             title={hasFilters ? '没有符合条件的笔记' : '还没有笔记'}
           />
         )}

@@ -61,7 +61,7 @@ export function NoteEditor({
         accessibilityLabel="笔记标题"
         maxLength={120}
         onChangeText={setTitle}
-        placeholder="标题（留空会用正文首行）"
+        placeholder="标题"
         placeholderTextColor={colors.textTertiary}
         style={styles.titleInput}
         value={title}
