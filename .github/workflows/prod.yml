@@ -219,7 +219,12 @@ jobs:
             compose="docker compose --project-name steward-prod -f docker-compose.prod.yml"
 
             $compose pull
-            $compose up -d --remove-orphans
+            if ! $compose up -d --remove-orphans; then
+              echo "容器启动失败，输出迁移与应用日志。"
+              $compose ps --all || true
+              $compose logs --no-color --tail=100 migrate api admin-api worker nginx || true
+              exit 1
+            fi
             $compose restart nginx
 
             healthy=0
@@ -259,5 +264,5 @@ jobs:
             fi
 
             $compose ps
-            $compose logs --tail=100 api admin-api worker migrate nginx
+            $compose logs --no-color --tail=100 api admin-api worker migrate nginx
             exit 1

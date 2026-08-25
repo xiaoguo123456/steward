@@ -20,6 +20,8 @@ services:
     <<: *backend-image
     command: ["migrate", "up"]
     env_file: ${STEWARD_ENV_FILE:-.env.test}
+    # migrate 会加载并校验完整应用配置，因此也必须覆盖测试短信配置。
+    environment: *test-sms
     restart: "no"
     logging: *default-logging
 
