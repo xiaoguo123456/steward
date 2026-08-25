@@ -11,6 +11,8 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 
+import { hasReviewableMetrics } from '@/features/review/review-metrics';
+
 /**
  * 每周复盘的数据层。
  *
@@ -72,6 +74,7 @@ export function useWeeklyReview(weekOf: string) {
   }, [operationId, settled]);
 
   const data = review.data?.data;
+  const metrics = data?.metrics ?? [];
 
   const observations = useMemo<ReviewObservation[]>(
     () =>
@@ -99,8 +102,11 @@ export function useWeeklyReview(weekOf: string) {
   return {
     review: data,
     loading: review.isLoading,
-    metrics: data?.metrics ?? [],
+    metrics,
+    hasReviewableData: hasReviewableMetrics(metrics),
+    headline: data?.headline ?? null,
     narrative: data?.narrative ?? null,
+    highlights: data?.highlights ?? [],
     observations,
     proposals: proposals.data?.data ?? [],
     failure,

@@ -11,7 +11,7 @@ import (
 )
 
 const getReviewSnapshot = `-- name: GetReviewSnapshot :one
-SELECT id, user_id, period_kind, period_start, period_end, metrics, narrative, suggestions, sources, generated_by, prompt_version, created_at, generated_at FROM review_snapshots
+SELECT id, user_id, period_kind, period_start, period_end, metrics, narrative, suggestions, sources, generated_by, prompt_version, created_at, generated_at, headline, highlights FROM review_snapshots
 WHERE period_kind = $1 AND period_start = $2
 `
 
@@ -37,6 +37,8 @@ func (q *Queries) GetReviewSnapshot(ctx context.Context, arg GetReviewSnapshotPa
 		&i.PromptVersion,
 		&i.CreatedAt,
 		&i.GeneratedAt,
+		&i.Headline,
+		&i.Highlights,
 	)
 	return i, err
 }
@@ -45,23 +47,27 @@ const upsertReviewSnapshot = `-- name: UpsertReviewSnapshot :one
 
 INSERT INTO review_snapshots (
     id, user_id, period_kind, period_start, period_end,
-    metrics, narrative, suggestions, sources, generated_by, prompt_version, generated_at
+    metrics, headline, narrative, highlights, suggestions, sources,
+    generated_by, prompt_version, generated_at
 ) VALUES (
     $1, $2, $3,
     $4, $5,
-    $6, $7, $8, $9,
-    $10, $11, $12
+    $6, $7, $8,
+    $9, $10, $11,
+    $12, $13, $14
 )
 ON CONFLICT (user_id, period_kind, period_start) DO UPDATE SET
     period_end     = excluded.period_end,
     metrics        = excluded.metrics,
+    headline       = coalesce(excluded.headline, review_snapshots.headline),
     narrative      = coalesce(excluded.narrative, review_snapshots.narrative),
+    highlights     = excluded.highlights,
     suggestions    = excluded.suggestions,
     sources        = excluded.sources,
     generated_by   = excluded.generated_by,
     prompt_version = excluded.prompt_version,
     generated_at   = excluded.generated_at
-RETURNING id, user_id, period_kind, period_start, period_end, metrics, narrative, suggestions, sources, generated_by, prompt_version, created_at, generated_at
+RETURNING id, user_id, period_kind, period_start, period_end, metrics, narrative, suggestions, sources, generated_by, prompt_version, created_at, generated_at, headline, highlights
 `
 
 type UpsertReviewSnapshotParams struct {
@@ -71,7 +77,9 @@ type UpsertReviewSnapshotParams struct {
 	PeriodStart   time.Time
 	PeriodEnd     time.Time
 	Metrics       []byte
+	Headline      *string
 	Narrative     *string
+	Highlights    []byte
 	Suggestions   []byte
 	Sources       []byte
 	GeneratedBy   string
@@ -88,7 +96,9 @@ func (q *Queries) UpsertReviewSnapshot(ctx context.Context, arg UpsertReviewSnap
 		arg.PeriodStart,
 		arg.PeriodEnd,
 		arg.Metrics,
+		arg.Headline,
 		arg.Narrative,
+		arg.Highlights,
 		arg.Suggestions,
 		arg.Sources,
 		arg.GeneratedBy,
@@ -110,6 +120,8 @@ func (q *Queries) UpsertReviewSnapshot(ctx context.Context, arg UpsertReviewSnap
 		&i.PromptVersion,
 		&i.CreatedAt,
 		&i.GeneratedAt,
+		&i.Headline,
+		&i.Highlights,
 	)
 	return i, err
 }

@@ -203,30 +203,58 @@ export function ReviewContent() {
           <AiAssistantAvatar size={28} />
           <Text style={styles.summaryLabel}>AI 周总结</Text>
         </View>
-        {review.narrative ? (
-          <Text style={styles.summaryText}>{review.narrative}</Text>
-        ) : (
+        {review.loading || !review.review ? null : review.narrative ? (
           <>
-            <Text style={styles.summaryEmpty}>本周暂无小结</Text>
-            <AppButton
-              compact
-              disabled={review.generating || review.loading}
-              label={review.generating ? '正在生成…' : '生成小结'}
-              onPress={review.generate}
-              style={styles.generateButton}
-            />
+            {review.headline ? (
+              <Text accessibilityRole="header" style={styles.summaryHeadline}>
+                {review.headline}
+              </Text>
+            ) : null}
+            <Text style={styles.summaryText}>{review.narrative}</Text>
+            {review.highlights.length > 0 ? (
+              <View style={styles.highlightList}>
+                {review.highlights.map((highlight) => {
+                  const metric = review.metrics.find((item) => item.key === highlight.metric_key);
+                  if (!metric) return null;
+                  return (
+                    <View key={highlight.metric_key} style={styles.highlightRow}>
+                      <Text style={styles.highlightMetric}>
+                        {metric.label} {formatMetric(metric)}
+                      </Text>
+                      <Text style={styles.highlightComment}>{highlight.comment}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
           </>
+        ) : (
+          <View style={styles.summaryEmptyRow}>
+            <Text style={styles.summaryEmpty}>
+              {review.hasReviewableData ? '本周暂无小结' : '本周暂无可复盘内容'}
+            </Text>
+            {review.hasReviewableData ? (
+              <AppButton
+                compact
+                disabled={review.generating || review.loading}
+                label={review.generating ? '正在生成…' : '生成小结'}
+                onPress={review.generate}
+                style={styles.generateButton}
+                variant="secondary"
+              />
+            ) : null}
+          </View>
         )}
       </View>
 
-      {review.metrics.length > 0 ? (
+      {!review.loading && !review.narrative && review.hasReviewableData && review.metrics.length > 0 ? (
         <View accessibilityLabel="本周数据概览" style={styles.metricStrip}>
-          {metricGroups.map((metrics, groupIndex) => (
+          {metricGroups.map((metrics) => (
             <View
               key={metrics.map((metric) => metric.key).join('-')}
-              style={[styles.metricRow, groupIndex > 0 && styles.metricRowDivider]}
+              style={styles.metricRow}
             >
-              {metrics.map((metric, metricIndex) => {
+              {metrics.map((metric) => {
                 const value = formatMetric(metric);
                 const delta = formatDelta(metric);
                 return (
@@ -234,10 +262,7 @@ export function ReviewContent() {
                     accessible
                     accessibilityLabel={`${metric.label}，${value}${delta ? `，${delta}` : ''}`}
                     key={metric.key}
-                    style={[
-                      styles.metricItem,
-                      metricIndex < metrics.length - 1 && styles.metricItemDivider,
-                    ]}
+                    style={styles.metricItem}
                   >
                     <Text style={styles.metricValue}>{value}</Text>
                     <Text style={styles.metricLabel}>{metric.label}</Text>
@@ -371,14 +396,21 @@ const styles = StyleSheet.create({
     ...typography.meta,
   },
   summaryEmpty: {
-    marginTop: 10,
+    flexShrink: 1,
     color: colors.textSecondary,
     fontFamily,
     ...typography.body,
   },
-  generateButton: {
+  summaryEmptyRow: {
     marginTop: 12,
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  generateButton: {
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
   },
   metricDelta: {
     marginTop: 2,
@@ -421,46 +453,66 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   summaryLabel: {
-    color: colors.textSecondary,
+    color: colors.text,
     fontFamily,
-    ...typography.meta,
+    ...typography.section,
     fontWeight: '600',
   },
   summaryText: {
-    marginTop: 12,
+    marginTop: 6,
     maxWidth: 560,
     color: colors.text,
     fontFamily,
+    ...typography.body,
+  },
+  summaryHeadline: {
+    marginTop: 12,
+    color: colors.text,
+    fontFamily,
     fontSize: 18,
-    lineHeight: 28,
+    lineHeight: 26,
     fontWeight: '600',
-    letterSpacing: -0.15,
+  },
+  highlightList: {
+    marginTop: 12,
+    gap: 8,
+  },
+  highlightRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  highlightMetric: {
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.label,
+    fontWeight: '600',
+  },
+  highlightComment: {
+    minWidth: 0,
+    flex: 1,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
   },
   metricStrip: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    gap: 8,
   },
   metricRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
-  },
-  metricRowDivider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    gap: 8,
   },
   metricItem: {
     minWidth: 0,
-    minHeight: 62,
-    paddingHorizontal: 6,
-    paddingVertical: 10,
+    minHeight: 72,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  metricItemDivider: {
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
   },
   metricValue: {
     color: colors.text,

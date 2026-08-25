@@ -26,3 +26,14 @@ export function groupReviewMetrics(metrics: readonly ReviewMetric[]): ReviewMetr
 
   return groups;
 }
+
+/** 空周不需要调用 AI；与上周有变化时即使本周为 0，也仍值得复盘。 */
+export function hasReviewableMetrics(metrics: readonly ReviewMetric[]): boolean {
+  return metrics.some(
+    (metric) =>
+      metric.value !== 0 ||
+      (metric.delta_vs_previous !== undefined &&
+        metric.delta_vs_previous !== null &&
+        metric.delta_vs_previous !== 0),
+  );
+}

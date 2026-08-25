@@ -363,6 +363,7 @@ func (s *Service) GetWeeklyReview(ctx context.Context, userID string, weekOf *ti
 				{Key: "records_logged", Label: "打卡记录", Value: float64(records), Unit: strPtr("条")},
 			},
 			Suggestions: &[]httpapi.ReviewSuggestion{},
+			Highlights:  []httpapi.ReviewHighlight{},
 			Sources:     sources,
 			GeneratedBy: httpapi.CreatedBySystem,
 		}
@@ -377,6 +378,10 @@ func (s *Service) GetWeeklyReview(ctx context.Context, userID string, weekOf *ti
 			}
 			return nil
 		}
+		// 当前周已经没有任何可复盘事实时，不展示同周期留下的旧 AI 文案。
+		if !hasReviewableData(out) {
+			return nil
+		}
 		applySnapshot(&out, snapshot)
 		return nil
 	})
@@ -387,10 +392,17 @@ func (s *Service) GetWeeklyReview(ctx context.Context, userID string, weekOf *ti
 //
 // 指标不从快照读：它们每次都由 SQL 重算，快照里的那份只是当时的留档。
 func applySnapshot(review *httpapi.WeeklyReview, snapshot dbgen.ReviewSnapshot) {
+	if snapshot.Headline != nil && *snapshot.Headline != "" {
+		review.Headline = snapshot.Headline
+	}
 	if snapshot.Narrative != nil && *snapshot.Narrative != "" {
 		review.Narrative = snapshot.Narrative
 		review.GeneratedBy = httpapi.CreatedByAi
 		review.GeneratedAt = snapshot.GeneratedAt
+	}
+	var highlights []httpapi.ReviewHighlight
+	if err := json.Unmarshal(snapshot.Highlights, &highlights); err == nil && len(highlights) > 0 {
+		review.Highlights = highlights
 	}
 	var suggestions []httpapi.ReviewSuggestion
 	if err := json.Unmarshal(snapshot.Suggestions, &suggestions); err == nil && len(suggestions) > 0 {

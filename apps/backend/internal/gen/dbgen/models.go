@@ -684,6 +684,8 @@ type ReviewSnapshot struct {
 	PromptVersion *string
 	CreatedAt     time.Time
 	GeneratedAt   *time.Time
+	Headline      *string
+	Highlights    []byte
 }
 
 type Task struct {

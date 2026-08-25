@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
@@ -81,8 +84,20 @@ func (s *Service) RunGenerate(ctx context.Context, args GenerateArgs) error {
 		return err
 	}
 
-	// 第二步：事务外调用模型。
-	narrative, suggestions, genErr := s.generateNarrative(ctx, args.UserID, review)
+	// 第二步：有可复盘事实时才在事务外调用模型。空周直接保留确定性指标，
+	// 不为一句“本周没有记录”消耗模型资源。
+	reviewable := hasReviewableData(review)
+	generated := generatedReviewNarrative{}
+	var genErr error
+	if reviewable {
+		generated, genErr = s.generateNarrative(ctx, args.UserID, review)
+	}
+	if generated.Highlights == nil {
+		generated.Highlights = []httpapi.ReviewHighlight{}
+	}
+	if generated.Suggestions == nil {
+		generated.Suggestions = []httpapi.ReviewSuggestion{}
+	}
 
 	// 第三步：短事务保存。生成失败也要落一份快照：
 	// 指标本身是有价值的，不该因为模型不可用而整份丢掉。
@@ -95,7 +110,11 @@ func (s *Service) RunGenerate(ctx context.Context, args GenerateArgs) error {
 		if err != nil {
 			return apperr.Internal(err)
 		}
-		suggestionsJSON, err := json.Marshal(suggestions)
+		highlightsJSON, err := json.Marshal(generated.Highlights)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		suggestionsJSON, err := json.Marshal(generated.Suggestions)
 		if err != nil {
 			return apperr.Internal(err)
 		}
@@ -111,14 +130,21 @@ func (s *Service) RunGenerate(ctx context.Context, args GenerateArgs) error {
 			PeriodStart: periodStart,
 			PeriodEnd:   periodEnd,
 			Metrics:     metrics,
+			Highlights:  highlightsJSON,
 			Suggestions: suggestionsJSON,
 			Sources:     sources,
 			GeneratedBy: "system",
 		}
-		if genErr == nil && narrative != "" {
+		if !reviewable {
+			// 空字符串显式清掉同周期可能存在的旧 AI 文案；查询层只把非空内容返回客户端。
+			empty := ""
+			params.Headline = &empty
+			params.Narrative = &empty
+		} else if genErr == nil && generated.Summary != "" {
 			now := time.Now()
 			version := assets.ReviewNarrativePromptVersion
-			params.Narrative = &narrative
+			params.Headline = &generated.Headline
+			params.Narrative = &generated.Summary
 			params.GeneratedBy = "ai"
 			params.PromptVersion = &version
 			params.GeneratedAt = &now
@@ -170,21 +196,56 @@ func (s *Service) RunGenerate(ctx context.Context, args GenerateArgs) error {
 
 // narrativeOutput 是模型的输出契约。
 type narrativeOutput struct {
-	Narrative   string `json:"narrative"`
+	Headline   string `json:"headline"`
+	Summary    string `json:"summary"`
+	Highlights []struct {
+		MetricKey string `json:"metric_key"`
+		Comment   string `json:"comment"`
+	} `json:"highlights"`
 	Suggestions []struct {
 		Text       string   `json:"text"`
 		SourceRefs []string `json:"source_refs"`
 	} `json:"suggestions"`
 }
 
+type generatedReviewNarrative struct {
+	Headline    string
+	Summary     string
+	Highlights  []httpapi.ReviewHighlight
+	Suggestions []httpapi.ReviewSuggestion
+}
+
+var (
+	reviewSchemaOnce sync.Once
+	reviewSchema     *jsonschema.Schema
+	reviewSchemaErr  error
+)
+
+func compiledReviewSchema() (*jsonschema.Schema, error) {
+	reviewSchemaOnce.Do(func() {
+		var document any
+		if err := json.Unmarshal(assets.ReviewNarrativeSchemaV2, &document); err != nil {
+			reviewSchemaErr = fmt.Errorf("复盘输出 Schema 不合法：%w", err)
+			return
+		}
+		compiler := jsonschema.NewCompiler()
+		if err := compiler.AddResource("review-narrative.json", document); err != nil {
+			reviewSchemaErr = err
+			return
+		}
+		reviewSchema, reviewSchemaErr = compiler.Compile("review-narrative.json")
+	})
+	return reviewSchema, reviewSchemaErr
+}
+
 // generateNarrative 调用模型并校验来源。
 // userID 只用于写审计——叙述生成本身不按用户分支，
 // 但「谁的这次调用花了多少 token」得记得下来。
 func (s *Service) generateNarrative(ctx context.Context, userID string,
-	review httpapi.WeeklyReview) (string, []httpapi.ReviewSuggestion, error) {
+	review httpapi.WeeklyReview) (generatedReviewNarrative, error) {
 
 	if s.chat == nil {
-		return "", []httpapi.ReviewSuggestion{}, ai.ErrProviderUnavailable
+		return generatedReviewNarrative{}, ai.ErrProviderUnavailable
 	}
 
 	// 允许引用的来源集合。模型只能在这个集合里挑，不能自己造 ID。
@@ -196,11 +257,15 @@ func (s *Service) generateNarrative(ctx context.Context, userID string,
 	input := renderReviewInput(review)
 	result, err := s.chat.Complete(ctx, ai.CompletionRequest{
 		Messages: []ai.Message{
-			{Role: ai.RoleSystem, Content: assets.ReviewNarrativePromptV1},
+			{Role: ai.RoleSystem, Content: assets.ReviewNarrativePromptV2},
 			{Role: ai.RoleUser, Content: input},
 		},
 		MaxOutputTokens: 800,
 	})
+	var parsed narrativeOutput
+	if err == nil {
+		parsed, err = decodeNarrativeOutput(result.Content)
+	}
 
 	// 记一笔审计。**只记形状不记正文**：复盘输入含用户一周的活动摘要，
 	// 是最不该在审计表里再存一份的东西。
@@ -211,6 +276,7 @@ func (s *Service) generateNarrative(ctx context.Context, userID string,
 		ModelPolicy:   "chat",
 		ProviderModel: s.chat.ModelName(),
 		PromptVersion: assets.ReviewNarrativePromptVersion,
+		SchemaVersion: assets.ReviewNarrativeSchemaVersion,
 		InputHash:     aiaudit.Hash(input),
 		OutputHash:    aiaudit.Hash(result.Content),
 		Status:        aiaudit.StatusFor(err),
@@ -219,12 +285,35 @@ func (s *Service) generateNarrative(ctx context.Context, userID string,
 	})
 
 	if err != nil {
-		return "", []httpapi.ReviewSuggestion{}, err
+		return generatedReviewNarrative{}, err
 	}
 
-	var parsed narrativeOutput
-	if err := json.Unmarshal([]byte(stripCodeFence(result.Content)), &parsed); err != nil {
-		return "", []httpapi.ReviewSuggestion{}, fmt.Errorf("%w: 叙述输出不是合法 JSON", ai.ErrSchemaInvalid)
+	headline := strings.TrimSpace(parsed.Headline)
+	summary := strings.TrimSpace(parsed.Summary)
+	if headline == "" || summary == "" {
+		return generatedReviewNarrative{}, fmt.Errorf("%w: 标题或摘要为空", ai.ErrSchemaInvalid)
+	}
+
+	allowedMetrics := make(map[string]bool, len(review.Metrics))
+	for _, metric := range review.Metrics {
+		allowedMetrics[metric.Key] = true
+	}
+	highlights := make([]httpapi.ReviewHighlight, 0, len(parsed.Highlights))
+	seenMetrics := make(map[string]bool, len(parsed.Highlights))
+	for _, item := range parsed.Highlights {
+		key := strings.TrimSpace(item.MetricKey)
+		comment := strings.TrimSpace(item.Comment)
+		if !allowedMetrics[key] || seenMetrics[key] || comment == "" {
+			continue
+		}
+		seenMetrics[key] = true
+		highlights = append(highlights, httpapi.ReviewHighlight{
+			MetricKey: key,
+			Comment:   comment,
+		})
+		if len(highlights) >= 2 {
+			break
+		}
 	}
 
 	suggestions := make([]httpapi.ReviewSuggestion, 0, len(parsed.Suggestions))
@@ -257,7 +346,42 @@ func (s *Service) generateNarrative(ctx context.Context, userID string,
 		}
 	}
 
-	return strings.TrimSpace(parsed.Narrative), suggestions, nil
+	return generatedReviewNarrative{
+		Headline: headline, Summary: summary,
+		Highlights: highlights, Suggestions: suggestions,
+	}, nil
+}
+
+func decodeNarrativeOutput(raw string) (narrativeOutput, error) {
+	cleaned := stripCodeFence(raw)
+	var document any
+	if err := json.Unmarshal([]byte(cleaned), &document); err != nil {
+		return narrativeOutput{}, fmt.Errorf("%w: 复盘输出不是合法 JSON", ai.ErrSchemaInvalid)
+	}
+	validator, err := compiledReviewSchema()
+	if err != nil {
+		return narrativeOutput{}, err
+	}
+	if err := validator.Validate(document); err != nil {
+		return narrativeOutput{}, fmt.Errorf("%w: 复盘输出不符合 Schema", ai.ErrSchemaInvalid)
+	}
+	var parsed narrativeOutput
+	if err := json.Unmarshal([]byte(cleaned), &parsed); err != nil {
+		return narrativeOutput{}, fmt.Errorf("%w: 复盘输出结构不匹配", ai.ErrSchemaInvalid)
+	}
+	return parsed, nil
+}
+
+func hasReviewableData(review httpapi.WeeklyReview) bool {
+	if len(review.Sources) > 0 {
+		return true
+	}
+	for _, metric := range review.Metrics {
+		if metric.Value != 0 || (metric.DeltaVsPrevious != nil && *metric.DeltaVsPrevious != 0) {
+			return true
+		}
+	}
+	return false
 }
 
 // renderReviewInput 把指标与来源清单渲染成模型输入。
@@ -272,7 +396,7 @@ func renderReviewInput(review httpapi.WeeklyReview) string {
 		if m.Unit != nil {
 			unit = *m.Unit
 		}
-		fmt.Fprintf(&b, "- %s：%.0f%s", m.Label, m.Value, unit)
+		fmt.Fprintf(&b, "- metric_key=%s；%s：%.0f%s", m.Key, m.Label, m.Value, unit)
 		if m.DeltaVsPrevious != nil {
 			fmt.Fprintf(&b, "（较上周 %+.0f）", *m.DeltaVsPrevious)
 		}

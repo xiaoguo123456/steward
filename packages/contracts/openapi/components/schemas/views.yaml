@@ -260,10 +260,22 @@ ReviewSuggestion:
       items:
         $ref: '#/ReviewSource'
 
+ReviewHighlight:
+  type: object
+  additionalProperties: false
+  required: [metric_key, comment]
+  properties:
+    metric_key:
+      type: string
+      description: 引用本次响应 metrics 中的 key，数值仍由客户端从确定性指标读取。
+    comment:
+      type: string
+      description: 对该指标变化的简短说明，不重复承载指标值。
+
 WeeklyReview:
   type: object
   additionalProperties: false
-  required: [period_start, period_end, timezone, metrics, sources, generated_by]
+  required: [period_start, period_end, timezone, metrics, highlights, sources, generated_by]
   properties:
     period_start:
       type: string
@@ -278,10 +290,19 @@ WeeklyReview:
       description: 确定性指标。Provider 不可用时该字段仍然可用。
       items:
         $ref: '#/ReviewMetric'
+    headline:
+      type: string
+      nullable: true
+      description: AI 生成的短标题。旧快照或 Provider 不可用时为 null。
     narrative:
       type: string
       nullable: true
-      description: AI 生成的叙述文案。Provider 不可用时为 null，页面仍展示指标。
+      description: AI 生成的一到两句摘要。Provider 不可用时为 null，页面仍展示指标。
+    highlights:
+      type: array
+      maxItems: 2
+      items:
+        $ref: '#/ReviewHighlight'
     suggestions:
       type: array
       items:

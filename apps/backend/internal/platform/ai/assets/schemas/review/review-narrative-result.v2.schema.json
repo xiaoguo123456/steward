@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steward.local/ai-contracts/review/review-narrative-result.v2.schema.json",
+  "title": "周复盘结构化内容 v2",
+  "description": "AI 只输出语义内容；指标值、排版和样式均由服务端与客户端确定。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["headline", "summary", "highlights", "suggestions"],
+  "properties": {
+    "headline": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280
+    },
+    "highlights": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["metric_key", "comment"],
+        "properties": {
+          "metric_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "comment": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      }
+    },
+    "suggestions": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "source_refs"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "source_refs": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -3,17 +3,21 @@
 -- name: UpsertReviewSnapshot :one
 INSERT INTO review_snapshots (
     id, user_id, period_kind, period_start, period_end,
-    metrics, narrative, suggestions, sources, generated_by, prompt_version, generated_at
+    metrics, headline, narrative, highlights, suggestions, sources,
+    generated_by, prompt_version, generated_at
 ) VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(period_kind),
     sqlc.arg(period_start), sqlc.arg(period_end),
-    sqlc.arg(metrics), sqlc.narg(narrative), sqlc.arg(suggestions), sqlc.arg(sources),
+    sqlc.arg(metrics), sqlc.narg(headline), sqlc.narg(narrative),
+    sqlc.arg(highlights), sqlc.arg(suggestions), sqlc.arg(sources),
     sqlc.arg(generated_by), sqlc.narg(prompt_version), sqlc.narg(generated_at)
 )
 ON CONFLICT (user_id, period_kind, period_start) DO UPDATE SET
     period_end     = excluded.period_end,
     metrics        = excluded.metrics,
+    headline       = coalesce(excluded.headline, review_snapshots.headline),
     narrative      = coalesce(excluded.narrative, review_snapshots.narrative),
+    highlights     = excluded.highlights,
     suggestions    = excluded.suggestions,
     sources        = excluded.sources,
     generated_by   = excluded.generated_by,

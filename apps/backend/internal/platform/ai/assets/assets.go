@@ -23,10 +23,10 @@ var VisionExtractPromptV1 string
 //go:embed prompts/assistant/v1.md
 var AssistantPolicyV1 string
 
-// ReviewNarrativePromptV1 是复盘叙述的系统提示词。
+// ReviewNarrativePromptV2 是复盘结构化内容的系统提示词。
 //
-//go:embed prompts/review-narrative/v1.md
-var ReviewNarrativePromptV1 string
+//go:embed prompts/review-narrative/v2.md
+var ReviewNarrativePromptV2 string
 
 // CaptureParseSchemaV1 是解析结果的完整 JSON Schema。
 //
@@ -35,11 +35,17 @@ var ReviewNarrativePromptV1 string
 //go:embed schemas/capture/capture-parse-result.v1.schema.json
 var CaptureParseSchemaV1 []byte
 
+// ReviewNarrativeSchemaV2 是周复盘模型输出的完整 JSON Schema。
+//
+//go:embed schemas/review/review-narrative-result.v2.schema.json
+var ReviewNarrativeSchemaV2 []byte
+
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
 	CaptureParsePromptVersion    = "capture-parse@v1"
 	VisionExtractPromptVersion   = "vision-extract@v1"
 	AssistantPolicyVersion       = "assistant@v1"
-	ReviewNarrativePromptVersion = "review-narrative@v1"
+	ReviewNarrativePromptVersion = "review-narrative@v2"
+	ReviewNarrativeSchemaVersion = "review-narrative-result.v2"
 	CaptureParseSchemaVersion    = "capture-parse-result.v1"
 )

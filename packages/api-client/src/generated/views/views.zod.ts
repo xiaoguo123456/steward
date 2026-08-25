@@ -529,6 +529,8 @@ export const GetWeeklyReviewQueryParams = zod.object({
   "week_of": zod.string().date().optional().describe('该周内任意一天的当地日期。不传时为本周。')
 })
 
+export const getWeeklyReviewResponseDataHighlightsMax = 2;
+
 
 
 
@@ -544,7 +546,12 @@ export const GetWeeklyReviewResponse = zod.object({
   "unit": zod.string().nullish(),
   "delta_vs_previous": zod.number().nullish().describe('与上一周期的差值，由 SQL 确定性计算。')
 })).describe('确定性指标。Provider 不可用时该字段仍然可用。'),
-  "narrative": zod.string().nullish().describe('AI 生成的叙述文案。Provider 不可用时为 null，页面仍展示指标。'),
+  "headline": zod.string().nullish().describe('AI 生成的短标题。旧快照或 Provider 不可用时为 null。'),
+  "narrative": zod.string().nullish().describe('AI 生成的一到两句摘要。Provider 不可用时为 null，页面仍展示指标。'),
+  "highlights": zod.array(zod.object({
+  "metric_key": zod.string().describe('引用本次响应 metrics 中的 key，数值仍由客户端从确定性指标读取。'),
+  "comment": zod.string().describe('对该指标变化的简短说明，不重复承载指标值。')
+})).max(getWeeklyReviewResponseDataHighlightsMax),
   "suggestions": zod.array(zod.object({
   "id": zod.string(),
   "text": zod.string(),

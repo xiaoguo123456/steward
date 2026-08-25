@@ -246,6 +246,7 @@ export * from './reminderInput';
 export * from './reminderInputKind';
 export * from './reminderKind';
 export * from './responseMeta';
+export * from './reviewHighlight';
 export * from './reviewMetric';
 export * from './reviewSource';
 export * from './reviewSuggestion';

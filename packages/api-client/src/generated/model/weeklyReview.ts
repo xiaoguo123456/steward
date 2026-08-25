@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { CreatedBy } from './createdBy';
+import type { ReviewHighlight } from './reviewHighlight';
 import type { ReviewMetric } from './reviewMetric';
 import type { ReviewSource } from './reviewSource';
 import type { ReviewSuggestion } from './reviewSuggestion';
@@ -25,10 +26,17 @@ export interface WeeklyReview {
   /** 确定性指标。Provider 不可用时该字段仍然可用。 */
   metrics: ReviewMetric[];
   /**
-     * AI 生成的叙述文案。Provider 不可用时为 null，页面仍展示指标。
+     * AI 生成的短标题。旧快照或 Provider 不可用时为 null。
+     * @nullable
+     */
+  headline?: string | null;
+  /**
+     * AI 生成的一到两句摘要。Provider 不可用时为 null，页面仍展示指标。
      * @nullable
      */
   narrative?: string | null;
+  /** @maxItems 2 */
+  highlights: ReviewHighlight[];
   suggestions?: ReviewSuggestion[];
   sources: ReviewSource[];
   generated_by: CreatedBy;

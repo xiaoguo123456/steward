@@ -1643,6 +1643,7 @@ review_narrative
 ```
 
 不能让一个通用“大而全”Schema 同时承载所有功能。输出类型越窄，校验、评估和替换 Provider 越容易。
+`review_narrative` 使用版本化 JSON Schema，字段只承载标题、摘要、指标 key、简短解释和来源引用；指标值与界面样式由确定性代码控制。
 
 ## 15.7 来源引用
 
