@@ -523,10 +523,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   brief: {
-    minHeight: 116,
-    paddingTop: 16,
+    paddingVertical: 16,
     paddingRight: 14,
-    paddingBottom: 16,
     paddingLeft: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -540,6 +538,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     marginRight: 12,
+    alignSelf: 'center',
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -547,10 +546,11 @@ const styles = StyleSheet.create({
   },
   briefCopy: {
     flex: 1,
+    alignSelf: 'center',
   },
   briefChevron: {
     width: 24,
-    alignSelf: 'stretch',
+    alignSelf: 'center',
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
