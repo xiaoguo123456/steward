@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingLeft: 16,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     borderRadius: radius.lg,
     backgroundColor: '#F1F8F4',
   },

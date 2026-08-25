@@ -4,7 +4,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/ui/icon';
-import { colors, fontFamily, radius } from '@/theme/tokens';
+import { colors, fontFamily, radius, spacing } from '@/theme/tokens';
 
 import {
   mealSlotLabels,
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   tabs: {
     height: 48,
     flexDirection: 'row',
-    gap: 30,
+    gap: spacing.sm,
   },
   tab: {
     minWidth: 58,
