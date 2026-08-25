@@ -13,26 +13,14 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { CreateTrackerRequestColor } from './createTrackerRequestColor';
-import type { TrackerField } from './trackerField';
-import type { TrackerSchedule } from './trackerSchedule';
 
-export interface CreateTrackerRequest {
-  /**
-     * @minLength 1
-     * @maxLength 40
-     */
-  name: string;
-  /** @nullable */
-  description?: string | null;
-  /**
-     * @minItems 1
-     * @maxItems 20
-     */
-  fields: TrackerField[];
-  schedule?: TrackerSchedule;
-  /** @nullable */
-  color?: CreateTrackerRequestColor;
-  /** @nullable */
-  icon?: string | null;
-}
+/**
+ * 打卡频率；不定期用空 schedule 表示。
+ */
+export type TrackerScheduleFrequency = typeof TrackerScheduleFrequency[keyof typeof TrackerScheduleFrequency];
+
+
+export const TrackerScheduleFrequency = {
+  daily: 'daily',
+  weekly: 'weekly',
+} as const;

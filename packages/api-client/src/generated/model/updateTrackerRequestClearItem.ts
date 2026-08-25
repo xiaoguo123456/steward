@@ -21,4 +21,5 @@ export const UpdateTrackerRequestClearItem = {
   description: 'description',
   color: 'color',
   icon: 'icon',
+  schedule: 'schedule',
 } as const;

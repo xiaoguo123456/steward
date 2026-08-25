@@ -49,30 +49,42 @@ func New(db *database.DB, users UserProfile, act ActivityRecorder) *Service {
 
 // TrackerStats 是单个 Tracker 的记录统计。
 type TrackerStats struct {
-	RecordCount  int32
-	LastRecordAt *time.Time
+	RecordCount   int32
+	LastRecordAt  *time.Time
+	RecordedToday bool
 }
 
 // TrackerWithStats 是 Tracker 与其统计的组合。
 type TrackerWithStats struct {
-	Row   dbgen.Tracker
-	Stats TrackerStats
+	Row      dbgen.Tracker
+	Stats    TrackerStats
+	DueToday bool
 }
 
 // ListTrackers 读取全部 Tracker 及其统计。
 func (s *Service) ListTrackers(ctx context.Context, userID string, status *string) ([]TrackerWithStats, error) {
 	var out []TrackerWithStats
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		tz, err := s.users.Timezone(ctx, q, userID)
+		if err != nil {
+			return err
+		}
+		now := time.Now()
+		loc := timeutil.LoadLocation(tz)
 		rows, err := q.ListTrackers(ctx, dbgen.ListTrackersParams{Status: status})
 		if err != nil {
 			return apperr.Internal(err)
 		}
-		stats, err := loadStats(ctx, q)
+		stats, err := loadStats(ctx, q, timeutil.DayOf(now, loc))
 		if err != nil {
 			return err
 		}
 		for _, row := range rows {
-			out = append(out, TrackerWithStats{Row: row, Stats: stats[row.ID]})
+			rowStats := stats[row.ID]
+			out = append(out, TrackerWithStats{
+				Row: row, Stats: rowStats,
+				DueToday: trackerDueToday(row, rowStats, now, loc),
+			})
 		}
 		return nil
 	})
@@ -80,15 +92,19 @@ func (s *Service) ListTrackers(ctx context.Context, userID string, status *strin
 }
 
 // loadStats 一次读出全部 Tracker 的统计，避免逐个查询。
-func loadStats(ctx context.Context, q *dbgen.Queries) (map[string]TrackerStats, error) {
-	rows, err := q.ListTrackerStats(ctx)
+func loadStats(ctx context.Context, q *dbgen.Queries, day timeutil.Day) (map[string]TrackerStats, error) {
+	rows, err := q.ListTrackerStats(ctx, dbgen.ListTrackerStatsParams{
+		DayStart: day.Start, NextDayStart: day.Start.AddDate(0, 0, 1),
+	})
 	if err != nil {
 		return nil, apperr.Internal(err)
 	}
 	out := make(map[string]TrackerStats, len(rows))
 	for _, r := range rows {
 		last := r.LastRecordAt
-		out[r.TrackerID] = TrackerStats{RecordCount: r.RecordCount, LastRecordAt: &last}
+		out[r.TrackerID] = TrackerStats{
+			RecordCount: r.RecordCount, LastRecordAt: &last, RecordedToday: r.RecordedToday,
+		}
 	}
 	return out, nil
 }
@@ -97,6 +113,12 @@ func loadStats(ctx context.Context, q *dbgen.Queries) (map[string]TrackerStats, 
 func (s *Service) GetTracker(ctx context.Context, userID, trackerID string) (TrackerWithStats, error) {
 	var out TrackerWithStats
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		tz, err := s.users.Timezone(ctx, q, userID)
+		if err != nil {
+			return err
+		}
+		now := time.Now()
+		loc := timeutil.LoadLocation(tz)
 		row, err := q.GetTracker(ctx, trackerID)
 		if err != nil {
 			if database.IsNoRows(err) {
@@ -104,11 +126,15 @@ func (s *Service) GetTracker(ctx context.Context, userID, trackerID string) (Tra
 			}
 			return apperr.Internal(err)
 		}
-		stats, err := loadStats(ctx, q)
+		stats, err := loadStats(ctx, q, timeutil.DayOf(now, loc))
 		if err != nil {
 			return err
 		}
-		out = TrackerWithStats{Row: row, Stats: stats[row.ID]}
+		rowStats := stats[row.ID]
+		out = TrackerWithStats{
+			Row: row, Stats: rowStats,
+			DueToday: trackerDueToday(row, rowStats, now, loc),
+		}
 		return nil
 	})
 	return out, err
@@ -123,9 +149,16 @@ func (s *Service) CreateTracker(ctx context.Context, userID string, body httpapi
 	if err := validateFields(body.Fields); err != nil {
 		return dbgen.Tracker{}, err
 	}
+	if err := validateSchedule(body.Schedule); err != nil {
+		return dbgen.Tracker{}, err
+	}
 	fieldsJSON, err := json.Marshal(body.Fields)
 	if err != nil {
 		return dbgen.Tracker{}, apperr.Internal(err)
+	}
+	scheduleJSON, err := encodeSchedule(body.Schedule)
+	if err != nil {
+		return dbgen.Tracker{}, err
 	}
 
 	var out dbgen.Tracker
@@ -136,6 +169,7 @@ func (s *Service) CreateTracker(ctx context.Context, userID string, body httpapi
 			Name:           name,
 			Description:    body.Description,
 			Fields:         fieldsJSON,
+			Schedule:       scheduleJSON,
 			Status:         "active",
 			Color:          colorString(body.Color),
 			Icon:           body.Icon,
@@ -170,6 +204,9 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 			return TrackerWithStats{}, err
 		}
 	}
+	if err := validateSchedule(body.Schedule); err != nil {
+		return TrackerWithStats{}, err
+	}
 
 	var out TrackerWithStats
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
@@ -183,6 +220,7 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 		if expectedVersion != nil && *expectedVersion != current.Version {
 			return apperr.New(apperr.CodeVersionConflict)
 		}
+		clear := trackerClearFlagsOf(body.Clear)
 
 		// 内置记录项的字段定义不接受修改。
 		//
@@ -197,6 +235,10 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 			return apperr.Validation(apperr.Field("fields",
 				"内置打卡项的字段是固定的，改了它之前记下的数据就读不出来了。"))
 		}
+		if current.BuiltinKey != nil && (body.Schedule != nil || clear.Schedule) {
+			return apperr.Validation(apperr.Field("schedule",
+				"内置记录项由对应功能管理，不设置打卡频率。"))
+		}
 
 		var fieldsJSON []byte
 		if body.Fields != nil {
@@ -205,8 +247,11 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 				return apperr.Internal(err)
 			}
 		}
+		scheduleJSON, err := encodeSchedule(body.Schedule)
+		if err != nil {
+			return err
+		}
 
-		clear := trackerClearFlagsOf(body.Clear)
 		var status *string
 		if body.Status != nil {
 			v := string(*body.Status)
@@ -219,6 +264,8 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 			Description:      body.Description,
 			ClearDescription: clear.Description,
 			Fields:           fieldsJSON,
+			Schedule:         scheduleJSON,
+			ClearSchedule:    clear.Schedule,
 			Status:           status,
 			Color:            colorString(body.Color),
 			ClearColor:       clear.Color,
@@ -232,11 +279,21 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 		if err != nil {
 			return apperr.Internal(err)
 		}
-		stats, err := loadStats(ctx, q)
+		tz, err := s.users.Timezone(ctx, q, userID)
 		if err != nil {
 			return err
 		}
-		out = TrackerWithStats{Row: refreshed, Stats: stats[refreshed.ID]}
+		now := time.Now()
+		loc := timeutil.LoadLocation(tz)
+		stats, err := loadStats(ctx, q, timeutil.DayOf(now, loc))
+		if err != nil {
+			return err
+		}
+		rowStats := stats[refreshed.ID]
+		out = TrackerWithStats{
+			Row: refreshed, Stats: rowStats,
+			DueToday: trackerDueToday(refreshed, rowStats, now, loc),
+		}
 		return nil
 	})
 	return out, err
@@ -663,10 +720,99 @@ func decodeFields(raw []byte) ([]httpapi.TrackerField, error) {
 	return fields, nil
 }
 
+func validateSchedule(schedule *httpapi.TrackerSchedule) error {
+	if schedule == nil {
+		return nil
+	}
+	switch schedule.Frequency {
+	case httpapi.Daily:
+		if schedule.Weekdays != nil && len(*schedule.Weekdays) > 0 {
+			return apperr.Validation(apperr.Field("schedule.weekdays",
+				"每天打卡不需要选择星期。"))
+		}
+	case httpapi.Weekly:
+		if schedule.Weekdays == nil || len(*schedule.Weekdays) == 0 {
+			return apperr.Validation(apperr.Field("schedule.weekdays",
+				"每周打卡至少选择一天。"))
+		}
+		seen := make(map[int]struct{}, len(*schedule.Weekdays))
+		for _, weekday := range *schedule.Weekdays {
+			if weekday < 1 || weekday > 7 {
+				return apperr.Validation(apperr.Field("schedule.weekdays",
+					"星期必须在周一到周日之间。"))
+			}
+			if _, exists := seen[weekday]; exists {
+				return apperr.Validation(apperr.Field("schedule.weekdays",
+					"不能重复选择同一天。"))
+			}
+			seen[weekday] = struct{}{}
+		}
+	default:
+		return apperr.Validation(apperr.Field("schedule.frequency", "不支持这个打卡频率。"))
+	}
+	return nil
+}
+
+func encodeSchedule(schedule *httpapi.TrackerSchedule) ([]byte, error) {
+	if schedule == nil {
+		return nil, nil
+	}
+	raw, err := json.Marshal(schedule)
+	if err != nil {
+		return nil, apperr.Internal(err)
+	}
+	return raw, nil
+}
+
+func decodeSchedule(raw []byte) *httpapi.TrackerSchedule {
+	if len(raw) == 0 {
+		return nil
+	}
+	var schedule httpapi.TrackerSchedule
+	if err := json.Unmarshal(raw, &schedule); err != nil {
+		return nil
+	}
+	return &schedule
+}
+
+// trackerDueToday 只计算自定义且处于启用状态的打卡项。
+// 专注、运动与记账虽然复用 Tracker / Record 存储，但由各自场景负责展示与录入。
+func trackerDueToday(row dbgen.Tracker, stats TrackerStats, now time.Time, loc *time.Location) bool {
+	return scheduleDueToday(decodeSchedule(row.Schedule), row.BuiltinKey != nil,
+		row.Status, stats.RecordedToday, now, loc)
+}
+
+func scheduleDueToday(schedule *httpapi.TrackerSchedule, builtin bool, status string,
+	recordedToday bool, now time.Time, loc *time.Location) bool {
+
+	if schedule == nil || builtin || status != "active" || recordedToday {
+		return false
+	}
+	switch schedule.Frequency {
+	case httpapi.Daily:
+		return true
+	case httpapi.Weekly:
+		if schedule.Weekdays == nil {
+			return false
+		}
+		weekday := int(now.In(loc).Weekday())
+		if weekday == 0 {
+			weekday = 7
+		}
+		for _, candidate := range *schedule.Weekdays {
+			if candidate == weekday {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type trackerClearFlags struct {
 	Description bool
 	Color       bool
 	Icon        bool
+	Schedule    bool
 }
 
 func trackerClearFlagsOf(clear *[]httpapi.UpdateTrackerRequestClear) trackerClearFlags {
@@ -682,6 +828,8 @@ func trackerClearFlagsOf(clear *[]httpapi.UpdateTrackerRequestClear) trackerClea
 			f.Color = true
 		case httpapi.UpdateTrackerRequestClearIcon:
 			f.Icon = true
+		case httpapi.UpdateTrackerRequestClearSchedule:
+			f.Schedule = true
 		}
 	}
 	return f

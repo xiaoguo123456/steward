@@ -41,10 +41,33 @@ TrackerStatus:
   type: string
   enum: [active, archived]
 
+TrackerScheduleFrequency:
+  type: string
+  description: 打卡频率；不定期用空 schedule 表示。
+  enum: [daily, weekly]
+
+TrackerSchedule:
+  type: object
+  additionalProperties: false
+  required: [frequency]
+  properties:
+    frequency:
+      $ref: '#/TrackerScheduleFrequency'
+    weekdays:
+      type: array
+      description: 每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。
+      minItems: 1
+      maxItems: 7
+      uniqueItems: true
+      items:
+        type: integer
+        minimum: 1
+        maximum: 7
+
 Tracker:
   type: object
   additionalProperties: false
-  required: [id, name, fields, status, created_by, created_at, updated_at, version]
+  required: [id, name, fields, status, due_today, created_by, created_at, updated_at, version]
   properties:
     id:
       type: string
@@ -63,6 +86,11 @@ Tracker:
       $ref: '#/TrackerBuiltinKey'
     status:
       $ref: '#/TrackerStatus'
+    schedule:
+      $ref: '#/TrackerSchedule'
+    due_today:
+      type: boolean
+      description: 按用户时区计算，今天计划打卡且尚未写入 Record 时为 true；内置记录项始终为 false。
     color:
       type: string
       nullable: true
@@ -114,6 +142,8 @@ CreateTrackerRequest:
       maxItems: 20
       items:
         $ref: '#/TrackerField'
+    schedule:
+      $ref: '#/TrackerSchedule'
     color:
       type: string
       nullable: true
@@ -139,6 +169,7 @@ UpdateTrackerRequest:
           - description
           - color
           - icon
+          - schedule
     name:
       type: string
       minLength: 1
@@ -155,6 +186,8 @@ UpdateTrackerRequest:
         删除字段后历史值保留但不再展示于录入表单。
       items:
         $ref: '#/TrackerField'
+    schedule:
+      $ref: '#/TrackerSchedule'
     status:
       $ref: '#/TrackerStatus'
     color:

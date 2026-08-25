@@ -13,8 +13,8 @@ import { getWorkoutMode, type WorkoutMode } from './model';
 /**
  * 运动历史。
  *
- * 运动记录就是内置「运动」Tracker 下的 Record，用户在「打卡」页
- * 能看到同样的数据，不存在第二份运动数据。
+ * 运动记录就是内置「运动」Tracker 下的 Record。打卡首页不重复展示，
+ * 复盘与统计仍读取同一份数据，不存在第二份运动数据。
  */
 export function useWorkoutHistory(limit = 20) {
   const workout = useBuiltinTracker('workout', { limit });

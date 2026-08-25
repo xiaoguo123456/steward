@@ -26,6 +26,10 @@ export const ListTrackersQueryParams = zod.object({
 
 export const listTrackersResponseDataItemFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 
+export const listTrackersResponseDataItemScheduleWeekdaysItemMax = 7;
+
+export const listTrackersResponseDataItemScheduleWeekdaysMax = 7;
+
 export const listTrackersResponseDataItemProvenanceRefsItemSourceDeletedDefault = false;
 
 export const ListTrackersResponse = zod.object({
@@ -42,6 +46,11 @@ export const ListTrackersResponse = zod.object({
 })).min(1),
   "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段\n结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。\n用户自建的记录项没有这个键。\n'),
   "status": zod.enum(['active', 'archived']),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(listTrackersResponseDataItemScheduleWeekdaysItemMax)).min(1).max(listTrackersResponseDataItemScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional(),
+  "due_today": zod.boolean().describe('按用户时区计算，今天计划打卡且尚未写入 Record 时为 true；内置记录项始终为 false。'),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),
   "record_count": zod.number().int().optional().describe('未删除的 Record 数量。'),
@@ -82,6 +91,10 @@ export const createTrackerBodyNameMax = 40;
 export const createTrackerBodyFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 export const createTrackerBodyFieldsMax = 20;
 
+export const createTrackerBodyScheduleWeekdaysItemMax = 7;
+
+export const createTrackerBodyScheduleWeekdaysMax = 7;
+
 
 
 export const CreateTrackerBody = zod.object({
@@ -94,11 +107,19 @@ export const CreateTrackerBody = zod.object({
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
 })).min(1).max(createTrackerBodyFieldsMax),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(createTrackerBodyScheduleWeekdaysItemMax)).min(1).max(createTrackerBodyScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional(),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish()
 })
 
 export const createTrackerResponseDataFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
+
+export const createTrackerResponseDataScheduleWeekdaysItemMax = 7;
+
+export const createTrackerResponseDataScheduleWeekdaysMax = 7;
 
 export const createTrackerResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
@@ -116,6 +137,11 @@ export const CreateTrackerResponse = zod.object({
 })).min(1),
   "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段\n结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。\n用户自建的记录项没有这个键。\n'),
   "status": zod.enum(['active', 'archived']),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(createTrackerResponseDataScheduleWeekdaysItemMax)).min(1).max(createTrackerResponseDataScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional(),
+  "due_today": zod.boolean().describe('按用户时区计算，今天计划打卡且尚未写入 Record 时为 true；内置记录项始终为 false。'),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),
   "record_count": zod.number().int().optional().describe('未删除的 Record 数量。'),
@@ -148,6 +174,10 @@ export const GetTrackerParams = zod.object({
 
 export const getTrackerResponseDataFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 
+export const getTrackerResponseDataScheduleWeekdaysItemMax = 7;
+
+export const getTrackerResponseDataScheduleWeekdaysMax = 7;
+
 export const getTrackerResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
 export const GetTrackerResponse = zod.object({
@@ -164,6 +194,11 @@ export const GetTrackerResponse = zod.object({
 })).min(1),
   "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段\n结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。\n用户自建的记录项没有这个键。\n'),
   "status": zod.enum(['active', 'archived']),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(getTrackerResponseDataScheduleWeekdaysItemMax)).min(1).max(getTrackerResponseDataScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional(),
+  "due_today": zod.boolean().describe('按用户时区计算，今天计划打卡且尚未写入 Record 时为 true；内置记录项始终为 false。'),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),
   "record_count": zod.number().int().optional().describe('未删除的 Record 数量。'),
@@ -203,10 +238,14 @@ export const updateTrackerBodyNameMax = 40;
 export const updateTrackerBodyFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 export const updateTrackerBodyFieldsMax = 20;
 
+export const updateTrackerBodyScheduleWeekdaysItemMax = 7;
+
+export const updateTrackerBodyScheduleWeekdaysMax = 7;
+
 
 
 export const UpdateTrackerBody = zod.object({
-  "clear": zod.array(zod.enum(['description', 'color', 'icon'])).optional().describe('需要清空的可空字段。'),
+  "clear": zod.array(zod.enum(['description', 'color', 'icon', 'schedule'])).optional().describe('需要清空的可空字段。'),
   "name": zod.string().min(1).max(updateTrackerBodyNameMax).optional(),
   "description": zod.string().nullish(),
   "fields": zod.array(zod.object({
@@ -216,12 +255,20 @@ export const UpdateTrackerBody = zod.object({
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
 })).min(1).max(updateTrackerBodyFieldsMax).optional().describe('修改字段定义不会重写历史 Record；\n删除字段后历史值保留但不再展示于录入表单。\n'),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(updateTrackerBodyScheduleWeekdaysItemMax)).min(1).max(updateTrackerBodyScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional(),
   "status": zod.enum(['active', 'archived']).optional(),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish()
 }).describe('只提交需要修改的字段；不传表示保持原值。\n清空一个可空字段必须把字段名放进 clear 数组，\n因为生成的 Go 类型无法区分“不传”与“传 null”。\n')
 
 export const updateTrackerResponseDataFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
+
+export const updateTrackerResponseDataScheduleWeekdaysItemMax = 7;
+
+export const updateTrackerResponseDataScheduleWeekdaysMax = 7;
 
 export const updateTrackerResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
@@ -239,6 +286,11 @@ export const UpdateTrackerResponse = zod.object({
 })).min(1),
   "builtin_key": zod.enum(['workout', 'focus', 'ledger']).optional().describe('内置记录项的稳定标识。运动、专注与记账三个生活场景需要固定的字段\n结构才能渲染专用界面，客户端按这个键找到对应记录项，不硬编码 ID。\n用户自建的记录项没有这个键。\n'),
   "status": zod.enum(['active', 'archived']),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(updateTrackerResponseDataScheduleWeekdaysItemMax)).min(1).max(updateTrackerResponseDataScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional(),
+  "due_today": zod.boolean().describe('按用户时区计算，今天计划打卡且尚未写入 Record 时为 true；内置记录项始终为 false。'),
   "color": zod.enum(['blue', 'green', 'orange', 'purple', 'pink', 'gray']).nullish(),
   "icon": zod.string().nullish(),
   "record_count": zod.number().int().optional().describe('未删除的 Record 数量。'),

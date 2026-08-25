@@ -13,7 +13,7 @@ import type { FocusMode, FocusQuality, FocusRecord, NewFocusRecord } from './mod
  * 专注记录的数据层。
  *
  * 专注不是新的领域类型：它是内置的「专注」Tracker，每次保存一条 Record。
- * 用户在「打卡」页能看到同样的数据。
+ * 打卡首页不重复展示，复盘与统计仍读取同一份数据。
  *
  * 只有用户点「保存专注记录」时才写入。进行中的计时、暂存的想法都留在
  * 页面里，不自动创建 Note、Task 或 Capture。

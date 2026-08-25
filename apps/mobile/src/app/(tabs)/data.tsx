@@ -34,14 +34,22 @@ export default function DataScreen() {
   const [managerOpen, setManagerOpen] = useState(false);
 
   const trackersQuery = useListTrackers({ status: 'active' });
-  const recordsQuery = useListRecords({ limit: 20 });
+  const recordsQuery = useListRecords({ limit: 50 });
 
-  const trackers = useMemo(() => trackersQuery.data?.data ?? [], [trackersQuery.data]);
-  const records = recordsQuery.data?.data ?? [];
+  const trackers = useMemo(
+    () => (trackersQuery.data?.data ?? []).filter((tracker) => !tracker.builtin_key),
+    [trackersQuery.data],
+  );
+  const records = useMemo(() => recordsQuery.data?.data ?? [], [recordsQuery.data]);
 
-  // 今天还没有记录的 Tracker：用最近记录时间与当天比较，不做任何本地状态推断。
+  const recentRecords = useMemo(() => {
+    const customTrackerIds = new Set(trackers.map((tracker) => tracker.id));
+    return records.filter((record) => customTrackerIds.has(record.tracker_id));
+  }, [records, trackers]);
+
+  // 到期状态由服务端按用户时区和打卡频率确定，客户端只负责展示。
   const pending = useMemo(
-    () => trackers.filter((tracker) => !isRecordedToday(tracker)),
+    () => trackers.filter((tracker) => tracker.due_today),
     [trackers],
   );
 
@@ -102,7 +110,7 @@ export default function DataScreen() {
             {pending.length === 0 ? (
               <View style={styles.allDone}>
                 <AppIcon color={colors.primaryStrong} name="checkmark-circle" size={20} />
-                <Text style={styles.allDoneText}>今天的记录都完成了</Text>
+                <Text style={styles.allDoneText}>今天没有需要打卡的项目</Text>
               </View>
             ) : (
               pending.map((tracker) => (
@@ -157,10 +165,10 @@ export default function DataScreen() {
               </Pressable>
             ))}
 
-            {records.length > 0 ? (
+            {recentRecords.length > 0 ? (
               <>
                 <SectionTitle style={styles.sectionTitle} title="最近记录" />
-                {records.slice(0, 8).map((record: TrackerRecord) => (
+                {recentRecords.slice(0, 8).map((record: TrackerRecord) => (
                   <View key={record.id} style={styles.recentRow}>
                     <Text numberOfLines={1} style={styles.recentTitle}>
                       {record.title}
@@ -189,18 +197,6 @@ export default function DataScreen() {
 
       <AiFab />
     </AppScreen>
-  );
-}
-
-/** 最近一次记录是否落在今天。 */
-function isRecordedToday(tracker: Tracker): boolean {
-  if (!tracker.last_record_at) return false;
-  const last = new Date(tracker.last_record_at);
-  const now = new Date();
-  return (
-    last.getFullYear() === now.getFullYear() &&
-    last.getMonth() === now.getMonth() &&
-    last.getDate() === now.getDate()
   );
 }
 

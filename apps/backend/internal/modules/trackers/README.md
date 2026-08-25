@@ -26,6 +26,7 @@ Tracker 字段定义与 Record 录入。Tracker 是可复用的 Schema，Record 
   字段被改掉之后 `EnsureBuiltin` 不会修回来——它只在不存在时创建——
   之后每次自动记账都以 `RECORD_VALUES_INVALID` 失败，用户看不出这和他改过字段有关。
   改名、换颜色、归档放行：它们不影响按 key 读写。
+- 内置记录项不设置频率，也不进入打卡首页读模型；自定义 Tracker 的 `due_today` 按用户时区、频率和当天 Record 确定性计算。
 - Record 标题由服务端生成，例如“2026-08-12 · 体重 72.3 kg”。
 - 单位换算由服务端完成，客户端不得自行折算后写入。
 - 修改 Tracker 字段不会重写历史 Record。

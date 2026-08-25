@@ -18,6 +18,7 @@ import type { ProvenanceRef } from './provenanceRef';
 import type { TrackerBuiltinKey } from './trackerBuiltinKey';
 import type { TrackerColor } from './trackerColor';
 import type { TrackerField } from './trackerField';
+import type { TrackerSchedule } from './trackerSchedule';
 import type { TrackerStatus } from './trackerStatus';
 
 export interface Tracker {
@@ -29,6 +30,9 @@ export interface Tracker {
   fields: TrackerField[];
   builtin_key?: TrackerBuiltinKey;
   status: TrackerStatus;
+  schedule?: TrackerSchedule;
+  /** 按用户时区计算，今天计划打卡且尚未写入 Record 时为 true；内置记录项始终为 false。 */
+  due_today: boolean;
   /** @nullable */
   color?: TrackerColor;
   /** @nullable */

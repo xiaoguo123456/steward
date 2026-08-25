@@ -181,8 +181,8 @@ func TestEvalDatasetShape(t *testing.T) {
 
 func newStack(t *testing.T) (*eval.Stack, bool) {
 	t.Helper()
-	cfg, err := config.Load()
-	if err != nil || cfg.DatabaseURL == "" {
+	cfg := config.LoadForTest()
+	if cfg.DatabaseURL == "" {
 		t.Skip("没有配置数据库，跳过评测套件")
 		return nil, false
 	}

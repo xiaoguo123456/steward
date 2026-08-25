@@ -3,18 +3,20 @@ package trackers
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
 
 // 内置记录项。
 //
 // 运动、专注与记账三个生活场景需要固定的字段结构才能渲染专用界面。
 // 它们不是新的领域类型：底下就是普通的 Tracker 与 Record，
-// 用户能在「打卡」页看到同样的数据，也能自己再建别的记录项。
+// 打卡首页不会重复展示它们，但复盘与统计仍读取同一份 Record。
 //
 // 按需创建：用户第一次进这个场景时才建。注册时就造三个他可能永远
 // 不用的记录项，只会让打卡页一上来就是三个空壳。
@@ -117,16 +119,26 @@ func (s *Service) EnsureBuiltin(ctx context.Context, userID string, key BuiltinK
 
 	var out TrackerWithStats
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		tz, err := s.users.Timezone(ctx, q, userID)
+		if err != nil {
+			return err
+		}
+		now := time.Now()
+		loc := timeutil.LoadLocation(tz)
 		existing, err := q.ListTrackers(ctx, dbgen.ListTrackersParams{BuiltinKey: &key})
 		if err != nil {
 			return apperr.Internal(err)
 		}
 		if len(existing) > 0 {
-			stats, err := loadStats(ctx, q)
+			stats, err := loadStats(ctx, q, timeutil.DayOf(now, loc))
 			if err != nil {
 				return err
 			}
-			out = TrackerWithStats{Row: existing[0], Stats: stats[existing[0].ID]}
+			rowStats := stats[existing[0].ID]
+			out = TrackerWithStats{
+				Row: existing[0], Stats: rowStats,
+				DueToday: trackerDueToday(existing[0], rowStats, now, loc),
+			}
 			return nil
 		}
 
@@ -147,7 +159,7 @@ func (s *Service) EnsureBuiltin(ctx context.Context, userID string, key BuiltinK
 		if err != nil {
 			return apperr.Internal(err)
 		}
-		out = TrackerWithStats{Row: created}
+		out = TrackerWithStats{Row: created, DueToday: false}
 		return nil
 	})
 	return out, err

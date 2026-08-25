@@ -45,6 +45,7 @@ func (s *Service) CreateTrackerInTx(ctx context.Context, q *dbgen.Queries, userI
 		UserID:         userID,
 		Name:           name,
 		Fields:         fieldsJSON,
+		Schedule:       nil,
 		Status:         "active",
 		CreatedBy:      "ai",
 		ProvenanceRefs: provenance,

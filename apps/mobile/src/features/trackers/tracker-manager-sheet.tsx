@@ -38,8 +38,8 @@ export function TrackerManagerSheet({
 
   if (!visible) return null;
 
-  const activeRows = active.data?.data ?? [];
-  const archivedRows = archived.data?.data ?? [];
+  const activeRows = (active.data?.data ?? []).filter((tracker) => !isBuiltin(tracker));
+  const archivedRows = (archived.data?.data ?? []).filter((tracker) => !isBuiltin(tracker));
   const loading = active.isPending || archived.isPending;
 
   return (

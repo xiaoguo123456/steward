@@ -225,6 +225,8 @@ func mapTracker(t TrackerWithStats) httpapi.Tracker {
 		Fields:         decodeFieldsOrEmpty(row.Fields),
 		Status:         httpapi.TrackerStatus(row.Status),
 		BuiltinKey:     builtinKeyPtr(row.BuiltinKey),
+		Schedule:       decodeSchedule(row.Schedule),
+		DueToday:       t.DueToday,
 		RecordCount:    &count,
 		LastRecordAt:   t.Stats.LastRecordAt,
 		Icon:           row.Icon,

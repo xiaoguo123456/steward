@@ -284,6 +284,8 @@ export * from './trackerColor';
 export * from './trackerField';
 export * from './trackerFieldType';
 export * from './trackerResponse';
+export * from './trackerSchedule';
+export * from './trackerScheduleFrequency';
 export * from './trackersResponse';
 export * from './trackerStatus';
 export * from './turnAcceptedResponse';

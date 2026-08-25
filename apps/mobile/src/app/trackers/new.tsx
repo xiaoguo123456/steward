@@ -1,4 +1,4 @@
-import type { TrackerField } from '@steward/api-client';
+import type { TrackerField, TrackerSchedule } from '@steward/api-client';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -9,6 +9,7 @@ import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { finalizeFields, newField, SchemaEditor } from '@/features/trackers/schema-editor';
+import { TrackerSchedulePicker } from '@/features/trackers/tracker-schedule-picker';
 import { useTrackerActions, validateFields } from '@/features/trackers/use-tracker-actions';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
@@ -24,6 +25,7 @@ export default function NewTrackerScreen() {
 
   const [name, setName] = useState('');
   const [fields, setFields] = useState<TrackerField[]>([newField(0)]);
+  const [schedule, setSchedule] = useState<TrackerSchedule | null>(null);
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const submit = async () => {
@@ -32,7 +34,11 @@ export default function NewTrackerScreen() {
     setInvalid(problem);
     if (problem || !name.trim()) return;
 
-    if (await actions.create({ name: name.trim(), fields: prepared })) {
+    if (await actions.create({
+      name: name.trim(),
+      fields: prepared,
+      ...(schedule ? { schedule } : {}),
+    })) {
       router.back();
     }
   };
@@ -66,6 +72,9 @@ export default function NewTrackerScreen() {
           style={styles.nameInput}
           value={name}
         />
+
+        <SectionTitle style={styles.section} title="频率" />
+        <TrackerSchedulePicker onChange={setSchedule} value={schedule} />
 
         <SectionTitle count={`${fields.length} 个`} style={styles.section} title="字段" />
         <SchemaEditor fields={fields} onChange={setFields} />

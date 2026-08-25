@@ -5,6 +5,8 @@ import {
   type Record as TrackerRecord,
   type Tracker,
   type TrackerField,
+  type TrackerSchedule,
+  type UpdateTrackerRequest,
 } from '@steward/api-client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -28,6 +30,10 @@ import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { RecordSheet } from '@/features/trackers/record-sheet';
 import { finalizeFields, SchemaEditor } from '@/features/trackers/schema-editor';
+import {
+  describeTrackerSchedule,
+  TrackerSchedulePicker,
+} from '@/features/trackers/tracker-schedule-picker';
 import {
   fieldTypeLabels,
   isBuiltin,
@@ -122,6 +128,13 @@ export default function TrackerDetailScreen() {
           onPress={() => setCreating(true)}
           style={styles.primaryAction}
         />
+
+        {!isBuiltin(tracker) ? (
+          <View style={styles.frequencySummary}>
+            <Text style={styles.frequencyLabel}>频率</Text>
+            <Text style={styles.frequencyValue}>{describeTrackerSchedule(tracker.schedule)}</Text>
+          </View>
+        ) : null}
 
         {actions.failure ? <Text style={styles.failure}>{actions.failure}</Text> : null}
 
@@ -243,8 +256,11 @@ export default function TrackerDetailScreen() {
             setEditingSchema(false);
             actions.dismiss();
           }}
-          onSubmit={async (name, fields) => {
-            if (await actions.update(tracker, { name, fields })) {
+          onSubmit={async (name, fields, schedule) => {
+            const body: UpdateTrackerRequest = { name, fields };
+            if (schedule) body.schedule = schedule;
+            else if (tracker.schedule) body.clear = ['schedule'];
+            if (await actions.update(tracker, body)) {
               setEditingSchema(false);
               refresh();
             }
@@ -349,7 +365,7 @@ function ManageMenu({
               onPress={onEditSchema}
               style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
             >
-              <Text style={styles.menuText}>编辑名称与字段</Text>
+              <Text style={styles.menuText}>编辑名称、频率与字段</Text>
             </Pressable>
           )}
           <Pressable
@@ -391,11 +407,12 @@ function SchemaSheet({
   tracker: Tracker;
   busy: boolean;
   failure: string | null;
-  onSubmit: (name: string, fields: TrackerField[]) => void;
+  onSubmit: (name: string, fields: TrackerField[], schedule: TrackerSchedule | null) => void;
   onClose: () => void;
 }) {
   const [name, setName] = useState(tracker.name);
   const [fields, setFields] = useState<TrackerField[]>(tracker.fields);
+  const [schedule, setSchedule] = useState<TrackerSchedule | null>(tracker.schedule ?? null);
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const submit = () => {
@@ -403,7 +420,7 @@ function SchemaSheet({
     const problem = validateFields(prepared);
     setInvalid(problem);
     if (problem || !name.trim()) return;
-    onSubmit(name.trim(), prepared);
+    onSubmit(name.trim(), prepared, schedule);
   };
 
   return (
@@ -422,6 +439,8 @@ function SchemaSheet({
             style={styles.input}
             value={name}
           />
+          <Text style={styles.sheetSectionTitle}>频率</Text>
+          <TrackerSchedulePicker onChange={setSchedule} value={schedule} />
           <Text style={styles.sheetHint}>
             删掉一个字段不会改动已经记下的数据，只是以后不再填它。
           </Text>
@@ -530,6 +549,23 @@ const styles = StyleSheet.create({
   primaryAction: {
     marginBottom: 4,
   },
+  frequencySummary: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  frequencyLabel: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  frequencyValue: {
+    color: colors.text,
+    fontFamily,
+    ...typography.meta,
+    fontWeight: '600',
+  },
   section: {
     marginTop: 16,
   },
@@ -599,6 +635,14 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily,
     ...typography.section,
+  },
+  sheetSectionTitle: {
+    marginTop: 16,
+    marginBottom: 10,
+    color: colors.text,
+    fontFamily,
+    ...typography.label,
+    fontWeight: '600',
   },
   sheetHint: {
     marginTop: 10,

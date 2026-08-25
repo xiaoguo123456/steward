@@ -16,18 +16,20 @@ SELECT * FROM trackers WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
 -- 没有任何记录的 Tracker 不会出现在结果里，由调用方按 0 与 nil 处理。
 SELECT tracker_id,
        count(*)::int AS record_count,
-       max(timestamp)::timestamptz AS last_record_at
+       max(timestamp)::timestamptz AS last_record_at,
+       bool_or(timestamp >= sqlc.arg(day_start)::timestamptz
+               AND timestamp < sqlc.arg(next_day_start)::timestamptz) AS recorded_today
 FROM records
 WHERE deleted_at IS NULL
 GROUP BY tracker_id;
 
 -- name: CreateTracker :one
 INSERT INTO trackers (
-    id, user_id, name, description, fields, status, color, icon,
+    id, user_id, name, description, fields, schedule, status, color, icon,
     builtin_key, created_by, provenance_refs
 ) VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(name), sqlc.narg(description),
-    sqlc.arg(fields), sqlc.arg(status), sqlc.narg(color), sqlc.narg(icon),
+    sqlc.arg(fields), sqlc.narg(schedule), sqlc.arg(status), sqlc.narg(color), sqlc.narg(icon),
     sqlc.narg(builtin_key), sqlc.arg(created_by), sqlc.arg(provenance_refs)
 )
 RETURNING *;
@@ -38,6 +40,8 @@ UPDATE trackers SET
     description = CASE WHEN sqlc.arg(clear_description)::bool THEN NULL
                        ELSE coalesce(sqlc.narg(description), description) END,
     fields      = coalesce(sqlc.narg(fields), fields),
+    schedule    = CASE WHEN sqlc.arg(clear_schedule)::bool THEN NULL
+                       ELSE coalesce(sqlc.narg(schedule), schedule) END,
     status      = coalesce(sqlc.narg(status), status),
     color       = CASE WHEN sqlc.arg(clear_color)::bool THEN NULL
                        ELSE coalesce(sqlc.narg(color), color) END,

@@ -446,7 +446,7 @@ func importantDateKindOf(kind *httpapi.EventKind, preset *httpapi.ImportantDateK
 	if preset == nil {
 		return nil
 	}
-	if kind == nil || *kind != httpapi.ImportantDate {
+	if kind == nil || *kind != httpapi.EventKindImportantDate {
 		return nil
 	}
 	v := string(*preset)

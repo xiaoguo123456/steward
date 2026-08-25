@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { TrackerField } from './trackerField';
+import type { TrackerSchedule } from './trackerSchedule';
 import type { TrackerStatus } from './trackerStatus';
 import type { UpdateTrackerRequestClearItem } from './updateTrackerRequestClearItem';
 import type { UpdateTrackerRequestColor } from './updateTrackerRequestColor';
@@ -40,6 +41,7 @@ export interface UpdateTrackerRequest {
      * @maxItems 20
      */
   fields?: TrackerField[];
+  schedule?: TrackerSchedule;
   status?: TrackerStatus;
   /** @nullable */
   color?: UpdateTrackerRequestColor;

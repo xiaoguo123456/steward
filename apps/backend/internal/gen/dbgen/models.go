@@ -749,6 +749,7 @@ type Tracker struct {
 	DeletedAt      *time.Time
 	Version        int32
 	BuiltinKey     *string
+	Schedule       []byte
 }
 
 type User struct {

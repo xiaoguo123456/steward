@@ -318,7 +318,7 @@ type Querier interface {
 	// 每个 Tracker 的记录数与最近记录时间。
 	// GROUP BY 保证每个分组至少有一行，因此 max(timestamp) 非空；
 	// 没有任何记录的 Tracker 不会出现在结果里，由调用方按 0 与 nil 处理。
-	ListTrackerStats(ctx context.Context) ([]ListTrackerStatsRow, error)
+	ListTrackerStats(ctx context.Context, arg ListTrackerStatsParams) ([]ListTrackerStatsRow, error)
 	// Tracker 与 Record 查询。Record 的 values 结构由 Go Domain 依据 Tracker fields 校验。
 	ListTrackers(ctx context.Context, arg ListTrackersParams) ([]Tracker, error)
 	// 同一用户的默认 Thread 创建必须串行：两个设备同时发出当天第一条消息时，

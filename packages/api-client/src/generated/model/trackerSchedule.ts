@@ -13,26 +13,16 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { CreateTrackerRequestColor } from './createTrackerRequestColor';
-import type { TrackerField } from './trackerField';
-import type { TrackerSchedule } from './trackerSchedule';
+import type { TrackerScheduleFrequency } from './trackerScheduleFrequency';
 
-export interface CreateTrackerRequest {
+export interface TrackerSchedule {
+  frequency: TrackerScheduleFrequency;
   /**
-     * @minLength 1
-     * @maxLength 40
-     */
-  name: string;
-  /** @nullable */
-  description?: string | null;
-  /**
+     * 每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。
      * @minItems 1
-     * @maxItems 20
+     * @maxItems 7
+     * @items.minimum 1
+     * @items.maximum 7
      */
-  fields: TrackerField[];
-  schedule?: TrackerSchedule;
-  /** @nullable */
-  color?: CreateTrackerRequestColor;
-  /** @nullable */
-  icon?: string | null;
+  weekdays?: number[];
 }
