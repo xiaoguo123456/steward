@@ -42,6 +42,7 @@ export default function RootLayout() {
             <Stack.Screen name="me" />
             <Stack.Screen name="features/[slug]" />
             <Stack.Screen name="trips/index" />
+            <Stack.Screen name="trips/new" />
             <Stack.Screen name="trips/[id]" />
             <Stack.Screen name="focus" />
             <Stack.Screen name="settings/index" />

@@ -13,6 +13,7 @@ import { colors } from '@/theme/tokens';
 import { formatClock } from '@/utils/format';
 
 import type { TripAgendaItem, TripBooking, TripChecklistItem, TripDay, TripPlan } from './trip-data';
+import { parseTripDescription } from './trip-form';
 
 /**
  * 行程的数据层。
@@ -77,11 +78,13 @@ export function useTripDetail(projectId: string) {
 
 function toTripSummary(project: Project): TripPlan {
   const completed = project.status === 'completed' || project.status === 'archived';
+  const description = parseTripDescription(project.description);
   return {
     id: project.id,
     title: project.title,
-    // 目的地没有独立字段：它就是项目描述的第一行。
-    destination: (project.description ?? '').split('\n')[0] ?? '',
+    // 目的地没有独立字段：项目描述第一行是目的地，余下内容是注意事项。
+    destination: description.destination,
+    notes: description.notes,
     dateRange: formatDateRange(project.start_date, project.target_date),
     duration: formatDuration(project.start_date, project.target_date),
     status: completed ? 'completed' : 'upcoming',

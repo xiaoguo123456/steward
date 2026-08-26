@@ -43,6 +43,7 @@ export type TripPlan = {
   id: string;
   title: string;
   destination: string;
+  notes: string;
   dateRange: string;
   duration: string;
   status: 'upcoming' | 'completed';

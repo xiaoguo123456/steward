@@ -163,6 +163,16 @@ export function TripDetail({
           </View>
         </View>
 
+        {trip.notes ? (
+          <View style={styles.tripNotes}>
+            <AppIcon color={colors.primaryStrong} name="information-circle-outline" size={19} />
+            <View style={styles.tripNotesCopy}>
+              <Text style={styles.tripNotesTitle}>注意事项</Text>
+              <Text style={styles.tripNotesText}>{trip.notes}</Text>
+            </View>
+          </View>
+        ) : null}
+
         <SegmentedTabs onChange={setActiveTab} value={activeTab} />
 
         {activeTab === 'schedule' ? (
@@ -299,6 +309,33 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     fontWeight: '600',
+  },
+  tripNotes: {
+    minHeight: 58,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+  },
+  tripNotesCopy: {
+    minWidth: 0,
+    flex: 1,
+  },
+  tripNotesTitle: {
+    color: colors.text,
+    fontFamily,
+    ...typography.label,
+    fontWeight: '600',
+  },
+  tripNotesText: {
+    marginTop: 2,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
   },
   segmentedTabs: {
     minHeight: 46,

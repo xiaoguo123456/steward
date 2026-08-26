@@ -8,7 +8,7 @@ import {
 } from '@steward/api-client';
 import type { ComponentProps } from 'react';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -20,15 +20,11 @@ import {
 } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
+import { DateWheel } from '@/components/ui/date-wheel';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import {
-  createImportantDateYearOptions,
-  createNumberOptions,
-  getDaysInMonth,
   parseImportantDateParts,
-  updateImportantDatePart,
-  type ImportantDatePart,
 } from '@/features/important-dates/important-date-picker';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
@@ -70,8 +66,6 @@ type KindSpec = {
   soft: string;
   placeholder: string;
 };
-
-const dateWheelItemHeight = 44;
 
 const kindSpecs: Record<ImportantDateKind, KindSpec> = {
   birthday: {
@@ -246,138 +240,6 @@ function ImportantDateRow({
   );
 }
 
-function DateWheelColumn({
-  label,
-  onChange,
-  selectedValue,
-  values,
-}: {
-  label: string;
-  onChange: (value: number) => void;
-  selectedValue: number;
-  values: number[];
-}) {
-  const scrollRef = useRef<ScrollView>(null);
-  const wheelSelectedValueRef = useRef<number | null>(null);
-  const selectedIndex = Math.max(0, values.indexOf(selectedValue));
-
-  useEffect(() => {
-    if (wheelSelectedValueRef.current === selectedValue) {
-      wheelSelectedValueRef.current = null;
-      return;
-    }
-
-    const frame = requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        animated: false,
-        y: selectedIndex * dateWheelItemHeight,
-      });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [selectedIndex, selectedValue]);
-
-  const selectOffset = (offset: number) => {
-    const index = Math.max(0, Math.min(values.length - 1, Math.round(offset / dateWheelItemHeight)));
-    const value = values[index];
-    if (value !== undefined && value !== selectedValue) {
-      wheelSelectedValueRef.current = value;
-      onChange(value);
-    }
-  };
-
-  return (
-    <View style={styles.dateWheelColumn}>
-      <Text style={styles.dateWheelLabel}>{label}</Text>
-      <View style={styles.dateWheelWindow}>
-        <View pointerEvents="none" style={styles.dateWheelSelection} />
-        <ScrollView
-          accessibilityLabel={`${label}选择`}
-          contentContainerStyle={styles.dateWheelContent}
-          decelerationRate="fast"
-          nestedScrollEnabled
-          onMomentumScrollEnd={(event) => selectOffset(event.nativeEvent.contentOffset.y)}
-          onScrollEndDrag={(event) => selectOffset(event.nativeEvent.contentOffset.y)}
-          ref={scrollRef}
-          showsVerticalScrollIndicator={false}
-          snapToInterval={dateWheelItemHeight}
-          style={styles.dateWheelScroll}
-        >
-          {values.map((value, index) => {
-            const selected = value === selectedValue;
-            return (
-              <Pressable
-                accessibilityLabel={`${value}${label}`}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected }}
-                key={value}
-                onPress={() => {
-                  wheelSelectedValueRef.current = value;
-                  onChange(value);
-                  scrollRef.current?.scrollTo({
-                    animated: true,
-                    y: index * dateWheelItemHeight,
-                  });
-                }}
-                style={({ pressed }) => [
-                  styles.dateWheelItem,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={[styles.dateWheelValue, selected && styles.dateWheelValueSelected]}>
-                  {value}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-    </View>
-  );
-}
-
-function DateWheel({
-  selectedDate,
-  onSelectDate,
-}: {
-  selectedDate: string;
-  onSelectDate: (date: string) => void;
-}) {
-  const { year, month, day } = parseImportantDateParts(selectedDate);
-  const years = useMemo(() => createImportantDateYearOptions(), []);
-  const months = useMemo(() => createNumberOptions(1, 12), []);
-  const days = useMemo(
-    () => createNumberOptions(1, getDaysInMonth(year, month)),
-    [month, year],
-  );
-
-  const changePart = (part: ImportantDatePart, value: number) => {
-    onSelectDate(updateImportantDatePart(selectedDate, part, value));
-  };
-
-  return (
-    <View style={styles.dateWheel}>
-      <DateWheelColumn
-        label="年"
-        onChange={(value) => changePart('year', value)}
-        selectedValue={year}
-        values={years}
-      />
-      <DateWheelColumn
-        label="月"
-        onChange={(value) => changePart('month', value)}
-        selectedValue={month}
-        values={months}
-      />
-      <DateWheelColumn
-        label="日"
-        onChange={(value) => changePart('day', value)}
-        selectedValue={day}
-        values={days}
-      />
-    </View>
-  );
-}
-
 function CreateSheet({
   visible,
   onClose,
@@ -490,8 +352,8 @@ function CreateSheet({
 
             <Text style={styles.fieldLabel}>日期</Text>
             <DateWheel
-              onSelectDate={setDate}
-              selectedDate={date}
+              onChange={setDate}
+              value={date}
             />
 
             <Pressable
@@ -1011,68 +873,6 @@ const styles = StyleSheet.create({
     ...typography.input,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceSubtle,
-  },
-  dateWheel: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    gap: 8,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  dateWheelColumn: {
-    minWidth: 0,
-    flex: 1,
-  },
-  dateWheelLabel: {
-    marginBottom: 4,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  dateWheelWindow: {
-    height: dateWheelItemHeight * 3,
-    overflow: 'hidden',
-    borderRadius: radius.md,
-  },
-  dateWheelSelection: {
-    position: 'absolute',
-    top: dateWheelItemHeight,
-    right: 0,
-    left: 0,
-    height: dateWheelItemHeight,
-    borderWidth: 1,
-    borderColor: colors.primaryTrack,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-  },
-  dateWheelScroll: {
-    height: dateWheelItemHeight * 3,
-  },
-  dateWheelContent: {
-    paddingVertical: dateWheelItemHeight,
-  },
-  dateWheelItem: {
-    height: dateWheelItemHeight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateWheelValue: {
-    color: colors.textTertiary,
-    fontFamily,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '500',
-    fontVariant: ['tabular-nums'],
-  },
-  dateWheelValueSelected: {
-    color: colors.primaryStrong,
-    fontSize: 17,
-    fontWeight: '700',
   },
   settingRow: {
     minHeight: 62,

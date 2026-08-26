@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AiFab } from '@/components/ui/ai-fab';
+import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
@@ -79,22 +80,36 @@ function CompletedTripRow({ trip, onPress }: { trip: TripPlan; onPress: () => vo
 export function TripsHome() {
   const router = useRouter();
   const { upcoming: upcomingTrips, completed: completedTrips, loading } = useTripsOverview();
+  const createTrip = () => router.push('/trips/new');
   const openTrip = (trip: TripPlan) => {
     router.push({ pathname: '/trips/[id]', params: { id: trip.id } });
   };
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader title="行程" />
+      <NavHeader
+        right={
+          <Pressable
+            accessibilityLabel="新建行程"
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={createTrip}
+            style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+          >
+            <AppIcon color={colors.primaryStrong} name="add" size={25} />
+          </Pressable>
+        }
+        title="行程"
+      />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <SectionHeading count={upcomingTrips.length} title="近期行程" />
         {!loading && upcomingTrips.length === 0 && completedTrips.length === 0 ? (
           <View style={styles.emptyCard}>
+            <View style={styles.emptyIcon}>
+              <AppIcon color={colors.primaryStrong} name="airplane-outline" size={22} />
+            </View>
             <Text style={styles.emptyTitle}>还没有行程</Text>
-            <Text style={styles.emptyCopy}>
-              行程用项目来组织：把交通、住宿和活动记成日程，把要带的东西记成任务，
-              它们就会出现在这里。
-            </Text>
+            <AppButton compact label="新建行程" onPress={createTrip} style={styles.emptyAction} />
           </View>
         ) : null}
         <View style={styles.upcomingList}>
@@ -120,11 +135,26 @@ export function TripsHome() {
 }
 
 const styles = StyleSheet.create({
+  addButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyCard: {
-    padding: 14,
+    minHeight: 190,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.md,
-    backgroundColor: colors.surfaceSubtle,
-    gap: 7,
+    backgroundColor: colors.primarySoft,
   },
   emptyTitle: {
     color: colors.text,
@@ -132,10 +162,8 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '600',
   },
-  emptyCopy: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
+  emptyAction: {
+    marginTop: 18,
   },
   content: {
     paddingHorizontal: 16,
