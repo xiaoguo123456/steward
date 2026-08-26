@@ -2663,6 +2663,8 @@ inappropriate-mutation rate
 
 # 26. 单个功能的开发流程
 
+所有新增用户功能都必须在同一轮设计中定义对应的 AI 能力，至少覆盖该功能最核心的理解、查询、创建、更新或辅助流程。先确定手工 Domain Command 和事实来源，再选择 Capture Candidate 或 Assistant Proposal 作为 AI 入口；模型不得拥有旁路写入。若受安全、合规或事实来源限制，必须把暂不开放的操作和原因写入功能规格与产品设计，而不是省略 AI 设计。
+
 以“Assistant 建议把 Task 延到明天”为例：
 
 1. 核对功能规格、产品设计、整体架构和本文。
@@ -2711,6 +2713,7 @@ River Job
 
 ## 27.2 AI
 
+- [ ] 新增用户功能已有与其核心任务对应的 AI 入口、Schema／Prompt、确认链路和 Eval；受限能力已在规格中明确边界。
 - [ ] Prompt、Schema、Model Policy 和 Eval 已版本化。
 - [ ] Provider SDK 只存在于 Adapter。
 - [ ] 输出通过完整 Schema、来源和 Domain 校验。

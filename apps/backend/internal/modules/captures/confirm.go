@@ -3,6 +3,7 @@ package captures
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
@@ -238,19 +239,56 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 				if payload.Project == nil {
 					return apperr.Validation(apperr.Field("items", "项目候选缺少内容。"))
 				}
+				projectKind := "general"
+				if payload.Project.ProjectKind != nil {
+					projectKind = string(*payload.Project.ProjectKind)
+				}
+				description := payload.Project.Description
+				if projectKind == "trip" {
+					destination := ""
+					if payload.Project.Destination != nil {
+						destination = strings.TrimSpace(*payload.Project.Destination)
+					}
+					if destination == "" || payload.Project.StartDate == nil || payload.Project.TargetDate == nil {
+						return apperr.Validation(apperr.Field(
+							"items", "行程必须包含名称、目的地、开始日期和结束日期。"))
+					}
+					notes := ""
+					if description != nil {
+						notes = strings.TrimSpace(*description)
+					}
+					combined := destination
+					if notes != "" {
+						combined += "\n" + notes
+					}
+					description = &combined
+				}
 				cmd := objects.CreateProjectCommand{
 					Title:       payload.Project.Title,
-					Description: payload.Project.Description,
+					Description: description,
+					ProjectKind: projectKind,
 					CreatedBy:   "ai",
 					Provenance:  provenance,
+				}
+				if payload.Project.StartDate != nil {
+					d := payload.Project.StartDate.Time
+					cmd.StartDate = &d
+				}
+				if payload.Project.TargetDate != nil {
+					d := payload.Project.TargetDate.Time
+					cmd.TargetDate = &d
 				}
 				row, err := s.objects.CreateProjectInTx(ctx, q, userID, cmd)
 				if err != nil {
 					return err
 				}
+				summary := "从一次输入创建了项目"
+				if projectKind == "trip" {
+					summary = "从一次输入创建了行程"
+				}
 				entries = append(entries, activity.EntryInput{
 					Action: "created", ResourceType: "project", ResourceID: row.ID,
-					Title: row.Title, Summary: "从一次输入创建了项目",
+					Title: row.Title, Summary: summary,
 				})
 				affected = append(affected, resource(httpapi.AffectedResourceTypeProject, row.ID))
 

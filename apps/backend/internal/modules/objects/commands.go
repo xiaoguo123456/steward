@@ -258,6 +258,7 @@ type CreateProjectCommand struct {
 	Description *string
 	StartDate   *time.Time
 	TargetDate  *time.Time
+	ProjectKind string
 	CreatedBy   string
 	Provenance  []ProvenanceInput
 }
@@ -267,6 +268,14 @@ func (s *Service) CreateProjectInTx(ctx context.Context, q *dbgen.Queries, userI
 	title := strings.TrimSpace(cmd.Title)
 	if title == "" {
 		return dbgen.Project{}, apperr.Validation(apperr.Field("title", "项目名称不能为空。"))
+	}
+	if cmd.StartDate != nil && cmd.TargetDate != nil && cmd.TargetDate.Before(*cmd.StartDate) {
+		return dbgen.Project{}, apperr.Validation(apperr.Field(
+			"target_date", "目标完成日期不能早于开始日期。"))
+	}
+	projectKind := "general"
+	if cmd.ProjectKind == "trip" {
+		projectKind = "trip"
 	}
 	provJSON, err := marshalJSON(cmd.Provenance)
 	if err != nil {
@@ -285,7 +294,7 @@ func (s *Service) CreateProjectInTx(ctx context.Context, q *dbgen.Queries, userI
 		Status:         "active",
 		StartDate:      cmd.StartDate,
 		TargetDate:     cmd.TargetDate,
-		ProjectKind:    "general",
+		ProjectKind:    projectKind,
 		CreatedBy:      createdBy,
 		ProvenanceRefs: provJSON,
 	})

@@ -116,12 +116,15 @@ type CandidateDraft struct {
 	Title        string
 	Content      string
 	Description  string
+	ProjectKind  string
+	Destination  string
 	Priority     string
 	DueDate      *time.Time
 	DueAt        *time.Time
 	AllDay       bool
 	StartAt      *time.Time
 	StartDate    *time.Time
+	TargetDate   *time.Time
 	EventKind    string
 	Location     string
 	Tags         []string

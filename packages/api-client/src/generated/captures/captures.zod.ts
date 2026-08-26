@@ -63,6 +63,8 @@ export const GetCaptureParams = zod.object({
 })
 
 export const getCaptureResponseDataPartsItemErrorReloadTargetDefault = false;
+export const getCaptureResponseDataCandidatesItemPayloadProjectDestinationMax = 100;
+
 export const getCaptureResponseDataCandidatesItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 
 export const getCaptureResponseDataConflictsItemOptionsMin = 2;
@@ -133,7 +135,9 @@ export const GetCaptureResponse = zod.object({
 }).optional(),
   "project": zod.object({
   "title": zod.string(),
-  "description": zod.string().nullish(),
+  "description": zod.string().nullish().describe('普通项目的说明；行程候选中表示注意事项，确认创建时与目的地一起写入 Project.description。'),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n'),
+  "destination": zod.string().max(getCaptureResponseDataCandidatesItemPayloadProjectDestinationMax).nullish().describe('project_kind=trip 时的目的地；普通项目不使用。'),
   "start_date": zod.string().date().nullish(),
   "target_date": zod.string().date().nullish()
 }).optional(),
@@ -294,6 +298,8 @@ export const ConfirmCaptureHeader = zod.object({
   "Idempotency-Key": zod.string().min(confirmCaptureHeaderIdempotencyKeyMin).max(confirmCaptureHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
 })
 
+export const confirmCaptureBodyItemsItemPayloadProjectDestinationMax = 100;
+
 export const confirmCaptureBodyItemsItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 
 
@@ -335,7 +341,9 @@ export const ConfirmCaptureBody = zod.object({
 }).optional(),
   "project": zod.object({
   "title": zod.string(),
-  "description": zod.string().nullish(),
+  "description": zod.string().nullish().describe('普通项目的说明；行程候选中表示注意事项，确认创建时与目的地一起写入 Project.description。'),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n'),
+  "destination": zod.string().max(confirmCaptureBodyItemsItemPayloadProjectDestinationMax).nullish().describe('project_kind=trip 时的目的地；普通项目不使用。'),
   "start_date": zod.string().date().nullish(),
   "target_date": zod.string().date().nullish()
 }).optional(),
@@ -372,6 +380,8 @@ export const ConfirmCaptureBody = zod.object({
 })
 
 export const confirmCaptureResponseDataCapturePartsItemErrorReloadTargetDefault = false;
+export const confirmCaptureResponseDataCaptureCandidatesItemPayloadProjectDestinationMax = 100;
+
 export const confirmCaptureResponseDataCaptureCandidatesItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 
 export const confirmCaptureResponseDataCaptureConflictsItemOptionsMin = 2;
@@ -443,7 +453,9 @@ export const ConfirmCaptureResponse = zod.object({
 }).optional(),
   "project": zod.object({
   "title": zod.string(),
-  "description": zod.string().nullish(),
+  "description": zod.string().nullish().describe('普通项目的说明；行程候选中表示注意事项，确认创建时与目的地一起写入 Project.description。'),
+  "project_kind": zod.enum(['general', 'trip']).optional().describe('项目用途。trip 的项目在移动端用行程界面展示（按天时间线、预订资料、\n行前清单），底下仍然是同一个 Project 加它关联的 Event、Task 与 Note，\n不创建 Trip 对象，也没有平行数据表。\n'),
+  "destination": zod.string().max(confirmCaptureResponseDataCaptureCandidatesItemPayloadProjectDestinationMax).nullish().describe('project_kind=trip 时的目的地；普通项目不使用。'),
   "start_date": zod.string().date().nullish(),
   "target_date": zod.string().date().nullish()
 }).optional(),

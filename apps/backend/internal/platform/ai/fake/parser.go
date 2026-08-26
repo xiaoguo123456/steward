@@ -36,8 +36,8 @@ func (p *Parser) ParseCapture(_ context.Context, req ai.CaptureParseRequest) (ai
 
 	var result ai.CaptureParseResult
 	result.ProviderModel = "fake-deterministic"
-	result.PromptVersion = "fake-v1"
-	result.SchemaVersion = "capture-parse-v1"
+	result.PromptVersion = "fake-v2"
+	result.SchemaVersion = "capture-parse-result.v2"
 
 	defaultListID := ""
 	for _, l := range req.Lists {
@@ -159,6 +159,9 @@ func parseSegment(seg segment, now time.Time, loc *time.Location,
 
 	text := seg.Text
 	source := ai.SourceSpan{PartID: seg.PartID, TextStart: seg.Start, TextEnd: seg.End}
+	if looksLikeTrip(text) {
+		return parseTripSegment(seg, now, loc)
+	}
 
 	// isDeadline 目前只影响时间表达的剥离范围，不改变字段选择：
 	// 有明确时刻就用 due_at，只有日期就用 due_date。
@@ -243,6 +246,144 @@ func parseSegment(seg segment, now time.Time, loc *time.Location,
 		Field: "title", Level: "high", Sources: []ai.SourceSpan{source},
 	})
 	return &candidate
+}
+
+var (
+	tripFullRangePattern   = regexp.MustCompile(`(\d{1,2})月(\d{1,2})[日号]?[到至\-—~～]+(\d{1,2})月(\d{1,2})[日号]?`)
+	tripSameRangePattern   = regexp.MustCompile(`(\d{1,2})月(\d{1,2})[日号]?[到至\-—~～]+(\d{1,2})[日号]`)
+	tripDestinationPattern = regexp.MustCompile(`(去|前往)([\p{Han}A-Za-z0-9·]{1,20})(旅行|旅游|出差|游玩|玩|，|,|。|；|;|$)`)
+	tripToPattern          = regexp.MustCompile(`到([\p{Han}A-Za-z0-9·]{1,20})(旅行|旅游|出差|游玩|玩|，|,|。|；|;|$)`)
+)
+
+func looksLikeTrip(text string) bool {
+	if strings.Contains(text, "创建行程") || strings.Contains(text, "新建行程") {
+		return true
+	}
+	if !containsAny(text, []string{"旅行", "旅游", "出差"}) {
+		return false
+	}
+	return tripDestinationPattern.MatchString(text) || tripToPattern.MatchString(text) ||
+		tripFullRangePattern.MatchString(text) || tripSameRangePattern.MatchString(text)
+}
+
+// parseTripSegment 为离线与 Provider 降级路径提供最小、确定性的行程抽取。
+// 它只处理明确说出的目的地与数字日期范围，不猜景点、交通或住宿。
+func parseTripSegment(seg segment, now time.Time, loc *time.Location) *ai.CandidateDraft {
+	text := seg.Text
+	source := ai.SourceSpan{PartID: seg.PartID, TextStart: seg.Start, TextEnd: seg.End}
+	candidate := &ai.CandidateDraft{
+		Type:        "project",
+		Action:      "create",
+		ProjectKind: "trip",
+		Sources:     []ai.SourceSpan{source},
+	}
+
+	destination, destinationSpan := parseTripDestination(text)
+	candidate.Destination = destination
+	if destination == "" {
+		candidate.Title = "行程"
+		candidate.Missing = append(candidate.Missing, "destination")
+	} else {
+		candidate.Title = destination + "行程"
+	}
+
+	start, end, dateSpan := parseTripDateRange(text, now, loc)
+	candidate.StartDate = start
+	candidate.TargetDate = end
+	if start == nil {
+		candidate.Missing = append(candidate.Missing, "start_date")
+	}
+	if end == nil {
+		candidate.Missing = append(candidate.Missing, "target_date")
+	}
+
+	notes := text
+	if dateSpan[1] > dateSpan[0] {
+		phrase := text[dateSpan[0]:dateSpan[1]]
+		notes = strings.Replace(notes, phrase, "", 1)
+	}
+	if destinationSpan[1] > destinationSpan[0] {
+		phrase := text[destinationSpan[0]:destinationSpan[1]]
+		notes = strings.Replace(notes, phrase, "", 1)
+	}
+	for _, prefix := range []string{"创建行程", "新建行程", "帮我创建行程", "帮我新建行程"} {
+		notes = strings.ReplaceAll(notes, prefix, "")
+	}
+	notes = strings.TrimSpace(strings.Trim(notes, "：:，,。；;、 "))
+	candidate.Description = notes
+	candidate.Confidences = []ai.Confidence{{
+		Field: "title", Level: "high", Sources: []ai.SourceSpan{source},
+	}}
+	return candidate
+}
+
+func parseTripDestination(text string) (string, [2]int) {
+	for _, pattern := range []*regexp.Regexp{tripDestinationPattern, tripToPattern} {
+		indexes := pattern.FindStringSubmatchIndex(text)
+		if indexes == nil {
+			continue
+		}
+		group := 2
+		if pattern == tripDestinationPattern {
+			group = 4
+		}
+		value := strings.TrimSpace(text[indexes[group]:indexes[group+1]])
+		if value == "" || strings.Contains(value, "日") {
+			continue
+		}
+		return value, [2]int{indexes[0], indexes[1]}
+	}
+	return "", [2]int{}
+}
+
+func parseTripDateRange(text string, now time.Time, loc *time.Location) (*time.Time, *time.Time, [2]int) {
+	today := timeutil.DayOf(now, loc).Date
+	if match := tripFullRangePattern.FindStringSubmatchIndex(text); match != nil {
+		startMonth, _ := strconv.Atoi(text[match[2]:match[3]])
+		startDay, _ := strconv.Atoi(text[match[4]:match[5]])
+		endMonth, _ := strconv.Atoi(text[match[6]:match[7]])
+		endDay, _ := strconv.Atoi(text[match[8]:match[9]])
+		start, end := tripDates(today, startMonth, startDay, endMonth, endDay, loc)
+		return start, end, [2]int{match[0], match[1]}
+	}
+	if match := tripSameRangePattern.FindStringSubmatchIndex(text); match != nil {
+		month, _ := strconv.Atoi(text[match[2]:match[3]])
+		startDay, _ := strconv.Atoi(text[match[4]:match[5]])
+		endDay, _ := strconv.Atoi(text[match[6]:match[7]])
+		start, end := tripDates(today, month, startDay, month, endDay, loc)
+		return start, end, [2]int{match[0], match[1]}
+	}
+	return nil, nil, [2]int{}
+}
+
+func tripDates(today time.Time, startMonth, startDay, endMonth, endDay int, loc *time.Location) (*time.Time, *time.Time) {
+	if !validMonthDay(today.Year(), startMonth, startDay, loc) {
+		return nil, nil
+	}
+	year := today.Year()
+	start := time.Date(year, time.Month(startMonth), startDay, 0, 0, 0, 0, loc)
+	if start.Before(today) {
+		year++
+		start = time.Date(year, time.Month(startMonth), startDay, 0, 0, 0, 0, loc)
+	}
+	endYear := year
+	end := time.Date(endYear, time.Month(endMonth), endDay, 0, 0, 0, 0, loc)
+	if end.Before(start) {
+		endYear++
+		end = time.Date(endYear, time.Month(endMonth), endDay, 0, 0, 0, 0, loc)
+	}
+	if !validMonthDay(endYear, endMonth, endDay, loc) {
+		return &start, nil
+	}
+	return &start, &end
+}
+
+func validMonthDay(year, month, day int, loc *time.Location) bool {
+	if month < 1 || month > 12 || day < 1 || day > 31 {
+		return false
+	}
+	d := time.Date(year, time.Month(month), day, 0, 0, 0, 0, loc)
+	return int(d.Month()) == month && d.Day() == day
 }
 
 // looksActionable 判断片段是否包含行动意图。

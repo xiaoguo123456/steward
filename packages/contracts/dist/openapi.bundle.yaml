@@ -5366,6 +5366,14 @@ components:
         description:
           type: string
           nullable: true
+          description: 普通项目的说明；行程候选中表示注意事项，确认创建时与目的地一起写入 Project.description。
+        project_kind:
+          $ref: '#/components/schemas/ProjectKind'
+        destination:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: project_kind=trip 时的目的地；普通项目不使用。
         start_date:
           type: string
           format: date

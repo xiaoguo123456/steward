@@ -16,12 +16,20 @@ import { NavHeader } from '@/components/ui/nav-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { formatMonthDay } from '@/utils/format';
+import { formatTripDate } from '@/features/trips/trip-form';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 /** 候选类型的展示信息。 */
+type CandidateMeta = {
+  label: string;
+  icon: React.ComponentProps<typeof AppIcon>['name'];
+  color: string;
+  soft: string;
+};
+
 const typeMeta: Record<
   CaptureCandidate['candidate_type'],
-  { label: string; icon: React.ComponentProps<typeof AppIcon>['name']; color: string; soft: string }
+  CandidateMeta
 > = {
   task: { label: '任务', icon: 'checkmark-circle-outline', color: colors.primaryStrong, soft: colors.primarySoft },
   event: { label: '日程', icon: 'calendar-outline', color: '#3978B8', soft: '#EAF4FF' },
@@ -34,8 +42,9 @@ const typeMeta: Record<
 export default function CaptureConfirmScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const params = useLocalSearchParams<{ captureId?: string }>();
+  const params = useLocalSearchParams<{ captureId?: string; intent?: string }>();
   const captureId = params.captureId ?? '';
+  const isTripIntent = params.intent === 'trip';
 
   const capture = useGetCapture(captureId, { query: { enabled: Boolean(captureId) } });
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
@@ -69,10 +78,21 @@ export default function CaptureConfirmScreen() {
       const items: ConfirmCaptureItem[] = selectedCandidates.map((candidate) => ({
         candidate_id: candidate.id,
       }));
-      await confirmCapture(captureId, { revision: data.revision, items });
+      const response = await confirmCapture(captureId, { revision: data.revision, items });
       // 保存成功后让全部服务端事实失效，Today 与各列表会拉到新内容。
       await queryClient.invalidateQueries();
-      router.replace('/today');
+      if (isTripIntent) {
+        const project = response.data.affected_resources.find(
+          (resource) => resource.type === 'project' && resource.id,
+        );
+        if (project?.id) {
+          router.replace({ pathname: '/trips/[id]', params: { id: project.id } });
+        } else {
+          router.replace('/trips');
+        }
+      } else {
+        router.replace('/today');
+      }
     } catch (error) {
       setSaveError(errorMessage(error, '保存失败，请稍后重试。'));
     } finally {
@@ -83,7 +103,7 @@ export default function CaptureConfirmScreen() {
   if (capture.isPending) {
     return (
       <AppScreen includeBottomInset>
-        <NavHeader title="确认整理结果" />
+        <NavHeader title={isTripIntent ? '确认行程' : '确认整理结果'} />
         <View style={styles.loading}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -94,7 +114,7 @@ export default function CaptureConfirmScreen() {
   if (capture.isError || !data) {
     return (
       <AppScreen includeBottomInset>
-        <NavHeader title="确认整理结果" />
+        <NavHeader title={isTripIntent ? '确认行程' : '确认整理结果'} />
         <View style={styles.content}>
           <StatePanel
             actionLabel="重试"
@@ -110,7 +130,7 @@ export default function CaptureConfirmScreen() {
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader title="确认整理结果" />
+      <NavHeader title={isTripIntent ? '确认行程' : '确认整理结果'} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {data.instruction_note ? (
           <View style={styles.instruction}>
@@ -138,12 +158,15 @@ export default function CaptureConfirmScreen() {
             actionLabel="重新输入"
             icon="sparkles-outline"
             message="这次没有识别出可以保存的内容，换个说法再试试。"
-            onAction={() => router.replace('/capture/new')}
+            onAction={() => router.replace({
+              pathname: '/capture/new',
+              params: { intent: params.intent },
+            })}
             title="没有候选结果"
           />
         ) : (
           candidates.map((candidate) => {
-            const meta = typeMeta[candidate.candidate_type];
+            const meta = candidateMeta(candidate);
             const selected = isSelected(candidate);
             const missing = candidate.missing_fields ?? [];
             return (
@@ -177,7 +200,9 @@ export default function CaptureConfirmScreen() {
                 ) : null}
 
                 {missing.length > 0 ? (
-                  <Text style={styles.missing}>还需补全：{missing.join('、')}</Text>
+                  <Text style={styles.missing}>
+                    还需补全：{missing.map(missingFieldLabel).join('、')}
+                  </Text>
                 ) : null}
                 {(candidate.warnings?.length ?? 0) > 0 ? (
                   <Text style={styles.warning}>{candidate.warnings?.join('；')}</Text>
@@ -208,7 +233,11 @@ export default function CaptureConfirmScreen() {
             ]}
           >
             <Text style={styles.saveText}>
-              {saving ? '保存中…' : `保存 ${selectedCandidates.length} 项`}
+              {saving
+                ? '保存中…'
+                : isTripIntent && selectedCandidates.length === 1
+                  ? '创建行程'
+                  : `保存 ${selectedCandidates.length} 项`}
             </Text>
           </Pressable>
         </View>
@@ -245,8 +274,40 @@ function candidateDetail(candidate: CaptureCandidate): string {
     return '';
   }
   if (p.note) return p.note.content;
+  if (p.project) {
+    const lines: string[] = [];
+    if (p.project.destination) lines.push(p.project.destination);
+    if (p.project.start_date && p.project.target_date) {
+      lines.push(`${formatTripDate(p.project.start_date)} 至 ${formatTripDate(p.project.target_date)}`);
+    } else if (p.project.start_date) {
+      lines.push(`开始于 ${formatTripDate(p.project.start_date)}`);
+    }
+    if (p.project.description) lines.push(p.project.description);
+    return lines.join('\n');
+  }
   if (p.record) return `${p.record.values.length} 个字段`;
   return '';
+}
+
+function candidateMeta(candidate: CaptureCandidate): CandidateMeta {
+  if (candidate.payload.project?.project_kind === 'trip') {
+    return {
+      label: '行程',
+      icon: 'airplane-outline',
+      color: '#187A75',
+      soft: '#E9F7F5',
+    };
+  }
+  return typeMeta[candidate.candidate_type];
+}
+
+function missingFieldLabel(field: string): string {
+  return {
+    title: '名称',
+    destination: '目的地',
+    start_date: '开始日期',
+    target_date: '结束日期',
+  }[field] ?? field;
 }
 
 const styles = StyleSheet.create({

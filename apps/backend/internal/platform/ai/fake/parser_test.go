@@ -137,6 +137,40 @@ func TestParseMultipleSegments(t *testing.T) {
 	}
 }
 
+func TestParseTrip(t *testing.T) {
+	result := parse(t, "创建行程：8月29日至31日去北京，和爸妈一起，记得带身份证")
+
+	if len(result.Candidates) != 1 {
+		t.Fatalf("期望 1 个候选，实际 %d 个", len(result.Candidates))
+	}
+	c := result.Candidates[0]
+	if c.Type != "project" || c.ProjectKind != "trip" {
+		t.Fatalf("期望行程项目，实际 type=%s kind=%s", c.Type, c.ProjectKind)
+	}
+	if c.Title != "北京行程" || c.Destination != "北京" {
+		t.Errorf("行程标题或目的地不正确：title=%q destination=%q", c.Title, c.Destination)
+	}
+	if c.StartDate == nil || c.StartDate.Format("2006-01-02") != "2026-08-29" {
+		t.Errorf("开始日期不正确：%v", c.StartDate)
+	}
+	if c.TargetDate == nil || c.TargetDate.Format("2006-01-02") != "2026-08-31" {
+		t.Errorf("结束日期不正确：%v", c.TargetDate)
+	}
+	if c.Description != "和爸妈一起，记得带身份证" {
+		t.Errorf("注意事项不正确：%q", c.Description)
+	}
+	if len(c.Missing) != 0 {
+		t.Errorf("完整行程不应缺少字段：%v", c.Missing)
+	}
+}
+
+func TestTripKeywordAloneDoesNotHijackOtherContent(t *testing.T) {
+	result := parse(t, "记一下：出差前要检查报销规则")
+	if len(result.Candidates) != 1 || result.Candidates[0].Type != "note" {
+		t.Fatalf("普通出差笔记不应被识别成行程：%+v", result.Candidates)
+	}
+}
+
 func TestParsePriority(t *testing.T) {
 	if got := parse(t, "紧急处理服务器告警").Candidates[0].Priority; got != "high" {
 		t.Errorf("“紧急”应为 high，实际 %s", got)

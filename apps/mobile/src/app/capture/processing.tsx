@@ -20,6 +20,7 @@ export default function CaptureProcessingScreen() {
     captureId?: string;
     operationId?: string;
     draft?: string;
+    intent?: string;
   }>();
 
   const operationId = params.operationId ?? '';
@@ -42,9 +43,12 @@ export default function CaptureProcessingScreen() {
 
   useEffect(() => {
     if (status === 'succeeded' && captureId) {
-      router.replace({ pathname: '/capture/confirm', params: { captureId } });
+      router.replace({
+        pathname: '/capture/confirm',
+        params: { captureId, intent: params.intent },
+      });
     }
-  }, [status, captureId, router]);
+  }, [status, captureId, params.intent, router]);
 
   const failed = status === 'failed' || operation.isError;
 
@@ -82,14 +86,19 @@ export default function CaptureProcessingScreen() {
           <View style={styles.actions}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.replace('/capture/new')}
+              onPress={() => router.replace({
+                pathname: '/capture/new',
+                params: { intent: params.intent },
+              })}
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
             >
               <Text style={styles.primaryButtonText}>重新输入</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.replace('/today')}
+              onPress={() => params.intent === 'trip'
+                ? router.replace('/trips/new')
+                : router.replace('/today')}
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
             >
               <Text style={styles.secondaryButtonText}>稍后再说</Text>

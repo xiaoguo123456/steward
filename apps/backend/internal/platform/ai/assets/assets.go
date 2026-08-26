@@ -13,6 +13,11 @@ import (
 //go:embed prompts/capture-parse/v1.md
 var CaptureParsePromptV1 string
 
+// CaptureParsePromptV2 增加行程项目的结构化抽取规则。
+//
+//go:embed prompts/capture-parse/v2.md
+var CaptureParsePromptV2 string
+
 // VisionExtractPromptV1 是图片信息提取的系统提示词。
 //
 //go:embed prompts/vision-extract/v1.md
@@ -35,6 +40,11 @@ var ReviewNarrativePromptV2 string
 //go:embed schemas/capture/capture-parse-result.v1.schema.json
 var CaptureParseSchemaV1 []byte
 
+// CaptureParseSchemaV2 增加行程用途、目的地和结束日期字段。
+//
+//go:embed schemas/capture/capture-parse-result.v2.schema.json
+var CaptureParseSchemaV2 []byte
+
 // ReviewNarrativeSchemaV2 是周复盘模型输出的完整 JSON Schema。
 //
 //go:embed schemas/review/review-narrative-result.v2.schema.json
@@ -42,10 +52,10 @@ var ReviewNarrativeSchemaV2 []byte
 
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion    = "capture-parse@v1"
+	CaptureParsePromptVersion    = "capture-parse@v2"
 	VisionExtractPromptVersion   = "vision-extract@v1"
 	AssistantPolicyVersion       = "assistant@v1"
 	ReviewNarrativePromptVersion = "review-narrative@v2"
 	ReviewNarrativeSchemaVersion = "review-narrative-result.v2"
-	CaptureParseSchemaVersion    = "capture-parse-result.v1"
+	CaptureParseSchemaVersion    = "capture-parse-result.v2"
 )

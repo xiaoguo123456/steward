@@ -27,7 +27,7 @@ var (
 func captureParseSchema() (*jsonschema.Schema, error) {
 	schemaOnce.Do(func() {
 		var doc any
-		if err := json.Unmarshal(assets.CaptureParseSchemaV1, &doc); err != nil {
+		if err := json.Unmarshal(assets.CaptureParseSchemaV2, &doc); err != nil {
 			schemaErr = fmt.Errorf("解析结果 Schema 不合法：%w", err)
 			return
 		}
@@ -58,7 +58,7 @@ func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest)
 	userPrompt := buildUserPrompt(req)
 	messages := []chatMessage{
 		// 系统策略与用户资料使用不同角色，边界明确。
-		{Role: "system", Content: assets.CaptureParsePromptV1},
+		{Role: "system", Content: assets.CaptureParsePromptV2},
 		{Role: "user", Content: userPrompt},
 	}
 
@@ -122,22 +122,26 @@ func (p *Provider) fallback(ctx context.Context, req ai.CaptureParseRequest, cau
 // rawResult 是模型输出的原始形状，字段与 JSON Schema 一一对应。
 type rawResult struct {
 	Candidates []struct {
-		Type      string   `json:"type"`
-		Action    string   `json:"action"`
-		Title     string   `json:"title"`
-		Content   string   `json:"content"`
-		Priority  string   `json:"priority"`
-		DueDate   string   `json:"due_date"`
-		DueAt     string   `json:"due_at"`
-		AllDay    bool     `json:"all_day"`
-		StartAt   string   `json:"start_at"`
-		StartDate string   `json:"start_date"`
-		EventKind string   `json:"event_kind"`
-		Location  string   `json:"location"`
-		Tags      []string `json:"tags"`
-		TrackerID string   `json:"tracker_id"`
-		Timestamp string   `json:"timestamp"`
-		Values    []struct {
+		Type        string   `json:"type"`
+		Action      string   `json:"action"`
+		Title       string   `json:"title"`
+		Content     string   `json:"content"`
+		Description string   `json:"description"`
+		ProjectKind string   `json:"project_kind"`
+		Destination string   `json:"destination"`
+		Priority    string   `json:"priority"`
+		DueDate     string   `json:"due_date"`
+		DueAt       string   `json:"due_at"`
+		AllDay      bool     `json:"all_day"`
+		StartAt     string   `json:"start_at"`
+		StartDate   string   `json:"start_date"`
+		TargetDate  string   `json:"target_date"`
+		EventKind   string   `json:"event_kind"`
+		Location    string   `json:"location"`
+		Tags        []string `json:"tags"`
+		TrackerID   string   `json:"tracker_id"`
+		Timestamp   string   `json:"timestamp"`
+		Values      []struct {
 			Key    string   `json:"key"`
 			Number *float64 `json:"number"`
 			Text   string   `json:"text"`
@@ -298,25 +302,29 @@ func mapToNeutral(parsed rawResult, req ai.CaptureParseRequest) ai.CaptureParseR
 
 	for _, c := range parsed.Candidates {
 		candidate := ai.CandidateDraft{
-			Type:      c.Type,
-			Action:    orDefault(c.Action, "create"),
-			Title:     strings.TrimSpace(c.Title),
-			Content:   strings.TrimSpace(c.Content),
-			Priority:  c.Priority,
-			AllDay:    c.AllDay,
-			EventKind: c.EventKind,
-			Location:  strings.TrimSpace(c.Location),
-			Tags:      c.Tags,
-			TrackerID: c.TrackerID,
-			Missing:   c.Missing,
-			Warnings:  c.Warnings,
-			Sources:   sources,
+			Type:        c.Type,
+			Action:      orDefault(c.Action, "create"),
+			Title:       strings.TrimSpace(c.Title),
+			Content:     strings.TrimSpace(c.Content),
+			Description: strings.TrimSpace(c.Description),
+			ProjectKind: c.ProjectKind,
+			Destination: strings.TrimSpace(c.Destination),
+			Priority:    c.Priority,
+			AllDay:      c.AllDay,
+			EventKind:   c.EventKind,
+			Location:    strings.TrimSpace(c.Location),
+			Tags:        c.Tags,
+			TrackerID:   c.TrackerID,
+			Missing:     c.Missing,
+			Warnings:    c.Warnings,
+			Sources:     sources,
 		}
 
 		candidate.DueDate = parseDate(c.DueDate, loc)
 		candidate.DueAt = parseTime(c.DueAt, loc)
 		candidate.StartAt = parseTime(c.StartAt, loc)
 		candidate.StartDate = parseDate(c.StartDate, loc)
+		candidate.TargetDate = parseDate(c.TargetDate, loc)
 		candidate.Timestamp = parseTime(c.Timestamp, loc)
 
 		for _, v := range c.Values {

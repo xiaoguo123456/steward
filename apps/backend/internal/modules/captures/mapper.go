@@ -17,7 +17,7 @@ import (
 // 并返回仍然缺失的必填字段。
 func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location) ([]byte, []string, error) {
 	var payload httpapi.CaptureDraftPayload
-	var missing []string
+	missing := append([]string(nil), c.Missing...)
 
 	switch c.Type {
 	case "task":
@@ -91,11 +91,36 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location)
 
 	case "project":
 		if strings.TrimSpace(c.Title) == "" {
-			missing = append(missing, "title")
+			missing = appendMissing(missing, "title")
 		}
 		draft := httpapi.CaptureProjectDraft{Title: c.Title}
 		if c.Description != "" {
 			draft.Description = &c.Description
+		}
+		if c.ProjectKind != "" {
+			kind := httpapi.ProjectKind(c.ProjectKind)
+			draft.ProjectKind = &kind
+		}
+		if c.Destination != "" {
+			destination := c.Destination
+			draft.Destination = &destination
+		}
+		if c.StartDate != nil {
+			draft.StartDate = &openapi_types.Date{Time: *c.StartDate}
+		}
+		if c.TargetDate != nil {
+			draft.TargetDate = &openapi_types.Date{Time: *c.TargetDate}
+		}
+		if c.ProjectKind == "trip" {
+			if strings.TrimSpace(c.Destination) == "" {
+				missing = appendMissing(missing, "destination")
+			}
+			if c.StartDate == nil {
+				missing = appendMissing(missing, "start_date")
+			}
+			if c.TargetDate == nil || (c.StartDate != nil && c.TargetDate.Before(*c.StartDate)) {
+				missing = appendMissing(missing, "target_date")
+			}
 		}
 		payload.Project = &draft
 
@@ -144,6 +169,15 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location)
 		return nil, nil, apperr.Internal(err)
 	}
 	return raw, missing, nil
+}
+
+func appendMissing(fields []string, field string) []string {
+	for _, current := range fields {
+		if current == field {
+			return fields
+		}
+	}
+	return append(fields, field)
 }
 
 func mapConfidences(in []ai.Confidence) []httpapi.CaptureFieldConfidence {

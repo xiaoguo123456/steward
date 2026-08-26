@@ -137,7 +137,20 @@ export default function NewTripScreen() {
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader title="新建行程" />
+      <NavHeader
+        right={
+          <Pressable
+            accessibilityLabel="使用 AI 创建行程"
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/capture/new', params: { intent: 'trip' } })}
+            style={({ pressed }) => [styles.aiAction, pressed && styles.pressed]}
+          >
+            <AppIcon color={colors.primaryStrong} name="sparkles-outline" size={16} />
+            <Text style={styles.aiActionText}>AI</Text>
+          </Pressable>
+        }
+        title="新建行程"
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.screenBody}
@@ -259,6 +272,18 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     gap: 8,
+  },
+  aiAction: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  aiActionText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.meta,
+    fontWeight: '600',
   },
   fieldLabel: {
     color: colors.text,

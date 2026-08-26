@@ -4,7 +4,7 @@ import {
   type CreateCaptureRequest,
 } from '@steward/api-client';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Keyboard,
@@ -29,6 +29,8 @@ type ReplaceTarget = InputMode | null;
 
 export default function CaptureInputScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ intent?: string }>();
+  const isTripIntent = params.intent === 'trip';
   const [mode, setMode] = useState<InputMode>('text');
   const [text, setText] = useState('');
   // 图片与录音是真实的本地文件，用户点发送时才上传。
@@ -123,13 +125,20 @@ export default function CaptureInputScreen() {
 
       // parts 的顺序就是用户看到的顺序，服务端按 position 保留它。
       const parts: CreateCaptureRequest['parts'] = [];
-      if (content) parts.push({ kind: 'text', text: content });
+      if (isTripIntent) {
+        parts.push({
+          kind: 'text',
+          text: content ? `创建行程：${content}` : '创建行程。',
+        });
+      } else if (content) {
+        parts.push({ kind: 'text', text: content });
+      }
       for (const item of uploaded) {
         parts.push({ kind: item.kind, media_id: item.mediaId });
       }
 
       const response = await createCapture({
-        origin: 'home',
+        origin: isTripIntent ? 'project_manager' : 'home',
         parts,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
@@ -139,6 +148,7 @@ export default function CaptureInputScreen() {
           captureId: response.data.resource_id ?? '',
           operationId: response.data.operation_id,
           draft: draftSummary,
+          intent: isTripIntent ? 'trip' : undefined,
         },
       });
     } catch (error) {
@@ -152,8 +162,12 @@ export default function CaptureInputScreen() {
     <ModalSheet maxHeight="86%" onClose={close}>
       <View style={styles.header}>
         <View>
-          <Text accessibilityRole="header" style={styles.title}>记一件事</Text>
-          <Text style={styles.subtitle}>AI 会先整理，确认后再保存</Text>
+          <Text accessibilityRole="header" style={styles.title}>
+            {isTripIntent ? 'AI 创建行程' : '记一件事'}
+          </Text>
+          {!isTripIntent ? (
+            <Text style={styles.subtitle}>AI 会先整理，确认后再保存</Text>
+          ) : null}
         </View>
         <Pressable
           accessibilityLabel="关闭新增面板"
@@ -165,21 +179,23 @@ export default function CaptureInputScreen() {
         </Pressable>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.replace('/capture/new')}
-        style={({ pressed }) => [styles.recentRow, pressed && styles.recentPressed]}
-      >
-        <View style={styles.recentIcon}>
-          <AppIcon color={colors.primaryStrong} name="time-outline" size={18} />
-        </View>
-        <View style={styles.recentCopy}>
-          <Text style={styles.recentTitle}>最近输入</Text>
-          <Text style={styles.recentMeta}>1 项等待确认</Text>
-        </View>
-        <Text style={styles.continueText}>继续</Text>
-        <AppIcon color={colors.borderStrong} name="chevron-forward" size={16} />
-      </Pressable>
+      {!isTripIntent ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace('/capture/new')}
+          style={({ pressed }) => [styles.recentRow, pressed && styles.recentPressed]}
+        >
+          <View style={styles.recentIcon}>
+            <AppIcon color={colors.primaryStrong} name="time-outline" size={18} />
+          </View>
+          <View style={styles.recentCopy}>
+            <Text style={styles.recentTitle}>最近输入</Text>
+            <Text style={styles.recentMeta}>1 项等待确认</Text>
+          </View>
+          <Text style={styles.continueText}>继续</Text>
+          <AppIcon color={colors.borderStrong} name="chevron-forward" size={16} />
+        </Pressable>
+      ) : null}
 
       <ScrollView
         contentContainerStyle={styles.body}
@@ -234,8 +250,14 @@ export default function CaptureInputScreen() {
 
         {!images.length && !audioDuration ? (
           <View style={styles.promptSpace}>
-            <Text style={styles.promptTitle}>可以说得随意一点</Text>
-            <Text style={styles.promptCopy}>例如：下周二下午提醒我准备产品评审</Text>
+            <Text style={styles.promptTitle}>
+              {isTripIntent ? '说出目的地和日期' : '可以说得随意一点'}
+            </Text>
+            <Text style={styles.promptCopy}>
+              {isTripIntent
+                ? '例如：8 月 29 日至 31 日去北京，和爸妈一起'
+                : '例如：下周二下午提醒我准备产品评审'}
+            </Text>
           </View>
         ) : null}
       </ScrollView>
@@ -293,7 +315,7 @@ export default function CaptureInputScreen() {
               accessibilityLabel="输入要整理的内容"
               multiline
               onChangeText={setText}
-              placeholder="输入任务、日程、想法或记录…"
+              placeholder={isTripIntent ? '输入行程安排…' : '输入任务、日程、想法或记录…'}
               placeholderTextColor={colors.textTertiary}
               style={styles.input}
               value={text}

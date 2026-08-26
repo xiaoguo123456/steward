@@ -13,11 +13,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { ProjectKind } from './projectKind';
 
 export interface CaptureProjectDraft {
   title: string;
-  /** @nullable */
+  /**
+     * 普通项目的说明；行程候选中表示注意事项，确认创建时与目的地一起写入 Project.description。
+     * @nullable
+     */
   description?: string | null;
+  project_kind?: ProjectKind;
+  /**
+     * project_kind=trip 时的目的地；普通项目不使用。
+     * @maxLength 100
+     * @nullable
+     */
+  destination?: string | null;
   /** @nullable */
   start_date?: string | null;
   /** @nullable */
