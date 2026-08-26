@@ -136,7 +136,7 @@ function OutdoorWorkoutPrepare({
 
         <View style={styles.noticeWrap}>
           <WorkoutNotice icon="information-circle-outline" tone="neutral">
-            开始后只申请“使用 App 时”的定位权限；暂停或离开运动页就停止采集。
+            仅在记录运动时使用定位
           </WorkoutNotice>
         </View>
       </ScrollView>
