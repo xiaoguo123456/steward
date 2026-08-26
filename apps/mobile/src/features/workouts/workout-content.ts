@@ -20,7 +20,6 @@ import type {
 export type WorkoutModeDefinition = {
   id: WorkoutMode;
   label: string;
-  cue: string;
   defaultGoal: string;
   detail: string;
 };
@@ -39,28 +38,24 @@ export const workoutModes: WorkoutModeDefinition[] = [
   {
     id: 'running',
     label: '户外跑步',
-    cue: '记录路线与配速',
     defaultGoal: '自由跑',
     detail: 'GPS 路线 · 实时配速',
   },
   {
     id: 'walking',
     label: '健走',
-    cue: '轻松走，慢慢养成',
     defaultGoal: '自由走',
     detail: 'GPS 路线 · 平均配速',
   },
   {
     id: 'cycling',
     label: '骑行',
-    cue: '记录速度与海拔',
     defaultGoal: '自由骑',
     detail: '速度 · 里程 · 海拔',
   },
   {
     id: 'strength',
     label: '力量训练',
-    cue: '跟着动作完成每组',
     defaultGoal: '全身入门',
     detail: '6 个动作 · 约 25 分钟',
   },

@@ -91,7 +91,7 @@ export default function ExerciseHomeScreen() {
           {workoutModes.map((mode) => (
             <Pressable
               accessibilityHint="进入运动准备页"
-              accessibilityLabel={`${mode.label}，${mode.cue}`}
+              accessibilityLabel={mode.label}
               accessibilityRole="button"
               key={mode.id}
               onPress={() => openPrepare(mode.id)}
@@ -102,9 +102,6 @@ export default function ExerciseHomeScreen() {
               </View>
               <Text numberOfLines={1} style={styles.modeLabel}>
                 {mode.label}
-              </Text>
-              <Text numberOfLines={1} style={styles.modeCue}>
-                {mode.cue}
               </Text>
             </Pressable>
           ))}
@@ -203,9 +200,9 @@ const styles = StyleSheet.create({
   },
   modeCard: {
     width: '48.25%',
-    minHeight: 142,
+    minHeight: 124,
     paddingHorizontal: 14,
-    paddingVertical: 17,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.lg,
@@ -227,14 +224,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 23,
     fontWeight: '700',
-  },
-  modeCue: {
-    marginTop: 3,
-    color: workoutAccent.muted,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
   },
   recentSection: {
     marginTop: 30,
