@@ -26,6 +26,7 @@ import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { changedTaskListPositions, moveTaskList } from '@/features/plan/task-list-order';
 import { TaskListActionSheet } from '@/features/plan/task-list-sheets';
+import { TaskListIconChip } from '@/features/plan/task-list-icon';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 const EMPTY_LISTS: TaskList[] = [];
@@ -250,6 +251,7 @@ function ReorderRow({
       >
         <AppIcon color={colors.textSecondary} name="reorder-three-outline" size={22} />
       </View>
+      <TaskListIconChip list={list} size={34} />
       <Text numberOfLines={1} style={styles.rowName}>{list.name}</Text>
       {list.is_default ? <Text style={styles.defaultTag}>默认</Text> : null}
       <Text style={styles.rowCount}>{list.task_count ?? 0}</Text>
@@ -261,9 +263,7 @@ function ReorderRow({
 function ArchivedRow({ list, onMenu }: { list: TaskList; onMenu: () => void }) {
   return (
     <View style={styles.row}>
-      <View style={styles.archivedIcon}>
-        <AppIcon color={colors.textSecondary} name="archive-outline" size={19} />
-      </View>
+      <TaskListIconChip list={list} muted size={38} />
       <Text numberOfLines={1} style={styles.rowName}>{list.name}</Text>
       <Text style={styles.rowCount}>{list.task_count ?? 0}</Text>
       <MoreButton label={`编辑 ${list.name}`} onPress={onMenu} />
@@ -325,18 +325,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
   },
   dragHandle: {
-    width: 38,
+    width: 30,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  archivedIcon: {
-    width: 38,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface,
   },
   rowName: {
     flex: 1,

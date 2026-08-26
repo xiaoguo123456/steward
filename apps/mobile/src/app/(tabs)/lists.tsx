@@ -31,6 +31,7 @@ import {
   TaskListActionSheet,
   TaskListSectionMenu,
 } from '@/features/plan/task-list-sheets';
+import { TaskListIconChip } from '@/features/plan/task-list-icon';
 import { ProjectScopeBar } from '@/features/projects/project-scope-bar';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
@@ -231,9 +232,7 @@ export default function ListsScreen() {
                   onPress={() => setActiveView({ type: 'list', list })}
                   style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 >
-                  <View style={[styles.rowIcon, { backgroundColor: colors.primarySoft }]}>
-                    <AppIcon color={colors.primaryStrong} name="list-outline" size={19} />
-                  </View>
+                  <TaskListIconChip list={list} />
                   <Text style={styles.rowTitle}>{list.name}</Text>
                   <Text style={styles.rowCount}>{list.task_count ?? 0}</Text>
                   <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
@@ -256,7 +255,10 @@ export default function ListsScreen() {
       </ScrollView>
       <AiFab />
       {createListVisible ? (
-        <CreateTaskListSheet onClose={() => setCreateListVisible(false)} />
+        <CreateTaskListSheet
+          lists={activeTaskLists}
+          onClose={() => setCreateListVisible(false)}
+        />
       ) : null}
       {listMenuVisible ? (
         <TaskListSectionMenu

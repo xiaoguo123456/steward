@@ -7,11 +7,31 @@ import {
 } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ComponentProps } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Keyboard,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import {
+  nextTaskListColor,
+  resolveTaskListAppearance,
+  suggestTaskListIcon,
+  type TaskListColorToken,
+  type TaskListIconId,
+} from '@/features/plan/task-list-appearance';
+import {
+  TaskListAppearanceChip,
+  TaskListAppearancePicker,
+} from '@/features/plan/task-list-icon';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type TaskListChange = {
@@ -21,14 +41,24 @@ type TaskListChange = {
 
 /** 新建是计划页里的高频动作，因此使用单一目的的轻量面板。 */
 export function CreateTaskListSheet({
+  lists,
   onClose,
 }: {
+  lists: TaskList[];
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
+  const [icon, setIcon] = useState<TaskListIconId>('general');
+  const [color, setColor] = useState<TaskListColorToken>(() => nextTaskListColor(lists));
+  const [iconCustomized, setIconCustomized] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+
+  const changeName = (value: string) => {
+    setName(value);
+    if (!iconCustomized) setIcon(suggestTaskListIcon(value));
+  };
 
   const submit = async () => {
     const value = name.trim();
@@ -37,7 +67,7 @@ export function CreateTaskListSheet({
     setBusy(true);
     setFailure(null);
     try {
-      await createTaskList({ name: value, list_kind: 'tasks' });
+      await createTaskList({ name: value, list_kind: 'tasks', color, icon });
       await queryClient.invalidateQueries({ queryKey: ['/v1/task-lists'] });
       onClose();
     } catch (error) {
@@ -52,17 +82,17 @@ export function CreateTaskListSheet({
       <ModalSheet minHeight={0} onClose={onClose}>
         <View style={styles.sheet}>
           <SheetHeader onClose={onClose} title="新建清单" />
-          <TextInput
-            accessibilityLabel="清单名称"
-            autoFocus
-            maxLength={30}
-            onChangeText={setName}
-            onSubmitEditing={() => void submit()}
-            placeholder="清单名称"
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="done"
-            style={styles.input}
-            value={name}
+          <TaskListIdentityFields
+            color={color}
+            icon={icon}
+            name={name}
+            onColorChange={setColor}
+            onIconChange={(value) => {
+              setIcon(value);
+              setIconCustomized(true);
+            }}
+            onNameChange={changeName}
+            onSubmit={() => void submit()}
           />
           {failure ? <Text style={styles.failure}>{failure}</Text> : null}
           <AppButton
@@ -108,7 +138,7 @@ export function TaskListSectionMenu({
   );
 }
 
-/** 单个清单的改名、归档与删除跟随清单本身，不再混入分组管理。 */
+/** 单个清单的编辑、归档与删除跟随清单本身，不再混入分组管理。 */
 export function TaskListActionSheet({
   list,
   lists,
@@ -121,8 +151,11 @@ export function TaskListActionSheet({
   onChanged: (change: TaskListChange) => void;
 }) {
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<'menu' | 'rename' | 'delete'>('menu');
+  const initialAppearance = resolveTaskListAppearance(list);
+  const [mode, setMode] = useState<'menu' | 'edit' | 'delete'>('menu');
   const [name, setName] = useState(list.name);
+  const [icon, setIcon] = useState<TaskListIconId>(initialAppearance.icon);
+  const [color, setColor] = useState<TaskListColorToken>(initialAppearance.color);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -165,32 +198,37 @@ export function TaskListActionSheet({
 
   const activeCount = lists.filter((item) => !item.archived_at && item.id !== list.id).length;
   const archived = Boolean(list.archived_at);
+  const identityChanged = name.trim() !== list.name
+    || icon !== initialAppearance.icon
+    || color !== initialAppearance.color;
+  const saveIdentity = () => update(
+    { name: name.trim(), icon: list.is_default ? 'inbox' : icon, color },
+    '清单没能保存。',
+  );
 
   return (
     <Modal animationType="fade" onRequestClose={onClose} statusBarTranslucent transparent visible>
       <ModalSheet minHeight={0} onClose={onClose}>
         <View style={styles.menuSheet}>
-          {mode === 'rename' ? (
+          {mode === 'edit' ? (
             <>
-              <SheetHeader onClose={onClose} title="重命名清单" />
+              <SheetHeader onClose={onClose} title="编辑清单" />
               <View style={styles.formBody}>
-                <TextInput
-                  accessibilityLabel="清单新名称"
-                  autoFocus
-                  maxLength={30}
-                  onChangeText={setName}
-                  onSubmitEditing={() => void update({ name: name.trim() }, '改名没能保存。')}
-                  placeholder="清单名称"
-                  placeholderTextColor={colors.textSecondary}
-                  returnKeyType="done"
-                  style={styles.input}
-                  value={name}
+                <TaskListIdentityFields
+                  color={color}
+                  fixedIcon={list.is_default}
+                  icon={list.is_default ? 'inbox' : icon}
+                  name={name}
+                  onColorChange={setColor}
+                  onIconChange={setIcon}
+                  onNameChange={setName}
+                  onSubmit={() => void saveIdentity()}
                 />
                 {failure ? <Text style={styles.failure}>{failure}</Text> : null}
                 <AppButton
-                  disabled={!name.trim() || name.trim() === list.name || busy}
+                  disabled={!name.trim() || !identityChanged || busy}
                   label={busy ? '正在保存…' : '保存'}
-                  onPress={() => void update({ name: name.trim() }, '改名没能保存。')}
+                  onPress={() => void saveIdentity()}
                   style={styles.primaryAction}
                 />
               </View>
@@ -209,7 +247,7 @@ export function TaskListActionSheet({
           ) : (
             <>
               <SheetHeader onClose={onClose} title={list.name} />
-              <MenuRow icon="create-outline" label="重命名" onPress={() => setMode('rename')} />
+              <MenuRow icon="create-outline" label="编辑清单" onPress={() => setMode('edit')} />
               {list.is_default ? null : (
                 <MenuRow
                   disabled={busy}
@@ -235,6 +273,70 @@ export function TaskListActionSheet({
         </View>
       </ModalSheet>
     </Modal>
+  );
+}
+
+function TaskListIdentityFields({
+  name,
+  icon,
+  color,
+  fixedIcon = false,
+  onNameChange,
+  onIconChange,
+  onColorChange,
+  onSubmit,
+}: {
+  name: string;
+  icon: TaskListIconId;
+  color: TaskListColorToken;
+  fixedIcon?: boolean;
+  onNameChange: (name: string) => void;
+  onIconChange: (icon: TaskListIconId) => void;
+  onColorChange: (color: TaskListColorToken) => void;
+  onSubmit: () => void;
+}) {
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+
+  return (
+    <>
+      <View style={styles.identityRow}>
+        <Pressable
+          accessibilityLabel={fixedIcon ? '选择清单颜色' : '选择清单图标和颜色'}
+          accessibilityRole="button"
+          onPress={() => {
+            Keyboard.dismiss();
+            setAppearanceOpen((value) => !value);
+          }}
+          style={({ pressed }) => [styles.appearanceButton, pressed && styles.pressed]}
+        >
+          <TaskListAppearanceChip color={color} icon={icon} size={50} />
+          <View style={styles.appearanceEditBadge}>
+            <AppIcon color={colors.textSecondary} name="pencil" size={10} />
+          </View>
+        </Pressable>
+        <TextInput
+          accessibilityLabel="清单名称"
+          autoFocus
+          maxLength={30}
+          onChangeText={onNameChange}
+          onSubmitEditing={onSubmit}
+          placeholder="清单名称"
+          placeholderTextColor={colors.textSecondary}
+          returnKeyType="done"
+          style={[styles.input, styles.nameInput]}
+          value={name}
+        />
+      </View>
+      {appearanceOpen ? (
+        <TaskListAppearancePicker
+          color={color}
+          fixedIcon={fixedIcon}
+          icon={icon}
+          onColorChange={onColorChange}
+          onIconChange={onIconChange}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -375,6 +477,31 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily,
     ...typography.input,
+  },
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  appearanceButton: {
+    width: 52,
+    height: 52,
+  },
+  appearanceEditBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 19,
+    height: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.background,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+  },
+  nameInput: {
+    flex: 1,
   },
   primaryAction: {
     marginTop: 14,
