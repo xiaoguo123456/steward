@@ -7,12 +7,12 @@
 当前定义三条链路：
 
 ```text
-schemas/capture/capture-parse-result.v2.schema.json
+schemas/capture/capture-parse-result.v3.schema.json
 schemas/recipes/seasonal-ingredient-tags.v1.schema.json
 schemas/review/review-narrative-result.v2.schema.json
 ```
 
-前者描述 `apps/backend/internal/platform/ai` 中 `CaptureParseResult` 的完整契约；v2 增加行程项目的 `project_kind`、目的地和结束日期字段。v1 作为历史版本保留。
+前者描述 `apps/backend/internal/platform/ai` 中 `CaptureParseResult` 的完整契约；v3 增加交通、住宿、活动的结束时间、预订字段和素材来源。旧版本作为历史契约保留。
 当前的 `fake` Provider 是进程内的确定性实现，输出结构由 Go 类型保证，因此还没有接入运行时 Schema 校验。
 
 时令契约供 `tools/recipe-import/generate_seasonal_tags.py` 离线生成时令食材库。

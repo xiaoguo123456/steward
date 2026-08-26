@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
@@ -53,6 +54,11 @@ func (s *Service) CreateTaskInTx(ctx context.Context, q *dbgen.Queries, userID s
 	}
 	if cmd.DueDate != nil && cmd.DueAt != nil {
 		return dbgen.Task{}, apperr.Validation(apperr.Field("due_at", "截止日期与截止时刻不能同时设置。"))
+	}
+	if cmd.ProjectID != nil {
+		if err := s.assertProjectExists(ctx, q, *cmd.ProjectID); err != nil {
+			return dbgen.Task{}, err
+		}
 	}
 
 	listID := cmd.ListID
@@ -123,20 +129,21 @@ func (s *Service) CreateTaskInTx(ctx context.Context, q *dbgen.Queries, userID s
 
 // CreateEventCommand 是事务内创建 Event 的输入。
 type CreateEventCommand struct {
-	Title      string
-	EventKind  string
-	AllDay     bool
-	StartAt    *time.Time
-	EndAt      *time.Time
-	StartDate  *time.Time
-	EndDate    *time.Time
-	Timezone   string
-	Location   *string
-	Note       *string
-	Recurrence string
-	ProjectID  *string
-	CreatedBy  string
-	Provenance []ProvenanceInput
+	Title            string
+	EventKind        string
+	AllDay           bool
+	StartAt          *time.Time
+	EndAt            *time.Time
+	StartDate        *time.Time
+	EndDate          *time.Time
+	Timezone         string
+	Location         *string
+	Note             *string
+	Recurrence       string
+	ProjectID        *string
+	ItineraryDetails *httpapi.ItineraryEventDetails
+	CreatedBy        string
+	Provenance       []ProvenanceInput
 }
 
 // CreateEventInTx 在调用方事务内创建 Event。
@@ -160,9 +167,24 @@ func (s *Service) CreateEventInTx(ctx context.Context, q *dbgen.Queries, userID 
 	if recurrence == "yearly" && kind != "important_date" {
 		return dbgen.Event{}, apperr.New(apperr.CodeEventRecurrenceDenied)
 	}
+	if cmd.ProjectID != nil {
+		if err := s.assertProjectExists(ctx, q, *cmd.ProjectID); err != nil {
+			return dbgen.Event{}, err
+		}
+	}
 	tz := cmd.Timezone
 	if tz == "" {
 		tz = timeutil.DefaultTimezone
+	}
+	itineraryJSON, err := s.normalizeItineraryDetails(ctx, q, userID, cmd.ItineraryDetails, itineraryState{
+		ProjectID: cmd.ProjectID,
+		AllDay:    cmd.AllDay,
+		StartAt:   cmd.StartAt,
+		EndAt:     cmd.EndAt,
+		Location:  cmd.Location,
+	})
+	if err != nil {
+		return dbgen.Event{}, err
 	}
 
 	var originalMonthDay *string
@@ -191,6 +213,7 @@ func (s *Service) CreateEventInTx(ctx context.Context, q *dbgen.Queries, userID 
 		EndDate:          cmd.EndDate,
 		Timezone:         tz,
 		Location:         cmd.Location,
+		ItineraryDetails: itineraryJSON,
 		Participants:     emptyJSONArray,
 		ProjectID:        cmd.ProjectID,
 		Note:             cmd.Note,
@@ -221,6 +244,11 @@ func (s *Service) CreateNoteInTx(ctx context.Context, q *dbgen.Queries, userID s
 	content := strings.TrimSpace(cmd.Content)
 	if content == "" {
 		return dbgen.Note{}, apperr.Validation(apperr.Field("content", "笔记内容不能为空。"))
+	}
+	if cmd.ProjectID != nil {
+		if err := s.assertProjectExists(ctx, q, *cmd.ProjectID); err != nil {
+			return dbgen.Note{}, err
+		}
 	}
 	provJSON, err := marshalJSON(cmd.Provenance)
 	if err != nil {

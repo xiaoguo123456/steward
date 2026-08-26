@@ -21,6 +21,7 @@ export default function CaptureProcessingScreen() {
     operationId?: string;
     draft?: string;
     intent?: string;
+    projectId?: string;
   }>();
 
   const operationId = params.operationId ?? '';
@@ -45,10 +46,10 @@ export default function CaptureProcessingScreen() {
     if (status === 'succeeded' && captureId) {
       router.replace({
         pathname: '/capture/confirm',
-        params: { captureId, intent: params.intent },
+        params: { captureId, intent: params.intent, projectId: params.projectId },
       });
     }
-  }, [status, captureId, params.intent, router]);
+  }, [status, captureId, params.intent, params.projectId, router]);
 
   const failed = status === 'failed' || operation.isError;
 
@@ -71,7 +72,7 @@ export default function CaptureProcessingScreen() {
                 operation.data?.data.error ?? operation.error,
                 '你仍然可以返回修改输入，或直接手动填写。',
               )
-            : '整理完成后会展示可编辑的结果，确认后才会保存。'}
+            : '整理完成后先让你确认，再保存。'}
         </Text>
 
         {params.draft ? (
@@ -88,7 +89,7 @@ export default function CaptureProcessingScreen() {
               accessibilityRole="button"
               onPress={() => router.replace({
                 pathname: '/capture/new',
-                params: { intent: params.intent },
+                params: { intent: params.intent, projectId: params.projectId },
               })}
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
             >
@@ -98,7 +99,9 @@ export default function CaptureProcessingScreen() {
               accessibilityRole="button"
               onPress={() => params.intent === 'trip'
                 ? router.replace('/trips/new')
-                : router.replace('/today')}
+                : params.intent === 'trip_item' && params.projectId
+                  ? router.replace({ pathname: '/trips/[id]', params: { id: params.projectId } })
+                  : router.replace('/today')}
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
             >
               <Text style={styles.secondaryButtonText}>稍后再说</Text>

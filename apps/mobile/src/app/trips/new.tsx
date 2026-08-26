@@ -23,7 +23,8 @@ import { NavHeader } from '@/components/ui/nav-header';
 import {
   addCalendarDays,
   buildTripRequest,
-  formatTripDate,
+  formatTripDateWithWeekday,
+  tripDurationDays,
   toLocalIsoDate,
   validateTripDraft,
   type TripDraft,
@@ -127,6 +128,7 @@ export default function NewTripScreen() {
   };
 
   const activeDateValue = activeDateField ? draft[activeDateField] : draft.startDate;
+  const durationDays = tripDurationDays(draft.startDate, draft.endDate);
   const changeActiveDate = (value: string) => {
     if (!activeDateField) return;
     updateDraft(activeDateField, value);
@@ -193,25 +195,30 @@ export default function NewTripScreen() {
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>日期</Text>
             <View style={styles.dateFields}>
-              <Pressable
-                accessibilityLabel={`开始日期，${formatTripDate(draft.startDate)}`}
-                accessibilityRole="button"
-                onPress={() => setActiveDateField('startDate')}
-                style={({ pressed }) => [styles.dateField, pressed && styles.pressed]}
-              >
-                <Text style={styles.dateFieldLabel}>开始</Text>
-                <Text style={styles.dateFieldValue}>{formatTripDate(draft.startDate)}</Text>
-              </Pressable>
-              <AppIcon color={colors.textTertiary} name="arrow-forward" size={18} />
-              <Pressable
-                accessibilityLabel={`结束日期，${formatTripDate(draft.endDate)}`}
-                accessibilityRole="button"
-                onPress={() => setActiveDateField('endDate')}
-                style={({ pressed }) => [styles.dateField, pressed && styles.pressed]}
-              >
-                <Text style={styles.dateFieldLabel}>结束</Text>
-                <Text style={styles.dateFieldValue}>{formatTripDate(draft.endDate)}</Text>
-              </Pressable>
+              <View style={styles.dateFieldRow}>
+                <Pressable
+                  accessibilityLabel={`开始日期，${formatTripDateWithWeekday(draft.startDate)}`}
+                  accessibilityRole="button"
+                  onPress={() => setActiveDateField('startDate')}
+                  style={({ pressed }) => [styles.dateField, pressed && styles.pressed]}
+                >
+                  <Text style={styles.dateFieldLabel}>开始</Text>
+                  <Text style={styles.dateFieldValue}>{formatTripDateWithWeekday(draft.startDate)}</Text>
+                </Pressable>
+                <View style={styles.dateDivider} />
+                <Pressable
+                  accessibilityLabel={`结束日期，${formatTripDateWithWeekday(draft.endDate)}`}
+                  accessibilityRole="button"
+                  onPress={() => setActiveDateField('endDate')}
+                  style={({ pressed }) => [styles.dateField, pressed && styles.pressed]}
+                >
+                  <Text style={styles.dateFieldLabel}>结束</Text>
+                  <Text style={styles.dateFieldValue}>{formatTripDateWithWeekday(draft.endDate)}</Text>
+                </Pressable>
+              </View>
+              {durationDays > 0 ? (
+                <Text style={styles.dateDuration}>共 {durationDays} 天</Text>
+              ) : null}
             </View>
             {draft.endDate < draft.startDate ? (
               <Text accessibilityRole="alert" style={styles.fieldError}>
@@ -306,18 +313,25 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   dateFields: {
+    overflow: 'hidden',
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  dateFieldRow: {
+    minHeight: 72,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'stretch',
   },
   dateField: {
     minWidth: 0,
-    minHeight: 66,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     flex: 1,
     justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceSubtle,
+  },
+  dateDivider: {
+    width: StyleSheet.hairlineWidth,
+    marginVertical: 14,
+    backgroundColor: colors.borderStrong,
   },
   dateFieldLabel: {
     color: colors.textSecondary,
@@ -328,10 +342,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: colors.text,
     fontFamily,
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 20,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
+  },
+  dateDuration: {
+    paddingVertical: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.meta,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   fieldError: {
     color: colors.danger,

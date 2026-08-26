@@ -176,6 +176,8 @@ CaptureEventDraft:
     location:
       type: string
       nullable: true
+    itinerary_details:
+      $ref: './objects.yaml#/ItineraryEventDetails'
     participants:
       type: array
       items:

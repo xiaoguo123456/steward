@@ -14,18 +14,14 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type UpdateEventRequestClearItem = typeof UpdateEventRequestClearItem[keyof typeof UpdateEventRequestClearItem];
+/**
+ * 行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。
+ */
+export type ItineraryItemKind = typeof ItineraryItemKind[keyof typeof ItineraryItemKind];
 
 
-export const UpdateEventRequestClearItem = {
-  start_at: 'start_at',
-  end_at: 'end_at',
-  start_date: 'start_date',
-  end_date: 'end_date',
-  location: 'location',
-  itinerary_details: 'itinerary_details',
-  participants: 'participants',
-  project_id: 'project_id',
-  note: 'note',
-  reminders: 'reminders',
+export const ItineraryItemKind = {
+  transport: 'transport',
+  lodging: 'lodging',
+  activity: 'activity',
 } as const;

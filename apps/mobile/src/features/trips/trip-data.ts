@@ -9,6 +9,8 @@ export type TripAgendaItem = {
   time: string;
   title: string;
   meta: string;
+  endTime?: string;
+  route?: string;
   icon: IconName;
   color: string;
   soft: string;
@@ -27,6 +29,15 @@ export type TripBooking = {
   title: string;
   meta: string;
   status: string;
+  kind: 'transport' | 'lodging';
+  startAt?: string | null;
+  endAt?: string | null;
+  location?: string;
+  origin?: string;
+  destination?: string;
+  serviceNumber?: string;
+  seat?: string;
+  attachmentMediaIds: string[];
   icon: IconName;
   color: string;
   soft: string;

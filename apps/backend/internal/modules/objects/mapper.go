@@ -54,6 +54,7 @@ func MapEvent(row dbgen.Event) httpapi.Event {
 		EndDate:           dateOrNil(row.EndDate),
 		Timezone:          row.Timezone,
 		Location:          row.Location,
+		ItineraryDetails:  unmarshalItineraryDetails(row.ItineraryDetails),
 		Participants:      unmarshalStrings(row.Participants),
 		ProjectId:         row.ProjectID,
 		Note:              row.Note,

@@ -42,6 +42,38 @@ func New(db *database.DB, store storage.ObjectStore) *Service {
 // StoreName 返回当前存储适配器名称，供健康检查展示。
 func (s *Service) StoreName() string { return s.store.Name() }
 
+// ValidateImageReferences 校验业务对象准备长期引用的票据图片。
+// 这里只接受当前用户已完成上传的图片，避免把临时授权或他人媒体 ID 写入 Event。
+func (s *Service) ValidateImageReferences(
+	ctx context.Context,
+	q *dbgen.Queries,
+	userID string,
+	mediaIDs []string,
+) error {
+	for index, mediaID := range mediaIDs {
+		row, err := q.GetMediaAsset(ctx, mediaID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return apperr.Validation(apperr.Field(
+					fmt.Sprintf("itinerary_details.attachment_media_ids[%d]", index),
+					"票据图片不存在或无权访问。",
+				))
+			}
+			return apperr.Internal(err)
+		}
+		if row.UserID != userID || row.DeletedAt != nil {
+			return apperr.New(apperr.CodePermissionDenied)
+		}
+		if row.Status != "uploaded" || row.Kind != "image" {
+			return apperr.Validation(apperr.Field(
+				fmt.Sprintf("itinerary_details.attachment_media_ids[%d]", index),
+				"票据图片尚未上传完成或格式不受支持。",
+			))
+		}
+	}
+	return nil
+}
+
 // Grant 是一次直传授权的结果。
 type Grant struct {
 	MediaID  string

@@ -122,11 +122,11 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	activitySvc := activity.New(db)
 	listsSvc := lists.New(db)
 	usersSvc := users.New(db, listsSvc)
-	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc)
+	mediaSvc := media.New(db, store)
+	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc, mediaSvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
 	recipesSvc := recipes.New(db, usersSvc, listsSvc, objectsSvc)
-	mediaSvc := media.New(db, store)
 
 	// Capture 需要队列才能入队，而队列的 Worker 又需要 Capture 服务。
 	// 用一个延迟绑定的入队器打破这个循环，绑定发生在任何请求到达之前。

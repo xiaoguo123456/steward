@@ -18,6 +18,7 @@ import type { EventKind } from './eventKind';
 import type { EventRecurrence } from './eventRecurrence';
 import type { EventType } from './eventType';
 import type { ImportantDateKind } from './importantDateKind';
+import type { ItineraryEventDetails } from './itineraryEventDetails';
 import type { ProvenanceRef } from './provenanceRef';
 import type { Reminder } from './reminder';
 
@@ -47,6 +48,7 @@ export interface Event {
   timezone: string;
   /** @nullable */
   location?: string | null;
+  itinerary_details?: ItineraryEventDetails;
   participants?: string[];
   /** @nullable */
   project_id?: string | null;

@@ -58,3 +58,22 @@ export function formatTripDate(value: string): string {
   const [year, month, day] = value.split('-');
   return `${year}年${Number(month)}月${Number(day)}日`;
 }
+
+const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+export function formatTripDateWithWeekday(value: string): string {
+  const date = parseLocalDate(value);
+  return `${formatTripDate(value)} ${weekdayNames[date.getDay()]}`;
+}
+
+export function tripDurationDays(startDate: string, endDate: string): number {
+  if (!startDate || !endDate || endDate < startDate) return 0;
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
+export function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}

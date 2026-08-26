@@ -15,7 +15,8 @@ import (
 
 // buildPayload 把 Provider 的中立候选转换成契约的判别联合快照，
 // 并返回仍然缺失的必填字段。
-func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location) ([]byte, []string, error) {
+func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
+	sourceMedia map[string]string) ([]byte, []string, error) {
 	var payload httpapi.CaptureDraftPayload
 	missing := append([]string(nil), c.Missing...)
 
@@ -43,6 +44,9 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location)
 		if listID != "" {
 			draft.ListId = &listID
 		}
+		if c.ProjectRef != "" {
+			draft.ProjectRef = &c.ProjectRef
+		}
 		payload.Task = &draft
 
 	case "event":
@@ -55,11 +59,66 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location)
 			draft.EventKind = &k
 		}
 		draft.StartAt = c.StartAt
+		draft.EndAt = c.EndAt
 		if c.StartDate != nil {
 			draft.StartDate = &openapi_types.Date{Time: *c.StartDate}
 		}
+		if c.EndDate != nil {
+			draft.EndDate = &openapi_types.Date{Time: *c.EndDate}
+		}
 		if c.Location != "" {
 			draft.Location = &c.Location
+		}
+		if c.ProjectRef != "" {
+			draft.ProjectRef = &c.ProjectRef
+		}
+		if c.ItineraryDetails != nil {
+			details := httpapi.ItineraryEventDetails{
+				Kind:               httpapi.ItineraryItemKind(c.ItineraryDetails.Kind),
+				BookingStatus:      httpapi.BookingStatus(c.ItineraryDetails.BookingStatus),
+				AttachmentMediaIds: itineraryMediaIDs(c.Sources, sourceMedia),
+			}
+			if c.ItineraryDetails.TransportMode != "" {
+				mode := httpapi.TransportMode(c.ItineraryDetails.TransportMode)
+				details.TransportMode = &mode
+			}
+			details.Origin = optionalText(c.ItineraryDetails.Origin)
+			details.Destination = optionalText(c.ItineraryDetails.Destination)
+			details.ServiceNumber = optionalText(c.ItineraryDetails.ServiceNumber)
+			details.Seat = optionalText(c.ItineraryDetails.Seat)
+			draft.ItineraryDetails = &details
+
+			if c.ProjectRef == "" {
+				missing = appendMissing(missing, "project_ref")
+			}
+			if !details.Kind.Valid() {
+				missing = appendMissing(missing, "itinerary_details.kind")
+			}
+			if !details.BookingStatus.Valid() {
+				missing = appendMissing(missing, "itinerary_details.booking_status")
+			}
+			if details.Kind == httpapi.ItineraryItemKindTransport {
+				if details.TransportMode == nil || !details.TransportMode.Valid() {
+					missing = appendMissing(missing, "itinerary_details.transport_mode")
+				}
+				if details.Origin == nil {
+					missing = appendMissing(missing, "itinerary_details.origin")
+				}
+				if details.Destination == nil {
+					missing = appendMissing(missing, "itinerary_details.destination")
+				}
+				if draft.EndAt == nil {
+					missing = appendMissing(missing, "end_at")
+				}
+			}
+			if details.Kind == httpapi.ItineraryItemKindLodging {
+				if draft.Location == nil {
+					missing = appendMissing(missing, "location")
+				}
+				if draft.EndAt == nil {
+					missing = appendMissing(missing, "end_at")
+				}
+			}
 		}
 		// 全天与定时两组字段互斥，缺少开始信息时必须由用户补全。
 		if c.AllDay && draft.StartDate == nil {
@@ -86,6 +145,9 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location)
 		if len(c.Tags) > 0 {
 			tags := c.Tags
 			draft.Tags = &tags
+		}
+		if c.ProjectRef != "" {
+			draft.ProjectRef = &c.ProjectRef
 		}
 		payload.Note = &draft
 
@@ -169,6 +231,31 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location)
 		return nil, nil, apperr.Internal(err)
 	}
 	return raw, missing, nil
+}
+
+func optionalText(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func itineraryMediaIDs(sources []ai.SourceSpan, sourceMedia map[string]string) []string {
+	out := make([]string, 0, len(sources))
+	seen := make(map[string]struct{}, len(sources))
+	for _, source := range sources {
+		mediaID := sourceMedia[source.PartID]
+		if mediaID == "" {
+			continue
+		}
+		if _, duplicate := seen[mediaID]; duplicate {
+			continue
+		}
+		seen[mediaID] = struct{}{}
+		out = append(out, mediaID)
+	}
+	return out
 }
 
 func appendMissing(fields []string, field string) []string {

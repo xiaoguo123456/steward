@@ -82,13 +82,26 @@ type TrackerFieldRef struct {
 
 // CaptureParseRequest 是一次 Capture 结构化解析的中立输入。
 type CaptureParseRequest struct {
-	RunID           string
-	Parts           []InputPart
-	InstructionNote string
-	Timezone        string
-	Now             time.Time
-	Lists           []ListRef
-	Trackers        []TrackerRef
+	RunID              string
+	Parts              []InputPart
+	InstructionNote    string
+	SuggestedProjectID string
+	Timezone           string
+	Now                time.Time
+	Lists              []ListRef
+	Trackers           []TrackerRef
+}
+
+// ItineraryDetailsDraft 是 Provider 中立的行程安排信息。
+// 票据媒体引用由后端根据来源素材补入，模型不能自行生成媒体 ID。
+type ItineraryDetailsDraft struct {
+	Kind          string
+	TransportMode string
+	Origin        string
+	Destination   string
+	ServiceNumber string
+	Seat          string
+	BookingStatus string
 }
 
 // SourceSpan 指向输入中的一段来源，用于字段级追溯。
@@ -111,31 +124,35 @@ type Confidence struct {
 // Provider 只产出候选：任何正式写入都必须经过用户确认，
 // 并由 Go Domain 重新校验后执行。
 type CandidateDraft struct {
-	Type         string
-	Action       string
-	Title        string
-	Content      string
-	Description  string
-	ProjectKind  string
-	Destination  string
-	Priority     string
-	DueDate      *time.Time
-	DueAt        *time.Time
-	AllDay       bool
-	StartAt      *time.Time
-	StartDate    *time.Time
-	TargetDate   *time.Time
-	EventKind    string
-	Location     string
-	Tags         []string
-	ListID       string
-	TrackerID    string
-	RecordValues []RecordValueDraft
-	Timestamp    *time.Time
-	Confidences  []Confidence
-	Sources      []SourceSpan
-	Missing      []string
-	Warnings     []string
+	Type             string
+	Action           string
+	Title            string
+	Content          string
+	Description      string
+	ProjectKind      string
+	Destination      string
+	Priority         string
+	DueDate          *time.Time
+	DueAt            *time.Time
+	AllDay           bool
+	StartAt          *time.Time
+	EndAt            *time.Time
+	StartDate        *time.Time
+	EndDate          *time.Time
+	TargetDate       *time.Time
+	EventKind        string
+	Location         string
+	ProjectRef       string
+	ItineraryDetails *ItineraryDetailsDraft
+	Tags             []string
+	ListID           string
+	TrackerID        string
+	RecordValues     []RecordValueDraft
+	Timestamp        *time.Time
+	Confidences      []Confidence
+	Sources          []SourceSpan
+	Missing          []string
+	Warnings         []string
 }
 
 // RecordValueDraft 是 Record 候选的一个字段取值。

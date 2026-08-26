@@ -63,6 +63,16 @@ export const GetCaptureParams = zod.object({
 })
 
 export const getCaptureResponseDataPartsItemErrorReloadTargetDefault = false;
+export const getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsOriginMax = 200;
+
+export const getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsDestinationMax = 200;
+
+export const getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsServiceNumberMax = 50;
+
+export const getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsSeatMax = 100;
+
+export const getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsAttachmentMediaIdsMax = 9;
+
 export const getCaptureResponseDataCandidatesItemPayloadProjectDestinationMax = 100;
 
 export const getCaptureResponseDataCandidatesItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
@@ -128,6 +138,16 @@ export const GetCaptureResponse = zod.object({
   "end_date": zod.string().date().nullish(),
   "timezone": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "itinerary_details": zod.object({
+  "kind": zod.enum(['transport', 'lodging', 'activity']).describe('行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。'),
+  "transport_mode": zod.enum(['flight', 'train', 'coach', 'ship', 'self_drive', 'other']).optional().describe('交通安排的方式；仅 itinerary_details.kind=transport 时使用。'),
+  "origin": zod.string().max(getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsOriginMax).nullish(),
+  "destination": zod.string().max(getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsDestinationMax).nullish(),
+  "service_number": zod.string().max(getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsServiceNumberMax).nullish().describe('航班号、车次、船次等承运班次。'),
+  "seat": zod.string().max(getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsSeatMax).nullish().describe('座位、车厢或舱位；列表页不展示票号等敏感信息。'),
+  "booking_status": zod.enum(['planned', 'confirmed', 'ticketed']).describe('行程安排的预订状态；不根据是否存在日程自行推断。'),
+  "attachment_media_ids": zod.array(zod.string()).max(getCaptureResponseDataCandidatesItemPayloadEventItineraryDetailsAttachmentMediaIdsMax).describe('经用户确认保留的票据图片媒体 ID；读取时再换取短期地址。')
+}).optional(),
   "participants": zod.array(zod.string()).optional(),
   "note": zod.string().nullish(),
   "recurrence": zod.enum(['none', 'yearly']).optional().describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。'),
@@ -298,6 +318,16 @@ export const ConfirmCaptureHeader = zod.object({
   "Idempotency-Key": zod.string().min(confirmCaptureHeaderIdempotencyKeyMin).max(confirmCaptureHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
 })
 
+export const confirmCaptureBodyItemsItemPayloadEventItineraryDetailsOriginMax = 200;
+
+export const confirmCaptureBodyItemsItemPayloadEventItineraryDetailsDestinationMax = 200;
+
+export const confirmCaptureBodyItemsItemPayloadEventItineraryDetailsServiceNumberMax = 50;
+
+export const confirmCaptureBodyItemsItemPayloadEventItineraryDetailsSeatMax = 100;
+
+export const confirmCaptureBodyItemsItemPayloadEventItineraryDetailsAttachmentMediaIdsMax = 9;
+
 export const confirmCaptureBodyItemsItemPayloadProjectDestinationMax = 100;
 
 export const confirmCaptureBodyItemsItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
@@ -334,6 +364,16 @@ export const ConfirmCaptureBody = zod.object({
   "end_date": zod.string().date().nullish(),
   "timezone": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "itinerary_details": zod.object({
+  "kind": zod.enum(['transport', 'lodging', 'activity']).describe('行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。'),
+  "transport_mode": zod.enum(['flight', 'train', 'coach', 'ship', 'self_drive', 'other']).optional().describe('交通安排的方式；仅 itinerary_details.kind=transport 时使用。'),
+  "origin": zod.string().max(confirmCaptureBodyItemsItemPayloadEventItineraryDetailsOriginMax).nullish(),
+  "destination": zod.string().max(confirmCaptureBodyItemsItemPayloadEventItineraryDetailsDestinationMax).nullish(),
+  "service_number": zod.string().max(confirmCaptureBodyItemsItemPayloadEventItineraryDetailsServiceNumberMax).nullish().describe('航班号、车次、船次等承运班次。'),
+  "seat": zod.string().max(confirmCaptureBodyItemsItemPayloadEventItineraryDetailsSeatMax).nullish().describe('座位、车厢或舱位；列表页不展示票号等敏感信息。'),
+  "booking_status": zod.enum(['planned', 'confirmed', 'ticketed']).describe('行程安排的预订状态；不根据是否存在日程自行推断。'),
+  "attachment_media_ids": zod.array(zod.string()).max(confirmCaptureBodyItemsItemPayloadEventItineraryDetailsAttachmentMediaIdsMax).describe('经用户确认保留的票据图片媒体 ID；读取时再换取短期地址。')
+}).optional(),
   "participants": zod.array(zod.string()).optional(),
   "note": zod.string().nullish(),
   "recurrence": zod.enum(['none', 'yearly']).optional().describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。'),
@@ -380,6 +420,16 @@ export const ConfirmCaptureBody = zod.object({
 })
 
 export const confirmCaptureResponseDataCapturePartsItemErrorReloadTargetDefault = false;
+export const confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsOriginMax = 200;
+
+export const confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsDestinationMax = 200;
+
+export const confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsServiceNumberMax = 50;
+
+export const confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsSeatMax = 100;
+
+export const confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsAttachmentMediaIdsMax = 9;
+
 export const confirmCaptureResponseDataCaptureCandidatesItemPayloadProjectDestinationMax = 100;
 
 export const confirmCaptureResponseDataCaptureCandidatesItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
@@ -446,6 +496,16 @@ export const ConfirmCaptureResponse = zod.object({
   "end_date": zod.string().date().nullish(),
   "timezone": zod.string().nullish(),
   "location": zod.string().nullish(),
+  "itinerary_details": zod.object({
+  "kind": zod.enum(['transport', 'lodging', 'activity']).describe('行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。'),
+  "transport_mode": zod.enum(['flight', 'train', 'coach', 'ship', 'self_drive', 'other']).optional().describe('交通安排的方式；仅 itinerary_details.kind=transport 时使用。'),
+  "origin": zod.string().max(confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsOriginMax).nullish(),
+  "destination": zod.string().max(confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsDestinationMax).nullish(),
+  "service_number": zod.string().max(confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsServiceNumberMax).nullish().describe('航班号、车次、船次等承运班次。'),
+  "seat": zod.string().max(confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsSeatMax).nullish().describe('座位、车厢或舱位；列表页不展示票号等敏感信息。'),
+  "booking_status": zod.enum(['planned', 'confirmed', 'ticketed']).describe('行程安排的预订状态；不根据是否存在日程自行推断。'),
+  "attachment_media_ids": zod.array(zod.string()).max(confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItineraryDetailsAttachmentMediaIdsMax).describe('经用户确认保留的票据图片媒体 ID；读取时再换取短期地址。')
+}).optional(),
   "participants": zod.array(zod.string()).optional(),
   "note": zod.string().nullish(),
   "recurrence": zod.enum(['none', 'yearly']).optional().describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。'),

@@ -14,18 +14,14 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type UpdateEventRequestClearItem = typeof UpdateEventRequestClearItem[keyof typeof UpdateEventRequestClearItem];
+/**
+ * 行程安排的预订状态；不根据是否存在日程自行推断。
+ */
+export type BookingStatus = typeof BookingStatus[keyof typeof BookingStatus];
 
 
-export const UpdateEventRequestClearItem = {
-  start_at: 'start_at',
-  end_at: 'end_at',
-  start_date: 'start_date',
-  end_date: 'end_date',
-  location: 'location',
-  itinerary_details: 'itinerary_details',
-  participants: 'participants',
-  project_id: 'project_id',
-  note: 'note',
-  reminders: 'reminders',
+export const BookingStatus = {
+  planned: 'planned',
+  confirmed: 'confirmed',
+  ticketed: 'ticketed',
 } as const;

@@ -25,6 +25,16 @@ import * as zod from 'zod';
 export const getTodayResponseDataTasksItemTaskQuantityTextMax = 40;
 
 export const getTodayResponseDataTasksItemTaskProvenanceRefsItemSourceDeletedDefault = false;
+export const getTodayResponseDataEventsItemItineraryDetailsOriginMax = 200;
+
+export const getTodayResponseDataEventsItemItineraryDetailsDestinationMax = 200;
+
+export const getTodayResponseDataEventsItemItineraryDetailsServiceNumberMax = 50;
+
+export const getTodayResponseDataEventsItemItineraryDetailsSeatMax = 100;
+
+export const getTodayResponseDataEventsItemItineraryDetailsAttachmentMediaIdsMax = 9;
+
 export const getTodayResponseDataEventsItemProvenanceRefsItemSourceDeletedDefault = false;
 
 export const GetTodayResponse = zod.object({
@@ -89,6 +99,16 @@ export const GetTodayResponse = zod.object({
   "end_date": zod.string().date().nullish().describe('包含该日；单日事件可为空。'),
   "timezone": zod.string(),
   "location": zod.string().nullish(),
+  "itinerary_details": zod.object({
+  "kind": zod.enum(['transport', 'lodging', 'activity']).describe('行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。'),
+  "transport_mode": zod.enum(['flight', 'train', 'coach', 'ship', 'self_drive', 'other']).optional().describe('交通安排的方式；仅 itinerary_details.kind=transport 时使用。'),
+  "origin": zod.string().max(getTodayResponseDataEventsItemItineraryDetailsOriginMax).nullish(),
+  "destination": zod.string().max(getTodayResponseDataEventsItemItineraryDetailsDestinationMax).nullish(),
+  "service_number": zod.string().max(getTodayResponseDataEventsItemItineraryDetailsServiceNumberMax).nullish().describe('航班号、车次、船次等承运班次。'),
+  "seat": zod.string().max(getTodayResponseDataEventsItemItineraryDetailsSeatMax).nullish().describe('座位、车厢或舱位；列表页不展示票号等敏感信息。'),
+  "booking_status": zod.enum(['planned', 'confirmed', 'ticketed']).describe('行程安排的预订状态；不根据是否存在日程自行推断。'),
+  "attachment_media_ids": zod.array(zod.string()).max(getTodayResponseDataEventsItemItineraryDetailsAttachmentMediaIdsMax).describe('经用户确认保留的票据图片媒体 ID；读取时再换取短期地址。')
+}).optional(),
   "participants": zod.array(zod.string()).optional(),
   "project_id": zod.string().nullish(),
   "note": zod.string().nullish(),
@@ -138,6 +158,16 @@ export const GetCalendarQueryParams = zod.object({
   "project_id": zod.string().optional()
 })
 
+export const getCalendarResponseDataDaysItemEventsItemItineraryDetailsOriginMax = 200;
+
+export const getCalendarResponseDataDaysItemEventsItemItineraryDetailsDestinationMax = 200;
+
+export const getCalendarResponseDataDaysItemEventsItemItineraryDetailsServiceNumberMax = 50;
+
+export const getCalendarResponseDataDaysItemEventsItemItineraryDetailsSeatMax = 100;
+
+export const getCalendarResponseDataDaysItemEventsItemItineraryDetailsAttachmentMediaIdsMax = 9;
+
 export const getCalendarResponseDataDaysItemEventsItemProvenanceRefsItemSourceDeletedDefault = false;
 export const getCalendarResponseDataDaysItemTasksItemQuantityTextMax = 40;
 
@@ -162,6 +192,16 @@ export const GetCalendarResponse = zod.object({
   "end_date": zod.string().date().nullish().describe('包含该日；单日事件可为空。'),
   "timezone": zod.string(),
   "location": zod.string().nullish(),
+  "itinerary_details": zod.object({
+  "kind": zod.enum(['transport', 'lodging', 'activity']).describe('行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。'),
+  "transport_mode": zod.enum(['flight', 'train', 'coach', 'ship', 'self_drive', 'other']).optional().describe('交通安排的方式；仅 itinerary_details.kind=transport 时使用。'),
+  "origin": zod.string().max(getCalendarResponseDataDaysItemEventsItemItineraryDetailsOriginMax).nullish(),
+  "destination": zod.string().max(getCalendarResponseDataDaysItemEventsItemItineraryDetailsDestinationMax).nullish(),
+  "service_number": zod.string().max(getCalendarResponseDataDaysItemEventsItemItineraryDetailsServiceNumberMax).nullish().describe('航班号、车次、船次等承运班次。'),
+  "seat": zod.string().max(getCalendarResponseDataDaysItemEventsItemItineraryDetailsSeatMax).nullish().describe('座位、车厢或舱位；列表页不展示票号等敏感信息。'),
+  "booking_status": zod.enum(['planned', 'confirmed', 'ticketed']).describe('行程安排的预订状态；不根据是否存在日程自行推断。'),
+  "attachment_media_ids": zod.array(zod.string()).max(getCalendarResponseDataDaysItemEventsItemItineraryDetailsAttachmentMediaIdsMax).describe('经用户确认保留的票据图片媒体 ID；读取时再换取短期地址。')
+}).optional(),
   "participants": zod.array(zod.string()).optional(),
   "project_id": zod.string().nullish(),
   "note": zod.string().nullish(),
@@ -247,6 +287,16 @@ export const GetProjectItineraryParams = zod.object({
 })
 
 export const getProjectItineraryResponseDataProjectProvenanceRefsItemSourceDeletedDefault = false;
+export const getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsOriginMax = 200;
+
+export const getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsDestinationMax = 200;
+
+export const getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsServiceNumberMax = 50;
+
+export const getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsSeatMax = 100;
+
+export const getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsAttachmentMediaIdsMax = 9;
+
 export const getProjectItineraryResponseDataDaysItemEventsItemProvenanceRefsItemSourceDeletedDefault = false;
 export const getProjectItineraryResponseDataTasksItemQuantityTextMax = 40;
 
@@ -298,6 +348,16 @@ export const GetProjectItineraryResponse = zod.object({
   "end_date": zod.string().date().nullish().describe('包含该日；单日事件可为空。'),
   "timezone": zod.string(),
   "location": zod.string().nullish(),
+  "itinerary_details": zod.object({
+  "kind": zod.enum(['transport', 'lodging', 'activity']).describe('行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。'),
+  "transport_mode": zod.enum(['flight', 'train', 'coach', 'ship', 'self_drive', 'other']).optional().describe('交通安排的方式；仅 itinerary_details.kind=transport 时使用。'),
+  "origin": zod.string().max(getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsOriginMax).nullish(),
+  "destination": zod.string().max(getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsDestinationMax).nullish(),
+  "service_number": zod.string().max(getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsServiceNumberMax).nullish().describe('航班号、车次、船次等承运班次。'),
+  "seat": zod.string().max(getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsSeatMax).nullish().describe('座位、车厢或舱位；列表页不展示票号等敏感信息。'),
+  "booking_status": zod.enum(['planned', 'confirmed', 'ticketed']).describe('行程安排的预订状态；不根据是否存在日程自行推断。'),
+  "attachment_media_ids": zod.array(zod.string()).max(getProjectItineraryResponseDataDaysItemEventsItemItineraryDetailsAttachmentMediaIdsMax).describe('经用户确认保留的票据图片媒体 ID；读取时再换取短期地址。')
+}).optional(),
   "participants": zod.array(zod.string()).optional(),
   "project_id": zod.string().nullish(),
   "note": zod.string().nullish(),
@@ -469,6 +529,16 @@ export const GetImportantDatesQueryParams = zod.object({
   "limit": zod.number().int().min(1).max(getImportantDatesQueryLimitMax).optional().describe('最多返回多少条，默认 50。')
 })
 
+export const getImportantDatesResponseDataItemEventItineraryDetailsOriginMax = 200;
+
+export const getImportantDatesResponseDataItemEventItineraryDetailsDestinationMax = 200;
+
+export const getImportantDatesResponseDataItemEventItineraryDetailsServiceNumberMax = 50;
+
+export const getImportantDatesResponseDataItemEventItineraryDetailsSeatMax = 100;
+
+export const getImportantDatesResponseDataItemEventItineraryDetailsAttachmentMediaIdsMax = 9;
+
 export const getImportantDatesResponseDataItemEventProvenanceRefsItemSourceDeletedDefault = false;
 
 export const GetImportantDatesResponse = zod.object({
@@ -485,6 +555,16 @@ export const GetImportantDatesResponse = zod.object({
   "end_date": zod.string().date().nullish().describe('包含该日；单日事件可为空。'),
   "timezone": zod.string(),
   "location": zod.string().nullish(),
+  "itinerary_details": zod.object({
+  "kind": zod.enum(['transport', 'lodging', 'activity']).describe('行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。'),
+  "transport_mode": zod.enum(['flight', 'train', 'coach', 'ship', 'self_drive', 'other']).optional().describe('交通安排的方式；仅 itinerary_details.kind=transport 时使用。'),
+  "origin": zod.string().max(getImportantDatesResponseDataItemEventItineraryDetailsOriginMax).nullish(),
+  "destination": zod.string().max(getImportantDatesResponseDataItemEventItineraryDetailsDestinationMax).nullish(),
+  "service_number": zod.string().max(getImportantDatesResponseDataItemEventItineraryDetailsServiceNumberMax).nullish().describe('航班号、车次、船次等承运班次。'),
+  "seat": zod.string().max(getImportantDatesResponseDataItemEventItineraryDetailsSeatMax).nullish().describe('座位、车厢或舱位；列表页不展示票号等敏感信息。'),
+  "booking_status": zod.enum(['planned', 'confirmed', 'ticketed']).describe('行程安排的预订状态；不根据是否存在日程自行推断。'),
+  "attachment_media_ids": zod.array(zod.string()).max(getImportantDatesResponseDataItemEventItineraryDetailsAttachmentMediaIdsMax).describe('经用户确认保留的票据图片媒体 ID；读取时再换取短期地址。')
+}).optional(),
   "participants": zod.array(zod.string()).optional(),
   "project_id": zod.string().nullish(),
   "note": zod.string().nullish(),

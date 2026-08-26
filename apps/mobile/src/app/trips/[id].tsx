@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
@@ -8,12 +8,25 @@ import { useTripDetail } from '@/features/trips/use-trips';
 import { colors, fontFamily, typography } from '@/theme/tokens';
 
 export default function TripDetailScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { trip, loading, notFound, toggleChecklistItem } = useTripDetail(id ?? '');
 
   if (trip) {
-    return <TripDetail onToggleChecklistItem={toggleChecklistItem} trip={trip} />;
+    return (
+      <TripDetail
+        onAddItem={(kind, date) => router.push(
+          `/trips/new-item?projectId=${encodeURIComponent(trip.id)}&kind=${kind}&date=${date ?? ''}` as Href,
+        )}
+        onAddWithAI={() => router.push({
+          pathname: '/capture/new',
+          params: { intent: 'trip_item', projectId: trip.id },
+        })}
+        onToggleChecklistItem={toggleChecklistItem}
+        trip={trip}
+      />
+    );
   }
 
   return (

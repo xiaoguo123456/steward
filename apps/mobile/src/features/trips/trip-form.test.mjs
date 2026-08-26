@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   buildTripRequest,
+  formatTripDateWithWeekday,
   parseTripDescription,
+  tripDurationDays,
   validateTripDraft,
 } from './trip-form.ts';
 
@@ -38,4 +40,9 @@ test('结束日期早于开始日期时禁止创建', () => {
     '结束日期不能早于开始日期',
   );
   assert.equal(validateTripDraft(validDraft), null);
+});
+
+test('日期范围展示星期并按首尾日期计算天数', () => {
+  assert.equal(formatTripDateWithWeekday('2026-09-05'), '2026年9月5日 周六');
+  assert.equal(tripDurationDays('2026-09-05', '2026-09-07'), 3);
 });

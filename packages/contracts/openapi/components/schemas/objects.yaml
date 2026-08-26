@@ -393,6 +393,57 @@ EventRecurrence:
   description: MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。
   enum: [none, yearly]
 
+ItineraryItemKind:
+  type: string
+  description: 行程详情中的安排类型；仍然是 Event，不新增平行的 Trip Object。
+  enum: [transport, lodging, activity]
+
+TransportMode:
+  type: string
+  description: 交通安排的方式；仅 itinerary_details.kind=transport 时使用。
+  enum: [flight, train, coach, ship, self_drive, other]
+
+BookingStatus:
+  type: string
+  description: 行程安排的预订状态；不根据是否存在日程自行推断。
+  enum: [planned, confirmed, ticketed]
+
+ItineraryEventDetails:
+  type: object
+  additionalProperties: false
+  required: [kind, booking_status, attachment_media_ids]
+  properties:
+    kind:
+      $ref: '#/ItineraryItemKind'
+    transport_mode:
+      $ref: '#/TransportMode'
+    origin:
+      type: string
+      maxLength: 200
+      nullable: true
+    destination:
+      type: string
+      maxLength: 200
+      nullable: true
+    service_number:
+      type: string
+      maxLength: 50
+      nullable: true
+      description: 航班号、车次、船次等承运班次。
+    seat:
+      type: string
+      maxLength: 100
+      nullable: true
+      description: 座位、车厢或舱位；列表页不展示票号等敏感信息。
+    booking_status:
+      $ref: '#/BookingStatus'
+    attachment_media_ids:
+      type: array
+      maxItems: 9
+      description: 经用户确认保留的票据图片媒体 ID；读取时再换取短期地址。
+      items:
+        type: string
+
 Event:
   type: object
   additionalProperties: false
@@ -435,6 +486,8 @@ Event:
     location:
       type: string
       nullable: true
+    itinerary_details:
+      $ref: '#/ItineraryEventDetails'
     participants:
       type: array
       items:
@@ -515,6 +568,8 @@ CreateEventRequest:
     location:
       type: string
       nullable: true
+    itinerary_details:
+      $ref: '#/ItineraryEventDetails'
     participants:
       type: array
       items:
@@ -553,6 +608,7 @@ UpdateEventRequest:
           - start_date
           - end_date
           - location
+          - itinerary_details
           - participants
           - project_id
           - note
@@ -586,6 +642,8 @@ UpdateEventRequest:
     location:
       type: string
       nullable: true
+    itinerary_details:
+      $ref: '#/ItineraryEventDetails'
     participants:
       type: array
       items:

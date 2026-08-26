@@ -36,8 +36,8 @@ func (p *Parser) ParseCapture(_ context.Context, req ai.CaptureParseRequest) (ai
 
 	var result ai.CaptureParseResult
 	result.ProviderModel = "fake-deterministic"
-	result.PromptVersion = "fake-v2"
-	result.SchemaVersion = "capture-parse-result.v2"
+	result.PromptVersion = "fake-v3"
+	result.SchemaVersion = "capture-parse-result.v3"
 
 	defaultListID := ""
 	for _, l := range req.Lists {
@@ -52,6 +52,15 @@ func (p *Parser) ParseCapture(_ context.Context, req ai.CaptureParseRequest) (ai
 	result.InstructionNote = instruction
 
 	segments := collectSegments(req)
+	parsedItineraryParts := make(map[string]struct{})
+	if req.SuggestedProjectID != "" {
+		for _, part := range req.Parts {
+			if candidate := parseItineraryPart(part, req.SuggestedProjectID, req.Now, loc); candidate != nil {
+				result.Candidates = append(result.Candidates, *candidate)
+				parsedItineraryParts[part.ID] = struct{}{}
+			}
+		}
+	}
 	if len(segments) == 0 {
 		// 没有任何可理解的文字：不猜测内容，而是请用户补充说明。
 		result.Questions = append(result.Questions, ai.QuestionDraft{
@@ -65,6 +74,9 @@ func (p *Parser) ParseCapture(_ context.Context, req ai.CaptureParseRequest) (ai
 	}
 
 	for _, seg := range segments {
+		if _, parsed := parsedItineraryParts[seg.PartID]; parsed {
+			continue
+		}
 		candidate := parseSegment(seg, req.Now, loc, defaultListID, req.Trackers)
 		if candidate != nil {
 			result.Candidates = append(result.Candidates, *candidate)
@@ -82,6 +94,111 @@ func (p *Parser) ParseCapture(_ context.Context, req ai.CaptureParseRequest) (ai
 		LatencyMS:    int(time.Since(started).Milliseconds()),
 	}
 	return result, nil
+}
+
+var (
+	itineraryTransportKeywords = []string{"车票", "火车", "高铁", "动车", "列车", "车次", "航班", "机票", "登机牌", "船票", "客运票"}
+	itineraryDatePattern       = regexp.MustCompile(`(?:(\d{4})[年\-/])?(\d{1,2})[月\-/](\d{1,2})日?`)
+	itineraryPlaceTimePattern  = regexp.MustCompile(`([\p{Han}A-Za-z·]{2,20}(?:站|机场)?)\s*(\d{1,2}:\d{2})`)
+	itineraryServicePattern    = regexp.MustCompile(`(?i)(?:车次|航班号?|班次)?\s*([A-Z]{1,3}\d{1,5})`)
+	itinerarySeatPattern       = regexp.MustCompile(`(\d+\s*车\s*\d+[A-Za-z]?\s*(?:座|铺)?|\d+[A-Za-z]\s*(?:座|铺)?)`)
+)
+
+// parseItineraryPart 为离线测试与 Provider 降级路径识别常见电子票文本。
+// 只抽取票面明确出现的时间、地点和班次，不推测中转、站点或座位。
+func parseItineraryPart(part ai.InputPart, projectID string, now time.Time, loc *time.Location) *ai.CandidateDraft {
+	text := strings.TrimSpace(part.Text)
+	if text == "" || !containsAny(text, itineraryTransportKeywords) {
+		return nil
+	}
+	date := itineraryDate(text, now, loc)
+	matches := itineraryPlaceTimePattern.FindAllStringSubmatch(text, -1)
+	if len(matches) < 2 {
+		return nil
+	}
+
+	origin := strings.TrimSpace(matches[0][1])
+	destination := strings.TrimSpace(matches[1][1])
+	startAt := itineraryTime(date, matches[0][2], loc)
+	endAt := itineraryTime(date, matches[1][2], loc)
+	if startAt == nil || endAt == nil {
+		return nil
+	}
+	if !endAt.After(*startAt) {
+		nextDay := endAt.AddDate(0, 0, 1)
+		endAt = &nextDay
+	}
+
+	mode := "train"
+	if containsAny(text, []string{"航班", "机票", "登机牌"}) {
+		mode = "flight"
+	} else if containsAny(text, []string{"船票"}) {
+		mode = "ship"
+	} else if containsAny(text, []string{"客运票"}) {
+		mode = "coach"
+	}
+	serviceNumber := ""
+	if match := itineraryServicePattern.FindStringSubmatch(text); len(match) > 1 {
+		serviceNumber = strings.ToUpper(strings.TrimSpace(match[1]))
+	}
+	seat := ""
+	if match := itinerarySeatPattern.FindStringSubmatch(text); len(match) > 1 {
+		seat = strings.Join(strings.Fields(match[1]), "")
+	}
+
+	title := origin + "至" + destination
+	if serviceNumber != "" {
+		title = serviceNumber + " " + title
+	}
+	source := ai.SourceSpan{PartID: part.ID, TextStart: 0, TextEnd: len(part.Text)}
+	return &ai.CandidateDraft{
+		Type:       "event",
+		Action:     "create",
+		Title:      title,
+		EventKind:  "schedule",
+		AllDay:     false,
+		StartAt:    startAt,
+		EndAt:      endAt,
+		Location:   origin,
+		ProjectRef: projectID,
+		ItineraryDetails: &ai.ItineraryDetailsDraft{
+			Kind:          "transport",
+			TransportMode: mode,
+			Origin:        origin,
+			Destination:   destination,
+			ServiceNumber: serviceNumber,
+			Seat:          seat,
+			BookingStatus: "ticketed",
+		},
+		Sources: []ai.SourceSpan{source},
+		Confidences: []ai.Confidence{
+			{Field: "start_at", Level: "high", Sources: []ai.SourceSpan{source}},
+			{Field: "itinerary_details", Level: "medium", Sources: []ai.SourceSpan{source}},
+		},
+	}
+}
+
+func itineraryDate(text string, now time.Time, loc *time.Location) time.Time {
+	match := itineraryDatePattern.FindStringSubmatch(text)
+	if len(match) == 0 {
+		return timeutil.DayOf(now, loc).Date
+	}
+	year := now.In(loc).Year()
+	if match[1] != "" {
+		year, _ = strconv.Atoi(match[1])
+	}
+	month, _ := strconv.Atoi(match[2])
+	day, _ := strconv.Atoi(match[3])
+	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, loc)
+}
+
+func itineraryTime(date time.Time, raw string, loc *time.Location) *time.Time {
+	parsed, err := time.ParseInLocation("15:04", raw, loc)
+	if err != nil {
+		return nil
+	}
+	value := time.Date(date.Year(), date.Month(), date.Day(), parsed.Hour(), parsed.Minute(), 0, 0, loc)
+	return &value
 }
 
 // segment 是一段待解析的文字及其来源位置。

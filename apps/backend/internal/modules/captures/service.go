@@ -136,6 +136,14 @@ func (s *Service) Create(ctx context.Context, userID string, body httpapi.Create
 		if err := timeutil.ValidateLocation(tz); err != nil {
 			return apperr.Validation(apperr.Field("timezone", "时区名称不合法。"))
 		}
+		if body.SuggestedProjectId != nil {
+			if _, err := q.GetProject(ctx, *body.SuggestedProjectId); err != nil {
+				if database.IsNoRows(err) {
+					return apperr.NotFound("项目")
+				}
+				return apperr.Internal(err)
+			}
+		}
 
 		origin := "home"
 		if body.Origin != nil {
@@ -347,6 +355,9 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 		Lists:    lists,
 		Trackers: trackers,
 	}
+	if capture.SuggestedProjectID != nil {
+		req.SuggestedProjectID = *capture.SuggestedProjectID
+	}
 	for _, p := range parts {
 		text := ""
 		if p.Text != nil {
@@ -354,6 +365,7 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 		}
 		req.Parts = append(req.Parts, ai.InputPart{
 			ID: p.ID, Kind: ai.PartKind(p.Kind), Position: int(p.Position), Text: text,
+			MediaID: valueOrEmpty(p.MediaID),
 		})
 	}
 
@@ -397,7 +409,7 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 			return s.finishOperation(ctx, q, args, "failed", errBody, nil)
 		}
 
-		if err := s.saveParseResult(ctx, q, args, capture, result); err != nil {
+		if err := s.saveParseResult(ctx, q, args, capture, parts, result); err != nil {
 			return err
 		}
 		return nil
@@ -435,16 +447,23 @@ func (s *Service) finishWithoutParse(ctx context.Context, args CaptureParseArgs,
 
 // saveParseResult 把解析结果落库并推进 Capture 状态。
 func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
-	args CaptureParseArgs, capture dbgen.Capture, result ai.CaptureParseResult) error {
+	args CaptureParseArgs, capture dbgen.Capture, parts []dbgen.CapturePart,
+	result ai.CaptureParseResult) error {
 
 	loc := timeutil.LoadLocation(capture.Timezone)
 	defaultListID := ""
 	if id, err := s.lists.ResolveListID(ctx, q, args.UserID, nil); err == nil {
 		defaultListID = id
 	}
+	sourceMedia := make(map[string]string, len(parts))
+	for _, part := range parts {
+		if part.Kind == "image" && part.MediaID != nil && *part.MediaID != "" {
+			sourceMedia[part.ID] = *part.MediaID
+		}
+	}
 
 	for i, c := range result.Candidates {
-		payload, missing, err := buildPayload(c, defaultListID, loc)
+		payload, missing, err := buildPayload(c, defaultListID, loc, sourceMedia)
 		if err != nil {
 			return err
 		}
@@ -644,6 +663,13 @@ func (s *Service) Discard(ctx context.Context, userID, captureID string) error {
 }
 
 func strPtr(v string) *string { return &v }
+
+func valueOrEmpty(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
 
 // partIDs 取输入项 ID，用于把审计指回具体的分片。ID 不是正文。
 func partIDs(parts []dbgen.CapturePart) []string {

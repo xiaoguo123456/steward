@@ -13,7 +13,7 @@ import { colors } from '@/theme/tokens';
 import { formatClock } from '@/utils/format';
 
 import type { TripAgendaItem, TripBooking, TripChecklistItem, TripDay, TripPlan } from './trip-data';
-import { parseTripDescription } from './trip-form';
+import { parseLocalDate, parseTripDescription, toLocalIsoDate } from './trip-form';
 
 /**
  * 行程的数据层。
@@ -101,25 +101,44 @@ function toTripPlan(itinerary: ProjectItinerary): TripPlan {
   return {
     ...summary,
     dateRange: formatDateRange(
-      itinerary.start_date ?? itinerary.project.start_date,
-      itinerary.end_date ?? itinerary.project.target_date,
+      itinerary.project.start_date ?? itinerary.start_date,
+      itinerary.project.target_date ?? itinerary.end_date,
     ),
     duration: formatDuration(
-      itinerary.start_date ?? itinerary.project.start_date,
-      itinerary.end_date ?? itinerary.project.target_date,
+      itinerary.project.start_date ?? itinerary.start_date,
+      itinerary.project.target_date ?? itinerary.end_date,
     ),
-    days: itinerary.days.map(toTripDay),
-    // 预订资料就是带地点的日程：交通与住宿本来就是有时间有地点的事。
+    days: buildTripDays(itinerary),
+    // 预订只来自明确标记为交通或住宿的 Event，不再根据“有地点”猜测。
     bookings: itinerary.days
       .flatMap((day) => day.events)
-      .filter((event) => event.location)
+      .filter((event) => event.itinerary_details?.kind === 'transport'
+        || event.itinerary_details?.kind === 'lodging')
       .map(toBooking),
     checklist: itinerary.tasks.map(toChecklistItem),
   };
 }
 
+function buildTripDays(itinerary: ProjectItinerary): TripDay[] {
+  const start = itinerary.project.start_date ?? itinerary.start_date;
+  const end = itinerary.project.target_date ?? itinerary.end_date;
+  if (!start || !end) return itinerary.days.map(toTripDay);
+
+  const eventsByDate = new Map(itinerary.days.map((day) => [day.date, day.events]));
+  const current = parseLocalDate(start);
+  const last = parseLocalDate(end);
+  const days: TripDay[] = [];
+  // 防止异常数据让客户端生成无限日期；一年已足够覆盖当前行程产品范围。
+  for (let index = 0; current <= last && index < 366; index += 1) {
+    const date = toLocalIsoDate(current);
+    days.push(toTripDay({ date, events: eventsByDate.get(date) ?? [] }));
+    current.setDate(current.getDate() + 1);
+  }
+  return days;
+}
+
 function toTripDay(day: ProjectItinerary['days'][number]): TripDay {
-  const date = new Date(day.date);
+  const date = parseLocalDate(day.date);
   return {
     id: day.date,
     date: `${date.getMonth() + 1}月${date.getDate()}日`,
@@ -130,28 +149,77 @@ function toTripDay(day: ProjectItinerary['days'][number]): TripDay {
 }
 
 function toAgendaItem(event: Event): TripAgendaItem {
+  const details = event.itinerary_details;
+  const visual = itineraryVisual(details?.kind, details?.transport_mode);
+  const route = details?.kind === 'transport' && details.origin && details.destination
+    ? `${details.origin} — ${details.destination}`
+    : undefined;
   return {
     id: event.id,
     time: event.all_day ? '全天' : formatClock(new Date(event.start_at ?? '')),
     title: event.title,
-    meta: event.location ?? '',
-    icon: 'calendar-outline',
-    color: colors.primaryStrong,
-    soft: colors.primarySoft,
+    endTime: event.end_at ? formatClock(new Date(event.end_at)) : undefined,
+    route,
+    meta: route ?? event.location ?? '',
+    icon: visual.icon,
+    color: visual.color,
+    soft: visual.soft,
   };
 }
 
 function toBooking(event: Event): TripBooking {
+  const details = event.itinerary_details;
+  const kind = details?.kind === 'lodging' ? 'lodging' : 'transport';
+  const visual = itineraryVisual(kind, details?.transport_mode);
+  const route = details?.origin && details.destination
+    ? `${details.origin} — ${details.destination}`
+    : event.location ?? '';
   return {
     id: event.id,
     title: event.title,
-    meta: event.location ?? '',
-    // 预订状态没有独立字段，也不该在这里编一个：日程存在就说明已经定下来了。
-    status: '已确认',
-    icon: 'bookmark-outline',
-    color: colors.primaryStrong,
-    soft: colors.primarySoft,
+    meta: [details?.service_number, route].filter(Boolean).join(' · '),
+    status: bookingStatusLabel(details?.booking_status),
+    kind,
+    startAt: event.start_at,
+    endAt: event.end_at,
+    location: event.location ?? undefined,
+    origin: details?.origin ?? undefined,
+    destination: details?.destination ?? undefined,
+    serviceNumber: details?.service_number ?? undefined,
+    seat: details?.seat ?? undefined,
+    attachmentMediaIds: details?.attachment_media_ids ?? [],
+    icon: visual.icon,
+    color: visual.color,
+    soft: visual.soft,
   };
+}
+
+function itineraryVisual(kind?: string, transportMode?: string | null) {
+  if (kind === 'transport') {
+    const icon = transportMode === 'flight'
+      ? 'airplane-outline' as const
+      : transportMode === 'coach'
+        ? 'bus-outline' as const
+        : transportMode === 'ship'
+          ? 'boat-outline' as const
+          : transportMode === 'self_drive'
+            ? 'car-outline' as const
+            : 'train-outline' as const;
+    return { icon, color: '#3978B8', soft: '#EAF4FF' };
+  }
+  if (kind === 'lodging') {
+    return { icon: 'bed-outline' as const, color: '#7657C8', soft: '#F2EEFF' };
+  }
+  if (kind === 'activity') {
+    return { icon: 'ticket-outline' as const, color: '#D56C28', soft: '#FFF1E7' };
+  }
+  return { icon: 'calendar-outline' as const, color: colors.primaryStrong, soft: colors.primarySoft };
+}
+
+function bookingStatusLabel(status?: string): string {
+  if (status === 'ticketed') return '已出票';
+  if (status === 'confirmed') return '已确认';
+  return '计划中';
 }
 
 function toChecklistItem(task: ProjectItinerary['tasks'][number]): TripChecklistItem {
@@ -165,16 +233,16 @@ function toChecklistItem(task: ProjectItinerary['tasks'][number]): TripChecklist
 
 function formatDateRange(start?: string | null, end?: string | null): string {
   if (!start) return '未设置日期';
-  const from = new Date(start);
+  const from = parseLocalDate(start);
   const head = `${from.getMonth() + 1}月${from.getDate()}日`;
   if (!end || end === start) return head;
-  const to = new Date(end);
+  const to = parseLocalDate(end);
   return `${head} — ${to.getMonth() + 1}月${to.getDate()}日`;
 }
 
 function formatDuration(start?: string | null, end?: string | null): string {
   if (!start || !end) return '';
   const days =
-    Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000) + 1;
+    Math.round((parseLocalDate(end).getTime() - parseLocalDate(start).getTime()) / 86_400_000) + 1;
   return days > 0 ? `${days} 天` : '';
 }

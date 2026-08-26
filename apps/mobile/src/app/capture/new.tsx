@@ -29,8 +29,9 @@ type ReplaceTarget = InputMode | null;
 
 export default function CaptureInputScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ intent?: string }>();
+  const params = useLocalSearchParams<{ intent?: string; projectId?: string }>();
   const isTripIntent = params.intent === 'trip';
+  const isTripItemIntent = params.intent === 'trip_item';
   const [mode, setMode] = useState<InputMode>('text');
   const [text, setText] = useState('');
   // 图片与录音是真实的本地文件，用户点发送时才上传。
@@ -138,8 +139,9 @@ export default function CaptureInputScreen() {
       }
 
       const response = await createCapture({
-        origin: isTripIntent ? 'project_manager' : 'home',
+        origin: isTripIntent || isTripItemIntent ? 'project_manager' : 'home',
         parts,
+        suggested_project_id: isTripItemIntent ? params.projectId : undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       router.replace({
@@ -148,7 +150,8 @@ export default function CaptureInputScreen() {
           captureId: response.data.resource_id ?? '',
           operationId: response.data.operation_id,
           draft: draftSummary,
-          intent: isTripIntent ? 'trip' : undefined,
+          intent: isTripIntent ? 'trip' : isTripItemIntent ? 'trip_item' : undefined,
+          projectId: isTripItemIntent ? params.projectId : undefined,
         },
       });
     } catch (error) {
@@ -163,9 +166,9 @@ export default function CaptureInputScreen() {
       <View style={styles.header}>
         <View>
           <Text accessibilityRole="header" style={styles.title}>
-            {isTripIntent ? 'AI 创建行程' : '记一件事'}
+            {isTripIntent ? 'AI 创建行程' : isTripItemIntent ? 'AI 添加行程安排' : '记一件事'}
           </Text>
-          {!isTripIntent ? (
+          {!isTripIntent && !isTripItemIntent ? (
             <Text style={styles.subtitle}>AI 会先整理，确认后再保存</Text>
           ) : null}
         </View>
@@ -179,7 +182,7 @@ export default function CaptureInputScreen() {
         </Pressable>
       </View>
 
-      {!isTripIntent ? (
+      {!isTripIntent && !isTripItemIntent ? (
         <Pressable
           accessibilityRole="button"
           onPress={() => router.replace('/capture/new')}
@@ -251,11 +254,13 @@ export default function CaptureInputScreen() {
         {!images.length && !audioDuration ? (
           <View style={styles.promptSpace}>
             <Text style={styles.promptTitle}>
-              {isTripIntent ? '说出目的地和日期' : '可以说得随意一点'}
+              {isTripIntent ? '说出目的地和日期' : isTripItemIntent ? '上传票据或输入安排' : '可以说得随意一点'}
             </Text>
             <Text style={styles.promptCopy}>
               {isTripIntent
                 ? '例如：8 月 29 日至 31 日去北京，和爸妈一起'
+                : isTripItemIntent
+                  ? '车票、机票、酒店订单都可以识别'
                 : '例如：下周二下午提醒我准备产品评审'}
             </Text>
           </View>

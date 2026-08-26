@@ -68,6 +68,8 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 
 		// 本次新建的 Tracker 需要被同批 Record 引用，因此记录候选到实体的映射。
 		createdTrackers := make(map[string]string)
+		// Project 必须先于同批次中引用它的 Task、Event 与 Note 创建。
+		createdProjects := make(map[string]string)
 		entries := make([]activity.EntryInput, 0, len(body.Items))
 		affected := make([]httpapi.AffectedResource, 0, len(body.Items)+3)
 
@@ -154,6 +156,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 					CreatedBy:   "ai",
 					Provenance:  provenance,
 					DueTimezone: capture.Timezone,
+					ProjectID:   resolveProjectRef(payload.Task.ProjectRef, createdProjects),
 				}
 				if payload.Task.Priority != nil {
 					cmd.Priority = string(*payload.Task.Priority)
@@ -178,15 +181,17 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 					return apperr.Validation(apperr.Field("items", "日程候选缺少内容。"))
 				}
 				cmd := objects.CreateEventCommand{
-					Title:      payload.Event.Title,
-					AllDay:     payload.Event.AllDay,
-					StartAt:    payload.Event.StartAt,
-					EndAt:      payload.Event.EndAt,
-					Location:   payload.Event.Location,
-					Note:       payload.Event.Note,
-					Timezone:   capture.Timezone,
-					CreatedBy:  "ai",
-					Provenance: provenance,
+					Title:            payload.Event.Title,
+					AllDay:           payload.Event.AllDay,
+					StartAt:          payload.Event.StartAt,
+					EndAt:            payload.Event.EndAt,
+					Location:         payload.Event.Location,
+					Note:             payload.Event.Note,
+					Timezone:         capture.Timezone,
+					CreatedBy:        "ai",
+					Provenance:       provenance,
+					ProjectID:        resolveProjectRef(payload.Event.ProjectRef, createdProjects),
+					ItineraryDetails: payload.Event.ItineraryDetails,
 				}
 				if payload.Event.EventKind != nil {
 					cmd.EventKind = string(*payload.Event.EventKind)
@@ -221,6 +226,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 					Content:    payload.Note.Content,
 					CreatedBy:  "ai",
 					Provenance: provenance,
+					ProjectID:  resolveProjectRef(payload.Note.ProjectRef, createdProjects),
 				}
 				if payload.Note.Tags != nil {
 					cmd.Tags = *payload.Note.Tags
@@ -282,6 +288,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 				if err != nil {
 					return err
 				}
+				createdProjects[candidate.ID] = row.ID
 				summary := "从一次输入创建了项目"
 				if projectKind == "trip" {
 					summary = "从一次输入创建了行程"
@@ -335,11 +342,11 @@ type confirmItem struct {
 	listID    *string
 }
 
-// orderItems 校验候选归属并把 Tracker 排到 Record 之前。
+// orderItems 校验候选归属，并把 Project、Tracker 排到依赖它们的对象之前。
 func orderItems(ctx context.Context, q *dbgen.Queries, capture dbgen.Capture,
 	items []httpapi.ConfirmCaptureItem) ([]confirmItem, error) {
 
-	var trackersFirst, rest []confirmItem
+	var projectsFirst, trackersSecond, rest []confirmItem
 	for _, item := range items {
 		candidate, err := q.GetCaptureCandidate(ctx, dbgen.GetCaptureCandidateParams{
 			ID: item.CandidateId, CaptureID: capture.ID, Revision: capture.Revision,
@@ -352,13 +359,17 @@ func orderItems(ctx context.Context, q *dbgen.Queries, capture dbgen.Capture,
 			return nil, apperr.Internal(err)
 		}
 		ci := confirmItem{candidate: candidate, override: item.Payload, listID: item.ListId}
-		if candidate.CandidateType == "tracker" {
-			trackersFirst = append(trackersFirst, ci)
-		} else {
+		switch candidate.CandidateType {
+		case "project":
+			projectsFirst = append(projectsFirst, ci)
+		case "tracker":
+			trackersSecond = append(trackersSecond, ci)
+		default:
 			rest = append(rest, ci)
 		}
 	}
-	return append(trackersFirst, rest...), nil
+	ordered := append(projectsFirst, trackersSecond...)
+	return append(ordered, rest...), nil
 }
 
 // loadDetail 在事务内重新读取 Capture 完整状态。
@@ -401,6 +412,17 @@ func optional(v string) *string {
 		return nil
 	}
 	return &v
+}
+
+func resolveProjectRef(ref *string, created map[string]string) *string {
+	if ref == nil || strings.TrimSpace(*ref) == "" {
+		return nil
+	}
+	value := strings.TrimSpace(*ref)
+	if mapped, ok := created[value]; ok {
+		value = mapped
+	}
+	return &value
 }
 
 func intPtr(v int) *int { return &v }

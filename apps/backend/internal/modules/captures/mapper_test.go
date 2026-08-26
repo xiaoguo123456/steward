@@ -1,6 +1,7 @@
 package captures
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -21,7 +22,7 @@ func TestBuildPayloadMapsTripFields(t *testing.T) {
 		Description: "和爸妈一起，记得带身份证",
 		StartDate:   &start,
 		TargetDate:  &end,
-	}, "", loc)
+	}, "", loc, nil)
 	if err != nil {
 		t.Fatalf("映射失败：%v", err)
 	}
@@ -55,7 +56,7 @@ func TestBuildPayloadRejectsIncompleteTrip(t *testing.T) {
 		Action:      "create",
 		Title:       "未完整行程",
 		ProjectKind: "trip",
-	}, "", loc)
+	}, "", loc, nil)
 	if err != nil {
 		t.Fatalf("映射失败：%v", err)
 	}
@@ -72,5 +73,44 @@ func TestBuildPayloadRejectsIncompleteTrip(t *testing.T) {
 		if !found {
 			t.Errorf("应标记缺少 %s，实际 %v", field, missing)
 		}
+	}
+}
+
+func TestBuildPayloadKeepsTripReferenceAndTicketImage(t *testing.T) {
+	loc := time.FixedZone("CST", 8*60*60)
+	start := time.Date(2026, 8, 27, 8, 18, 0, 0, loc)
+	end := time.Date(2026, 8, 27, 12, 32, 0, 0, loc)
+	raw, missing, err := buildPayload(ai.CandidateDraft{
+		Type:       "event",
+		Action:     "create",
+		Title:      "G1 北京南至上海虹桥",
+		ProjectRef: "prj_trip",
+		StartAt:    &start,
+		EndAt:      &end,
+		Location:   "北京南",
+		Sources:    []ai.SourceSpan{{PartID: "part_ticket"}},
+		ItineraryDetails: &ai.ItineraryDetailsDraft{
+			Kind: "transport", TransportMode: "train", Origin: "北京南",
+			Destination: "上海虹桥", ServiceNumber: "G1", BookingStatus: "ticketed",
+		},
+	}, "", loc, map[string]string{"part_ticket": "med_ticket"})
+	if err != nil {
+		t.Fatalf("映射失败：%v", err)
+	}
+	if len(missing) != 0 {
+		t.Fatalf("完整票据候选不应缺字段：%v", missing)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatal(err)
+	}
+	event := payload["event"].(map[string]any)
+	if event["project_ref"] != "prj_trip" {
+		t.Errorf("行程引用丢失：%v", event["project_ref"])
+	}
+	details := event["itinerary_details"].(map[string]any)
+	attachments := details["attachment_media_ids"].([]any)
+	if len(attachments) != 1 || attachments[0] != "med_ticket" {
+		t.Errorf("票据图片引用不正确：%v", attachments)
 	}
 }

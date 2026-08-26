@@ -16,6 +16,7 @@
 import type { EventKind } from './eventKind';
 import type { EventRecurrence } from './eventRecurrence';
 import type { ImportantDateKind } from './importantDateKind';
+import type { ItineraryEventDetails } from './itineraryEventDetails';
 import type { ReminderInput } from './reminderInput';
 
 export interface CreateEventRequest {
@@ -41,6 +42,7 @@ export interface CreateEventRequest {
   timezone?: string | null;
   /** @nullable */
   location?: string | null;
+  itinerary_details?: ItineraryEventDetails;
   participants?: string[];
   /** @nullable */
   project_id?: string | null;

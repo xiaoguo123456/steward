@@ -42,9 +42,11 @@ const typeMeta: Record<
 export default function CaptureConfirmScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const params = useLocalSearchParams<{ captureId?: string; intent?: string }>();
+  const params = useLocalSearchParams<{ captureId?: string; intent?: string; projectId?: string }>();
   const captureId = params.captureId ?? '';
   const isTripIntent = params.intent === 'trip';
+  const isTripItemIntent = params.intent === 'trip_item';
+  const pageTitle = isTripIntent ? '确认行程' : isTripItemIntent ? '确认行程安排' : '确认整理结果';
 
   const capture = useGetCapture(captureId, { query: { enabled: Boolean(captureId) } });
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
@@ -90,6 +92,8 @@ export default function CaptureConfirmScreen() {
         } else {
           router.replace('/trips');
         }
+      } else if (isTripItemIntent && params.projectId) {
+        router.replace({ pathname: '/trips/[id]', params: { id: params.projectId } });
       } else {
         router.replace('/today');
       }
@@ -103,7 +107,7 @@ export default function CaptureConfirmScreen() {
   if (capture.isPending) {
     return (
       <AppScreen includeBottomInset>
-        <NavHeader title={isTripIntent ? '确认行程' : '确认整理结果'} />
+        <NavHeader title={pageTitle} />
         <View style={styles.loading}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -114,7 +118,7 @@ export default function CaptureConfirmScreen() {
   if (capture.isError || !data) {
     return (
       <AppScreen includeBottomInset>
-        <NavHeader title={isTripIntent ? '确认行程' : '确认整理结果'} />
+        <NavHeader title={pageTitle} />
         <View style={styles.content}>
           <StatePanel
             actionLabel="重试"
@@ -130,7 +134,7 @@ export default function CaptureConfirmScreen() {
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader title={isTripIntent ? '确认行程' : '确认整理结果'} />
+      <NavHeader title={pageTitle} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {data.instruction_note ? (
           <View style={styles.instruction}>
@@ -160,7 +164,7 @@ export default function CaptureConfirmScreen() {
             message="这次没有识别出可以保存的内容，换个说法再试试。"
             onAction={() => router.replace({
               pathname: '/capture/new',
-              params: { intent: params.intent },
+              params: { intent: params.intent, projectId: params.projectId },
             })}
             title="没有候选结果"
           />
@@ -237,6 +241,8 @@ export default function CaptureConfirmScreen() {
                 ? '保存中…'
                 : isTripIntent && selectedCandidates.length === 1
                   ? '创建行程'
+                  : isTripItemIntent
+                    ? '保存行程安排'
                   : `保存 ${selectedCandidates.length} 项`}
             </Text>
           </Pressable>
@@ -269,6 +275,21 @@ function candidateDetail(candidate: CaptureCandidate): string {
     return '没有截止时间';
   }
   if (p.event) {
+    if (p.event.itinerary_details?.kind === 'transport') {
+      const details = p.event.itinerary_details;
+      const route = details.origin && details.destination
+        ? `${details.origin} — ${details.destination}`
+        : '';
+      const time = p.event.start_at
+        ? new Date(p.event.start_at).toLocaleString('zh-CN')
+        : '';
+      return [details.service_number, route, time].filter(Boolean).join(' · ');
+    }
+    if (p.event.itinerary_details?.kind === 'lodging') {
+      return [p.event.location, p.event.start_at ? new Date(p.event.start_at).toLocaleString('zh-CN') : '']
+        .filter(Boolean)
+        .join(' · ');
+    }
     if (p.event.start_at) return new Date(p.event.start_at).toLocaleString('zh-CN');
     if (p.event.start_date) return `${formatMonthDay(p.event.start_date)} · 全天`;
     return '';
@@ -298,6 +319,15 @@ function candidateMeta(candidate: CaptureCandidate): CandidateMeta {
       soft: '#E9F7F5',
     };
   }
+  if (candidate.payload.event?.itinerary_details?.kind === 'transport') {
+    return { label: '交通', icon: 'train-outline', color: '#3978B8', soft: '#EAF4FF' };
+  }
+  if (candidate.payload.event?.itinerary_details?.kind === 'lodging') {
+    return { label: '住宿', icon: 'bed-outline', color: '#7657C8', soft: '#F2EEFF' };
+  }
+  if (candidate.payload.event?.itinerary_details?.kind === 'activity') {
+    return { label: '活动', icon: 'ticket-outline', color: '#D56C28', soft: '#FFF1E7' };
+  }
   return typeMeta[candidate.candidate_type];
 }
 
@@ -307,6 +337,14 @@ function missingFieldLabel(field: string): string {
     destination: '目的地',
     start_date: '开始日期',
     target_date: '结束日期',
+    project_ref: '所属行程',
+    end_at: '结束时间',
+    location: '地点',
+    'itinerary_details.kind': '安排类型',
+    'itinerary_details.booking_status': '预订状态',
+    'itinerary_details.transport_mode': '交通方式',
+    'itinerary_details.origin': '出发地',
+    'itinerary_details.destination': '到达地',
   }[field] ?? field;
 }
 

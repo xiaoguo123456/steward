@@ -171,6 +171,41 @@ func TestTripKeywordAloneDoesNotHijackOtherContent(t *testing.T) {
 	}
 }
 
+func TestParseTicketIntoTripEvent(t *testing.T) {
+	result, err := New().ParseCapture(context.Background(), ai.CaptureParseRequest{
+		Parts: []ai.InputPart{{
+			ID: "cpt_ticket", Kind: ai.PartImage,
+			Text: "电子车票 2026年8月27日 G1 北京南 08:18 上海虹桥 12:32 5车12A座",
+		}},
+		SuggestedProjectID: "prj_trip",
+		Timezone:           "Asia/Shanghai",
+		Now:                baseNow,
+	})
+	if err != nil {
+		t.Fatalf("解析失败：%v", err)
+	}
+	if len(result.Candidates) != 1 {
+		t.Fatalf("期望一个交通候选，实际 %d", len(result.Candidates))
+	}
+	candidate := result.Candidates[0]
+	if candidate.Type != "event" || candidate.ProjectRef != "prj_trip" {
+		t.Fatalf("交通安排应归属指定行程：%+v", candidate)
+	}
+	if candidate.StartAt == nil || candidate.StartAt.Format("2006-01-02 15:04") != "2026-08-27 08:18" {
+		t.Errorf("出发时间不正确：%v", candidate.StartAt)
+	}
+	if candidate.EndAt == nil || candidate.EndAt.Format("2006-01-02 15:04") != "2026-08-27 12:32" {
+		t.Errorf("到达时间不正确：%v", candidate.EndAt)
+	}
+	details := candidate.ItineraryDetails
+	if details == nil || details.Kind != "transport" || details.TransportMode != "train" {
+		t.Fatalf("交通详情不完整：%+v", details)
+	}
+	if details.Origin != "北京南" || details.Destination != "上海虹桥" || details.ServiceNumber != "G1" {
+		t.Errorf("票面路线或班次不正确：%+v", details)
+	}
+}
+
 func TestParsePriority(t *testing.T) {
 	if got := parse(t, "紧急处理服务器告警").Candidates[0].Priority; got != "high" {
 		t.Errorf("“紧急”应为 high，实际 %s", got)

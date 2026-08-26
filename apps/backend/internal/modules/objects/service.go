@@ -26,17 +26,24 @@ type ActivityRecorder interface {
 		source activity.Source, sourceID *string, entries []activity.EntryInput) (string, error)
 }
 
+// MediaResolver 是 media 模块公开的最小能力：校验行程票据图片的归属与上传状态。
+// objects 只保存媒体 ID，不接触对象存储地址。
+type MediaResolver interface {
+	ValidateImageReferences(ctx context.Context, q *dbgen.Queries, userID string, mediaIDs []string) error
+}
+
 // Service 是 Task、Event、Project 与 Note 的应用服务。
 type Service struct {
 	db       *database.DB
 	lists    ListResolver
 	users    UserProfile
 	activity ActivityRecorder
+	media    MediaResolver
 }
 
 // New 构造 Service。
-func New(db *database.DB, lists ListResolver, users UserProfile, act ActivityRecorder) *Service {
-	return &Service{db: db, lists: lists, users: users, activity: act}
+func New(db *database.DB, lists ListResolver, users UserProfile, act ActivityRecorder, media MediaResolver) *Service {
+	return &Service{db: db, lists: lists, users: users, activity: act, media: media}
 }
 
 // DB 暴露连接供同模块 Handler 使用。

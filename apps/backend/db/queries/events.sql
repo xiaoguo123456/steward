@@ -44,12 +44,12 @@ SELECT * FROM events WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
 INSERT INTO events (
     id, user_id, title, event_kind, all_day,
     start_at, end_at, start_date, end_date, timezone,
-    location, participants, project_id, note, reminders,
+    location, itinerary_details, participants, project_id, note, reminders,
     recurrence, original_month_day, important_date_kind, created_by, provenance_refs
 ) VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(title), sqlc.arg(event_kind), sqlc.arg(all_day),
     sqlc.narg(start_at), sqlc.narg(end_at), sqlc.narg(start_date), sqlc.narg(end_date), sqlc.arg(timezone),
-    sqlc.narg(location), sqlc.arg(participants), sqlc.narg(project_id), sqlc.narg(note), sqlc.arg(reminders),
+    sqlc.narg(location), sqlc.arg(itinerary_details), sqlc.arg(participants), sqlc.narg(project_id), sqlc.narg(note), sqlc.arg(reminders),
     sqlc.arg(recurrence), sqlc.narg(original_month_day), sqlc.narg(important_date_kind),
     sqlc.arg(created_by), sqlc.arg(provenance_refs)
 )
@@ -71,6 +71,8 @@ UPDATE events SET
     timezone   = coalesce(sqlc.narg(timezone), timezone),
     location   = CASE WHEN sqlc.arg(clear_location)::bool THEN NULL
                       ELSE coalesce(sqlc.narg(location), location) END,
+    itinerary_details = CASE WHEN sqlc.arg(clear_itinerary_details)::bool THEN '{}'::jsonb
+                             ELSE coalesce(sqlc.narg(itinerary_details), itinerary_details) END,
     participants = CASE WHEN sqlc.arg(clear_participants)::bool THEN '[]'::jsonb
                         ELSE coalesce(sqlc.narg(participants), participants) END,
     project_id = CASE WHEN sqlc.arg(clear_project_id)::bool THEN NULL

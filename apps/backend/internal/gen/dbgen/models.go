@@ -407,6 +407,7 @@ type Event struct {
 	DeletedAt         *time.Time
 	Version           int32
 	ImportantDateKind *string
+	ItineraryDetails  []byte
 }
 
 type IdempotencyKey struct {

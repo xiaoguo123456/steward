@@ -18,13 +18,14 @@
 
 ## 依赖（均为接口注入）
 
-- `ListResolver`（lists）、`UserProfile`（users）、`ActivityRecorder`（activity）
+- `ListResolver`（lists）、`UserProfile`（users）、`ActivityRecorder`（activity）、`MediaResolver`（media）
 
 ## 不变量
 
 - `due_date` 与 `due_at` 互斥；设置任一者都必须保存所属时区。
 - `due_date` 表示“某日截止”，不补成当天 23:59；越过该时区的日期边界才算逾期。
 - 定时 Event 与全天 Event 的字段两组互斥。
+- `itinerary_details` 只能用于 `project_kind=trip` 的 Event；交通和住宿必须有完整起止时间，票据只能引用当前用户已上传的图片。
 - 只有 `important_date` 可以按年重复；2 月 29 日在非闰年投影到 2 月 28 日，
   但 `original_month_day` 保留原值。
 - Task 状态只能按 `todo/doing → done/cancelled`、`done/cancelled → todo` 流转。

@@ -48,7 +48,7 @@ func NewStack(db *database.DB) *Stack {
 	activitySvc := activity.New(db)
 	listsSvc := lists.New(db)
 	usersSvc := users.New(db, listsSvc)
-	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc)
+	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc, nil)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
 	memorySvc := memory.New(db, []byte("eval-fingerprint-key"))

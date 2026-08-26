@@ -14,18 +14,17 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type UpdateEventRequestClearItem = typeof UpdateEventRequestClearItem[keyof typeof UpdateEventRequestClearItem];
+/**
+ * 交通安排的方式；仅 itinerary_details.kind=transport 时使用。
+ */
+export type TransportMode = typeof TransportMode[keyof typeof TransportMode];
 
 
-export const UpdateEventRequestClearItem = {
-  start_at: 'start_at',
-  end_at: 'end_at',
-  start_date: 'start_date',
-  end_date: 'end_date',
-  location: 'location',
-  itinerary_details: 'itinerary_details',
-  participants: 'participants',
-  project_id: 'project_id',
-  note: 'note',
-  reminders: 'reminders',
+export const TransportMode = {
+  flight: 'flight',
+  train: 'train',
+  coach: 'coach',
+  ship: 'ship',
+  self_drive: 'self_drive',
+  other: 'other',
 } as const;

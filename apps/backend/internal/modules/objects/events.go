@@ -147,6 +147,16 @@ func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.C
 		if err != nil {
 			return err
 		}
+		itineraryJSON, err := s.normalizeItineraryDetails(ctx, q, userID, body.ItineraryDetails, itineraryState{
+			ProjectID: body.ProjectId,
+			AllDay:    body.AllDay,
+			StartAt:   body.StartAt,
+			EndAt:     body.EndAt,
+			Location:  body.Location,
+		})
+		if err != nil {
+			return err
+		}
 
 		var originalMonthDay *string
 		if recurrence == "yearly" && body.StartDate != nil {
@@ -167,6 +177,7 @@ func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.C
 			EndDate:          timePtrOfDate(body.EndDate),
 			Timezone:         tz,
 			Location:         body.Location,
+			ItineraryDetails: itineraryJSON,
 			Participants:     participantsJSON,
 			ProjectID:        body.ProjectId,
 			Note:             body.Note,
@@ -247,10 +258,28 @@ func (s *Service) UpdateEvent(ctx context.Context, userID, eventID string, in Ev
 			return apperr.New(apperr.CodeEventRecurrenceDenied)
 		}
 
-		if body.ProjectId != nil {
-			if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
+		projectID := pickString(body.ProjectId, current.ProjectID, clear.ProjectID)
+		if projectID != nil {
+			if err := s.assertProjectExists(ctx, q, *projectID); err != nil {
 				return err
 			}
+		}
+		location := pickString(body.Location, current.Location, clear.Location)
+		itineraryDetails := unmarshalItineraryDetails(current.ItineraryDetails)
+		if clear.ItineraryDetails {
+			itineraryDetails = nil
+		} else if body.ItineraryDetails != nil {
+			itineraryDetails = body.ItineraryDetails
+		}
+		itineraryJSON, err := s.normalizeItineraryDetails(ctx, q, userID, itineraryDetails, itineraryState{
+			ProjectID: projectID,
+			AllDay:    allDay,
+			StartAt:   startAt,
+			EndAt:     endAt,
+			Location:  location,
+		})
+		if err != nil {
+			return err
 		}
 
 		var remindersJSON []byte
@@ -279,32 +308,34 @@ func (s *Service) UpdateEvent(ctx context.Context, userID, eventID string, in Ev
 		}
 
 		updated, err := q.UpdateEvent(ctx, dbgen.UpdateEventParams{
-			ID:                eventID,
-			Title:             trimmedOrNil(body.Title),
-			EventKind:         optionalString(body.EventKind != nil, kind),
-			AllDay:            body.AllDay,
-			StartAt:           body.StartAt,
-			ClearStartAt:      clear.StartAt,
-			EndAt:             body.EndAt,
-			ClearEndAt:        clear.EndAt,
-			StartDate:         timePtrOfDate(body.StartDate),
-			ClearStartDate:    clear.StartDate,
-			EndDate:           timePtrOfDate(body.EndDate),
-			ClearEndDate:      clear.EndDate,
-			Timezone:          body.Timezone,
-			Location:          body.Location,
-			ClearLocation:     clear.Location,
-			Participants:      participantsJSON,
-			ClearParticipants: clear.Participants,
-			ProjectID:         body.ProjectId,
-			ClearProjectID:    clear.ProjectID,
-			Note:              body.Note,
-			ClearNote:         clear.Note,
-			Reminders:         remindersJSON,
-			ClearReminders:    clear.Reminders,
-			Recurrence:        optionalString(body.Recurrence != nil, recurrence),
-			OriginalMonthDay:  originalMonthDay,
-			ImportantDateKind: importantDateKindOf(body.EventKind, body.ImportantDateKind),
+			ID:                    eventID,
+			Title:                 trimmedOrNil(body.Title),
+			EventKind:             optionalString(body.EventKind != nil, kind),
+			AllDay:                body.AllDay,
+			StartAt:               body.StartAt,
+			ClearStartAt:          clear.StartAt,
+			EndAt:                 body.EndAt,
+			ClearEndAt:            clear.EndAt,
+			StartDate:             timePtrOfDate(body.StartDate),
+			ClearStartDate:        clear.StartDate,
+			EndDate:               timePtrOfDate(body.EndDate),
+			ClearEndDate:          clear.EndDate,
+			Timezone:              body.Timezone,
+			Location:              body.Location,
+			ClearLocation:         clear.Location,
+			ItineraryDetails:      itineraryJSON,
+			ClearItineraryDetails: clear.ItineraryDetails,
+			Participants:          participantsJSON,
+			ClearParticipants:     clear.Participants,
+			ProjectID:             body.ProjectId,
+			ClearProjectID:        clear.ProjectID,
+			Note:                  body.Note,
+			ClearNote:             clear.Note,
+			Reminders:             remindersJSON,
+			ClearReminders:        clear.Reminders,
+			Recurrence:            optionalString(body.Recurrence != nil, recurrence),
+			OriginalMonthDay:      originalMonthDay,
+			ImportantDateKind:     importantDateKindOf(body.EventKind, body.ImportantDateKind),
 		})
 		if err != nil {
 			return apperr.Internal(err)
@@ -357,15 +388,16 @@ func (s *Service) DeleteEvent(ctx context.Context, userID, eventID string) (stri
 }
 
 type eventClearFlags struct {
-	StartAt      bool
-	EndAt        bool
-	StartDate    bool
-	EndDate      bool
-	Location     bool
-	Participants bool
-	ProjectID    bool
-	Note         bool
-	Reminders    bool
+	StartAt          bool
+	EndAt            bool
+	StartDate        bool
+	EndDate          bool
+	Location         bool
+	Participants     bool
+	ProjectID        bool
+	Note             bool
+	Reminders        bool
+	ItineraryDetails bool
 }
 
 func eventClearFlagsOf(clear *[]httpapi.UpdateEventRequestClear) eventClearFlags {
@@ -393,6 +425,8 @@ func eventClearFlagsOf(clear *[]httpapi.UpdateEventRequestClear) eventClearFlags
 			f.Note = true
 		case httpapi.UpdateEventRequestClearReminders:
 			f.Reminders = true
+		case httpapi.UpdateEventRequestClearItineraryDetails:
+			f.ItineraryDetails = true
 		}
 	}
 	return f
@@ -420,6 +454,16 @@ func pickDate(next *openapi_types.Date, current *time.Time, cleared bool) *time.
 	return current
 }
 
+func pickString(next *string, current *string, cleared bool) *string {
+	if cleared {
+		return nil
+	}
+	if next != nil {
+		return next
+	}
+	return current
+}
+
 func optionalString(present bool, value string) *string {
 	if !present {
 		return nil
@@ -429,12 +473,13 @@ func optionalString(present bool, value string) *string {
 
 func eventUndoState(e dbgen.Event) map[string]any {
 	return map[string]any{
-		"title":      e.Title,
-		"all_day":    e.AllDay,
-		"start_at":   e.StartAt,
-		"start_date": e.StartDate,
-		"deleted":    e.DeletedAt != nil,
-		"version":    e.Version,
+		"title":             e.Title,
+		"all_day":           e.AllDay,
+		"start_at":          e.StartAt,
+		"start_date":        e.StartDate,
+		"itinerary_details": unmarshalItineraryDetails(e.ItineraryDetails),
+		"deleted":           e.DeletedAt != nil,
+		"version":           e.Version,
 	}
 }
 

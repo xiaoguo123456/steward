@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 )
 
 func TestCreateProjectInTxKeepsTripKindAndDates(t *testing.T) {
@@ -36,6 +37,27 @@ func TestCreateProjectInTxKeepsTripKindAndDates(t *testing.T) {
 		}
 		if row.Description == nil || *row.Description != description {
 			t.Fatalf("目的地与注意事项没有持久化：%v", row.Description)
+		}
+		origin, destination := "北京南", "上海虹桥"
+		mode := httpapi.TransportModeTrain
+		departure := time.Date(2026, 8, 29, 8, 18, 0, 0, time.UTC)
+		arrival := time.Date(2026, 8, 29, 12, 32, 0, 0, time.UTC)
+		event, err := service.CreateEventInTx(ctx, q, userID, CreateEventCommand{
+			Title: "G1 北京南至上海虹桥", ProjectID: &row.ID,
+			StartAt: &departure, EndAt: &arrival, Location: &origin,
+			ItineraryDetails: &httpapi.ItineraryEventDetails{
+				Kind: httpapi.ItineraryItemKindTransport, TransportMode: &mode,
+				Origin: &origin, Destination: &destination,
+				BookingStatus: httpapi.BookingStatusTicketed, AttachmentMediaIds: []string{},
+			},
+		})
+		if err != nil {
+			return err
+		}
+		mapped := MapEvent(event)
+		if mapped.ItineraryDetails == nil || mapped.ItineraryDetails.Destination == nil ||
+			*mapped.ItineraryDetails.Destination != destination {
+			t.Fatalf("交通详情没有持久化：%+v", mapped.ItineraryDetails)
 		}
 		return nil
 	})

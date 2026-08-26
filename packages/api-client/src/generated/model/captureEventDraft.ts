@@ -15,6 +15,7 @@
  */
 import type { EventKind } from './eventKind';
 import type { EventRecurrence } from './eventRecurrence';
+import type { ItineraryEventDetails } from './itineraryEventDetails';
 
 export interface CaptureEventDraft {
   title: string;
@@ -32,6 +33,7 @@ export interface CaptureEventDraft {
   timezone?: string | null;
   /** @nullable */
   location?: string | null;
+  itinerary_details?: ItineraryEventDetails;
   participants?: string[];
   /** @nullable */
   note?: string | null;
