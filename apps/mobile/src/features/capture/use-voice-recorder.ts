@@ -137,17 +137,6 @@ export function useVoiceRecorder({ maxDurationSeconds, onMaxDuration }: VoiceRec
     return () => subscription.remove();
   }, [recorder]);
 
-  useEffect(
-    () => () => {
-      const status = recorder.getStatus();
-      if (status.isRecording || status.canRecord) {
-        startedRef.current = false;
-        void recorder.stop().catch(() => undefined);
-      }
-    },
-    [recorder],
-  );
-
   return {
     start,
     pause,
