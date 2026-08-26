@@ -51,6 +51,8 @@ export function useRecipeDiscovery(
     recipes,
     loading: query.isLoading || normalizedSearch !== debouncedSearch,
     loadFailure: query.isError ? errorMessage(query.error, '菜谱没能加载。') : null,
-    refetch: () => void query.refetch(),
+    refetch: async () => {
+      await query.refetch();
+    },
   };
 }

@@ -1,7 +1,8 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,6 +26,10 @@ import {
 } from '@/features/recipes/components/recipe-ui';
 import { categoryOptions } from '@/features/recipes/category-options';
 import { useRecipePrototype } from '@/features/recipes/recipe-context';
+import {
+  createDiscoveryShuffleSeed,
+  orderDiscoveryRecipes,
+} from '@/features/recipes/discovery-order';
 import { useRecipeDiscovery } from '@/features/recipes/use-recipe-discovery';
 import { useClientReady } from '@/hooks/use-client-ready';
 import {
@@ -264,9 +269,29 @@ function DiscoverHome() {
   const { profile } = useRecipePrototype();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<RecipeCategory>('recommended');
+  const [shuffleSeed, setShuffleSeed] = useState(createDiscoveryShuffleSeed);
+  const [refreshing, setRefreshing] = useState(false);
   const normalizedSearch = search.trim().toLowerCase();
   const discovery = useRecipeDiscovery(category, search, profile?.allergies ?? []);
-  const visibleRecipes = discovery.recipes;
+  const visibleRecipes = useMemo(
+    () =>
+      orderDiscoveryRecipes(discovery.recipes, {
+        category,
+        query: normalizedSearch,
+        seed: shuffleSeed,
+      }),
+    [category, discovery.recipes, normalizedSearch, shuffleSeed],
+  );
+
+  const refreshDiscovery = async () => {
+    setRefreshing(true);
+    try {
+      await discovery.refetch();
+      setShuffleSeed(createDiscoveryShuffleSeed());
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // 头图取当前筛选下的第一条：内容来自服务端，不该在客户端写死某个 ID。
   const featured =
@@ -276,7 +301,20 @@ function DiscoverHome() {
   const recipesUnavailable = Boolean(discovery.loadFailure) && visibleRecipes.length === 0;
 
   return (
-    <>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={
+        <RefreshControl
+          colors={[colors.primary]}
+          onRefresh={() => void refreshDiscovery()}
+          refreshing={refreshing}
+          tintColor={colors.primary}
+        />
+      }
+      showsVerticalScrollIndicator={false}
+      style={styles.pageScroll}
+    >
       <View style={styles.searchField}>
         <AppIcon color={recipeColors.muted} name="search" size={21} />
         <TextInput
@@ -404,7 +442,7 @@ function DiscoverHome() {
           />
         </View>
       )}
-    </>
+    </ScrollView>
   );
 }
 
@@ -434,13 +472,18 @@ export default function RecipesHomeScreen() {
       <View style={styles.tabContainer}>
         <RecipeTabs onChange={setTabOverride} value={tab} />
       </View>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {tab === 'week' ? <WeekHome /> : <DiscoverHome />}
-      </ScrollView>
+      {tab === 'week' ? (
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={styles.pageScroll}
+        >
+          <WeekHome />
+        </ScrollView>
+      ) : (
+        <DiscoverHome />
+      )}
     </AppScreen>
   );
 }
@@ -448,6 +491,9 @@ export default function RecipesHomeScreen() {
 const styles = StyleSheet.create({
   tabContainer: {
     paddingHorizontal: 16,
+  },
+  pageScroll: {
+    flex: 1,
   },
   content: {
     paddingHorizontal: 16,
