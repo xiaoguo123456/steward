@@ -24,10 +24,14 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { PageHeader } from '@/components/ui/page-header';
-import { ListManagerSheet } from '@/features/plan/list-manager-sheet';
-import { ProjectScopeBar } from '@/features/projects/project-scope-bar';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
+import {
+  CreateTaskListSheet,
+  TaskListActionSheet,
+  TaskListSectionMenu,
+} from '@/features/plan/task-list-sheets';
+import { ProjectScopeBar } from '@/features/projects/project-scope-bar';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
 import { formatDateParam } from '@/utils/format';
@@ -67,8 +71,18 @@ export default function ListsScreen() {
   const tomorrowTasks = useListTasks({ day: tomorrow, list_kind: 'tasks', limit: 100 });
   const completedTasks = useListTasks({ status: ['done'], list_kind: 'tasks', limit: 100 });
   const unscheduledTasks = useListTasks({ unscheduled: true, list_kind: 'tasks', limit: 100 });
-  const taskLists = useListTaskLists({ list_kind: 'tasks' });
-  const [listManagerVisible, setListManagerVisible] = useState(false);
+  const taskLists = useListTaskLists({ include_archived: true, list_kind: 'tasks' });
+  const [createListVisible, setCreateListVisible] = useState(false);
+  const [listMenuVisible, setListMenuVisible] = useState(false);
+  const allTaskLists = useMemo(() => taskLists.data?.data ?? [], [taskLists.data?.data]);
+  const activeTaskLists = useMemo(
+    () => allTaskLists.filter((list) => !list.archived_at),
+    [allTaskLists],
+  );
+  const archivedTaskLists = useMemo(
+    () => allTaskLists.filter((list) => Boolean(list.archived_at)),
+    [allTaskLists],
+  );
 
   const counts = {
     today: today.data?.data.counts.total ?? 0,
@@ -85,7 +99,11 @@ export default function ListsScreen() {
     taskLists.isPending;
 
   const failed =
-    today.isError || tomorrowTasks.isError || completedTasks.isError || taskLists.isError;
+    today.isError ||
+    tomorrowTasks.isError ||
+    completedTasks.isError ||
+    unscheduledTasks.isError ||
+    taskLists.isError;
 
   const refetchAll = () => {
     void today.refetch();
@@ -98,7 +116,15 @@ export default function ListsScreen() {
   if (activeView) {
     return (
       <DetailView
+        allLists={allTaskLists}
         onBack={() => setActiveView(null)}
+        onListChanged={(change) => {
+          if (change.deleted || change.list?.archived_at) {
+            setActiveView(null);
+          } else if (change.list) {
+            setActiveView({ type: 'list', list: change.list });
+          }
+        }}
         onToggle={(task) => toggleDone.mutate(task)}
         tasks={detailTasks(activeView, {
           today: today.data?.data.tasks.map((item) => item.task) ?? [],
@@ -182,22 +208,22 @@ export default function ListsScreen() {
             </Pressable>
 
             <SectionTitle
-              action={
+              action={activeTaskLists.length > 1 || archivedTaskLists.length > 0 ? (
                 <Pressable
-                  accessibilityLabel="管理清单"
+                  accessibilityLabel="更多清单操作"
                   accessibilityRole="button"
-                  onPress={() => setListManagerVisible(true)}
-                  style={({ pressed }) => [styles.manageButton, pressed && styles.pressed]}
+                  onPress={() => setListMenuVisible(true)}
+                  style={({ pressed }) => [styles.sectionAction, pressed && styles.pressed]}
                 >
-                  <Text style={styles.manageText}>管理</Text>
+                  <AppIcon color={colors.textSecondary} name="ellipsis-horizontal" size={21} />
                 </Pressable>
-              }
-              count={`${taskLists.data?.data.length ?? 0} 个`}
+              ) : undefined}
+              count={`${activeTaskLists.length} 个`}
               style={styles.sectionTitle}
               title="清单"
             />
             <View style={styles.rows}>
-              {(taskLists.data?.data ?? []).map((list) => (
+              {activeTaskLists.map((list) => (
                 <Pressable
                   accessibilityLabel={`查看清单 ${list.name}`}
                   accessibilityRole="button"
@@ -213,16 +239,40 @@ export default function ListsScreen() {
                   <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
                 </Pressable>
               ))}
+              <Pressable
+                accessibilityLabel="新建清单"
+                accessibilityRole="button"
+                onPress={() => setCreateListVisible(true)}
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+              >
+                <View style={styles.addListIcon}>
+                  <AppIcon color={colors.primaryStrong} name="add-outline" size={21} />
+                </View>
+                <Text style={styles.addListText}>新建清单</Text>
+              </Pressable>
             </View>
           </>
         )}
       </ScrollView>
       <AiFab />
-      <ListManagerSheet
-        lists={taskLists.data?.data ?? []}
-        onClose={() => setListManagerVisible(false)}
-        visible={listManagerVisible}
-      />
+      {createListVisible ? (
+        <CreateTaskListSheet onClose={() => setCreateListVisible(false)} />
+      ) : null}
+      {listMenuVisible ? (
+        <TaskListSectionMenu
+          canReorder={activeTaskLists.length > 1}
+          hasArchived={archivedTaskLists.length > 0}
+          onArchived={() => {
+            setListMenuVisible(false);
+            router.push({ pathname: '/lists/manage', params: { focus: 'archived' } });
+          }}
+          onClose={() => setListMenuVisible(false)}
+          onReorder={() => {
+            setListMenuVisible(false);
+            router.push({ pathname: '/lists/manage', params: { focus: 'active' } });
+          }}
+        />
+      ) : null}
     </AppScreen>
   );
 }
@@ -231,16 +281,21 @@ export default function ListsScreen() {
 function DetailView({
   view,
   tasks,
+  allLists,
   onBack,
+  onListChanged,
   onToggle,
 }: {
   view: NonNullable<ActiveView>;
   tasks: Task[];
+  allLists: TaskList[];
   onBack: () => void;
+  onListChanged: (change: { list?: TaskList; deleted?: boolean }) => void;
   onToggle: (task: Task) => void;
 }) {
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
+  const [listActionsVisible, setListActionsVisible] = useState(false);
   const title = view.type === 'list' ? view.list.name : scopeTitles[view.key];
 
   // 项目范围是在已加载的任务上再筛一层，不重新发请求：
@@ -254,7 +309,20 @@ function DetailView({
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader onBack={onBack} title={title} />
+      <NavHeader
+        onBack={onBack}
+        right={view.type === 'list' ? (
+          <Pressable
+            accessibilityLabel={`更多 ${view.list.name} 操作`}
+            accessibilityRole="button"
+            onPress={() => setListActionsVisible(true)}
+            style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
+          >
+            <AppIcon color={colors.text} name="ellipsis-horizontal" size={21} />
+          </Pressable>
+        ) : undefined}
+        title={title}
+      />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ProjectScopeBar onSelect={setProject} selectedId={project?.id ?? null} />
         {visible.length === 0 ? (
@@ -278,6 +346,14 @@ function DetailView({
           ))
         )}
       </ScrollView>
+      {view.type === 'list' && listActionsVisible ? (
+        <TaskListActionSheet
+          list={view.list}
+          lists={allLists}
+          onChanged={onListChanged}
+          onClose={() => setListActionsVisible(false)}
+        />
+      ) : null}
     </AppScreen>
   );
 }
@@ -300,16 +376,12 @@ function detailTasks(
 }
 
 const styles = StyleSheet.create({
-  manageButton: {
-    minHeight: 36,
-    paddingHorizontal: 4,
+  sectionAction: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
     justifyContent: 'center',
-  },
-  manageText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.meta,
-    fontWeight: '600',
+    borderRadius: radius.pill,
   },
   content: {
     paddingHorizontal: 16,
@@ -377,6 +449,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  addListIcon: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addListText: {
+    flex: 1,
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.bodyStrong,
   },
   rowTitle: {
     flex: 1,

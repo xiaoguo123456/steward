@@ -9,22 +9,25 @@ type NavHeaderProps = {
   title?: string;
   right?: ReactNode;
   onBack?: () => void;
+  showBack?: boolean;
 };
 
-export function NavHeader({ title, right, onBack }: NavHeaderProps) {
+export function NavHeader({ title, right, onBack, showBack = true }: NavHeaderProps) {
   const router = useRouter();
 
   return (
     <View style={styles.header}>
-      <Pressable
-        accessibilityLabel="返回"
-        accessibilityRole="button"
-        hitSlop={12}
-        onPress={onBack ?? (() => router.back())}
-        style={styles.side}
-      >
-        <AppIcon name="chevron-back" size={24} />
-      </Pressable>
+      {showBack ? (
+        <Pressable
+          accessibilityLabel="返回"
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={onBack ?? (() => router.back())}
+          style={styles.side}
+        >
+          <AppIcon name="chevron-back" size={24} />
+        </Pressable>
+      ) : <View style={styles.side} />}
       <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>
         {title}
       </Text>

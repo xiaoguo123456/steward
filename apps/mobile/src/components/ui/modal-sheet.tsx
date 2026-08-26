@@ -14,6 +14,7 @@ import { colors, radius } from '@/theme/tokens';
 type ModalSheetProps = PropsWithChildren<{
   onClose: () => void;
   maxHeight?: DimensionValue;
+  minHeight?: DimensionValue;
   dimmed?: boolean;
 }>;
 
@@ -21,6 +22,7 @@ export function ModalSheet({
   children,
   onClose,
   maxHeight = '88%',
+  minHeight = 240,
   dimmed = true,
 }: ModalSheetProps) {
   const insets = useSafeAreaInsets();
@@ -36,7 +38,7 @@ export function ModalSheet({
         pointerEvents="box-none"
         style={styles.keyboardArea}
       >
-        <View style={[styles.sheet, { maxHeight, paddingBottom: insets.bottom }]}>
+        <View style={[styles.sheet, { maxHeight, minHeight, paddingBottom: insets.bottom }]}>
           <View style={styles.grabber} />
           {children}
         </View>
@@ -62,7 +64,6 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%',
     maxWidth: 520,
-    minHeight: 240,
     alignSelf: 'center',
     overflow: 'hidden',
     borderTopLeftRadius: radius.xl,

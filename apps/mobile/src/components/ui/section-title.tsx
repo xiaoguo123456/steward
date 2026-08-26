@@ -7,7 +7,7 @@ import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 type SectionTitleProps = {
   title: string;
   count?: string;
-  /** 右侧的次级操作，例如「管理」。 */
+  /** 右侧的次级操作，例如标准更多菜单。 */
   action?: ReactNode;
   style?: StyleProp<ViewStyle>;
 };
