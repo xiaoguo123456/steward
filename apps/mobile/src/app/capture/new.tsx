@@ -3,11 +3,13 @@ import {
   errorMessage,
   type CreateCaptureRequest,
 } from '@steward/api-client';
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Keyboard,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,41 +29,111 @@ import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 type InputMode = 'text' | 'voice';
 type ReplaceTarget = InputMode | null;
 
+const MAX_RECORDING_SECONDS = 10 * 60;
+const RECORDING_WARNING_SECONDS = 60;
+const waveformPattern = [0.34, 0.58, 0.82, 0.46, 0.72, 1, 0.62, 0.4, 0.86, 0.54, 0.74, 0.38, 0.92, 0.64, 0.44, 0.78, 0.5];
+
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function VoiceWaveform({ active = false, compact = false, level = 0.5 }: {
+  active?: boolean;
+  compact?: boolean;
+  level?: number;
+}) {
+  const maxHeight = compact ? 22 : 36;
+  const strength = active ? Math.max(0.32, level) : 0.62;
+
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.waveform, compact && styles.waveformCompact]}>
+      {waveformPattern.map((height, index) => (
+        <View
+          key={index}
+          style={[
+            styles.waveformBar,
+            compact && styles.waveformBarCompact,
+            {
+              height: Math.max(5, Math.round(maxHeight * height * strength)),
+              backgroundColor: active ? colors.primaryStrong : colors.borderStrong,
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
 export default function CaptureInputScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ intent?: string; projectId?: string }>();
   const isTripIntent = params.intent === 'trip';
   const isTripItemIntent = params.intent === 'trip_item';
-  const [mode, setMode] = useState<InputMode>('text');
+  const [mode, setMode] = useState<InputMode>('voice');
   const [text, setText] = useState('');
-  // 图片与录音是真实的本地文件，用户点发送时才上传。
+  // 图片与录音只保存在本地，用户明确发送后才上传。
   const [images, setImages] = useState<LocalMedia[]>([]);
   const [audio, setAudio] = useState<LocalMedia | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [showClosePrompt, setShowClosePrompt] = useState(false);
+  const [showRerecordPrompt, setShowRerecordPrompt] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState<ReplaceTarget>(null);
+  const [finishingRecording, setFinishingRecording] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const picker = useImagePicker();
-  const recorder = useVoiceRecorder();
+  const recorder = useVoiceRecorder({
+    maxDurationSeconds: MAX_RECORDING_SECONDS,
+    onMaxDuration: (file, durationSeconds) => {
+      setAudio(file);
+      setAudioDuration(durationSeconds);
+    },
+  });
   const media = useMediaUpload();
+  const audioPlayer = useAudioPlayer(audio?.uri ?? null, { updateInterval: 100 });
+  const playback = useAudioPlayerStatus(audioPlayer);
 
-  const recording = recorder.recording;
   const hasContent = Boolean(text.trim() || images.length || audio);
-  const canSend = hasContent && !recording && !submitting;
+  const canSend = hasContent && !recorder.active && !finishingRecording && !submitting;
+  const remainingSeconds = MAX_RECORDING_SECONDS - recorder.durationSeconds;
+  const recordingLevel = Math.max(0, Math.min(1, (recorder.metering + 60) / 60));
 
   const draftSummary = useMemo(() => {
     if (text.trim()) return text.trim();
-    if (audioDuration) return `语音输入 ${audioDuration} 秒`;
+    if (audioDuration) return `语音输入 ${formatDuration(audioDuration)}`;
     return `${images.length} 张图片`;
   }, [audioDuration, images.length, text]);
 
-  const failure = submitError ?? picker.error ?? recorder.error;
+  const failure = submitError ?? picker.error ?? (recorder.permissionDenied ? null : recorder.error);
 
-  const close = () => {
+  const stopPlayback = useCallback(async () => {
+    audioPlayer.pause();
+    if (playback.currentTime > 0) await audioPlayer.seekTo(0);
+  }, [audioPlayer, playback.currentTime]);
+
+  const finishRecording = async () => {
+    if (!recorder.active || finishingRecording) return;
+    setFinishingRecording(true);
+    const seconds = Math.max(1, recorder.durationSeconds);
+    const file = await recorder.stop();
+    if (file) {
+      setAudio(file);
+      setAudioDuration(seconds);
+    }
+    setFinishingRecording(false);
+  };
+
+  const close = async () => {
     Keyboard.dismiss();
+    if (recorder.active) {
+      if (!recorder.paused) recorder.pause();
+      setShowClosePrompt(true);
+      return;
+    }
     if (hasContent) {
       setShowClosePrompt(true);
       return;
@@ -79,42 +151,82 @@ export default function CaptureInputScreen() {
 
   const requestMode = (nextMode: InputMode) => {
     if (nextMode === mode) return;
-    if ((nextMode === 'voice' && text.trim()) || (nextMode === 'text' && audio)) {
+    Keyboard.dismiss();
+    setShowMediaMenu(false);
+    if (
+      (nextMode === 'voice' && text.trim())
+      || (nextMode === 'text' && (audio || recorder.active))
+    ) {
+      if (recorder.recording) recorder.pause();
       setReplaceTarget(nextMode);
       return;
     }
+    recorder.clearError();
     setMode(nextMode);
   };
 
-  const confirmModeReplacement = () => {
+  const confirmModeReplacement = async () => {
     if (!replaceTarget) return;
     if (replaceTarget === 'voice') setText('');
     if (replaceTarget === 'text') {
+      await stopPlayback();
+      if (recorder.active) await recorder.discard();
       setAudio(null);
       setAudioDuration(null);
     }
+    recorder.clearError();
     setMode(replaceTarget);
     setReplaceTarget(null);
   };
 
-  const startRecording = () => {
+  const startRecording = async () => {
+    if (recorder.active || audio) return;
     setSubmitError(null);
-    void recorder.start();
+    setShowMediaMenu(false);
+    await recorder.start();
   };
 
-  const finishRecording = async () => {
-    if (!recording) return;
-    // 先把时长记下来：stop 之后 state 会归零。
-    const seconds = Math.max(1, recorder.durationSeconds);
-    const file = await recorder.stop();
-    if (!file) return;
-    setAudio(file);
-    setAudioDuration(seconds);
+  const cancelRecording = async () => {
+    await recorder.discard();
+    recorder.clearError();
+    setAudio(null);
+    setAudioDuration(null);
+  };
+
+  const togglePlayback = async () => {
+    if (!audio) return;
+    if (playback.playing) {
+      audioPlayer.pause();
+      return;
+    }
+    await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+    if (
+      playback.didJustFinish
+      || (playback.duration > 0 && playback.currentTime >= playback.duration - 0.1)
+    ) {
+      await audioPlayer.seekTo(0);
+    }
+    audioPlayer.play();
+  };
+
+  const deleteAudio = async () => {
+    await stopPlayback();
+    setAudio(null);
+    setAudioDuration(null);
+  };
+
+  const confirmRerecord = async () => {
+    setShowRerecordPrompt(false);
+    await deleteAudio();
+    setSubmitError(null);
+    setShowMediaMenu(false);
+    await recorder.start();
   };
 
   const submit = async () => {
     if (!canSend || submitting) return;
     Keyboard.dismiss();
+    audioPlayer.pause();
 
     const content = text.trim();
     setSubmitError(null);
@@ -162,49 +274,22 @@ export default function CaptureInputScreen() {
   };
 
   return (
-    <ModalSheet maxHeight="86%" onClose={close}>
+    <ModalSheet maxHeight="86%" onClose={() => void close()}>
       <View style={styles.header}>
-        <View>
-          <Text accessibilityRole="header" style={styles.title}>
-            {isTripIntent ? 'AI 创建行程' : isTripItemIntent ? 'AI 添加行程安排' : '记一件事'}
-          </Text>
-          {!isTripIntent && !isTripItemIntent ? (
-            <Text style={styles.subtitle}>AI 会先整理，确认后再保存</Text>
-          ) : null}
-        </View>
+        <Text accessibilityRole="header" style={styles.title}>
+          {isTripIntent ? 'AI 创建行程' : isTripItemIntent ? 'AI 添加行程安排' : '记一件事'}
+        </Text>
         <Pressable
           accessibilityLabel="关闭新增面板"
           accessibilityRole="button"
-          onPress={close}
+          onPress={() => void close()}
           style={({ pressed }) => [styles.closeButton, pressed && styles.iconPressed]}
         >
           <AppIcon name="close" size={23} />
         </Pressable>
       </View>
 
-      {!isTripIntent && !isTripItemIntent ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.replace('/capture/new')}
-          style={({ pressed }) => [styles.recentRow, pressed && styles.recentPressed]}
-        >
-          <View style={styles.recentIcon}>
-            <AppIcon color={colors.primaryStrong} name="time-outline" size={18} />
-          </View>
-          <View style={styles.recentCopy}>
-            <Text style={styles.recentTitle}>最近输入</Text>
-            <Text style={styles.recentMeta}>1 项等待确认</Text>
-          </View>
-          <Text style={styles.continueText}>继续</Text>
-          <AppIcon color={colors.borderStrong} name="chevron-forward" size={16} />
-        </Pressable>
-      ) : null}
-
-      <ScrollView
-        contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.body}>
         {images.length ? (
           <ScrollView
             contentContainerStyle={styles.imageList}
@@ -229,43 +314,115 @@ export default function CaptureInputScreen() {
           </ScrollView>
         ) : null}
 
-        {audioDuration ? (
-          <View style={styles.audioPreview}>
-            <View style={styles.audioIcon}>
-              <AppIcon color={colors.primaryStrong} name="mic" size={19} />
+        {mode === 'voice' ? (
+          recorder.active ? (
+            <View style={styles.recordingPanel}>
+              <View style={styles.recordingStatus}>
+                <View style={[styles.recordingDot, recorder.paused && styles.recordingDotPaused]} />
+                <Text style={styles.recordingLabel}>{recorder.paused ? '已暂停' : '正在录音'}</Text>
+                <Text accessibilityLabel={`录音时长 ${formatDuration(recorder.durationSeconds)}`} style={styles.recordingTime}>
+                  {formatDuration(recorder.durationSeconds)}
+                </Text>
+              </View>
+              <VoiceWaveform active={!recorder.paused} level={recordingLevel} />
+              {remainingSeconds <= RECORDING_WARNING_SECONDS ? (
+                <Text style={styles.recordingWarning}>还可录 {formatDuration(Math.max(remainingSeconds, 0))}</Text>
+              ) : null}
+              <View style={styles.recordingActions}>
+                <Pressable
+                  accessibilityLabel="取消录音"
+                  accessibilityRole="button"
+                  onPress={() => void cancelRecording()}
+                  style={({ pressed }) => [styles.recordingAction, pressed && styles.optionPressed]}
+                >
+                  <View style={styles.recordingActionIcon}>
+                    <AppIcon color={colors.textSecondary} name="close" size={21} />
+                  </View>
+                  <Text style={styles.recordingActionText}>取消</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={recorder.paused ? '继续录音' : '暂停录音'}
+                  accessibilityRole="button"
+                  onPress={recorder.paused ? recorder.resume : recorder.pause}
+                  style={({ pressed }) => [styles.pauseButton, pressed && styles.primaryPressed]}
+                >
+                  <AppIcon color={colors.background} name={recorder.paused ? 'mic' : 'pause'} size={27} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="完成录音"
+                  accessibilityRole="button"
+                  onPress={() => void finishRecording()}
+                  style={({ pressed }) => [styles.recordingAction, pressed && styles.optionPressed]}
+                >
+                  <View style={styles.recordingActionIcon}>
+                    <AppIcon color={colors.primaryStrong} name="checkmark" size={22} />
+                  </View>
+                  <Text style={styles.recordingActionText}>完成</Text>
+                </Pressable>
+              </View>
             </View>
-            <View style={styles.audioCopy}>
-              <Text style={styles.audioTitle}>语音已录好</Text>
-              <Text style={styles.audioMeta}>{audioDuration} 秒 · 发送后自动转写</Text>
+          ) : audio && audioDuration ? (
+            <View style={styles.audioPreview}>
+              <Pressable
+                accessibilityLabel={playback.playing ? '暂停试听录音' : '试听录音'}
+                accessibilityRole="button"
+                onPress={() => void togglePlayback()}
+                style={({ pressed }) => [styles.playButton, pressed && styles.primaryPressed]}
+              >
+                <AppIcon color={colors.background} name={playback.playing ? 'pause' : 'play'} size={21} />
+              </Pressable>
+              <View style={styles.audioCopy}>
+                <View style={styles.audioTitleRow}>
+                  <Text style={styles.audioTitle}>{playback.playing ? '正在播放' : '语音已录好'}</Text>
+                  <Text style={styles.audioMeta}>{formatDuration(audioDuration)}</Text>
+                </View>
+                <VoiceWaveform active={playback.playing} compact level={0.72} />
+              </View>
+              <Pressable
+                accessibilityLabel="重新录制"
+                accessibilityRole="button"
+                onPress={() => setShowRerecordPrompt(true)}
+                style={({ pressed }) => [styles.smallIconButton, pressed && styles.iconPressed]}
+              >
+                <AppIcon color={colors.textSecondary} name="refresh" size={19} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="删除录音"
+                accessibilityRole="button"
+                onPress={() => void deleteAudio()}
+                style={({ pressed }) => [styles.smallIconButton, pressed && styles.iconPressed]}
+              >
+                <AppIcon color={colors.textSecondary} name="trash-outline" size={19} />
+              </Pressable>
             </View>
-            <Pressable
-              accessibilityLabel="删除录音"
-              onPress={() => {
-                setAudio(null);
-                setAudioDuration(null);
-              }}
-              style={({ pressed }) => [styles.smallIconButton, pressed && styles.iconPressed]}
-            >
-              <AppIcon color={colors.textSecondary} name="trash-outline" size={18} />
-            </Pressable>
-          </View>
-        ) : null}
-
-        {!images.length && !audioDuration ? (
-          <View style={styles.promptSpace}>
-            <Text style={styles.promptTitle}>
-              {isTripIntent ? '说出目的地和日期' : isTripItemIntent ? '上传票据或输入安排' : '可以说得随意一点'}
-            </Text>
-            <Text style={styles.promptCopy}>
-              {isTripIntent
-                ? '例如：8 月 29 日至 31 日去北京，和爸妈一起'
-                : isTripItemIntent
-                  ? '车票、机票、酒店订单都可以识别'
-                : '例如：下周二下午提醒我准备产品评审'}
-            </Text>
-          </View>
-        ) : null}
-      </ScrollView>
+          ) : (
+            <View style={styles.voiceIdle}>
+              <Pressable
+                accessibilityLabel="开始录音"
+                accessibilityRole="button"
+                onPress={() => void startRecording()}
+                style={({ pressed }) => [styles.micButton, pressed && styles.micButtonPressed]}
+              >
+                <AppIcon color={colors.background} name="mic" size={36} />
+              </Pressable>
+              <Text style={styles.micLabel}>点击说话</Text>
+            </View>
+          )
+        ) : (
+          <TextInput
+            accessibilityLabel="输入要整理的内容"
+            autoFocus
+            maxLength={10000}
+            multiline
+            onChangeText={setText}
+            placeholder={isTripIntent ? '输入行程安排…' : '输入任务、日程、想法或记录…'}
+            placeholderTextColor={colors.textSecondary}
+            style={styles.textInput}
+            textAlignVertical="top"
+            value={text}
+          />
+        )}
+      </View>
 
       {showMediaMenu ? (
         <View style={styles.mediaMenu}>
@@ -273,7 +430,7 @@ export default function CaptureInputScreen() {
             accessibilityLabel="拍照"
             accessibilityRole="button"
             onPress={() => void addImages('camera')}
-            style={({ pressed }) => [styles.mediaAction, pressed && styles.mediaPressed]}
+            style={({ pressed }) => [styles.mediaAction, pressed && styles.optionPressed]}
           >
             <View style={styles.mediaIcon}>
               <AppIcon color={colors.primaryStrong} name="camera-outline" size={21} />
@@ -284,7 +441,7 @@ export default function CaptureInputScreen() {
             accessibilityLabel="从相册选择"
             accessibilityRole="button"
             onPress={() => void addImages('library')}
-            style={({ pressed }) => [styles.mediaAction, pressed && styles.mediaPressed]}
+            style={({ pressed }) => [styles.mediaAction, pressed && styles.optionPressed]}
           >
             <View style={styles.mediaIcon}>
               <AppIcon color={colors.primaryStrong} name="images-outline" size={21} />
@@ -294,85 +451,55 @@ export default function CaptureInputScreen() {
         </View>
       ) : null}
 
-      {images.length || audioDuration ? (
-        <Text style={styles.mediaNotice}>
-          图片或录音只用于整理这次输入；识别结果仍需你确认后才会保存
-        </Text>
-      ) : null}
-
-      <View style={styles.composerWrap}>
-        {failure ? <Text style={styles.submitError}>{failure}</Text> : null}
-        {media.uploading ? (
-          <Text style={styles.uploadHint}>正在上传媒体…</Text>
-        ) : null}
-        <View style={styles.composer}>
-          <Pressable
-            accessibilityLabel="添加图片"
-            accessibilityRole="button"
-            onPress={() => setShowMediaMenu((current) => !current)}
-            style={({ pressed }) => [styles.composerButton, pressed && styles.iconPressed]}
-          >
-            <AppIcon color={colors.text} name="add-circle-outline" size={25} />
+      {recorder.permissionDenied ? (
+        <View style={styles.permissionRow}>
+          <Text style={styles.permissionText}>未开启麦克风权限</Text>
+          <Pressable accessibilityRole="button" onPress={() => void Linking.openSettings()} style={styles.permissionAction}>
+            <Text style={styles.permissionActionText}>去设置</Text>
           </Pressable>
-
-          {mode === 'text' ? (
-            <TextInput
-              accessibilityLabel="输入要整理的内容"
-              multiline
-              onChangeText={setText}
-              placeholder={isTripIntent ? '输入行程安排…' : '输入任务、日程、想法或记录…'}
-              placeholderTextColor={colors.textTertiary}
-              style={styles.input}
-              value={text}
-            />
-          ) : (
-            <Pressable
-              accessibilityLabel={recording ? '正在录音，松开完成' : '按住说话'}
-              accessibilityRole="button"
-              onPressIn={startRecording}
-              onPressOut={() => void finishRecording()}
-              style={({ pressed }) => [styles.voiceInput, pressed && styles.voicePressed]}
-            >
-              <Text style={[styles.voiceText, recording && styles.recordingText]}>
-                {recording
-                  ? `正在录音 ${recorder.durationSeconds} 秒，松开完成`
-                  : '按住说话'}
-              </Text>
-            </Pressable>
-          )}
-
-          <Pressable
-            accessibilityLabel={mode === 'text' ? '切换到语音输入' : '切换到文字输入'}
-            accessibilityRole="button"
-            onPress={() => requestMode(mode === 'text' ? 'voice' : 'text')}
-            style={({ pressed }) => [styles.composerButton, pressed && styles.iconPressed]}
-          >
-            <AppIcon
-              color={colors.textSecondary}
-              name={mode === 'text' ? 'mic-outline' : 'text-outline'}
-              size={22}
-            />
-          </Pressable>
-          <Pressable
-            accessibilityLabel="发送并整理"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSend }}
-            disabled={!canSend || submitting}
-            onPress={() => void submit()}
-            style={({ pressed }) => [
-              styles.sendButton,
-              (!canSend || submitting) && styles.sendDisabled,
-              pressed && canSend && styles.sendPressed,
-            ]}
-          >
-            <AppIcon
-              color={canSend ? colors.background : colors.textSecondary}
-              name="arrow-up"
-              size={20}
-            />
+          <Pressable accessibilityRole="button" onPress={() => requestMode('text')} style={styles.permissionAction}>
+            <Text style={styles.permissionActionText}>用键盘</Text>
           </Pressable>
         </View>
-      </View>
+      ) : null}
+
+      {!recorder.active ? (
+        <View style={styles.footer}>
+          {failure ? <Text style={styles.submitError}>{failure}</Text> : null}
+          {images.length || audio ? (
+            <Text style={styles.mediaNotice}>发送后上传，整理结果需你确认。</Text>
+          ) : null}
+          <View style={styles.inputOptions}>
+            <Pressable
+              accessibilityLabel={isTripItemIntent ? '添加票据图片' : '添加图片'}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: images.length >= 9 }}
+              disabled={images.length >= 9}
+              onPress={() => setShowMediaMenu((current) => !current)}
+              style={({ pressed }) => [styles.inputOption, pressed && styles.optionPressed, images.length >= 9 && styles.optionDisabled]}
+            >
+              <AppIcon color={colors.primaryStrong} name="image-outline" size={20} />
+              <Text style={styles.inputOptionText}>{isTripItemIntent ? '票据' : '图片'}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel={mode === 'text' ? '切换到语音输入' : '切换到文字输入'}
+              accessibilityRole="button"
+              onPress={() => requestMode(mode === 'text' ? 'voice' : 'text')}
+              style={({ pressed }) => [styles.inputOption, pressed && styles.optionPressed]}
+            >
+              <AppIcon color={colors.primaryStrong} name={mode === 'text' ? 'mic-outline' : 'keypad-outline'} size={20} />
+              <Text style={styles.inputOptionText}>{mode === 'text' ? '语音' : '键盘'}</Text>
+            </Pressable>
+          </View>
+          {hasContent ? (
+            <AppButton
+              disabled={!canSend}
+              label={submitting || media.uploading ? '正在提交…' : '发送并整理'}
+              onPress={() => void submit()}
+            />
+          ) : null}
+        </View>
+      ) : null}
 
       {showClosePrompt ? (
         <View style={styles.confirmOverlay}>
@@ -380,8 +507,21 @@ export default function CaptureInputScreen() {
           <View style={styles.confirmSheet}>
             <Text style={styles.confirmTitle}>保留这次输入吗？</Text>
             <Text style={styles.confirmCopy}>保存草稿后，可以从“最近输入”继续。</Text>
-            <AppButton label="保存草稿" onPress={() => router.back()} />
-            <AppButton label="放弃输入" onPress={() => router.back()} variant="danger" />
+            <AppButton
+              label="保存草稿"
+              onPress={() => {
+                if (recorder.active) void finishRecording();
+                router.back();
+              }}
+            />
+            <AppButton
+              label="放弃输入"
+              onPress={() => {
+                if (recorder.active) void recorder.discard();
+                router.back();
+              }}
+              variant="danger"
+            />
             <AppButton label="继续编辑" onPress={() => setShowClosePrompt(false)} variant="text" />
           </View>
         </View>
@@ -395,12 +535,22 @@ export default function CaptureInputScreen() {
               {replaceTarget === 'voice' ? '改用语音输入？' : '改用文字输入？'}
             </Text>
             <Text style={styles.confirmCopy}>
-              {replaceTarget === 'voice'
-                ? '开始录音会清除当前文字。'
-                : '输入文字会清除当前录音。'}
+              {replaceTarget === 'voice' ? '当前文字会被清除。' : '当前录音会被清除。'}
             </Text>
-            <AppButton label="确认替换" onPress={confirmModeReplacement} />
+            <AppButton label="确认替换" onPress={() => void confirmModeReplacement()} />
             <AppButton label="取消" onPress={() => setReplaceTarget(null)} variant="text" />
+          </View>
+        </View>
+      ) : null}
+
+      {showRerecordPrompt ? (
+        <View style={styles.confirmOverlay}>
+          <Pressable onPress={() => setShowRerecordPrompt(false)} style={styles.confirmBackdrop} />
+          <View style={styles.confirmSheet}>
+            <Text style={styles.confirmTitle}>重新录制？</Text>
+            <Text style={styles.confirmCopy}>当前录音会被替换。</Text>
+            <AppButton label="重新录制" onPress={() => void confirmRerecord()} />
+            <AppButton label="取消" onPress={() => setShowRerecordPrompt(false)} variant="text" />
           </View>
         </View>
       ) : null}
@@ -409,15 +559,8 @@ export default function CaptureInputScreen() {
 }
 
 const styles = StyleSheet.create({
-  submitError: {
-    marginBottom: 8,
-    color: colors.danger,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-  },
   header: {
-    minHeight: 64,
+    minHeight: 58,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -427,12 +570,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily,
     ...typography.section,
-  },
-  subtitle: {
-    marginTop: 2,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
   },
   closeButton: {
     width: 44,
@@ -444,91 +581,31 @@ const styles = StyleSheet.create({
   iconPressed: {
     backgroundColor: colors.surface,
   },
-  recentRow: {
-    minHeight: 60,
-    marginHorizontal: 16,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSubtle,
+  primaryPressed: {
+    opacity: 0.84,
+    transform: [{ scale: 0.97 }],
   },
-  recentPressed: {
+  optionPressed: {
     backgroundColor: colors.primarySoft,
   },
-  recentIcon: {
-    width: 34,
-    height: 34,
-    marginRight: 10,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  recentCopy: {
-    flex: 1,
-  },
-  recentTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
-  recentMeta: {
-    marginTop: 1,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  continueText: {
-    marginRight: 3,
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.meta,
-    fontWeight: '600',
-  },
   body: {
-    minHeight: 128,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  promptSpace: {
-    minHeight: 104,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  promptTitle: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.bodyStrong,
-  },
-  promptCopy: {
-    marginTop: 6,
-    color: colors.textTertiary,
-    fontFamily,
-    ...typography.meta,
+    paddingTop: 6,
   },
   imageList: {
+    paddingBottom: 12,
     gap: 10,
   },
   imagePreview: {
-    width: 82,
-    height: 82,
+    width: 76,
+    height: 76,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: colors.primarySoft,
   },
   imageThumb: {
     width: '100%',
     height: '100%',
     borderRadius: radius.md,
-  },
-  uploadHint: {
-    marginBottom: 8,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
   },
   imageIndex: {
     position: 'absolute',
@@ -550,32 +627,156 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.text,
   },
-  audioPreview: {
+  voiceIdle: {
+    minHeight: 168,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micButton: {
+    width: 82,
+    height: 82,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  micButtonPressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.96 }],
+  },
+  micLabel: {
+    marginTop: 12,
+    color: colors.text,
+    fontFamily,
+    ...typography.bodyStrong,
+  },
+  recordingPanel: {
+    minHeight: 214,
+    paddingTop: 12,
+    justifyContent: 'space-between',
+  },
+  recordingStatus: {
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    marginRight: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.danger,
+  },
+  recordingDotPaused: {
+    backgroundColor: colors.warning,
+  },
+  recordingLabel: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.label,
+  },
+  recordingTime: {
+    minWidth: 58,
+    marginLeft: 10,
+    color: colors.text,
+    fontFamily,
+    ...typography.bodyStrong,
+    fontVariant: ['tabular-nums'],
+  },
+  waveform: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  waveformCompact: {
+    minHeight: 24,
+    justifyContent: 'flex-start',
+    gap: 3,
+  },
+  waveformBar: {
+    width: 4,
+    borderRadius: radius.pill,
+  },
+  waveformBarCompact: {
+    width: 3,
+  },
+  recordingWarning: {
+    color: colors.warning,
+    fontFamily,
+    ...typography.meta,
+    textAlign: 'center',
+  },
+  recordingActions: {
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  recordingAction: {
+    width: 64,
     minHeight: 68,
-    paddingHorizontal: 12,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordingActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  recordingActionText: {
+    marginTop: 4,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  pauseButton: {
+    width: 66,
+    height: 66,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  audioPreview: {
+    minHeight: 84,
+    paddingHorizontal: 10,
     borderRadius: radius.md,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primarySoft,
   },
-  audioIcon: {
-    width: 38,
-    height: 38,
-    marginRight: 11,
+  playButton: {
+    width: 46,
+    height: 46,
+    marginRight: 10,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.primary,
   },
   audioCopy: {
     flex: 1,
+    minWidth: 88,
+  },
+  audioTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   audioTitle: {
     color: colors.text,
@@ -584,10 +785,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   audioMeta: {
-    marginTop: 2,
+    marginLeft: 8,
     color: colors.textSecondary,
     fontFamily,
     ...typography.meta,
+    fontVariant: ['tabular-nums'],
   },
   smallIconButton: {
     width: 44,
@@ -596,24 +798,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  textInput: {
+    minHeight: 132,
+    maxHeight: 210,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    color: colors.text,
+    backgroundColor: colors.surfaceSubtle,
+    fontFamily,
+    ...typography.input,
+  },
   mediaMenu: {
     marginHorizontal: 16,
-    padding: 8,
+    marginTop: 10,
+    padding: 6,
     flexDirection: 'row',
-    gap: 8,
-    borderRadius: radius.lg,
+    gap: 6,
+    borderRadius: radius.md,
     backgroundColor: colors.surfaceSubtle,
   },
   mediaAction: {
-    minHeight: 56,
+    minHeight: 54,
     flex: 1,
     paddingHorizontal: 10,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  mediaPressed: {
-    backgroundColor: colors.primarySoft,
   },
   mediaIcon: {
     width: 38,
@@ -629,76 +840,76 @@ const styles = StyleSheet.create({
     fontFamily,
     ...typography.label,
   },
-  mediaNotice: {
+  permissionRow: {
+    minHeight: 48,
+    marginHorizontal: 16,
     marginTop: 8,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-    textAlign: 'center',
-  },
-  composerWrap: {
-    padding: 12,
-    paddingTop: 8,
-  },
-  composer: {
-    minHeight: 56,
-    paddingLeft: 3,
-    paddingRight: 5,
-    borderRadius: radius.lg,
+    paddingLeft: 12,
+    paddingRight: 4,
+    borderRadius: radius.md,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.dangerSoft,
   },
-  composerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.pill,
+  permissionText: {
+    flex: 1,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
+  },
+  permissionAction: {
+    minWidth: 56,
+    minHeight: 44,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  input: {
-    flex: 1,
-    minHeight: 48,
-    maxHeight: 112,
-    paddingHorizontal: 5,
-    paddingVertical: 12,
-    color: colors.text,
+  permissionActionText: {
+    color: colors.primaryStrong,
     fontFamily,
-    ...typography.input,
+    ...typography.meta,
+    fontWeight: '600',
   },
-  voiceInput: {
-    minHeight: 44,
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    gap: 10,
+  },
+  inputOptions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  inputOption: {
+    minHeight: 48,
     flex: 1,
     borderRadius: radius.md,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 7,
+    backgroundColor: colors.surface,
   },
-  voicePressed: {
-    backgroundColor: colors.primarySoft,
-  },
-  voiceText: {
+  inputOptionText: {
     color: colors.text,
     fontFamily,
     ...typography.label,
     fontWeight: '600',
   },
-  recordingText: {
+  optionDisabled: {
+    opacity: 0.42,
+  },
+  mediaNotice: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+    textAlign: 'center',
+  },
+  submitError: {
     color: colors.danger,
-  },
-  sendButton: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  sendDisabled: {
-    backgroundColor: colors.border,
-  },
-  sendPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.96 }],
+    fontFamily,
+    ...typography.meta,
+    textAlign: 'center',
   },
   confirmOverlay: {
     ...StyleSheet.absoluteFill,
