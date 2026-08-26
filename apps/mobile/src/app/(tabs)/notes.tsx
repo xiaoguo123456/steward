@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 
-import { AiFab } from '@/components/ui/ai-fab';
+import { AI_FAB_TAB_BAR_INSET, AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
@@ -217,7 +217,7 @@ export default function NotesScreen() {
         )}
       </ScrollView>
 
-      <AiFab />
+      <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />
     </AppScreen>
   );
 }

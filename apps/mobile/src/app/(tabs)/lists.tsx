@@ -19,7 +19,7 @@ import {
   View,
 } from 'react-native';
 
-import { AiFab } from '@/components/ui/ai-fab';
+import { AI_FAB_TAB_BAR_INSET, AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
@@ -253,7 +253,7 @@ export default function ListsScreen() {
           </>
         )}
       </ScrollView>
-      <AiFab />
+      <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />
       {createListVisible ? (
         <CreateTaskListSheet
           lists={activeTaskLists}

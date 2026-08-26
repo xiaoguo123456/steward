@@ -42,10 +42,11 @@ type FabLayout = {
 };
 
 type UseDraggableAiFabOptions = {
+  bottomInset?: number;
   onPress: () => void;
 };
 
-export function useDraggableAiFab({ onPress }: UseDraggableAiFabOptions) {
+export function useDraggableAiFab({ bottomInset = 0, onPress }: UseDraggableAiFabOptions) {
   const reducedMotion = useReducedMotion();
   const storedPosition = useSyncExternalStore(
     subscribeAiFabDockPosition,
@@ -111,7 +112,7 @@ export function useDraggableAiFab({ onPress }: UseDraggableAiFabOptions) {
     );
     const nextBottomBound = Math.max(
       TOP_MARGIN,
-      layout.height - AI_FAB_SIZE - BOTTOM_MARGIN,
+      layout.height - AI_FAB_SIZE - BOTTOM_MARGIN - bottomInset,
     );
     const verticalRange = nextBottomBound - TOP_MARGIN;
 
@@ -124,6 +125,7 @@ export function useDraggableAiFab({ onPress }: UseDraggableAiFabOptions) {
     translateY.value = TOP_MARGIN + verticalRange * storedPosition.verticalRatio;
   }, [
     bottomBound,
+    bottomInset,
     horizontalMiddle,
     layout,
     leftBound,

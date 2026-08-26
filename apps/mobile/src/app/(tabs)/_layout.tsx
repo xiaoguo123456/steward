@@ -1,8 +1,80 @@
+import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { Tabs, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { PropsWithChildren } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { AppIcon } from '@/components/ui/icon';
-import { colors, fontFamily, radius, shadow } from '@/theme/tokens';
+import { colors, fontFamily, glass, radius } from '@/theme/tokens';
+
+const nativeGlassAvailable = Platform.OS === 'ios' && isGlassEffectAPIAvailable();
+
+type GlassSurfaceProps = PropsWithChildren<{
+  reducedTransparency: boolean;
+  style: StyleProp<ViewStyle>;
+  variant: 'tabBar' | 'capture';
+}>;
+
+function GlassSurface({ children, reducedTransparency, style, variant }: GlassSurfaceProps) {
+  const fallbackStyle =
+    variant === 'tabBar' ? styles.tabBarGlassFallback : styles.captureGlassFallback;
+  const opaqueStyle =
+    variant === 'tabBar' ? styles.tabBarGlassOpaque : styles.captureGlassOpaque;
+
+  if (nativeGlassAvailable && !reducedTransparency) {
+    return (
+      <GlassView
+        colorScheme="light"
+        glassEffectStyle="regular"
+        pointerEvents="none"
+        style={style}
+        tintColor={variant === 'tabBar' ? glass.tabBarTint : glass.captureTint}
+      >
+        {children}
+      </GlassView>
+    );
+  }
+
+  return (
+    <View
+      pointerEvents="none"
+      style={[style, reducedTransparency ? opaqueStyle : fallbackStyle]}
+    >
+      {children}
+    </View>
+  );
+}
+
+function useReducedTransparency() {
+  const [reducedTransparency, setReducedTransparency] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void AccessibilityInfo.isReduceTransparencyEnabled().then((enabled) => {
+      if (mounted) setReducedTransparency(enabled);
+    });
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceTransparencyChanged',
+      setReducedTransparency,
+    );
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  return reducedTransparency;
+}
 
 type TabIconProps = {
   focused: boolean;
@@ -20,7 +92,7 @@ function TabIcon({ focused, active, inactive }: TabIconProps) {
   );
 }
 
-function CaptureTabButton() {
+function CaptureTabButton({ reducedTransparency }: { reducedTransparency: boolean }) {
   const router = useRouter();
 
   return (
@@ -31,13 +103,31 @@ function CaptureTabButton() {
         onPress={() => router.push('/capture/new')}
         style={({ pressed }) => [styles.captureButton, pressed && styles.capturePressed]}
       >
-        <AppIcon color={colors.background} name="add" size={31} />
+        <GlassSurface
+          reducedTransparency={reducedTransparency}
+          style={styles.captureGlass}
+          variant="capture"
+        >
+          <AppIcon color={colors.background} name="add" size={25} />
+        </GlassSurface>
       </Pressable>
     </View>
   );
 }
 
+function BottomTabGlass({ reducedTransparency }: { reducedTransparency: boolean }) {
+  return (
+    <GlassSurface
+      reducedTransparency={reducedTransparency}
+      style={styles.tabBarGlass}
+      variant="tabBar"
+    />
+  );
+}
+
 export default function TabsLayout() {
+  const reducedTransparency = useReducedTransparency();
+
   return (
     <Tabs
       backBehavior="history"
@@ -45,6 +135,9 @@ export default function TabsLayout() {
         headerShown: false,
         sceneStyle: { backgroundColor: colors.background },
         tabBarActiveTintColor: colors.primary,
+        tabBarBackground: () => (
+          <BottomTabGlass reducedTransparency={reducedTransparency} />
+        ),
         tabBarButton: (props) => {
           const {
             android_ripple: androidRipple,
@@ -99,7 +192,9 @@ export default function TabsLayout() {
         name="create"
         options={{
           title: '',
-          tabBarButton: () => <CaptureTabButton />,
+          tabBarButton: () => (
+            <CaptureTabButton reducedTransparency={reducedTransparency} />
+          ),
           tabBarLabel: () => <Text style={styles.captureLabel}>新增</Text>,
         }}
       />
@@ -131,12 +226,38 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 78,
-    paddingTop: 7,
-    paddingBottom: 10,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 0,
+    height: 82,
+    paddingTop: 6,
+    paddingBottom: 16,
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    borderRadius: radius.xl,
+    shadowColor: colors.primaryStrong,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 7,
+  },
+  tabBarGlass: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: glass.tabBarBorder,
+    overflow: 'hidden',
+  },
+  tabBarGlassFallback: {
+    backgroundColor: glass.tabBarFallback,
+  },
+  tabBarGlassOpaque: {
+    backgroundColor: glass.tabBarOpaque,
   },
   tabItem: {
     paddingTop: 2,
@@ -158,19 +279,34 @@ const styles = StyleSheet.create({
   },
   captureButton: {
     position: 'absolute',
-    top: -27,
-    width: 58,
-    height: 58,
+    top: -20,
+    width: 52,
+    height: 52,
+    borderRadius: radius.pill,
+    shadowColor: colors.primaryStrong,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.17,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  captureGlass: {
+    width: '100%',
+    height: '100%',
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: glass.captureBorder,
+    overflow: 'hidden',
+  },
+  captureGlassFallback: {
+    backgroundColor: glass.captureTint,
+  },
+  captureGlassOpaque: {
     backgroundColor: colors.primary,
-    borderWidth: 4,
-    borderColor: colors.background,
-    ...shadow,
   },
   capturePressed: {
-    transform: [{ scale: 0.95 }],
+    transform: [{ scale: 0.96 }],
     opacity: 0.9,
   },
   captureLabel: {

@@ -87,6 +87,15 @@ export const radius = {
   pill: 999,
 } as const;
 
+export const glass = {
+  tabBarTint: 'rgba(248, 252, 250, 0.72)',
+  tabBarFallback: 'rgba(248, 252, 250, 0.94)',
+  tabBarOpaque: '#F8FCFA',
+  tabBarBorder: 'rgba(7, 134, 95, 0.12)',
+  captureTint: 'rgba(7, 134, 95, 0.76)',
+  captureBorder: 'rgba(255, 255, 255, 0.78)',
+} as const;
+
 export const spacing = {
   xs: 4,
   sm: 8,

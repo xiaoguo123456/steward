@@ -9,10 +9,13 @@ import { AiAssistantAvatar } from './ai-assistant-avatar';
 import { AI_FAB_SIZE, useDraggableAiFab } from './use-draggable-ai-fab';
 
 type AiFabProps = {
+  bottomInset?: number;
   count?: number;
 };
 
-export function AiFab({ count = 0 }: AiFabProps) {
+export const AI_FAB_TAB_BAR_INSET = 76;
+
+export function AiFab({ bottomInset = 0, count = 0 }: AiFabProps) {
   const router = useRouter();
   const openAssistant = useCallback(() => router.push('/ai'), [router]);
   const {
@@ -21,7 +24,7 @@ export function AiFab({ count = 0 }: AiFabProps) {
     handlePress,
     layoutReady,
     panGesture,
-  } = useDraggableAiFab({ onPress: openAssistant });
+  } = useDraggableAiFab({ bottomInset, onPress: openAssistant });
   const badgeText = count > 9 ? '9+' : count.toString();
   const accessibilityLabel = count > 0
     ? `打开 AI 管家，${count} 项待处理`
