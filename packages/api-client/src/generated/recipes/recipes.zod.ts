@@ -781,6 +781,9 @@ export const CreateShoppingListFromMealPlanBody = zod.object({
 })).min(1)
 }).describe('把选中的食材合并进唯一的活动购物清单（TaskList + Task）。\n用户排除家中已有食材之后才提交，服务端不替他决定买什么。\n')
 
+
+
+
 export const CreateShoppingListFromMealPlanResponse = zod.object({
   "data": zod.object({
   "id": zod.string(),
@@ -789,8 +792,9 @@ export const CreateShoppingListFromMealPlanResponse = zod.object({
   "icon": zod.string().nullish().describe('只能取自产品语义图标集合。'),
   "position": zod.number().int(),
   "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n'),
-  "is_default": zod.boolean().describe('每个用户恰好一个默认清单。'),
+  "is_default": zod.boolean().describe('服务端内部的新任务落点；客户端不得据此制造特殊外观或操作。'),
   "archived_at": zod.string().datetime({"offset":true}).nullish(),
+  "archive_retention_seconds": zod.number().int().min(1).optional().describe('清单归档后的可恢复时长，由服务端配置决定。\n兼容滚动发布期间的旧服务端，客户端缺失时暂按 72 小时展示。\n'),
   "task_count": zod.number().int().optional().describe('未删除且未完成的 Task 数量，由服务端计算。'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),

@@ -7,10 +7,16 @@ import {
   suggestTaskListIcon,
 } from './task-list-appearance.ts';
 
-test('默认清单始终使用收件箱图标', () => {
+test('默认清单只在缺少外观时使用兼容默认值', () => {
   assert.deepEqual(
     resolveTaskListAppearance({ name: '默认清单', is_default: true }),
     { icon: 'inbox', color: 'green' },
+  );
+  assert.deepEqual(
+    resolveTaskListAppearance({
+      name: '默认清单', is_default: true, icon: 'work', color: 'blue',
+    }),
+    { icon: 'work', color: 'blue' },
   );
 });
 

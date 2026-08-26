@@ -164,12 +164,84 @@ func (q *Queries) GetActiveShoppingTaskList(ctx context.Context, userID string) 
 
 const getDefaultTaskList = `-- name: GetDefaultTaskList :one
 SELECT id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind FROM task_lists
-WHERE is_default AND deleted_at IS NULL
+WHERE is_default
+  AND list_kind = 'tasks'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
 LIMIT 1
 `
 
 func (q *Queries) GetDefaultTaskList(ctx context.Context) (TaskList, error) {
 	row := q.db.QueryRow(ctx, getDefaultTaskList)
+	var i TaskList
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.Icon,
+		&i.Position,
+		&i.IsDefault,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ListKind,
+	)
+	return i, err
+}
+
+const getDefaultTaskListForUpdate = `-- name: GetDefaultTaskListForUpdate :one
+SELECT id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind FROM task_lists
+WHERE is_default
+  AND list_kind = 'tasks'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
+LIMIT 1
+FOR UPDATE
+`
+
+func (q *Queries) GetDefaultTaskListForUpdate(ctx context.Context) (TaskList, error) {
+	row := q.db.QueryRow(ctx, getDefaultTaskListForUpdate)
+	var i TaskList
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.Icon,
+		&i.Position,
+		&i.IsDefault,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ListKind,
+	)
+	return i, err
+}
+
+const getNextActiveTaskListForUpdate = `-- name: GetNextActiveTaskListForUpdate :one
+SELECT id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind FROM task_lists
+WHERE user_id = $1
+  AND id <> $2
+  AND list_kind = 'tasks'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
+ORDER BY position, id
+LIMIT 1
+FOR UPDATE
+`
+
+type GetNextActiveTaskListForUpdateParams struct {
+	UserID     string
+	ExcludedID string
+}
+
+func (q *Queries) GetNextActiveTaskListForUpdate(ctx context.Context, arg GetNextActiveTaskListForUpdateParams) (TaskList, error) {
+	row := q.db.QueryRow(ctx, getNextActiveTaskListForUpdate, arg.UserID, arg.ExcludedID)
 	var i TaskList
 	err := row.Scan(
 		&i.ID,
@@ -236,6 +308,83 @@ func (q *Queries) GetTaskList(ctx context.Context, id string) (GetTaskListRow, e
 		&i.TaskCount,
 	)
 	return i, err
+}
+
+const getTaskListForUpdate = `-- name: GetTaskListForUpdate :one
+SELECT id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind FROM task_lists
+WHERE id = $1 AND deleted_at IS NULL
+FOR UPDATE
+`
+
+func (q *Queries) GetTaskListForUpdate(ctx context.Context, id string) (TaskList, error) {
+	row := q.db.QueryRow(ctx, getTaskListForUpdate, id)
+	var i TaskList
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.Icon,
+		&i.Position,
+		&i.IsDefault,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ListKind,
+	)
+	return i, err
+}
+
+const listExpiredArchivedTaskLists = `-- name: ListExpiredArchivedTaskLists :many
+SELECT id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind FROM task_lists
+WHERE user_id = $1
+  AND list_kind = 'tasks'
+  AND NOT is_default
+  AND archived_at IS NOT NULL
+  AND archived_at <= $2::timestamptz
+  AND deleted_at IS NULL
+ORDER BY archived_at, id
+`
+
+type ListExpiredArchivedTaskListsParams struct {
+	UserID         string
+	ArchivedBefore time.Time
+}
+
+func (q *Queries) ListExpiredArchivedTaskLists(ctx context.Context, arg ListExpiredArchivedTaskListsParams) ([]TaskList, error) {
+	rows, err := q.db.Query(ctx, listExpiredArchivedTaskLists, arg.UserID, arg.ArchivedBefore)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TaskList{}
+	for rows.Next() {
+		var i TaskList
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.Color,
+			&i.Icon,
+			&i.Position,
+			&i.IsDefault,
+			&i.ArchivedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Version,
+			&i.ListKind,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listTaskLists = `-- name: ListTaskLists :many
@@ -387,6 +536,79 @@ func (q *Queries) MoveTasksToList(ctx context.Context, arg MoveTasksToListParams
 	return err
 }
 
+const setTaskListDefault = `-- name: SetTaskListDefault :one
+UPDATE task_lists SET
+    is_default = true,
+    updated_at = now(),
+    version = version + 1
+WHERE id = $1
+  AND list_kind = 'tasks'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
+RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind
+`
+
+func (q *Queries) SetTaskListDefault(ctx context.Context, id string) (TaskList, error) {
+	row := q.db.QueryRow(ctx, setTaskListDefault, id)
+	var i TaskList
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.Icon,
+		&i.Position,
+		&i.IsDefault,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ListKind,
+	)
+	return i, err
+}
+
+const softDeleteExpiredArchivedTaskList = `-- name: SoftDeleteExpiredArchivedTaskList :one
+UPDATE task_lists SET
+    deleted_at = now(),
+    updated_at = now(),
+    version = version + 1
+WHERE id = $1
+  AND list_kind = 'tasks'
+  AND NOT is_default
+  AND archived_at IS NOT NULL
+  AND archived_at <= $2::timestamptz
+  AND deleted_at IS NULL
+RETURNING id, user_id, name, color, icon, position, is_default, archived_at, created_at, updated_at, deleted_at, version, list_kind
+`
+
+type SoftDeleteExpiredArchivedTaskListParams struct {
+	ID             string
+	ArchivedBefore time.Time
+}
+
+func (q *Queries) SoftDeleteExpiredArchivedTaskList(ctx context.Context, arg SoftDeleteExpiredArchivedTaskListParams) (TaskList, error) {
+	row := q.db.QueryRow(ctx, softDeleteExpiredArchivedTaskList, arg.ID, arg.ArchivedBefore)
+	var i TaskList
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Color,
+		&i.Icon,
+		&i.Position,
+		&i.IsDefault,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ListKind,
+	)
+	return i, err
+}
+
 const softDeleteTaskList = `-- name: SoftDeleteTaskList :one
 UPDATE task_lists SET deleted_at = now(), updated_at = now(), version = version + 1
 WHERE id = $1 AND deleted_at IS NULL
@@ -425,6 +647,8 @@ UPDATE task_lists SET
     archived_at = CASE WHEN $7::bool IS NULL THEN archived_at
                        WHEN $7::bool THEN coalesce(archived_at, now())
                        ELSE NULL END,
+    is_default  = CASE WHEN $7::bool IS TRUE THEN false
+                       ELSE is_default END,
     updated_at  = now(),
     version     = version + 1
 WHERE id = $8 AND deleted_at IS NULL

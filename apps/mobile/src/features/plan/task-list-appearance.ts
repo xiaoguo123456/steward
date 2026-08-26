@@ -91,18 +91,15 @@ export function resolveTaskListAppearance(list: TaskListAppearanceSource): {
   icon: TaskListIconId;
   color: TaskListColorToken;
 } {
-  if (list.is_default) {
-    return {
-      icon: 'inbox',
-      color: isTaskListColorToken(list.color) ? list.color : 'green',
-    };
-  }
-
   return {
-    icon: isTaskListIconId(list.icon) ? list.icon : suggestTaskListIcon(list.name),
+    icon: isTaskListIconId(list.icon)
+      ? list.icon
+      : (list.is_default ? 'inbox' : suggestTaskListIcon(list.name)),
     color: isTaskListColorToken(list.color)
       ? list.color
-      : CUSTOM_COLOR_ORDER[stableIndex(list.id ?? list.name, CUSTOM_COLOR_ORDER.length)],
+      : (list.is_default
+          ? 'green'
+          : CUSTOM_COLOR_ORDER[stableIndex(list.id ?? list.name, CUSTOM_COLOR_ORDER.length)]),
   };
 }
 

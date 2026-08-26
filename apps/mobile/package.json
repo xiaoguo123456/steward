@@ -60,7 +60,7 @@
     "test": "pnpm run test:important-dates && pnpm run test:review && pnpm run test:recipes && pnpm run test:trips && pnpm run test:workouts && pnpm run test:assistant && pnpm run test:plan && pnpm run test:ui && pnpm run test:auth",
     "test:auth": "node --experimental-strip-types --test src/features/auth/phone-code.test.mjs",
     "test:important-dates": "node --experimental-strip-types --test src/features/important-dates/important-date-picker.test.mjs",
-    "test:plan": "node --experimental-strip-types --test src/features/plan/task-list-order.test.mjs src/features/plan/task-list-appearance.test.mjs",
+    "test:plan": "node --experimental-strip-types --test src/features/plan/task-list-order.test.mjs src/features/plan/task-list-appearance.test.mjs src/features/plan/task-list-policy.test.mjs",
     "test:review": "node --experimental-strip-types --test src/features/review/review-period.test.mjs src/features/review/review-metrics.test.mjs",
     "test:recipes": "node --experimental-strip-types --test src/features/recipes/discovery-order.test.mjs",
     "test:trips": "node --experimental-strip-types --test src/features/trips/trip-form.test.mjs",

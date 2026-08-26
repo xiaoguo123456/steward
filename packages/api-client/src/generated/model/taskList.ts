@@ -31,10 +31,16 @@ export interface TaskList {
   icon?: string | null;
   position: number;
   list_kind?: TaskListKind;
-  /** 每个用户恰好一个默认清单。 */
+  /** 服务端内部的新任务落点；客户端不得据此制造特殊外观或操作。 */
   is_default: boolean;
   /** @nullable */
   archived_at?: string | null;
+  /**
+     * 清单归档后的可恢复时长，由服务端配置决定。
+     * 兼容滚动发布期间的旧服务端，客户端缺失时暂按 72 小时展示。
+     * @minimum 1
+     */
+  archive_retention_seconds?: number;
   /** 未删除且未完成的 Task 数量，由服务端计算。 */
   task_count?: number;
   created_at: string;

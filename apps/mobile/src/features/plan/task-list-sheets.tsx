@@ -6,12 +6,11 @@ import {
   type TaskList,
 } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type ComponentProps } from 'react';
+import { useState } from 'react';
 import {
-  Keyboard,
+  Alert,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -21,6 +20,7 @@ import {
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import { useToast } from '@/components/ui/toast';
 import {
   nextTaskListColor,
   resolveTaskListAppearance,
@@ -32,6 +32,7 @@ import {
   TaskListAppearanceChip,
   TaskListAppearancePicker,
 } from '@/features/plan/task-list-icon';
+import { formatArchiveRetention } from '@/features/plan/task-list-policy';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type TaskListChange = {
@@ -107,38 +108,7 @@ export function CreateTaskListSheet({
   );
 }
 
-/** 清单分组只保留低频的排序与归档入口。 */
-export function TaskListSectionMenu({
-  canReorder,
-  hasArchived,
-  onClose,
-  onReorder,
-  onArchived,
-}: {
-  canReorder: boolean;
-  hasArchived: boolean;
-  onClose: () => void;
-  onReorder: () => void;
-  onArchived: () => void;
-}) {
-  return (
-    <Modal animationType="fade" onRequestClose={onClose} statusBarTranslucent transparent visible>
-      <ModalSheet minHeight={0} onClose={onClose}>
-        <View style={styles.menuSheet}>
-          <SheetHeader onClose={onClose} title="清单" />
-          {canReorder ? (
-            <MenuRow icon="reorder-three-outline" label="调整顺序" onPress={onReorder} />
-          ) : null}
-          {hasArchived ? (
-            <MenuRow icon="archive-outline" label="已归档清单" onPress={onArchived} />
-          ) : null}
-        </View>
-      </ModalSheet>
-    </Modal>
-  );
-}
-
-/** 单个清单的编辑、归档与删除跟随清单本身，不再混入分组管理。 */
+/** 三个点直接进入编辑；保存与归档都在同一张面板完成。 */
 export function TaskListActionSheet({
   list,
   lists,
@@ -151,126 +121,148 @@ export function TaskListActionSheet({
   onChanged: (change: TaskListChange) => void;
 }) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const initialAppearance = resolveTaskListAppearance(list);
-  const [mode, setMode] = useState<'menu' | 'edit' | 'delete'>('menu');
   const [name, setName] = useState(list.name);
   const [icon, setIcon] = useState<TaskListIconId>(initialAppearance.icon);
   const [color, setColor] = useState<TaskListColorToken>(initialAppearance.color);
   const [busy, setBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<
+    'save' | 'archive' | 'restore' | 'delete' | null
+  >(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const activeCount = lists.filter((item) => !item.archived_at && item.id !== list.id).length;
+  const archived = Boolean(list.archived_at);
+  const retention = formatArchiveRetention(list.archive_retention_seconds);
 
   const update = async (
     body: Parameters<typeof updateTaskList>[1],
     fallback: string,
+    action: 'save' | 'archive' | 'restore',
   ) => {
     if (busy) return;
     setBusy(true);
+    setPendingAction(action);
     setFailure(null);
     try {
       const response = await updateTaskList(list.id, body, {
         headers: { 'If-Match': String(list.version) },
       });
       await queryClient.invalidateQueries();
+      if (action === 'archive') {
+        showToast(`清单已归档，${retention}后自动删除`);
+      }
       onChanged({ list: response.data });
       onClose();
     } catch (error) {
       setFailure(errorMessage(error, fallback));
     } finally {
       setBusy(false);
+      setPendingAction(null);
     }
   };
 
-  const remove = async (moveTo: string) => {
+  const remove = async () => {
     if (busy) return;
     setBusy(true);
+    setPendingAction('delete');
     setFailure(null);
     try {
-      await deleteTaskList(list.id, { move_tasks_to_list_id: moveTo });
+      await deleteTaskList(list.id);
       await queryClient.invalidateQueries();
       onChanged({ deleted: true });
       onClose();
     } catch (error) {
-      setFailure(errorMessage(error, '删除没能完成。'));
+      setFailure(errorMessage(error, '清单没能删除。'));
     } finally {
       setBusy(false);
+      setPendingAction(null);
     }
   };
 
-  const activeCount = lists.filter((item) => !item.archived_at && item.id !== list.id).length;
-  const archived = Boolean(list.archived_at);
+  const requestDelete = () => {
+    Alert.alert(
+      '删除清单？',
+      '其中的任务会移至默认清单，删除后无法恢复。',
+      [
+        { text: '取消', style: 'cancel' },
+        { text: '删除', style: 'destructive', onPress: () => void remove() },
+      ],
+    );
+  };
+
   const identityChanged = name.trim() !== list.name
     || icon !== initialAppearance.icon
     || color !== initialAppearance.color;
   const saveIdentity = () => update(
-    { name: name.trim(), icon: list.is_default ? 'inbox' : icon, color },
+    { name: name.trim(), icon, color },
     '清单没能保存。',
+    'save',
   );
+  const archiveDisabled = !archived && activeCount === 0;
 
   return (
     <Modal animationType="fade" onRequestClose={onClose} statusBarTranslucent transparent visible>
       <ModalSheet minHeight={0} onClose={onClose}>
-        <View style={styles.menuSheet}>
-          {mode === 'edit' ? (
-            <>
-              <SheetHeader onClose={onClose} title="编辑清单" />
-              <View style={styles.formBody}>
-                <TaskListIdentityFields
-                  color={color}
-                  fixedIcon={list.is_default}
-                  icon={list.is_default ? 'inbox' : icon}
-                  name={name}
-                  onColorChange={setColor}
-                  onIconChange={setIcon}
-                  onNameChange={setName}
-                  onSubmit={() => void saveIdentity()}
-                />
-                {failure ? <Text style={styles.failure}>{failure}</Text> : null}
-                <AppButton
-                  disabled={!name.trim() || !identityChanged || busy}
-                  label={busy ? '正在保存…' : '保存'}
-                  onPress={() => void saveIdentity()}
-                  style={styles.primaryAction}
-                />
-              </View>
-            </>
-          ) : mode === 'delete' ? (
-            <>
-              <SheetHeader onClose={onClose} title="删除清单" />
-              <RemoveConfirm
-                busy={busy}
-                failure={failure}
-                lists={lists}
-                onConfirm={(moveTo) => void remove(moveTo)}
-                target={list}
+        {archived ? (
+          <View style={styles.menuSheet}>
+            <SheetHeader onClose={onClose} title={list.name} />
+            <View style={styles.archivedActions}>
+              {failure ? <Text style={styles.failure}>{failure}</Text> : null}
+              <AppButton
+                disabled={busy}
+                label={pendingAction === 'restore' ? '正在恢复…' : '恢复清单'}
+                onPress={() => void update(
+                  { archived: false, position: activeCount },
+                  '清单没能恢复。',
+                  'restore',
+                )}
               />
-            </>
-          ) : (
-            <>
-              <SheetHeader onClose={onClose} title={list.name} />
-              <MenuRow icon="create-outline" label="编辑清单" onPress={() => setMode('edit')} />
-              {list.is_default ? null : (
-                <MenuRow
-                  disabled={busy}
-                  icon={archived ? 'refresh-outline' : 'archive-outline'}
-                  label={archived ? '恢复清单' : '归档清单'}
-                  onPress={() => void update(
-                    archived ? { archived: false, position: activeCount } : { archived: true },
-                    archived ? '清单没能恢复。' : '清单没能归档。',
-                  )}
-                />
-              )}
-              {list.is_default ? null : (
-                <MenuRow
-                  danger
-                  icon="trash-outline"
-                  label="删除清单"
-                  onPress={() => setMode('delete')}
-                />
-              )}
-              {failure ? <Text style={[styles.failure, styles.menuFailure]}>{failure}</Text> : null}
-            </>
-          )}
-        </View>
+              <AppButton
+                disabled={busy}
+                label={pendingAction === 'delete' ? '正在删除…' : '删除清单'}
+                onPress={requestDelete}
+                style={styles.archiveAction}
+                variant="danger"
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.menuSheet}>
+            <SheetHeader onClose={onClose} title="编辑清单" />
+            <View style={styles.formBody}>
+              <TaskListIdentityFields
+                color={color}
+                icon={icon}
+                name={name}
+                onColorChange={setColor}
+                onIconChange={setIcon}
+                onNameChange={setName}
+                onSubmit={() => void saveIdentity()}
+              />
+              {failure ? <Text style={styles.failure}>{failure}</Text> : null}
+              <AppButton
+                disabled={!name.trim() || !identityChanged || busy}
+                label={pendingAction === 'save' ? '正在保存…' : '保存'}
+                onPress={() => void saveIdentity()}
+                style={styles.primaryAction}
+              />
+              <AppButton
+                disabled={busy}
+                label={pendingAction === 'archive' ? '正在归档…' : '归档'}
+                onPress={() => {
+                  if (archiveDisabled) {
+                    showToast('至少保留一个正在使用的清单');
+                    return;
+                  }
+                  void update({ archived: true }, '清单没能归档。', 'archive');
+                }}
+                style={styles.archiveAction}
+                variant="secondary"
+              />
+            </View>
+          </View>
+        )}
       </ModalSheet>
     </Modal>
   );
@@ -280,7 +272,6 @@ function TaskListIdentityFields({
   name,
   icon,
   color,
-  fixedIcon = false,
   onNameChange,
   onIconChange,
   onColorChange,
@@ -289,34 +280,17 @@ function TaskListIdentityFields({
   name: string;
   icon: TaskListIconId;
   color: TaskListColorToken;
-  fixedIcon?: boolean;
   onNameChange: (name: string) => void;
   onIconChange: (icon: TaskListIconId) => void;
   onColorChange: (color: TaskListColorToken) => void;
   onSubmit: () => void;
 }) {
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
-
   return (
     <>
       <View style={styles.identityRow}>
-        <Pressable
-          accessibilityLabel={fixedIcon ? '选择清单颜色' : '选择清单图标和颜色'}
-          accessibilityRole="button"
-          onPress={() => {
-            Keyboard.dismiss();
-            setAppearanceOpen((value) => !value);
-          }}
-          style={({ pressed }) => [styles.appearanceButton, pressed && styles.pressed]}
-        >
-          <TaskListAppearanceChip color={color} icon={icon} size={50} />
-          <View style={styles.appearanceEditBadge}>
-            <AppIcon color={colors.textSecondary} name="pencil" size={10} />
-          </View>
-        </Pressable>
+        <TaskListAppearanceChip color={color} icon={icon} size={50} />
         <TextInput
           accessibilityLabel="清单名称"
-          autoFocus
           maxLength={30}
           onChangeText={onNameChange}
           onSubmitEditing={onSubmit}
@@ -327,15 +301,12 @@ function TaskListIdentityFields({
           value={name}
         />
       </View>
-      {appearanceOpen ? (
-        <TaskListAppearancePicker
-          color={color}
-          fixedIcon={fixedIcon}
-          icon={icon}
-          onColorChange={onColorChange}
-          onIconChange={onIconChange}
-        />
-      ) : null}
+      <TaskListAppearancePicker
+        color={color}
+        icon={icon}
+        onColorChange={onColorChange}
+        onIconChange={onIconChange}
+      />
     </>
   );
 }
@@ -355,85 +326,6 @@ function SheetHeader({ title, onClose }: { title: string; onClose: () => void })
       >
         <AppIcon color={colors.textSecondary} name="close-outline" size={23} />
       </Pressable>
-    </View>
-  );
-}
-
-function MenuRow({
-  icon,
-  label,
-  onPress,
-  danger = false,
-  disabled = false,
-}: {
-  icon: ComponentProps<typeof AppIcon>['name'];
-  label: string;
-  onPress: () => void;
-  danger?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
-    >
-      <AppIcon color={danger ? colors.danger : colors.textSecondary} name={icon} size={20} />
-      <Text style={[styles.menuText, danger && styles.menuDanger]}>{label}</Text>
-      <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
-    </Pressable>
-  );
-}
-
-function RemoveConfirm({
-  target,
-  lists,
-  busy,
-  failure,
-  onConfirm,
-}: {
-  target: TaskList;
-  lists: TaskList[];
-  busy: boolean;
-  failure: string | null;
-  onConfirm: (moveTo: string) => void;
-}) {
-  const targets = lists.filter((list) => list.id !== target.id && !list.archived_at);
-  const [moveTo, setMoveTo] = useState(
-    targets.find((list) => list.is_default)?.id ?? targets[0]?.id ?? '',
-  );
-
-  return (
-    <View style={styles.formBody}>
-      <Text style={styles.confirmCopy}>清单中的任务将移到：</Text>
-      <ScrollView style={styles.moveList}>
-        {targets.map((list) => (
-          <Pressable
-            accessibilityRole="radio"
-            accessibilityState={{ checked: moveTo === list.id }}
-            key={list.id}
-            onPress={() => setMoveTo(list.id)}
-            style={({ pressed }) => [styles.moveRow, pressed && styles.pressed]}
-          >
-            <AppIcon
-              color={moveTo === list.id ? colors.primaryStrong : colors.borderStrong}
-              name={moveTo === list.id ? 'radio-button-on' : 'radio-button-off'}
-              size={20}
-            />
-            <Text style={styles.moveName}>{list.name}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      {failure ? <Text style={styles.failure}>{failure}</Text> : null}
-      <AppButton
-        disabled={busy || !moveTo}
-        label={busy ? '正在删除…' : '删除清单'}
-        onPress={() => onConfirm(moveTo)}
-        style={styles.primaryAction}
-        variant="danger"
-      />
     </View>
   );
 }
@@ -469,6 +361,9 @@ const styles = StyleSheet.create({
   formBody: {
     paddingBottom: 6,
   },
+  archivedActions: {
+    paddingBottom: 6,
+  },
   input: {
     minHeight: 50,
     paddingHorizontal: 14,
@@ -483,74 +378,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  appearanceButton: {
-    width: 52,
-    height: 52,
-  },
-  appearanceEditBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 19,
-    height: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.background,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderStrong,
-  },
   nameInput: {
     flex: 1,
   },
   primaryAction: {
     marginTop: 14,
   },
-  menuRow: {
-    minHeight: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  menuText: {
-    flex: 1,
-    color: colors.text,
-    fontFamily,
-    ...typography.body,
-  },
-  menuDanger: {
-    color: colors.danger,
-  },
-  confirmCopy: {
-    marginBottom: 8,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.body,
-  },
-  moveList: {
-    maxHeight: 220,
-  },
-  moveRow: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  moveName: {
-    color: colors.text,
-    fontFamily,
-    ...typography.body,
+  archiveAction: {
+    marginTop: 10,
   },
   failure: {
     marginTop: 10,
     color: colors.danger,
     fontFamily,
     ...typography.meta,
-  },
-  menuFailure: {
-    marginBottom: 8,
   },
   pressed: {
     opacity: 0.6,

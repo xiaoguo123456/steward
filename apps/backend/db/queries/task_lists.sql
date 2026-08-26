@@ -30,10 +30,38 @@ SELECT tl.*,
 FROM task_lists tl
 WHERE tl.id = sqlc.arg(id) AND tl.deleted_at IS NULL;
 
+-- name: GetTaskListForUpdate :one
+SELECT * FROM task_lists
+WHERE id = sqlc.arg(id) AND deleted_at IS NULL
+FOR UPDATE;
+
 -- name: GetDefaultTaskList :one
 SELECT * FROM task_lists
-WHERE is_default AND deleted_at IS NULL
+WHERE is_default
+  AND list_kind = 'tasks'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
 LIMIT 1;
+
+-- name: GetDefaultTaskListForUpdate :one
+SELECT * FROM task_lists
+WHERE is_default
+  AND list_kind = 'tasks'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
+LIMIT 1
+FOR UPDATE;
+
+-- name: GetNextActiveTaskListForUpdate :one
+SELECT * FROM task_lists
+WHERE user_id = sqlc.arg(user_id)
+  AND id <> sqlc.arg(excluded_id)
+  AND list_kind = 'tasks'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
+ORDER BY position, id
+LIMIT 1
+FOR UPDATE;
 
 -- name: GetActiveShoppingTaskList :one
 SELECT * FROM task_lists
@@ -72,9 +100,45 @@ UPDATE task_lists SET
     archived_at = CASE WHEN sqlc.narg(archived)::bool IS NULL THEN archived_at
                        WHEN sqlc.narg(archived)::bool THEN coalesce(archived_at, now())
                        ELSE NULL END,
+    is_default  = CASE WHEN sqlc.narg(archived)::bool IS TRUE THEN false
+                       ELSE is_default END,
     updated_at  = now(),
     version     = version + 1
 WHERE id = sqlc.arg(id) AND deleted_at IS NULL
+RETURNING *;
+
+-- name: SetTaskListDefault :one
+UPDATE task_lists SET
+    is_default = true,
+    updated_at = now(),
+    version = version + 1
+WHERE id = sqlc.arg(id)
+  AND list_kind = 'tasks'
+  AND archived_at IS NULL
+  AND deleted_at IS NULL
+RETURNING *;
+
+-- name: ListExpiredArchivedTaskLists :many
+SELECT * FROM task_lists
+WHERE user_id = sqlc.arg(user_id)
+  AND list_kind = 'tasks'
+  AND NOT is_default
+  AND archived_at IS NOT NULL
+  AND archived_at <= sqlc.arg(archived_before)::timestamptz
+  AND deleted_at IS NULL
+ORDER BY archived_at, id;
+
+-- name: SoftDeleteExpiredArchivedTaskList :one
+UPDATE task_lists SET
+    deleted_at = now(),
+    updated_at = now(),
+    version = version + 1
+WHERE id = sqlc.arg(id)
+  AND list_kind = 'tasks'
+  AND NOT is_default
+  AND archived_at IS NOT NULL
+  AND archived_at <= sqlc.arg(archived_before)::timestamptz
+  AND deleted_at IS NULL
 RETURNING *;
 
 -- name: SoftDeleteTaskList :one

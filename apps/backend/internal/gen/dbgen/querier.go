@@ -188,6 +188,7 @@ type Querier interface {
 	// Assistant 回复跨过午夜完成不能把昨天的 Thread 变成今天的默认对话。
 	GetCurrentDayThread(ctx context.Context, arg GetCurrentDayThreadParams) (AssistantThread, error)
 	GetDefaultTaskList(ctx context.Context) (TaskList, error)
+	GetDefaultTaskListForUpdate(ctx context.Context) (TaskList, error)
 	// ---- 用户自己的食谱数据 ----
 	//
 	// 下面这些表都带 user_id 并受 RLS 约束，查询里不需要也不应该再写 user_id 条件：
@@ -199,6 +200,7 @@ type Querier interface {
 	GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (MealPlan, error)
 	GetMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	GetMemory(ctx context.Context, id string) (MemoryItem, error)
+	GetNextActiveTaskListForUpdate(ctx context.Context, arg GetNextActiveTaskListForUpdateParams) (TaskList, error)
 	GetNote(ctx context.Context, id string) (Note, error)
 	GetOperation(ctx context.Context, id string) (AsyncOperation, error)
 	GetProcessedJob(ctx context.Context, idempotencyKey string) (ProcessedJob, error)
@@ -209,6 +211,7 @@ type Querier interface {
 	GetReviewSnapshot(ctx context.Context, arg GetReviewSnapshotParams) (ReviewSnapshot, error)
 	GetTask(ctx context.Context, id string) (Task, error)
 	GetTaskList(ctx context.Context, id string) (GetTaskListRow, error)
+	GetTaskListForUpdate(ctx context.Context, id string) (TaskList, error)
 	GetThread(ctx context.Context, id string) (AssistantThread, error)
 	GetTracker(ctx context.Context, id string) (Tracker, error)
 	GetTurn(ctx context.Context, id string) (AssistantTurn, error)
@@ -251,6 +254,7 @@ type Querier interface {
 	// 重要日是 recurrence='yearly' 的全天 Event，
 	// 它这一次的发生要投影到当年，因此 start_date 与 recurrence 都要带出来。
 	ListEventsWithReminders(ctx context.Context, rowLimit int32) ([]ListEventsWithRemindersRow, error)
+	ListExpiredArchivedTaskLists(ctx context.Context, arg ListExpiredArchivedTaskListsParams) ([]TaskList, error)
 	ListFavoriteRecipeIDs(ctx context.Context) ([]string, error)
 	ListFavoriteRecipes(ctx context.Context, rowLimit int32) ([]Recipe, error)
 	// 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
@@ -383,10 +387,12 @@ type Querier interface {
 	SearchProjects(ctx context.Context, arg SearchProjectsParams) ([]SearchProjectsRow, error)
 	SearchRecords(ctx context.Context, arg SearchRecordsParams) ([]SearchRecordsRow, error)
 	SearchTasks(ctx context.Context, arg SearchTasksParams) ([]SearchTasksRow, error)
+	SetTaskListDefault(ctx context.Context, id string) (TaskList, error)
 	// 首条消息定标题。只在标题还是默认值时写，用户改过就不再覆盖。
 	SetThreadTitleIfDefault(ctx context.Context, arg SetThreadTitleIfDefaultParams) error
 	SetTurnEngine(ctx context.Context, arg SetTurnEngineParams) error
 	SoftDeleteEvent(ctx context.Context, id string) (Event, error)
+	SoftDeleteExpiredArchivedTaskList(ctx context.Context, arg SoftDeleteExpiredArchivedTaskListParams) (TaskList, error)
 	// 单个延时任务只删除自己归档时对应的那一版状态。期间恢复或重新归档后，
 	// archived_at 会变化，旧任务因此自然失效。
 	SoftDeleteExpiredArchivedTracker(ctx context.Context, arg SoftDeleteExpiredArchivedTrackerParams) (string, error)

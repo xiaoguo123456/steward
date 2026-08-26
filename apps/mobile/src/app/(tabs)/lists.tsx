@@ -26,11 +26,7 @@ import { NavHeader } from '@/components/ui/nav-header';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
-import {
-  CreateTaskListSheet,
-  TaskListActionSheet,
-  TaskListSectionMenu,
-} from '@/features/plan/task-list-sheets';
+import { CreateTaskListSheet, TaskListActionSheet } from '@/features/plan/task-list-sheets';
 import { TaskListIconChip } from '@/features/plan/task-list-icon';
 import { ProjectScopeBar } from '@/features/projects/project-scope-bar';
 import { TaskRow } from '@/features/tasks/components/task-row';
@@ -74,7 +70,6 @@ export default function ListsScreen() {
   const unscheduledTasks = useListTasks({ unscheduled: true, list_kind: 'tasks', limit: 100 });
   const taskLists = useListTaskLists({ include_archived: true, list_kind: 'tasks' });
   const [createListVisible, setCreateListVisible] = useState(false);
-  const [listMenuVisible, setListMenuVisible] = useState(false);
   const allTaskLists = useMemo(() => taskLists.data?.data ?? [], [taskLists.data?.data]);
   const activeTaskLists = useMemo(
     () => allTaskLists.filter((list) => !list.archived_at),
@@ -211,9 +206,9 @@ export default function ListsScreen() {
             <SectionTitle
               action={activeTaskLists.length > 1 || archivedTaskLists.length > 0 ? (
                 <Pressable
-                  accessibilityLabel="更多清单操作"
+                  accessibilityLabel="编辑清单"
                   accessibilityRole="button"
-                  onPress={() => setListMenuVisible(true)}
+                  onPress={() => router.push('/lists/manage')}
                   style={({ pressed }) => [styles.sectionAction, pressed && styles.pressed]}
                 >
                   <AppIcon color={colors.textSecondary} name="ellipsis-horizontal" size={21} />
@@ -258,21 +253,6 @@ export default function ListsScreen() {
         <CreateTaskListSheet
           lists={activeTaskLists}
           onClose={() => setCreateListVisible(false)}
-        />
-      ) : null}
-      {listMenuVisible ? (
-        <TaskListSectionMenu
-          canReorder={activeTaskLists.length > 1}
-          hasArchived={archivedTaskLists.length > 0}
-          onArchived={() => {
-            setListMenuVisible(false);
-            router.push({ pathname: '/lists/manage', params: { focus: 'archived' } });
-          }}
-          onClose={() => setListMenuVisible(false)}
-          onReorder={() => {
-            setListMenuVisible(false);
-            router.push({ pathname: '/lists/manage', params: { focus: 'active' } });
-          }}
         />
       ) : null}
     </AppScreen>

@@ -120,7 +120,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 
 	// 构造顺序遵循依赖方向：被依赖的模块先于依赖它们的模块。
 	activitySvc := activity.New(db)
-	listsSvc := lists.New(db)
+	listsSvc := lists.New(db).WithArchiveRetention(cfg.TaskListArchiveRetention)
 	usersSvc := users.New(db, listsSvc)
 	mediaSvc := media.New(db, store)
 	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc, mediaSvc)
@@ -132,6 +132,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	// 用一个延迟绑定的入队器打破这个循环，绑定发生在任何请求到达之前。
 	enqueuer := &lazyEnqueuer{}
 	trackersSvc.WithJobs(enqueuer)
+	listsSvc.WithJobs(enqueuer)
 	// Provider 同时实现解析与媒体处理时把它接上；fake 只做解析，媒体处理为空，
 	// 此时图片与语音会被标记为失败并提示用户改用文字，而不是伪造识别结果。
 	processor, _ := parser.(ai.MediaProcessor)
@@ -185,6 +186,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		Assistant: assistantSvc,
 		Views:     viewsSvc,
 		Trackers:  trackersSvc,
+		Lists:     listsSvc,
 		Aggregate: aggregateSvc,
 	}, logger, opts.RunWorkers)
 	if err != nil {
@@ -365,6 +367,15 @@ func (l *lazyEnqueuer) EnqueueTrackerArchiveCleanup(
 		return fmt.Errorf("任务队列尚未初始化，无法登记打卡项归档清理任务")
 	}
 	return l.inner.EnqueueTrackerArchiveCleanup(ctx, q, args)
+}
+
+func (l *lazyEnqueuer) EnqueueTaskListArchiveCleanup(
+	ctx context.Context, q *dbgen.Queries, args lists.ArchiveCleanupArgs,
+) error {
+	if l.inner == nil {
+		return fmt.Errorf("任务队列尚未初始化，无法登记清单归档清理任务")
+	}
+	return l.inner.EnqueueTaskListArchiveCleanup(ctx, q, args)
 }
 
 // newChatProvider 从解析器里取出对话能力。

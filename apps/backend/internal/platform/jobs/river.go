@@ -21,6 +21,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/aggregate"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/views"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
@@ -112,6 +113,23 @@ func (TrackerArchiveCleanupArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: QueueRetention, MaxAttempts: 5}
 }
 
+// TaskListArchiveCleanupArgs 是 task_list.archive_cleanup 的 River 任务参数。
+// 只保存用户、清单与本次归档时间，不保存任务正文。
+type TaskListArchiveCleanupArgs struct {
+	SchemaVersion  int       `json:"schema_version"`
+	UserID         string    `json:"user_id"`
+	TaskListID     string    `json:"resource_id"`
+	ArchivedBefore time.Time `json:"archived_before"`
+}
+
+// Kind 返回任务类型名。
+func (TaskListArchiveCleanupArgs) Kind() string { return "task_list.archive_cleanup" }
+
+// InsertOpts 让归档清理进入 retention 队列。
+func (TaskListArchiveCleanupArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueRetention, MaxAttempts: 5}
+}
+
 // Enqueuer 在业务事务内登记任务，实现 captures.JobEnqueuer。
 type Enqueuer struct {
 	client *river.Client[pgx.Tx]
@@ -197,6 +215,30 @@ func (e *Enqueuer) EnqueueTrackerArchiveCleanup(
 	})
 	if err != nil {
 		return apperr.Internal(fmt.Errorf("登记打卡项归档清理任务失败：%w", err))
+	}
+	return nil
+}
+
+// EnqueueTaskListArchiveCleanup 在归档事务内登记到期清理任务。
+func (e *Enqueuer) EnqueueTaskListArchiveCleanup(
+	ctx context.Context, _ *dbgen.Queries, args lists.ArchiveCleanupArgs,
+) error {
+	tx, err := database.TxFrom(ctx)
+	if err != nil {
+		return apperr.Internal(err)
+	}
+	_, err = e.client.InsertTx(ctx, tx, TaskListArchiveCleanupArgs{
+		SchemaVersion:  1,
+		UserID:         args.UserID,
+		TaskListID:     args.TaskListID,
+		ArchivedBefore: args.ArchivedBefore,
+	}, &river.InsertOpts{
+		Queue:       QueueRetention,
+		MaxAttempts: 5,
+		ScheduledAt: args.RunAt,
+	})
+	if err != nil {
+		return apperr.Internal(fmt.Errorf("登记清单归档清理任务失败：%w", err))
 	}
 	return nil
 }
@@ -292,6 +334,28 @@ type TrackerArchiveCleanupWorker struct {
 	logger *slog.Logger
 }
 
+// TaskListArchiveCleanupWorker 清理到期且期间未恢复的任务清单。
+type TaskListArchiveCleanupWorker struct {
+	river.WorkerDefaults[TaskListArchiveCleanupArgs]
+	svc    *lists.Service
+	logger *slog.Logger
+}
+
+// Work 执行一次幂等清单归档清理。
+func (w *TaskListArchiveCleanupWorker) Work(
+	ctx context.Context, job *river.Job[TaskListArchiveCleanupArgs],
+) error {
+	err := w.svc.RunArchiveCleanup(ctx, lists.ArchiveCleanupArgs{
+		UserID:         job.Args.UserID,
+		TaskListID:     job.Args.TaskListID,
+		ArchivedBefore: job.Args.ArchivedBefore,
+	})
+	if err != nil {
+		w.logger.Error("清理过期归档清单失败", "task_list_id", job.Args.TaskListID, "error", err)
+	}
+	return err
+}
+
 // Work 执行一次幂等归档清理。
 func (w *TrackerArchiveCleanupWorker) Work(
 	ctx context.Context, job *river.Job[TrackerArchiveCleanupArgs],
@@ -331,6 +395,7 @@ type Deps struct {
 	Assistant *assistant.Service
 	Views     *views.Service
 	Trackers  *trackers.Service
+	Lists     *lists.Service
 	// Aggregate 生成后台读模型。为空时不注册周期任务，
 	// 后台会看到 aggregation_status=pending 而不是一份看起来正常的空数据。
 	Aggregate *aggregate.Service
@@ -357,6 +422,10 @@ func New(pool *pgxpool.Pool, deps Deps, logger *slog.Logger, runWorkers bool) (*
 		if err := river.AddWorkerSafely(workers,
 			&TrackerArchiveCleanupWorker{svc: deps.Trackers, logger: logger}); err != nil {
 			return nil, fmt.Errorf("注册打卡项归档清理 Worker 失败：%w", err)
+		}
+		if err := river.AddWorkerSafely(workers,
+			&TaskListArchiveCleanupWorker{svc: deps.Lists, logger: logger}); err != nil {
+			return nil, fmt.Errorf("注册清单归档清理 Worker 失败：%w", err)
 		}
 		logger.Info("注册周期任务", "aggregate_enabled", deps.Aggregate != nil)
 		if deps.Aggregate != nil {

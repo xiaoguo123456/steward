@@ -208,7 +208,7 @@ func (h *RecipeAPI) CreateShoppingListFromMealPlan(ctx context.Context,
 		return nil, err
 	}
 	return httpapi.CreateShoppingListFromMealPlan201JSONResponse{
-		Data: lists.MapTaskList(list, nil), Meta: httpx.Meta(ctx),
+		Data: lists.MapTaskList(list, nil, h.svc.lists.ArchiveRetentionSeconds()), Meta: httpx.Meta(ctx),
 	}, nil
 }
 

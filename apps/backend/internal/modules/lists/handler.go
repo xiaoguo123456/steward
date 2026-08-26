@@ -37,7 +37,7 @@ func (h *ListAPI) ListTaskLists(ctx context.Context, req httpapi.ListTaskListsRe
 
 	out := make([]httpapi.TaskList, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, mapListRow(row))
+		out = append(out, mapListRow(row, h.svc.ArchiveRetentionSeconds()))
 	}
 	return httpapi.ListTaskLists200JSONResponse{Data: out, Meta: httpx.Meta(ctx)}, nil
 }
@@ -64,7 +64,7 @@ func (h *ListAPI) CreateTaskList(ctx context.Context, req httpapi.CreateTaskList
 	}
 	zero := 0
 	return httpapi.CreateTaskList201JSONResponse{
-		Data: MapTaskList(created, &zero),
+		Data: MapTaskList(created, &zero, h.svc.ArchiveRetentionSeconds()),
 		Meta: httpx.Meta(ctx),
 	}, nil
 }
@@ -106,7 +106,7 @@ func (h *ListAPI) UpdateTaskList(ctx context.Context, req httpapi.UpdateTaskList
 		return nil, err
 	}
 	return httpapi.UpdateTaskList200JSONResponse{
-		Data: mapGetRow(updated),
+		Data: mapGetRow(updated, h.svc.ArchiveRetentionSeconds()),
 		Meta: httpx.Meta(ctx),
 	}, nil
 }
@@ -133,57 +133,63 @@ func (h *ListAPI) DeleteTaskList(ctx context.Context, req httpapi.DeleteTaskList
 	)), nil
 }
 
-func mapListRow(row dbgen.ListTaskListsRow) httpapi.TaskList {
+func mapListRow(row dbgen.ListTaskListsRow, retentionSeconds int) httpapi.TaskList {
 	count := int(row.TaskCount)
+	retention := retentionSeconds
 	return httpapi.TaskList{
-		Id:         row.ID,
-		Name:       row.Name,
-		Color:      colorOf(row.Color),
-		Icon:       row.Icon,
-		Position:   int(row.Position),
-		ListKind:   listKindPtr(row.ListKind),
-		IsDefault:  row.IsDefault,
-		ArchivedAt: row.ArchivedAt,
-		TaskCount:  &count,
-		CreatedAt:  row.CreatedAt,
-		UpdatedAt:  row.UpdatedAt,
-		Version:    int(row.Version),
+		Id:                      row.ID,
+		Name:                    row.Name,
+		Color:                   colorOf(row.Color),
+		Icon:                    row.Icon,
+		Position:                int(row.Position),
+		ListKind:                listKindPtr(row.ListKind),
+		IsDefault:               row.IsDefault,
+		ArchivedAt:              row.ArchivedAt,
+		ArchiveRetentionSeconds: &retention,
+		TaskCount:               &count,
+		CreatedAt:               row.CreatedAt,
+		UpdatedAt:               row.UpdatedAt,
+		Version:                 int(row.Version),
 	}
 }
 
-func mapGetRow(row dbgen.GetTaskListRow) httpapi.TaskList {
+func mapGetRow(row dbgen.GetTaskListRow, retentionSeconds int) httpapi.TaskList {
 	count := int(row.TaskCount)
+	retention := retentionSeconds
 	return httpapi.TaskList{
-		Id:         row.ID,
-		Name:       row.Name,
-		Color:      colorOf(row.Color),
-		Icon:       row.Icon,
-		Position:   int(row.Position),
-		ListKind:   listKindPtr(row.ListKind),
-		IsDefault:  row.IsDefault,
-		ArchivedAt: row.ArchivedAt,
-		TaskCount:  &count,
-		CreatedAt:  row.CreatedAt,
-		UpdatedAt:  row.UpdatedAt,
-		Version:    int(row.Version),
+		Id:                      row.ID,
+		Name:                    row.Name,
+		Color:                   colorOf(row.Color),
+		Icon:                    row.Icon,
+		Position:                int(row.Position),
+		ListKind:                listKindPtr(row.ListKind),
+		IsDefault:               row.IsDefault,
+		ArchivedAt:              row.ArchivedAt,
+		ArchiveRetentionSeconds: &retention,
+		TaskCount:               &count,
+		CreatedAt:               row.CreatedAt,
+		UpdatedAt:               row.UpdatedAt,
+		Version:                 int(row.Version),
 	}
 }
 
 // MapTaskList 把清单行映射成契约类型。供 recipes 复用，避免两处映射漂移。
-func MapTaskList(row dbgen.TaskList, taskCount *int) httpapi.TaskList {
+func MapTaskList(row dbgen.TaskList, taskCount *int, retentionSeconds int) httpapi.TaskList {
+	retention := retentionSeconds
 	return httpapi.TaskList{
-		Id:         row.ID,
-		Name:       row.Name,
-		Color:      colorOf(row.Color),
-		Icon:       row.Icon,
-		Position:   int(row.Position),
-		ListKind:   listKindPtr(row.ListKind),
-		IsDefault:  row.IsDefault,
-		ArchivedAt: row.ArchivedAt,
-		TaskCount:  taskCount,
-		CreatedAt:  row.CreatedAt,
-		UpdatedAt:  row.UpdatedAt,
-		Version:    int(row.Version),
+		Id:                      row.ID,
+		Name:                    row.Name,
+		Color:                   colorOf(row.Color),
+		Icon:                    row.Icon,
+		Position:                int(row.Position),
+		ListKind:                listKindPtr(row.ListKind),
+		IsDefault:               row.IsDefault,
+		ArchivedAt:              row.ArchivedAt,
+		ArchiveRetentionSeconds: &retention,
+		TaskCount:               taskCount,
+		CreatedAt:               row.CreatedAt,
+		UpdatedAt:               row.UpdatedAt,
+		Version:                 int(row.Version),
 	}
 }
 

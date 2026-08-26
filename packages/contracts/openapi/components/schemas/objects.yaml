@@ -20,7 +20,14 @@ TaskListKind:
 TaskList:
   type: object
   additionalProperties: false
-  required: [id, name, position, is_default, created_at, updated_at, version]
+  required:
+    - id
+    - name
+    - position
+    - is_default
+    - created_at
+    - updated_at
+    - version
   properties:
     id:
       type: string
@@ -42,11 +49,17 @@ TaskList:
       $ref: '#/TaskListKind'
     is_default:
       type: boolean
-      description: 每个用户恰好一个默认清单。
+      description: 服务端内部的新任务落点；客户端不得据此制造特殊外观或操作。
     archived_at:
       type: string
       format: date-time
       nullable: true
+    archive_retention_seconds:
+      type: integer
+      minimum: 1
+      description: |
+        清单归档后的可恢复时长，由服务端配置决定。
+        兼容滚动发布期间的旧服务端，客户端缺失时暂按 72 小时展示。
     task_count:
       type: integer
       description: 未删除且未完成的 Task 数量，由服务端计算。
@@ -121,7 +134,7 @@ DeleteTaskListRequest:
     move_tasks_to_list_id:
       type: string
       nullable: true
-      description: 清单非空时必填，指定 Task 迁移到的目标清单。
+      description: 删除仍在使用的非空清单时必填；已归档任务清单由服务端迁入默认清单。
 
 Task:
   type: object

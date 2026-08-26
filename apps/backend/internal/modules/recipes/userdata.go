@@ -596,6 +596,7 @@ func trimmedList(values *[]string) []string {
 type ListCommands interface {
 	EnsureShoppingList(ctx context.Context, q *dbgen.Queries, userID string,
 		in lists.ShoppingListInput) (dbgen.TaskList, error)
+	ArchiveRetentionSeconds() int
 }
 
 // TaskCommands 是本模块需要的任务能力。

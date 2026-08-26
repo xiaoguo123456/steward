@@ -30,6 +30,9 @@ type Config struct {
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
 	DevSMSCode      string
+	// TaskListArchiveRetention 是任务清单归档后的可恢复时长。
+	// API 与 Worker 必须使用同一配置，避免界面提示与实际清理时间不一致。
+	TaskListArchiveRetention time.Duration
 
 	// MemoryFingerprintKey 用于计算「不再学习」阻止项的指纹。
 	// 它是独立用途的密钥，不复用 JWT 密钥：两者的轮换周期与泄漏影响完全不同。
@@ -170,6 +173,12 @@ func Load() (Config, error) {
 	}
 	if cfg.RefreshTokenTTL, err = duration("STEWARD_REFRESH_TOKEN_TTL", 30*24*time.Hour); err != nil {
 		return Config{}, err
+	}
+	if cfg.TaskListArchiveRetention, err = duration("STEWARD_TASK_LIST_ARCHIVE_RETENTION", 72*time.Hour); err != nil {
+		return Config{}, err
+	}
+	if cfg.TaskListArchiveRetention <= 0 {
+		return Config{}, errors.New("STEWARD_TASK_LIST_ARCHIVE_RETENTION 必须大于 0")
 	}
 	if cfg.AI.Timeout, err = duration("STEWARD_AI_TIMEOUT", 45*time.Second); err != nil {
 		return Config{}, err
@@ -341,16 +350,17 @@ func (c StreamConfig) Resolve() string {
 func LoadForTest() Config {
 	_ = godotenv.Load(findEnvFile()...)
 	return Config{
-		Environment:          "test",
-		DatabaseURL:          os.Getenv("STEWARD_TEST_DATABASE_URL"),
-		JWTSecret:            "test-secret",
-		AccessTokenTTL:       time.Hour,
-		RefreshTokenTTL:      time.Hour,
-		DevSMSCode:           "123456",
-		MemoryFingerprintKey: "test-fingerprint-key",
-		AI:                   AIConfig{Provider: "fake"},
-		SMS:                  SMSConfig{Provider: "dev"},
-		Storage:              StorageConfig{Driver: "localfs", Root: os.TempDir() + "/steward-test-storage"},
+		Environment:              "test",
+		DatabaseURL:              os.Getenv("STEWARD_TEST_DATABASE_URL"),
+		JWTSecret:                "test-secret",
+		AccessTokenTTL:           time.Hour,
+		RefreshTokenTTL:          time.Hour,
+		DevSMSCode:               "123456",
+		TaskListArchiveRetention: 72 * time.Hour,
+		MemoryFingerprintKey:     "test-fingerprint-key",
+		AI:                       AIConfig{Provider: "fake"},
+		SMS:                      SMSConfig{Provider: "dev"},
+		Storage:                  StorageConfig{Driver: "localfs", Root: os.TempDir() + "/steward-test-storage"},
 	}
 }
 

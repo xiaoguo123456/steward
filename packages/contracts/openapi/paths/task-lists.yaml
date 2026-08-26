@@ -61,6 +61,9 @@ Item:
   patch:
     operationId: updateTaskList
     summary: 修改清单
+    description: |
+      archived=true 进入服务端配置的可恢复期，false 恢复。
+      归档当前内部默认清单时服务端自动转移默认落点；至少保留一个活动任务清单。
     tags: [lists]
     parameters:
       - $ref: '../components/parameters.yaml#/TaskListId'
@@ -92,7 +95,9 @@ Item:
     operationId: deleteTaskList
     summary: 删除清单
     description: |
-      清单非空时必须提供 move_tasks_to_list_id，否则返回 TASK_LIST_NOT_EMPTY。
+      删除已归档任务清单时，服务端自动把其中 Task 迁入当前默认清单，
+      不要求客户端提供 move_tasks_to_list_id。
+      删除仍在使用的非空清单时必须提供 move_tasks_to_list_id，否则返回 TASK_LIST_NOT_EMPTY。
       默认清单在没有替代默认清单时不可删除。
     tags: [lists]
     parameters:

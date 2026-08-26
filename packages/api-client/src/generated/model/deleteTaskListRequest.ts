@@ -16,7 +16,7 @@
 
 export interface DeleteTaskListRequest {
   /**
-     * 清单非空时必填，指定 Task 迁移到的目标清单。
+     * 删除仍在使用的非空清单时必填；已归档任务清单由服务端迁入默认清单。
      * @nullable
      */
   move_tasks_to_list_id?: string | null;

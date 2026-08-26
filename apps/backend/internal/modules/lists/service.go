@@ -7,7 +7,9 @@ package lists
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -20,14 +22,52 @@ import (
 // DefaultListName 是初始化时创建的默认清单名称，用户可以重命名。
 const DefaultListName = "默认清单"
 
+// DefaultArchiveRetention 是未显式注入配置时使用的清单归档保留期。
+// 正式进程会从 STEWARD_TASK_LIST_ARCHIVE_RETENTION 注入同一值给 API 与 Worker。
+const DefaultArchiveRetention = 72 * time.Hour
+
+// ArchiveCleanupArgs 只携带清理清单所需的引用，不复制任务正文。
+type ArchiveCleanupArgs struct {
+	UserID         string
+	TaskListID     string
+	ArchivedBefore time.Time
+	RunAt          time.Time
+}
+
+// JobEnqueuer 在归档事务内登记延时清理任务。
+type JobEnqueuer interface {
+	EnqueueTaskListArchiveCleanup(ctx context.Context, q *dbgen.Queries, args ArchiveCleanupArgs) error
+}
+
 // Service 是 TaskList 的应用服务。
 type Service struct {
-	db *database.DB
+	db               *database.DB
+	jobs             JobEnqueuer
+	archiveRetention time.Duration
 }
 
 // New 构造 Service。
 func New(db *database.DB) *Service {
-	return &Service{db: db}
+	return &Service{db: db, archiveRetention: DefaultArchiveRetention}
+}
+
+// WithJobs 绑定延时任务队列。组装阶段在请求到达前调用。
+func (s *Service) WithJobs(jobs JobEnqueuer) *Service {
+	s.jobs = jobs
+	return s
+}
+
+// WithArchiveRetention 注入归档保留期。无效值保留安全默认值。
+func (s *Service) WithArchiveRetention(retention time.Duration) *Service {
+	if retention > 0 {
+		s.archiveRetention = retention
+	}
+	return s
+}
+
+// ArchiveRetentionSeconds 返回客户端展示归档策略所需的秒数。
+func (s *Service) ArchiveRetentionSeconds() int {
+	return int(s.archiveRetention / time.Second)
 }
 
 // DB 暴露连接以便同模块的 Handler 复用短事务。
@@ -91,6 +131,22 @@ func (s *Service) List(ctx context.Context, userID string, includeArchived bool,
 		// 首次访问时补齐默认清单，避免新用户看到空白页。
 		if _, err := s.EnsureDefaultList(ctx, q, userID); err != nil {
 			return err
+		}
+		// 延时任务是主路径；读取时只清理当前用户已经过期的归档清单作为补偿，
+		// 覆盖部署前已有数据或 Worker 曾长期失败的情况。
+		expired, err := q.ListExpiredArchivedTaskLists(ctx, dbgen.ListExpiredArchivedTaskListsParams{
+			UserID:         userID,
+			ArchivedBefore: time.Now().Add(-s.archiveRetention),
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		for _, row := range expired {
+			if err := s.runArchiveCleanupInTx(ctx, q, ArchiveCleanupArgs{
+				UserID: userID, TaskListID: row.ID, ArchivedBefore: *row.ArchivedAt,
+			}); err != nil {
+				return err
+			}
 		}
 		if listKind != nil {
 			rows, err := q.ListTaskListsByKind(ctx, dbgen.ListTaskListsByKindParams{
@@ -237,7 +293,7 @@ func (s *Service) EnsureShoppingList(ctx context.Context, q *dbgen.Queries,
 func (s *Service) Update(ctx context.Context, userID, listID string, in UpdateInput) (dbgen.GetTaskListRow, error) {
 	var out dbgen.GetTaskListRow
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetTaskList(ctx, listID)
+		current, err := q.GetTaskListForUpdate(ctx, listID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("清单")
@@ -247,12 +303,26 @@ func (s *Service) Update(ctx context.Context, userID, listID string, in UpdateIn
 		if err := in.CheckVersion(current.Version); err != nil {
 			return err
 		}
-		// 默认清单归档后用户会失去落点，因此不允许归档。
-		if current.IsDefault && in.Archived != nil && *in.Archived {
-			return apperr.Newf(apperr.CodeTaskListDefaultReq, "默认清单不能归档，请先指定另一个默认清单。")
-		}
 		if in.Name != nil && strings.TrimSpace(*in.Name) == "" {
 			return apperr.Validation(apperr.Field("name", "清单名称不能为空。"))
+		}
+
+		archiving := current.ListKind == "tasks" && current.ArchivedAt == nil &&
+			in.Archived != nil && *in.Archived
+		var nextDefault *dbgen.TaskList
+		if archiving {
+			next, err := q.GetNextActiveTaskListForUpdate(ctx, dbgen.GetNextActiveTaskListForUpdateParams{
+				UserID: userID, ExcludedID: current.ID,
+			})
+			if database.IsNoRows(err) {
+				return apperr.Newf(apperr.CodeTaskListDefaultReq, "至少保留一个正在使用的清单。")
+			}
+			if err != nil {
+				return apperr.Internal(err)
+			}
+			if current.IsDefault {
+				nextDefault = &next
+			}
 		}
 
 		updated, err := q.UpdateTaskList(ctx, dbgen.UpdateTaskListParams{
@@ -271,6 +341,27 @@ func (s *Service) Update(ctx context.Context, userID, listID string, in UpdateIn
 			}
 			return apperr.Internal(err)
 		}
+		if nextDefault != nil {
+			if _, err := q.SetTaskListDefault(ctx, nextDefault.ID); err != nil {
+				return apperr.Internal(err)
+			}
+		}
+		if archiving {
+			if updated.ArchivedAt == nil {
+				return apperr.Internal(fmt.Errorf("归档清单缺少 archived_at"))
+			}
+			if s.jobs == nil {
+				return apperr.Internal(fmt.Errorf("清单归档清理队列尚未初始化"))
+			}
+			if err := s.jobs.EnqueueTaskListArchiveCleanup(ctx, q, ArchiveCleanupArgs{
+				UserID:         userID,
+				TaskListID:     updated.ID,
+				ArchivedBefore: *updated.ArchivedAt,
+				RunAt:          updated.ArchivedAt.Add(s.archiveRetention),
+			}); err != nil {
+				return err
+			}
+		}
 
 		count, err := q.CountTasksInList(ctx, updated.ID)
 		if err != nil {
@@ -279,7 +370,7 @@ func (s *Service) Update(ctx context.Context, userID, listID string, in UpdateIn
 		out = dbgen.GetTaskListRow{
 			ID: updated.ID, UserID: updated.UserID, Name: updated.Name,
 			Color: updated.Color, Icon: updated.Icon, Position: updated.Position,
-			IsDefault: updated.IsDefault, ArchivedAt: updated.ArchivedAt,
+			ListKind: updated.ListKind, IsDefault: updated.IsDefault, ArchivedAt: updated.ArchivedAt,
 			CreatedAt: updated.CreatedAt, UpdatedAt: updated.UpdatedAt,
 			DeletedAt: updated.DeletedAt, Version: updated.Version,
 			TaskCount: count,
@@ -289,15 +380,86 @@ func (s *Service) Update(ctx context.Context, userID, listID string, in UpdateIn
 	return out, err
 }
 
-// Delete 删除清单。非空清单必须提供迁移目标。
+// RunArchiveCleanup 到期后把任务迁入当时的默认清单，再软删除归档清单。
+// 任务重复执行、清单已恢复、重新归档或已经清理时都视为成功。
+func (s *Service) RunArchiveCleanup(ctx context.Context, args ArchiveCleanupArgs) error {
+	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+		return s.runArchiveCleanupInTx(ctx, q, args)
+	})
+}
+
+func (s *Service) runArchiveCleanupInTx(
+	ctx context.Context, q *dbgen.Queries, args ArchiveCleanupArgs,
+) error {
+	current, err := q.GetTaskListForUpdate(ctx, args.TaskListID)
+	if database.IsNoRows(err) {
+		return nil
+	}
+	if err != nil {
+		return apperr.Internal(err)
+	}
+	if current.ListKind != "tasks" || current.IsDefault || current.ArchivedAt == nil ||
+		current.ArchivedAt.After(args.ArchivedBefore) {
+		return nil
+	}
+
+	target, err := q.GetDefaultTaskListForUpdate(ctx)
+	if database.IsNoRows(err) {
+		target, err = s.EnsureDefaultList(ctx, q, args.UserID)
+	}
+	if err != nil {
+		return err
+	}
+	if target.ID == current.ID {
+		return apperr.Internal(fmt.Errorf("归档清单仍是默认任务落点"))
+	}
+	if err := q.MoveTasksToList(ctx, dbgen.MoveTasksToListParams{
+		TargetListID: target.ID,
+		SourceListID: current.ID,
+	}); err != nil {
+		return apperr.Internal(err)
+	}
+	_, err = q.SoftDeleteExpiredArchivedTaskList(ctx, dbgen.SoftDeleteExpiredArchivedTaskListParams{
+		ID: current.ID, ArchivedBefore: args.ArchivedBefore,
+	})
+	if database.IsNoRows(err) {
+		return nil
+	}
+	if err != nil {
+		return apperr.Internal(err)
+	}
+	return nil
+}
+
+// Delete 删除清单。归档任务清单固定迁入当前默认清单；
+// 仍在使用的非空清单保留显式迁移目标，供兼容接口调用。
 func (s *Service) Delete(ctx context.Context, userID, listID string, moveTo *string) error {
 	return s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetTaskList(ctx, listID)
+		current, err := q.GetTaskListForUpdate(ctx, listID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("清单")
 			}
 			return apperr.Internal(err)
+		}
+		if current.ListKind == "tasks" && current.ArchivedAt != nil {
+			target, err := q.GetDefaultTaskListForUpdate(ctx)
+			if err != nil {
+				return apperr.Internal(err)
+			}
+			if target.ID == current.ID {
+				return apperr.Internal(fmt.Errorf("归档清单仍是默认任务落点"))
+			}
+			if err := q.MoveTasksToList(ctx, dbgen.MoveTasksToListParams{
+				TargetListID: target.ID,
+				SourceListID: current.ID,
+			}); err != nil {
+				return apperr.Internal(err)
+			}
+			if _, err := q.SoftDeleteTaskList(ctx, listID); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
 		}
 		if current.IsDefault {
 			return apperr.Newf(apperr.CodeTaskListDefaultReq,

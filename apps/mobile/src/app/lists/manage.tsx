@@ -217,7 +217,7 @@ function ReorderRow({
   }, [index, list.id, onMove, reducedMotion, total, translateY]);
 
   const panResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => !disabled,
+    onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: (_, gesture) => !disabled && Math.abs(gesture.dy) > 3,
     onPanResponderGrant: () => setDragging(true),
     onPanResponderMove: (_, gesture) => translateY.setValue(gesture.dy),
@@ -228,6 +228,7 @@ function ReorderRow({
 
   return (
     <Animated.View
+      {...panResponder.panHandlers}
       style={[
         styles.row,
         dragging && styles.draggingRow,
@@ -246,14 +247,11 @@ function ReorderRow({
           if (event.nativeEvent.actionName === 'moveUp') onMove(list.id, index - 1);
           if (event.nativeEvent.actionName === 'moveDown') onMove(list.id, index + 1);
         }}
-        style={styles.dragHandle}
-        {...panResponder.panHandlers}
+        style={styles.rowIdentity}
       >
-        <AppIcon color={colors.textSecondary} name="reorder-three-outline" size={22} />
+        <TaskListIconChip list={list} size={34} />
+        <Text numberOfLines={1} style={styles.rowName}>{list.name}</Text>
       </View>
-      <TaskListIconChip list={list} size={34} />
-      <Text numberOfLines={1} style={styles.rowName}>{list.name}</Text>
-      {list.is_default ? <Text style={styles.defaultTag}>默认</Text> : null}
       <Text style={styles.rowCount}>{list.task_count ?? 0}</Text>
       <MoreButton label={`编辑 ${list.name}`} onPress={onMenu} />
     </Animated.View>
@@ -266,7 +264,7 @@ function ArchivedRow({ list, onMenu }: { list: TaskList; onMenu: () => void }) {
       <TaskListIconChip list={list} muted size={38} />
       <Text numberOfLines={1} style={styles.rowName}>{list.name}</Text>
       <Text style={styles.rowCount}>{list.task_count ?? 0}</Text>
-      <MoreButton label={`编辑 ${list.name}`} onPress={onMenu} />
+      <MoreButton label={`操作 ${list.name}`} onPress={onMenu} />
     </View>
   );
 }
@@ -324,26 +322,18 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     backgroundColor: colors.surfaceRaised,
   },
-  dragHandle: {
-    width: 30,
-    height: 48,
+  rowIdentity: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
   rowName: {
     flex: 1,
     color: colors.text,
     fontFamily,
     ...typography.body,
-  },
-  defaultTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.meta,
   },
   rowCount: {
     minWidth: 22,

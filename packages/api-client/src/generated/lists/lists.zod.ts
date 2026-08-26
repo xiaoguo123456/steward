@@ -26,6 +26,9 @@ export const ListTaskListsQueryParams = zod.object({
   "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('按清单用途筛选。计划页只读取 tasks，购物场景只读取 shopping。')
 })
 
+
+
+
 export const ListTaskListsResponse = zod.object({
   "data": zod.array(zod.object({
   "id": zod.string(),
@@ -34,8 +37,9 @@ export const ListTaskListsResponse = zod.object({
   "icon": zod.string().nullish().describe('只能取自产品语义图标集合。'),
   "position": zod.number().int(),
   "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n'),
-  "is_default": zod.boolean().describe('每个用户恰好一个默认清单。'),
+  "is_default": zod.boolean().describe('服务端内部的新任务落点；客户端不得据此制造特殊外观或操作。'),
   "archived_at": zod.string().datetime({"offset":true}).nullish(),
+  "archive_retention_seconds": zod.number().int().min(1).optional().describe('清单归档后的可恢复时长，由服务端配置决定。\n兼容滚动发布期间的旧服务端，客户端缺失时暂按 72 小时展示。\n'),
   "task_count": zod.number().int().optional().describe('未删除且未完成的 Task 数量，由服务端计算。'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
@@ -70,6 +74,9 @@ export const CreateTaskListBody = zod.object({
   "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n')
 })
 
+
+
+
 export const CreateTaskListResponse = zod.object({
   "data": zod.object({
   "id": zod.string(),
@@ -78,8 +85,9 @@ export const CreateTaskListResponse = zod.object({
   "icon": zod.string().nullish().describe('只能取自产品语义图标集合。'),
   "position": zod.number().int(),
   "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n'),
-  "is_default": zod.boolean().describe('每个用户恰好一个默认清单。'),
+  "is_default": zod.boolean().describe('服务端内部的新任务落点；客户端不得据此制造特殊外观或操作。'),
   "archived_at": zod.string().datetime({"offset":true}).nullish(),
+  "archive_retention_seconds": zod.number().int().min(1).optional().describe('清单归档后的可恢复时长，由服务端配置决定。\n兼容滚动发布期间的旧服务端，客户端缺失时暂按 72 小时展示。\n'),
   "task_count": zod.number().int().optional().describe('未删除且未完成的 Task 数量，由服务端计算。'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
@@ -91,6 +99,8 @@ export const CreateTaskListResponse = zod.object({
 })
 
 /**
+ * archived=true 进入服务端配置的可恢复期，false 恢复。
+ * 归档当前内部默认清单时服务端自动转移默认落点；至少保留一个活动任务清单。
  * @summary 修改清单
  */
 export const UpdateTaskListParams = zod.object({
@@ -114,6 +124,9 @@ export const UpdateTaskListBody = zod.object({
   "archived": zod.boolean().optional().describe('归档只隐藏清单，不删除其中的 Task。')
 }).describe('只提交需要修改的字段；不传表示保持原值。\n清空一个可空字段必须把字段名放进 clear 数组，\n因为生成的 Go 类型无法区分“不传”与“传 null”。\n')
 
+
+
+
 export const UpdateTaskListResponse = zod.object({
   "data": zod.object({
   "id": zod.string(),
@@ -122,8 +135,9 @@ export const UpdateTaskListResponse = zod.object({
   "icon": zod.string().nullish().describe('只能取自产品语义图标集合。'),
   "position": zod.number().int(),
   "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('清单用途。shopping 的清单在移动端用购物界面展示，\n并启用数量／规格与服务端品类分组；它不是新的领域类型，\n底下仍然是同一套 TaskList 与 Task。\n'),
-  "is_default": zod.boolean().describe('每个用户恰好一个默认清单。'),
+  "is_default": zod.boolean().describe('服务端内部的新任务落点；客户端不得据此制造特殊外观或操作。'),
   "archived_at": zod.string().datetime({"offset":true}).nullish(),
+  "archive_retention_seconds": zod.number().int().min(1).optional().describe('清单归档后的可恢复时长，由服务端配置决定。\n兼容滚动发布期间的旧服务端，客户端缺失时暂按 72 小时展示。\n'),
   "task_count": zod.number().int().optional().describe('未删除且未完成的 Task 数量，由服务端计算。'),
   "created_at": zod.string().datetime({"offset":true}),
   "updated_at": zod.string().datetime({"offset":true}),
@@ -135,7 +149,9 @@ export const UpdateTaskListResponse = zod.object({
 })
 
 /**
- * 清单非空时必须提供 move_tasks_to_list_id，否则返回 TASK_LIST_NOT_EMPTY。
+ * 删除已归档任务清单时，服务端自动把其中 Task 迁入当前默认清单，
+ * 不要求客户端提供 move_tasks_to_list_id。
+ * 删除仍在使用的非空清单时必须提供 move_tasks_to_list_id，否则返回 TASK_LIST_NOT_EMPTY。
  * 默认清单在没有替代默认清单时不可删除。
  * @summary 删除清单
  */
@@ -153,7 +169,7 @@ export const DeleteTaskListHeader = zod.object({
 })
 
 export const DeleteTaskListBody = zod.object({
-  "move_tasks_to_list_id": zod.string().nullish().describe('清单非空时必填，指定 Task 迁移到的目标清单。')
+  "move_tasks_to_list_id": zod.string().nullish().describe('删除仍在使用的非空清单时必填；已归档任务清单由服务端迁入默认清单。')
 })
 
 export const DeleteTaskListResponse = zod.object({
