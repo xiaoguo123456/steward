@@ -70,4 +70,4 @@
 
 - 户外运动的目标类型使用 Expo UI `SegmentedControl`，目标数值使用 Expo 官方支持的 `@react-native-community/slider`。滑杆保留逻辑步长，但使用无密集刻度的细轨道与统一圆形滑块，避免大范围目标产生视觉噪声。
 - Feature 只使用 `components/ui/selection-controls` 的品牌适配组件，不直接导入 `@expo/ui` 或 `@react-native-community/slider`；品牌色、外观和后续平台差异由适配层统一处理。
-- 开始按钮继续复用运动模块统一主按钮，开关使用 React Native 平台 `Switch`，不在页面里重复实现同类基础控件。
+- 开始按钮继续复用运动模块统一主按钮，不在按钮下重复显示当前目标；开关使用 React Native 平台 `Switch`，不在页面里重复实现同类基础控件。

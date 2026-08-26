@@ -55,6 +55,8 @@ pnpm android
 pnpm mobile:live
 ```
 
+该命令默认连接测试环境 `https://test-steward.qhzhiyin.com`，因此热更新期间产生和读取的服务端数据均属于测试环境。需要临时连接其他后端时，可直接使用 `EXPO_PUBLIC_API_URL` 覆盖。
+
 随后打开手机上的“清单”开发预览版，选择检测到的本地开发服务。首次连接也可以扫描 Expo CLI 显示的二维码。
 
 以下变更仍需要重新构建并安装开发预览 APK：

@@ -30,6 +30,8 @@ Tracker 字段定义与 Record 录入。Tracker 是可复用的 Schema，Record 
 - Record 标题由服务端生成，例如“2026-08-12 · 体重 72.3 kg”。
 - 单位换算由服务端完成，客户端不得自行折算后写入。
 - 修改 Tracker 字段不会重写历史 Record。
+- 自定义 Tracker 归档时写入 `archived_at`，并在同一事务登记 30 天后的 Retention Job；恢复时清空。任务到期后只有本次归档仍有效才软删除 Tracker 及其 Record，列表查询另做当前用户范围内的补偿清理。
+- 内置 Tracker 不进入自动删除规则。
 
 ## 禁止
 

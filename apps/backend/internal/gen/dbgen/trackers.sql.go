@@ -170,7 +170,7 @@ INSERT INTO trackers (
     $5, $6, $7, $8, $9,
     $10, $11, $12
 )
-RETURNING id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule
+RETURNING id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule, archived_at
 `
 
 type CreateTrackerParams struct {
@@ -221,6 +221,7 @@ func (q *Queries) CreateTracker(ctx context.Context, arg CreateTrackerParams) (T
 		&i.Version,
 		&i.BuiltinKey,
 		&i.Schedule,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
@@ -236,7 +237,7 @@ INSERT INTO trackers (
 )
 ON CONFLICT (user_id, builtin_key) WHERE builtin_key IS NOT NULL AND deleted_at IS NULL
 DO UPDATE SET updated_at = now()
-RETURNING id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule
+RETURNING id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule, archived_at
 `
 
 type EnsureBuiltinTrackerParams struct {
@@ -281,6 +282,7 @@ func (q *Queries) EnsureBuiltinTracker(ctx context.Context, arg EnsureBuiltinTra
 		&i.Version,
 		&i.BuiltinKey,
 		&i.Schedule,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
@@ -334,7 +336,7 @@ func (q *Queries) GetRecord(ctx context.Context, id string) (GetRecordRow, error
 }
 
 const getTracker = `-- name: GetTracker :one
-SELECT id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule FROM trackers WHERE id = $1 AND deleted_at IS NULL
+SELECT id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule, archived_at FROM trackers WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetTracker(ctx context.Context, id string) (Tracker, error) {
@@ -357,6 +359,7 @@ func (q *Queries) GetTracker(ctx context.Context, id string) (Tracker, error) {
 		&i.Version,
 		&i.BuiltinKey,
 		&i.Schedule,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
@@ -498,7 +501,7 @@ func (q *Queries) ListTrackerStats(ctx context.Context, arg ListTrackerStatsPara
 
 const listTrackers = `-- name: ListTrackers :many
 
-SELECT id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule FROM trackers
+SELECT id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule, archived_at FROM trackers
 WHERE deleted_at IS NULL
   AND ($1::text IS NULL OR status = $1::text)
   AND ($2::text IS NULL OR builtin_key = $2::text)
@@ -537,6 +540,7 @@ func (q *Queries) ListTrackers(ctx context.Context, arg ListTrackersParams) ([]T
 			&i.Version,
 			&i.BuiltinKey,
 			&i.Schedule,
+			&i.ArchivedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -614,6 +618,72 @@ func (q *Queries) SearchRecords(ctx context.Context, arg SearchRecordsParams) ([
 	return items, nil
 }
 
+const softDeleteExpiredArchivedTracker = `-- name: SoftDeleteExpiredArchivedTracker :one
+WITH expired AS (
+    SELECT trackers.id AS tracker_id
+    FROM trackers
+    WHERE trackers.id = $1
+      AND trackers.builtin_key IS NULL
+      AND trackers.status = 'archived'
+      AND trackers.archived_at IS NOT NULL
+      AND trackers.archived_at <= $2::timestamptz
+      AND trackers.deleted_at IS NULL
+    FOR UPDATE
+), deleted_records AS (
+    UPDATE records
+    SET deleted_at = now(), updated_at = now(), version = version + 1
+    WHERE records.tracker_id IN (SELECT expired.tracker_id FROM expired)
+      AND records.deleted_at IS NULL
+    RETURNING records.tracker_id
+)
+UPDATE trackers
+SET deleted_at = now(), updated_at = now(), version = version + 1
+WHERE trackers.id IN (SELECT expired.tracker_id FROM expired)
+RETURNING trackers.id
+`
+
+type SoftDeleteExpiredArchivedTrackerParams struct {
+	TrackerID      string
+	ArchivedBefore time.Time
+}
+
+// 单个延时任务只删除自己归档时对应的那一版状态。期间恢复或重新归档后，
+// archived_at 会变化，旧任务因此自然失效。
+func (q *Queries) SoftDeleteExpiredArchivedTracker(ctx context.Context, arg SoftDeleteExpiredArchivedTrackerParams) (string, error) {
+	row := q.db.QueryRow(ctx, softDeleteExpiredArchivedTracker, arg.TrackerID, arg.ArchivedBefore)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const softDeleteExpiredArchivedTrackers = `-- name: SoftDeleteExpiredArchivedTrackers :exec
+WITH expired AS (
+    SELECT id AS tracker_id
+    FROM trackers
+    WHERE builtin_key IS NULL
+      AND status = 'archived'
+      AND archived_at <= now() - interval '30 days'
+      AND deleted_at IS NULL
+    FOR UPDATE
+), deleted_records AS (
+    UPDATE records
+    SET deleted_at = now(), updated_at = now(), version = version + 1
+    WHERE records.tracker_id IN (SELECT expired.tracker_id FROM expired)
+      AND records.deleted_at IS NULL
+    RETURNING records.tracker_id
+)
+UPDATE trackers
+SET deleted_at = now(), updated_at = now(), version = version + 1
+WHERE trackers.id IN (SELECT expired.tracker_id FROM expired)
+`
+
+// 列表读取时顺带对当前用户做一次低成本兜底，覆盖迁移前已有归档项，
+// 也防止延时任务长期失败后数据一直残留。
+func (q *Queries) SoftDeleteExpiredArchivedTrackers(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, softDeleteExpiredArchivedTrackers)
+	return err
+}
+
 const softDeleteRecord = `-- name: SoftDeleteRecord :one
 UPDATE records SET deleted_at = now(), updated_at = now(), version = version + 1
 WHERE id = $1 AND deleted_at IS NULL
@@ -655,7 +725,7 @@ func (q *Queries) SoftDeleteRecordsByTracker(ctx context.Context, trackerID stri
 const softDeleteTracker = `-- name: SoftDeleteTracker :one
 UPDATE trackers SET deleted_at = now(), updated_at = now(), version = version + 1
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule
+RETURNING id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule, archived_at
 `
 
 func (q *Queries) SoftDeleteTracker(ctx context.Context, id string) (Tracker, error) {
@@ -678,6 +748,7 @@ func (q *Queries) SoftDeleteTracker(ctx context.Context, id string) (Tracker, er
 		&i.Version,
 		&i.BuiltinKey,
 		&i.Schedule,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
@@ -747,6 +818,11 @@ UPDATE trackers SET
     fields      = coalesce($4, fields),
     schedule    = CASE WHEN $5::bool THEN NULL
                        ELSE coalesce($6, schedule) END,
+    archived_at = CASE
+                      WHEN $7::text = 'archived' AND status <> 'archived' THEN now()
+                      WHEN $7::text = 'active' THEN NULL
+                      ELSE archived_at
+                  END,
     status      = coalesce($7, status),
     color       = CASE WHEN $8::bool THEN NULL
                        ELSE coalesce($9, color) END,
@@ -755,7 +831,7 @@ UPDATE trackers SET
     updated_at  = now(),
     version     = version + 1
 WHERE id = $12 AND deleted_at IS NULL
-RETURNING id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule
+RETURNING id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule, archived_at
 `
 
 type UpdateTrackerParams struct {
@@ -806,6 +882,7 @@ func (q *Queries) UpdateTracker(ctx context.Context, arg UpdateTrackerParams) (T
 		&i.Version,
 		&i.BuiltinKey,
 		&i.Schedule,
+		&i.ArchivedAt,
 	)
 	return i, err
 }

@@ -24,14 +24,12 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { RecordSheet } from '@/features/trackers/record-sheet';
-import { TrackerManagerSheet } from '@/features/trackers/tracker-manager-sheet';
 import { formatRelativeTime } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 export default function DataScreen() {
   const router = useRouter();
   const [activeTracker, setActiveTracker] = useState<Tracker | null>(null);
-  const [managerOpen, setManagerOpen] = useState(false);
 
   const trackersQuery = useListTrackers({ status: 'active' });
   const recordsQuery = useListRecords({ limit: 50 });
@@ -72,7 +70,7 @@ export default function DataScreen() {
             <Pressable
               accessibilityLabel="管理打卡项"
               accessibilityRole="button"
-              onPress={() => setManagerOpen(true)}
+              onPress={() => router.push('/trackers/manage')}
               style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
             >
               <Text style={styles.headerActionText}>管理</Text>
@@ -192,8 +190,6 @@ export default function DataScreen() {
           tracker={activeTracker}
         />
       ) : null}
-
-      <TrackerManagerSheet onClose={() => setManagerOpen(false)} visible={managerOpen} />
 
       <AiFab />
     </AppScreen>

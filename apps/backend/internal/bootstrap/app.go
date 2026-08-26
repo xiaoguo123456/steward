@@ -131,6 +131,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	// Capture 需要队列才能入队，而队列的 Worker 又需要 Capture 服务。
 	// 用一个延迟绑定的入队器打破这个循环，绑定发生在任何请求到达之前。
 	enqueuer := &lazyEnqueuer{}
+	trackersSvc.WithJobs(enqueuer)
 	// Provider 同时实现解析与媒体处理时把它接上；fake 只做解析，媒体处理为空，
 	// 此时图片与语音会被标记为失败并提示用户改用文字，而不是伪造识别结果。
 	processor, _ := parser.(ai.MediaProcessor)
@@ -183,6 +184,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		Captures:  capturesSvc,
 		Assistant: assistantSvc,
 		Views:     viewsSvc,
+		Trackers:  trackersSvc,
 		Aggregate: aggregateSvc,
 	}, logger, opts.RunWorkers)
 	if err != nil {
@@ -354,6 +356,15 @@ func (l *lazyEnqueuer) EnqueueReviewGenerate(ctx context.Context, q *dbgen.Queri
 		return fmt.Errorf("任务队列尚未初始化，无法登记复盘生成任务")
 	}
 	return l.inner.EnqueueReviewGenerate(ctx, q, args)
+}
+
+func (l *lazyEnqueuer) EnqueueTrackerArchiveCleanup(
+	ctx context.Context, q *dbgen.Queries, args trackers.ArchiveCleanupArgs,
+) error {
+	if l.inner == nil {
+		return fmt.Errorf("任务队列尚未初始化，无法登记打卡项归档清理任务")
+	}
+	return l.inner.EnqueueTrackerArchiveCleanup(ctx, q, args)
 }
 
 // newChatProvider 从解析器里取出对话能力。

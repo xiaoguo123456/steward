@@ -42,6 +42,11 @@ UPDATE trackers SET
     fields      = coalesce(sqlc.narg(fields), fields),
     schedule    = CASE WHEN sqlc.arg(clear_schedule)::bool THEN NULL
                        ELSE coalesce(sqlc.narg(schedule), schedule) END,
+    archived_at = CASE
+                      WHEN sqlc.narg(status)::text = 'archived' AND status <> 'archived' THEN now()
+                      WHEN sqlc.narg(status)::text = 'active' THEN NULL
+                      ELSE archived_at
+                  END,
     status      = coalesce(sqlc.narg(status), status),
     color       = CASE WHEN sqlc.arg(clear_color)::bool THEN NULL
                        ELSE coalesce(sqlc.narg(color), color) END,
@@ -51,6 +56,53 @@ UPDATE trackers SET
     version     = version + 1
 WHERE id = sqlc.arg(id) AND deleted_at IS NULL
 RETURNING *;
+
+-- name: SoftDeleteExpiredArchivedTracker :one
+-- 单个延时任务只删除自己归档时对应的那一版状态。期间恢复或重新归档后，
+-- archived_at 会变化，旧任务因此自然失效。
+WITH expired AS (
+    SELECT trackers.id AS tracker_id
+    FROM trackers
+    WHERE trackers.id = sqlc.arg(tracker_id)
+      AND trackers.builtin_key IS NULL
+      AND trackers.status = 'archived'
+      AND trackers.archived_at IS NOT NULL
+      AND trackers.archived_at <= sqlc.arg(archived_before)::timestamptz
+      AND trackers.deleted_at IS NULL
+    FOR UPDATE
+), deleted_records AS (
+    UPDATE records
+    SET deleted_at = now(), updated_at = now(), version = version + 1
+    WHERE records.tracker_id IN (SELECT expired.tracker_id FROM expired)
+      AND records.deleted_at IS NULL
+    RETURNING records.tracker_id
+)
+UPDATE trackers
+SET deleted_at = now(), updated_at = now(), version = version + 1
+WHERE trackers.id IN (SELECT expired.tracker_id FROM expired)
+RETURNING trackers.id;
+
+-- name: SoftDeleteExpiredArchivedTrackers :exec
+-- 列表读取时顺带对当前用户做一次低成本兜底，覆盖迁移前已有归档项，
+-- 也防止延时任务长期失败后数据一直残留。
+WITH expired AS (
+    SELECT id AS tracker_id
+    FROM trackers
+    WHERE builtin_key IS NULL
+      AND status = 'archived'
+      AND archived_at <= now() - interval '30 days'
+      AND deleted_at IS NULL
+    FOR UPDATE
+), deleted_records AS (
+    UPDATE records
+    SET deleted_at = now(), updated_at = now(), version = version + 1
+    WHERE records.tracker_id IN (SELECT expired.tracker_id FROM expired)
+      AND records.deleted_at IS NULL
+    RETURNING records.tracker_id
+)
+UPDATE trackers
+SET deleted_at = now(), updated_at = now(), version = version + 1
+WHERE trackers.id IN (SELECT expired.tracker_id FROM expired);
 
 -- name: SoftDeleteTracker :one
 UPDATE trackers SET deleted_at = now(), updated_at = now(), version = version + 1

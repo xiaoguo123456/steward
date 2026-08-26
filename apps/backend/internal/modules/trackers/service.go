@@ -35,16 +35,36 @@ type ActivityRecorder interface {
 		source activity.Source, sourceID *string, entries []activity.EntryInput) (string, error)
 }
 
+// ArchiveCleanupArgs 只携带清理归档项所需的引用，不复制用户记录内容。
+type ArchiveCleanupArgs struct {
+	UserID         string
+	TrackerID      string
+	ArchivedBefore time.Time
+	RunAt          time.Time
+}
+
+// JobEnqueuer 在归档事务内登记延时清理任务。
+type JobEnqueuer interface {
+	EnqueueTrackerArchiveCleanup(ctx context.Context, q *dbgen.Queries, args ArchiveCleanupArgs) error
+}
+
 // Service 是 Tracker 与 Record 的应用服务。
 type Service struct {
 	db       *database.DB
 	users    UserProfile
 	activity ActivityRecorder
+	jobs     JobEnqueuer
 }
 
 // New 构造 Service。
 func New(db *database.DB, users UserProfile, act ActivityRecorder) *Service {
 	return &Service{db: db, users: users, activity: act}
+}
+
+// WithJobs 绑定延时任务队列。组装阶段在请求到达前调用。
+func (s *Service) WithJobs(jobs JobEnqueuer) *Service {
+	s.jobs = jobs
+	return s
 }
 
 // TrackerStats 是单个 Tracker 的记录统计。
@@ -65,6 +85,9 @@ type TrackerWithStats struct {
 func (s *Service) ListTrackers(ctx context.Context, userID string, status *string) ([]TrackerWithStats, error) {
 	var out []TrackerWithStats
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if err := q.SoftDeleteExpiredArchivedTrackers(ctx); err != nil {
+			return apperr.Internal(err)
+		}
 		tz, err := s.users.Timezone(ctx, q, userID)
 		if err != nil {
 			return err
@@ -258,7 +281,7 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 			status = &v
 		}
 
-		if _, err := q.UpdateTracker(ctx, dbgen.UpdateTrackerParams{
+		updated, err := q.UpdateTracker(ctx, dbgen.UpdateTrackerParams{
 			ID:               trackerID,
 			Name:             trimmedOrNil(body.Name),
 			Description:      body.Description,
@@ -271,8 +294,28 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 			ClearColor:       clear.Color,
 			Icon:             body.Icon,
 			ClearIcon:        clear.Icon,
-		}); err != nil {
+		})
+		if err != nil {
 			return apperr.Internal(err)
+		}
+
+		// 自定义打卡项第一次进入归档时登记 30 天后的清理任务。
+		// 恢复再归档会产生新的 archived_at 与新任务；旧任务因时间不匹配自动空跑。
+		if current.BuiltinKey == nil && current.Status != "archived" && updated.Status == "archived" {
+			if updated.ArchivedAt == nil {
+				return apperr.Internal(fmt.Errorf("归档打卡项缺少 archived_at"))
+			}
+			if s.jobs == nil {
+				return apperr.Internal(fmt.Errorf("归档清理队列尚未初始化"))
+			}
+			if err := s.jobs.EnqueueTrackerArchiveCleanup(ctx, q, ArchiveCleanupArgs{
+				UserID:         userID,
+				TrackerID:      trackerID,
+				ArchivedBefore: *updated.ArchivedAt,
+				RunAt:          updated.ArchivedAt.AddDate(0, 0, 30),
+			}); err != nil {
+				return err
+			}
 		}
 
 		refreshed, err := q.GetTracker(ctx, trackerID)
@@ -297,6 +340,24 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 		return nil
 	})
 	return out, err
+}
+
+// RunArchiveCleanup 删除满 30 天且期间未恢复的自定义打卡项及其记录。
+// 任务重复执行、打卡项已恢复或已经清理时都视为成功。
+func (s *Service) RunArchiveCleanup(ctx context.Context, args ArchiveCleanupArgs) error {
+	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+		_, err := q.SoftDeleteExpiredArchivedTracker(ctx, dbgen.SoftDeleteExpiredArchivedTrackerParams{
+			TrackerID:      args.TrackerID,
+			ArchivedBefore: args.ArchivedBefore,
+		})
+		if database.IsNoRows(err) {
+			return nil
+		}
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		return nil
+	})
 }
 
 // DeleteTracker 软删除 Tracker，并连带软删除其 Record。

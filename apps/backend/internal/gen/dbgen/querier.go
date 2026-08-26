@@ -387,6 +387,12 @@ type Querier interface {
 	SetThreadTitleIfDefault(ctx context.Context, arg SetThreadTitleIfDefaultParams) error
 	SetTurnEngine(ctx context.Context, arg SetTurnEngineParams) error
 	SoftDeleteEvent(ctx context.Context, id string) (Event, error)
+	// 单个延时任务只删除自己归档时对应的那一版状态。期间恢复或重新归档后，
+	// archived_at 会变化，旧任务因此自然失效。
+	SoftDeleteExpiredArchivedTracker(ctx context.Context, arg SoftDeleteExpiredArchivedTrackerParams) (string, error)
+	// 列表读取时顺带对当前用户做一次低成本兜底，覆盖迁移前已有归档项，
+	// 也防止延时任务长期失败后数据一直残留。
+	SoftDeleteExpiredArchivedTrackers(ctx context.Context) error
 	SoftDeleteMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	SoftDeleteMessagesByThread(ctx context.Context, threadID string) error
 	SoftDeleteNote(ctx context.Context, id string) (Note, error)

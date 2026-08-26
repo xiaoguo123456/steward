@@ -750,6 +750,7 @@ type Tracker struct {
 	Version        int32
 	BuiltinKey     *string
 	Schedule       []byte
+	ArchivedAt     *time.Time
 }
 
 type User struct {

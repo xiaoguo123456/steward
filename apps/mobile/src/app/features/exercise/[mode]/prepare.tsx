@@ -147,7 +147,6 @@ function OutdoorWorkoutPrepare({
           label={`开始${modeDefinition.label}`}
           onPress={startWorkout}
         />
-        <Text style={styles.bottomHint}>当前目标：{goalValue}</Text>
       </View>
     </AppScreen>
   );
@@ -454,14 +453,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: workoutAccent.hairline,
     backgroundColor: colors.background,
-  },
-  bottomHint: {
-    marginTop: 6,
-    color: workoutAccent.muted,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
   },
   strengthContent: {
     paddingHorizontal: 16,
