@@ -9,7 +9,7 @@ export type WorkoutGoal = {
   value: string;
 };
 
-export type WorkoutTargetKind = 'open' | 'distance' | 'duration' | 'steps';
+export type WorkoutTargetKind = 'open' | 'distance' | 'duration';
 
 export type OpenWorkoutTarget = {
   id: 'open';

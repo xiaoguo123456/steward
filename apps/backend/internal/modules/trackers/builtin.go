@@ -65,6 +65,7 @@ var builtinSpecs = map[BuiltinKey]builtinSpec{
 			field("duration_min", "时长", httpapi.TrackerFieldTypeDuration, true, "分钟"),
 			field("mode", "运动方式", httpapi.TrackerFieldTypeText, true, ""),
 			field("distance_km", "距离", httpapi.TrackerFieldTypeNumber, false, "公里"),
+			// 只为兼容已经保存过的旧健走记录；新运动流程不再展示或写入步数。
 			field("steps", "步数", httpapi.TrackerFieldTypeNumber, false, "步"),
 			field("calories", "消耗", httpapi.TrackerFieldTypeNumber, false, "千卡"),
 		},

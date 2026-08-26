@@ -157,10 +157,6 @@ function HistoryRow({
       {expanded ? (
         <View style={styles.expandedDetail}>
           <View style={styles.expandedItem}>
-            <Text style={styles.expandedLabel}>本次表现</Text>
-            <Text style={styles.expandedValue}>{item.secondary}</Text>
-          </View>
-          <View style={styles.expandedItem}>
             <Text style={styles.expandedLabel}>运动感受</Text>
             <Text style={styles.expandedValue}>刚刚好</Text>
           </View>

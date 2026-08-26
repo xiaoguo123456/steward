@@ -17,7 +17,7 @@
 - 地图默认加载 `https://img.qhzhiyin.com/steward/maps/protomaps/20260823/style-light-zh-hans.json`，可用 `EXPO_PUBLIC_MAP_STYLE_URL` 覆盖。
 - 原始坐标只保留在当前会话，不上传、不持久化，也不申请后台定位。
 - 总结页预填 GPS 距离，用户可以修正；确认后通过生成的 API Client 写入内置“运动” Tracker 的 Record。
-- 健走尚未接计步器，步数由用户选填；没有测到或没有填写的字段不写成 0。
+- 健走与跑步一样只记录 GPS 距离、时长和平均配速，不展示步数目标，也不手动补填或保存步数。后端已有 `steps` 字段仅兼容旧记录。
 
 ## 页面
 
@@ -26,7 +26,7 @@
 | 运动首页 | `/features/exercise` | 四种运动的直接入口和最近两条运动记录；不承载目标设置 |
 | 运动准备 | `/features/exercise/[mode]/prepare` | 目标、播报、定位或训练计划确认 |
 | 运动进行中 | `/features/exercise/[mode]/active` | 户外显示真实地图、距离、时间和配速／速度；力量训练记动作与组数 |
-| 运动总结 | `/features/exercise/[mode]/summary` | 真实时长、GPS 距离确认、可选步数、感受选择和保存确认 |
+| 运动总结 | `/features/exercise/[mode]/summary` | 真实时长、GPS 距离确认、感受选择和保存确认 |
 | 历史记录 | `/features/exercise/history` | 按模式筛选并查看历史摘要 |
 
 总结页保存或放弃后，会清理本次运动的准备、进行中和总结页历史并返回原运动首页。

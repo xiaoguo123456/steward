@@ -31,7 +31,7 @@ export type WorkoutHistoryItem = {
   title: string;
   date: string;
   primary: string;
-  secondary: string;
+  metricLabel: string;
   duration: string;
 };
 
@@ -48,7 +48,7 @@ export const workoutModes: WorkoutModeDefinition[] = [
     label: '健走',
     cue: '轻松走，慢慢养成',
     defaultGoal: '自由走',
-    detail: '步数 · 路线 · 时长',
+    detail: 'GPS 路线 · 平均配速',
   },
   {
     id: 'cycling',
@@ -103,17 +103,6 @@ export const outdoorWorkoutTargets: Record<OutdoorWorkoutMode, OutdoorWorkoutTar
       label: '自由',
       value: '自由走',
       description: '轻松走一走，不给今天增加压力',
-    },
-    {
-      id: 'steps',
-      label: '步数',
-      unit: '步',
-      description: '达到目标步数后提醒你，也可以继续走',
-      defaultValue: 6000,
-      minimumValue: 1000,
-      maximumValue: 30000,
-      step: 500,
-      presets: [3000, 6000, 10000],
     },
     {
       id: 'distance',

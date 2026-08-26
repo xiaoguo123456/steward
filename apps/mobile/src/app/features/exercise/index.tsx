@@ -139,7 +139,7 @@ export default function ExerciseHomeScreen() {
                       {item.primary}
                     </Text>
                     <Text numberOfLines={1} style={styles.recentValueLabel}>
-                      {item.secondary}
+                      {item.metricLabel}
                     </Text>
                   </View>
                   <AppIcon color={workoutAccent.muted} name="chevron-forward" size={17} />

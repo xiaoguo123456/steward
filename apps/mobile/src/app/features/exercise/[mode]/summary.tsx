@@ -56,18 +56,14 @@ export default function WorkoutSummaryScreen() {
   const [distance, setDistance] = useState(() =>
     hasMeasuredDistance ? (measuredDistanceMeters / 1000).toFixed(2) : '',
   );
-  const [steps, setSteps] = useState('');
 
   const distanceValue = numberOrUndefined(distance);
-  const stepsValue = numberOrUndefined(steps);
   const confirmedDistanceMeters = (distanceValue ?? 0) * 1000;
   const paceOrSpeed =
     mode === 'cycling'
       ? `${formatAverageSpeed(elapsedSeconds, confirmedDistanceMeters)} km/h`
       : formatAveragePace(elapsedSeconds, confirmedDistanceMeters);
-  const inputInvalid =
-    (distance.trim() !== '' && distanceValue === undefined) ||
-    (steps.trim() !== '' && stepsValue === undefined);
+  const inputInvalid = distance.trim() !== '' && distanceValue === undefined;
 
   const saveRecord = () => {
     if (inputInvalid || workout.saving) return;
@@ -77,7 +73,6 @@ export default function WorkoutSummaryScreen() {
         duration_min: durationMin,
         mode,
         distance_km: outdoor ? distanceValue : undefined,
-        steps: mode === 'walking' ? stepsValue : undefined,
       },
       new Date(),
       // 「感觉」在运动记录项里没有对应字段，但它是用户真给出的信息，
@@ -142,15 +137,6 @@ export default function WorkoutSummaryScreen() {
                 unit="公里"
                 value={distance}
               />
-              {mode === 'walking' ? (
-                <ManualField
-                  label="步数"
-                  onChangeText={setSteps}
-                  placeholder="例如 6200"
-                  unit="步"
-                  value={steps}
-                />
-              ) : null}
             </View>
             <Text style={styles.manualHint}>
               {hasMeasuredDistance
@@ -191,13 +177,13 @@ export default function WorkoutSummaryScreen() {
 
         <WorkoutNotice icon="information-circle-outline" tone="neutral">
           {outdoor
-            ? '距离由前台 GPS 轨迹计算并经你确认后保存；原始定位点不会上传。步数仍需手动填写。'
+            ? '距离由前台 GPS 轨迹计算并经你确认后保存；原始定位点不会上传。'
             : '本次训练时长会在你确认后保存到「打卡」。'}
         </WorkoutNotice>
 
         <View style={styles.footerActions}>
           {inputInvalid ? (
-            <Text style={styles.inputError}>距离和步数请填数字。</Text>
+            <Text style={styles.inputError}>距离请填数字。</Text>
           ) : null}
           <WorkoutPrimaryButton
             icon="checkmark-circle-outline"

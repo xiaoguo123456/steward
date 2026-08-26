@@ -24,7 +24,6 @@ export function useWorkoutHistory(limit = 20) {
       workout.records.map((row) => {
         const mode = getWorkoutMode(textOf(row, 'mode'));
         const distance = numberOf(row, 'distance_km');
-        const steps = numberOf(row, 'steps');
         const minutes = numberOf(row, 'duration_min') ?? 0;
         return {
           id: row.id,
@@ -32,7 +31,7 @@ export function useWorkoutHistory(limit = 20) {
           title: modeTitles[mode],
           date: formatRelativeTime(row.timestamp),
           primary: distance !== undefined ? `${distance.toFixed(2)} 公里` : `${minutes} 分钟`,
-          secondary: steps !== undefined ? `${steps} 步` : modeTitles[mode],
+          metricLabel: distance !== undefined ? '距离' : '时长',
           duration: formatDuration(minutes),
         };
       }),
