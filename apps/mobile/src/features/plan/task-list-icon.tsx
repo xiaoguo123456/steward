@@ -1,20 +1,7 @@
 import type { TaskList } from '@steward/api-client';
-import Airplane01Icon from '@hugeicons/core-free-icons/Airplane01Icon';
-import BookOpen01Icon from '@hugeicons/core-free-icons/BookOpen01Icon';
-import Briefcase03Icon from '@hugeicons/core-free-icons/Briefcase03Icon';
-import BulbIcon from '@hugeicons/core-free-icons/BulbIcon';
-import Calendar04Icon from '@hugeicons/core-free-icons/Calendar04Icon';
-import Dumbbell01Icon from '@hugeicons/core-free-icons/Dumbbell01Icon';
-import HealthIcon from '@hugeicons/core-free-icons/HealthIcon';
-import Home03Icon from '@hugeicons/core-free-icons/Home03Icon';
-import InboxIcon from '@hugeicons/core-free-icons/InboxIcon';
-import ListIcon from '@hugeicons/core-free-icons/ListIcon';
-import StarIcon from '@hugeicons/core-free-icons/StarIcon';
-import Wallet01Icon from '@hugeicons/core-free-icons/Wallet01Icon';
-import { HugeiconsIcon } from '@hugeicons/react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppIcon } from '@/components/ui/icon';
+import { AppIcon, type AppIconName } from '@/components/ui/icon';
 import {
   TASK_LIST_COLOR_TOKENS,
   TASK_LIST_ICON_OPTIONS,
@@ -34,19 +21,19 @@ const appearancePalette: Record<TaskListColorToken, { background: string; foregr
 };
 
 const taskListIcons = {
-  inbox: InboxIcon,
-  work: Briefcase03Icon,
-  home: Home03Icon,
-  study: BookOpen01Icon,
-  health: HealthIcon,
-  sport: Dumbbell01Icon,
-  finance: Wallet01Icon,
-  travel: Airplane01Icon,
-  calendar: Calendar04Icon,
-  idea: BulbIcon,
-  important: StarIcon,
-  general: ListIcon,
-} satisfies Record<TaskListIconId, React.ComponentProps<typeof HugeiconsIcon>['icon']>;
+  inbox: 'inbox',
+  work: 'briefcase-outline',
+  home: 'home-outline',
+  study: 'book',
+  health: 'heart-outline',
+  sport: 'fitness-outline',
+  finance: 'wallet-outline',
+  travel: 'airplane-outline',
+  calendar: 'calendar-outline',
+  idea: 'bulb-outline',
+  important: 'star',
+  general: 'list-outline',
+} satisfies Record<TaskListIconId, AppIconName>;
 
 export function taskListAppearanceColors(color: TaskListColorToken) {
   return appearancePalette[color];
@@ -76,11 +63,10 @@ export function TaskListAppearanceChip({
         },
       ]}
     >
-      <HugeiconsIcon
+      <AppIcon
         color={palette.foreground}
-        icon={taskListIcons[icon]}
+        name={taskListIcons[icon]}
         size={Math.round(size * 0.53)}
-        strokeWidth={1.8}
       />
     </View>
   );
@@ -160,11 +146,10 @@ export function TaskListAppearancePicker({
                       pressed && styles.pressed,
                     ]}
                   >
-                    <HugeiconsIcon
+                    <AppIcon
                       color={selected ? palette.foreground : colors.textSecondary}
-                      icon={taskListIcons[option.id]}
+                      name={taskListIcons[option.id]}
                       size={20}
-                      strokeWidth={1.8}
                     />
                   </Pressable>
                 </View>
