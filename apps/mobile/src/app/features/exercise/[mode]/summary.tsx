@@ -7,7 +7,6 @@ import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import {
   WorkoutMetric,
-  WorkoutNotice,
   WorkoutPrimaryButton,
   WorkoutSectionTitle,
 } from '@/features/workouts/components/workout-ui';
@@ -174,12 +173,6 @@ export default function WorkoutSummaryScreen() {
             );
           })}
         </View>
-
-        <WorkoutNotice icon="information-circle-outline" tone="neutral">
-          {outdoor
-            ? '距离由前台 GPS 轨迹计算并经你确认后保存；原始定位点不会上传。'
-            : '本次训练时长会在你确认后保存到「打卡」。'}
-        </WorkoutNotice>
 
         <View style={styles.footerActions}>
           {inputInvalid ? (

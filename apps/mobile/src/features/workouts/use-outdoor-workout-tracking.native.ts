@@ -8,30 +8,50 @@ import {
   type WorkoutRoutePoint,
 } from './workout-location';
 
+const MAX_START_ACCURACY_METERS = 30;
+
 const INITIAL_STATE: Omit<OutdoorWorkoutTracking, 'retry'> = {
   status: 'requesting',
+  hasFix: false,
   message: '正在请求定位权限…',
   routeSegments: [],
   distanceMeters: 0,
   action: null,
 };
 
-/** 只在运动页前台且处于记录状态时订阅定位。 */
+/** 在运动页前台订阅定位；找到有效坐标后，只有 recording=true 才累计轨迹。 */
 export function useOutdoorWorkoutTracking({
   enabled,
   mode,
+  recording,
 }: {
   enabled: boolean;
   mode: OutdoorWorkoutMode;
+  recording: boolean;
 }): OutdoorWorkoutTracking {
   const [snapshot, setSnapshot] = useState(INITIAL_STATE);
   const [attempt, setAttempt] = useState(0);
   const routeSegmentsRef = useRef<WorkoutRoutePoint[][]>([]);
   const distanceMetersRef = useRef(0);
   const previousPointRef = useRef<WorkoutRoutePoint | undefined>(undefined);
-  const hasStartedRef = useRef(false);
+  const hasFixRef = useRef(false);
+  const recordingRef = useRef(recording);
 
-  const retry = useCallback(() => setAttempt((current) => current + 1), []);
+  useEffect(() => {
+    recordingRef.current = recording;
+    if (!recording) previousPointRef.current = undefined;
+  }, [recording]);
+
+  const retry = useCallback(() => {
+    hasFixRef.current = false;
+    setSnapshot((current) => ({
+      ...current,
+      status: 'requesting',
+      hasFix: false,
+      currentPoint: undefined,
+    }));
+    setAttempt((current) => current + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +59,7 @@ export function useOutdoorWorkoutTracking({
 
     if (!enabled) {
       previousPointRef.current = undefined;
+      hasFixRef.current = false;
       return undefined;
     }
 
@@ -103,32 +124,55 @@ export function useOutdoorWorkoutTracking({
                 ...current,
                 accuracyMeters,
                 message:
-                  decision.reason === 'accuracy' && !hasStartedRef.current
+                  decision.reason === 'accuracy' && !hasFixRef.current
                     ? 'GPS 信号较弱，正在继续定位…'
                     : current.message,
               }));
               return;
             }
 
-            const shouldStartSegment =
-              decision.kind === 'new-segment' || previousPointRef.current === undefined;
-            if (shouldStartSegment) {
-              routeSegmentsRef.current = [...routeSegmentsRef.current, [point]];
-            } else {
-              const currentSegments = routeSegmentsRef.current;
-              const lastIndex = currentSegments.length - 1;
-              const lastSegment = currentSegments[lastIndex] ?? [];
-              routeSegmentsRef.current = [
-                ...currentSegments.slice(0, lastIndex),
-                [...lastSegment, point],
-              ];
-              distanceMetersRef.current += decision.distanceMeters;
+            if (
+              !hasFixRef.current &&
+              (accuracyMeters === undefined || accuracyMeters > MAX_START_ACCURACY_METERS)
+            ) {
+              setSnapshot((current) => ({
+                ...current,
+                status: 'locating',
+                hasFix: false,
+                currentPoint: point,
+                accuracyMeters,
+                message: 'GPS 信号较弱，正在继续定位…',
+                action: null,
+              }));
+              return;
             }
 
-            previousPointRef.current = point;
-            hasStartedRef.current = true;
+            if (recordingRef.current) {
+              const shouldStartSegment =
+                decision.kind === 'new-segment' || previousPointRef.current === undefined;
+              if (shouldStartSegment) {
+                routeSegmentsRef.current = [...routeSegmentsRef.current, [point]];
+              } else {
+                const currentSegments = routeSegmentsRef.current;
+                const lastIndex = currentSegments.length - 1;
+                const lastSegment = currentSegments[lastIndex] ?? [];
+                routeSegmentsRef.current = [
+                  ...currentSegments.slice(0, lastIndex),
+                  [...lastSegment, point],
+                ];
+                distanceMetersRef.current += decision.distanceMeters;
+              }
+
+              previousPointRef.current = point;
+            } else {
+              // 定位阶段只判断 GPS 是否可用，不把等待时的漂移算进运动距离。
+              previousPointRef.current = undefined;
+            }
+
+            hasFixRef.current = true;
             setSnapshot({
               status: 'tracking',
+              hasFix: true,
               message:
                 accuracyMeters === undefined
                   ? 'GPS 已连接'
@@ -165,6 +209,7 @@ export function useOutdoorWorkoutTracking({
     return {
       ...snapshot,
       status: 'paused',
+      hasFix: false,
       message: '轨迹记录已暂停',
       action: null,
       retry,

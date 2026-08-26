@@ -12,6 +12,7 @@ export type OutdoorTrackingStatus =
 
 export type OutdoorWorkoutTracking = {
   status: OutdoorTrackingStatus;
+  hasFix: boolean;
   message: string;
   routeSegments: WorkoutRoutePoint[][];
   currentPoint?: WorkoutRoutePoint;

@@ -24,6 +24,7 @@
     "expo-location": "~57.0.12",
     "expo-router": "~57.0.12",
     "expo-secure-store": "^57.0.1",
+    "expo-speech": "~57.0.1",
     "expo-splash-screen": "~57.0.6",
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.2",
@@ -60,7 +61,7 @@
     "test:important-dates": "node --experimental-strip-types --test src/features/important-dates/important-date-picker.test.mjs",
     "test:review": "node --experimental-strip-types --test src/features/review/review-period.test.mjs src/features/review/review-metrics.test.mjs",
     "test:assistant": "node --experimental-strip-types --test src/features/assistant/assistant-markdown-policy.test.mjs src/features/assistant/assistant-thread-session.test.mjs",
-    "test:workouts": "node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs",
+    "test:workouts": "node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs src/features/workouts/workout-voice.test.mjs",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web"
   },

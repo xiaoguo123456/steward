@@ -1,5 +1,5 @@
 import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   Linking,
@@ -37,11 +37,21 @@ import {
   type OutdoorWorkoutMode,
 } from '@/features/workouts/model';
 import { useOutdoorWorkoutTracking } from '@/features/workouts/use-outdoor-workout-tracking';
+import { useWorkoutVoice } from '@/features/workouts/use-workout-voice';
 import {
   formatAveragePace,
   formatAverageSpeed,
   formatDistanceKilometers,
 } from '@/features/workouts/workout-location';
+import {
+  createKilometerAnnouncement,
+  createWorkoutFinishAnnouncement,
+  createWorkoutGoalAnnouncement,
+  createWorkoutPauseAnnouncement,
+  createWorkoutResumeAnnouncement,
+  createWorkoutStartAnnouncement,
+  parseWorkoutGoal,
+} from '@/features/workouts/workout-voice';
 import { useClientReady } from '@/hooks/use-client-ready';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
@@ -49,6 +59,7 @@ const OUTDOOR_TRAY_OVERLAP = 18;
 const OUTDOOR_MAP_MESSAGE_GAP = 14;
 
 type ActiveStatus = 'active' | 'paused';
+type OutdoorActiveStatus = 'locating' | ActiveStatus;
 
 export default function ActiveWorkoutScreen() {
   const params = useLocalSearchParams<{
@@ -85,19 +96,30 @@ function OutdoorActiveWorkout({
   mode: OutdoorWorkoutMode;
   params: {
     goal?: string | string[];
+    voice?: string | string[];
   };
 }) {
   const router = useRouter();
   const clientReady = useClientReady();
-  const [status, setStatus] = useState<ActiveStatus>('active');
+  const [status, setStatus] = useState<OutdoorActiveStatus>('locating');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [confirmIntent, setConfirmIntent] = useState<'back' | 'finish' | null>(null);
+  const startAttemptRef = useRef(0);
+  const mountedRef = useRef(true);
+  const lastAnnouncedKilometerRef = useRef(0);
+  const lastKilometerElapsedRef = useRef(0);
+  const goalAnnouncedRef = useRef(false);
   const goalParam = Array.isArray(params.goal) ? params.goal[0] : params.goal;
+  const voiceParam = Array.isArray(params.voice) ? params.voice[0] : params.voice;
   const goal = clientReady ? goalParam : undefined;
+  const voiceEnabled = voiceParam !== '0';
+  const workoutGoal = useMemo(() => parseWorkoutGoal(goal), [goal]);
+  const { announce, stop: stopVoice } = useWorkoutVoice(voiceEnabled);
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
   const tracking = useOutdoorWorkoutTracking({
-    enabled: status === 'active' && confirmIntent === null,
+    enabled: status !== 'paused' && confirmIntent === null,
     mode,
+    recording: status === 'active' && confirmIntent === null,
   });
   const distanceText = formatDistanceKilometers(tracking.distanceMeters);
   const isCycling = mode === 'cycling';
@@ -108,20 +130,89 @@ function OutdoorActiveWorkout({
     tracking.action === 'settings' ? '打开设置' : tracking.action === 'retry' ? '重试' : undefined;
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      startAttemptRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (status !== 'locating' || !tracking.hasFix || confirmIntent !== null) return;
+
+    const attempt = startAttemptRef.current + 1;
+    startAttemptRef.current = attempt;
+    void announce(createWorkoutStartAnnouncement(mode)).then(() => {
+      if (mountedRef.current && startAttemptRef.current === attempt) {
+        setStatus('active');
+      }
+    });
+  }, [announce, confirmIntent, mode, status, tracking.hasFix]);
+
+  useEffect(() => {
     if (status !== 'active' || confirmIntent !== null) return;
     const timer = setInterval(() => setElapsedSeconds((current) => current + 1), 1000);
     return () => clearInterval(timer);
   }, [confirmIntent, status]);
 
   useEffect(() => {
+    if (status !== 'active') return;
+    const completedKilometers = Math.floor(tracking.distanceMeters / 1000);
+    const previousKilometers = lastAnnouncedKilometerRef.current;
+    if (completedKilometers <= previousKilometers) return;
+
+    const kilometerCount = completedKilometers - previousKilometers;
+    const kilometerSeconds = Math.max(
+      1,
+      (elapsedSeconds - lastKilometerElapsedRef.current) / kilometerCount,
+    );
+    lastAnnouncedKilometerRef.current = completedKilometers;
+    lastKilometerElapsedRef.current = elapsedSeconds;
+    void announce(
+      createKilometerAnnouncement({
+        completedKilometers,
+        elapsedSeconds,
+        kilometerSeconds,
+        mode,
+      }),
+      { interrupt: false },
+    );
+  }, [announce, elapsedSeconds, mode, status, tracking.distanceMeters]);
+
+  useEffect(() => {
+    if (!workoutGoal || goalAnnouncedRef.current || status !== 'active') return;
+    const completed =
+      workoutGoal.kind === 'distance'
+        ? tracking.distanceMeters >= workoutGoal.meters
+        : elapsedSeconds >= workoutGoal.seconds;
+    if (!completed) return;
+
+    goalAnnouncedRef.current = true;
+    void announce(createWorkoutGoalAnnouncement(workoutGoal), { interrupt: false });
+  }, [announce, elapsedSeconds, status, tracking.distanceMeters, workoutGoal]);
+
+  useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      setConfirmIntent((current) => (current === null ? 'back' : null));
+      if (confirmIntent !== null) {
+        setConfirmIntent(null);
+      } else {
+        startAttemptRef.current += 1;
+        void stopVoice();
+        setConfirmIntent('back');
+      }
       return true;
     });
     return () => subscription.remove();
-  }, []);
+  }, [confirmIntent, status, stopVoice]);
 
   const finishWorkout = () => {
+    startAttemptRef.current += 1;
+    void announce(
+      createWorkoutFinishAnnouncement({
+        distanceMeters: tracking.distanceMeters,
+        elapsedSeconds,
+      }),
+    );
     router.replace({
       pathname: '/features/exercise/[mode]/summary',
       params: {
@@ -131,6 +222,34 @@ function OutdoorActiveWorkout({
       },
     } as Href);
   };
+
+  const openConfirmation = (intent: 'back' | 'finish') => {
+    startAttemptRef.current += 1;
+    void stopVoice();
+    setConfirmIntent(intent);
+  };
+
+  const togglePause = () => {
+    if (status === 'active') {
+      setStatus('paused');
+      void announce(createWorkoutPauseAnnouncement());
+      return;
+    }
+    if (status === 'paused') {
+      setStatus('active');
+      void announce(createWorkoutResumeAnnouncement());
+    }
+  };
+
+  const statusLabel =
+    status === 'locating'
+      ? tracking.hasFix
+        ? '即将开始'
+        : '定位中'
+      : status === 'active'
+        ? '记录中'
+        : '已暂停';
+  const canPause = status === 'active' || status === 'paused';
 
   const handleTrackingAction = () => {
     if (tracking.action === 'settings') {
@@ -143,7 +262,7 @@ function OutdoorActiveWorkout({
   return (
     <AppScreen backgroundColor={workoutAccent.background} includeBottomInset>
       <NavHeader
-        onBack={() => setConfirmIntent('back')}
+        onBack={() => openConfirmation('back')}
         right={
           <View style={styles.lockButton}>
             <AppIcon color={workoutAccent.ink} name="lock-closed-outline" size={19} />
@@ -166,7 +285,7 @@ function OutdoorActiveWorkout({
           />
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveBadgeText}>{status === 'active' ? '记录中' : '已暂停'}</Text>
+            <Text style={styles.liveBadgeText}>{statusLabel}</Text>
           </View>
           {goal ? (
             <View style={styles.goalBadge}>
@@ -192,22 +311,31 @@ function OutdoorActiveWorkout({
 
           <View style={styles.outdoorControls}>
             <Pressable
-              accessibilityLabel={status === 'active' ? '暂停运动' : '继续运动'}
+              accessibilityLabel={
+                canPause ? (status === 'active' ? '暂停运动' : '继续运动') : '正在等待 GPS 信号'
+              }
               accessibilityRole="button"
-              onPress={() => setStatus((current) => (current === 'active' ? 'paused' : 'active'))}
-              style={({ pressed }) => [styles.pauseButton, pressed && styles.controlPressed]}
+              disabled={!canPause}
+              onPress={togglePause}
+              style={({ pressed }) => [
+                styles.pauseButton,
+                !canPause && styles.pauseButtonDisabled,
+                pressed && canPause && styles.controlPressed,
+              ]}
             >
               <AppIcon
-                color={colors.background}
-                name={status === 'active' ? 'pause' : 'play'}
+                color={canPause ? colors.background : workoutAccent.muted}
+                name={!canPause ? 'navigate-outline' : status === 'active' ? 'pause' : 'play'}
                 size={36}
               />
-              <Text style={styles.pauseButtonText}>{status === 'active' ? '暂停' : '继续'}</Text>
+              <Text style={[styles.pauseButtonText, !canPause && styles.pauseButtonTextDisabled]}>
+                {!canPause ? '定位中' : status === 'active' ? '暂停' : '继续'}
+              </Text>
             </Pressable>
             <Pressable
               accessibilityLabel="结束运动"
               accessibilityRole="button"
-              onPress={() => setConfirmIntent('finish')}
+              onPress={() => openConfirmation('finish')}
               style={({ pressed }) => [styles.stopButton, pressed && styles.controlPressed]}
             >
               <View style={styles.stopSquare} />
@@ -708,6 +836,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
     fontWeight: '700',
+  },
+  pauseButtonDisabled: {
+    backgroundColor: colors.surface,
+  },
+  pauseButtonTextDisabled: {
+    color: workoutAccent.muted,
   },
   stopButton: {
     width: 90,

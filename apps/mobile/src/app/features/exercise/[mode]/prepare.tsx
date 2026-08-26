@@ -111,7 +111,7 @@ function OutdoorWorkoutPrepare({
           <WorkoutSectionTitle title="开始前" />
           <View style={styles.readinessBar}>
             <View style={styles.readinessDivider} />
-            <ReadinessItem icon="navigate-outline" label="GPS 路线" value="开始后授权定位" />
+            <ReadinessItem icon="navigate-outline" label="GPS 路线" value="进入后自动定位" />
           </View>
         </View>
 
@@ -136,7 +136,7 @@ function OutdoorWorkoutPrepare({
 
         <View style={styles.noticeWrap}>
           <WorkoutNotice icon="information-circle-outline" tone="neutral">
-            仅在记录运动时使用定位
+            GPS 可用后自动开始
           </WorkoutNotice>
         </View>
       </ScrollView>
