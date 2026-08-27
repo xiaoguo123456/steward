@@ -14,6 +14,10 @@
  * OpenAPI spec version: 1.0.0
  */
 
+/**
+ * completed 是“标记完成”命令和历史兼容值。服务端完成未完成事项确认后会
+ * 直接把 Project 写为 archived，不长期返回 completed 分组。
+ */
 export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
 
 

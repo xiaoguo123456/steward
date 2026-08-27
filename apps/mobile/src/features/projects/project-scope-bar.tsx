@@ -1,75 +1,108 @@
-import { useListProjects, type Project } from '@steward/api-client';
+import type { Project, ProjectStatus } from '@steward/api-client';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppIcon } from '@/components/ui/icon';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { projectFilters } from './use-projects';
 
 /**
- * 清单详情里的项目范围筛选（设计说明 12.1）。
+ * 清单详情里的项目范围筛选（设计说明 10.1）。
  *
- * 项目不在计划首屏常驻，管理入口挂在这条筛选条的末尾——
- * 用户是在「按项目看任务」的时候才需要管项目的，不是打开计划就需要。
- *
- * 只列进行中的项目：暂停和归档的项目出现在筛选条里只会让它变长，
- * 要找它们去管理页。
+ * 状态直接摆在当前页。选中状态后才显示具体项目，避免默认状态把一整排
+ * 项目名称和状态混在一起；轻点项目筛选，长按项目打开详情。
  */
 export function ProjectScopeBar({
-  selectedId,
-  onSelect,
+  projects,
+  selectedProjectId,
+  selectedStatus,
+  onSelectProject,
+  onSelectStatus,
 }: {
-  selectedId: string | null;
-  onSelect: (project: Project | null) => void;
+  projects: Project[];
+  selectedProjectId: string | null;
+  selectedStatus: ProjectStatus | null;
+  onSelectProject: (project: Project) => void;
+  onSelectStatus: (status: ProjectStatus | null) => void;
 }) {
   const router = useRouter();
-  const query = useListProjects({ status: ['active'], limit: 50 });
-  const projects = query.data?.data ?? [];
-
-  if (query.isPending) return null;
+  const scopedProjects = selectedStatus
+    ? projects.filter((project) => project.status === selectedStatus)
+    : [];
 
   return (
     <View style={styles.bar}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        <Chip active={selectedId === null} label="全部" onPress={() => onSelect(null)} />
-        {projects.map((project) => (
+      <View style={styles.statusWrap}>
+        <Chip
+          accessibilityLabel="查看全部项目状态的任务"
+          active={selectedStatus === null && selectedProjectId === null}
+          label="全部项目"
+          onPress={() => onSelectStatus(null)}
+        />
+        {projectFilters.map((filter) => (
           <Chip
-            active={selectedId === project.id}
-            key={project.id}
-            label={project.title}
-            onPress={() => onSelect(project)}
+            accessibilityLabel={`只看关联${filter.label}项目的任务`}
+            active={selectedStatus === filter.key && selectedProjectId === null}
+            key={filter.key}
+            label={filter.label}
+            onPress={() => onSelectStatus(filter.key)}
           />
         ))}
-      </ScrollView>
-      <Pressable
-        accessibilityLabel="管理项目"
-        accessibilityRole="button"
-        onPress={() => router.push('/lists/projects')}
-        style={({ pressed }) => [styles.manage, pressed && styles.pressed]}
-      >
-        <AppIcon color={colors.textSecondary} name="options-outline" size={18} />
-      </Pressable>
+      </View>
+
+      {scopedProjects.length > 0 ? (
+        <ScrollView
+          contentContainerStyle={styles.projectScroll}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        >
+          {scopedProjects.map((project) => (
+            <Chip
+              accessibilityLabel={`只看项目${project.title}的任务`}
+              accessibilityHint="轻点筛选，长按打开项目"
+              active={selectedProjectId === project.id}
+              key={project.id}
+              label={project.title}
+              onLongPress={() =>
+                router.push({ pathname: '/projects/[id]', params: { id: project.id } })
+              }
+              onPress={() => onSelectProject(project)}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
     </View>
   );
 }
 
 function Chip({
+  accessibilityLabel,
+  accessibilityHint,
   label,
   active,
+  onLongPress,
   onPress,
 }: {
+  accessibilityLabel: string;
+  accessibilityHint?: string;
   label: string;
   active: boolean;
+  onLongPress?: () => void;
   onPress: () => void;
 }) {
   return (
     <Pressable
-      accessibilityLabel={`只看${label}的任务`}
+      accessibilityActions={
+        onLongPress ? [{ name: 'openProject', label: '打开项目' }] : undefined
+      }
+      accessibilityHint={accessibilityHint}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
+      delayLongPress={450}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'openProject') onLongPress?.();
+      }}
+      onLongPress={onLongPress}
       onPress={onPress}
       style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
     >
@@ -82,13 +115,17 @@ function Chip({
 
 const styles = StyleSheet.create({
   bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     paddingBottom: 10,
   },
-  scroll: {
+  statusWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 8,
+  },
+  projectScroll: {
+    gap: 8,
+    paddingTop: 8,
     paddingRight: 4,
   },
   chip: {
@@ -111,13 +148,6 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: colors.primaryStrong,
     fontWeight: '600',
-  },
-  manage: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
   },
   pressed: {
     opacity: 0.6,

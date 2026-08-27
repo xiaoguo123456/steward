@@ -36,7 +36,7 @@ func (s *Service) ListProjects(ctx context.Context, userID string, statuses []st
 	projectKind *string, cursorTime *time.Time, cursorID *string, limit int32) ([]ProjectWithProgress, error) {
 	if len(statuses) == 0 {
 		// 契约约定：不传 status 时默认排除已归档项目。
-		statuses = []string{"active", "paused", "completed"}
+		statuses = []string{"active", "paused"}
 	}
 
 	var out []ProjectWithProgress

@@ -1,9 +1,11 @@
 import {
   errorMessage,
   useGetToday,
+  useListProjects,
   useListTaskLists,
   useListTasks,
   type Project,
+  type ProjectStatus,
   type Task,
   type TaskList,
 } from '@steward/api-client';
@@ -29,6 +31,11 @@ import { StatePanel } from '@/components/ui/state-panel';
 import { CreateTaskListSheet, TaskListActionSheet } from '@/features/plan/task-list-sheets';
 import { TaskListIconChip } from '@/features/plan/task-list-icon';
 import { ProjectScopeBar } from '@/features/projects/project-scope-bar';
+import {
+  filterTasksByProjectScope,
+  type ProjectTaskScope,
+} from '@/features/projects/project-task-scope';
+import { projectFilters, projectStatusLabels } from '@/features/projects/use-projects';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
 import { formatDateParam } from '@/utils/format';
@@ -51,6 +58,8 @@ const scopeEmptyCopy: Record<ScopeKey, string> = {
   completed: '完成任务后会显示在这里',
   unscheduled: '所有任务都已经安排好了',
 };
+
+const projectStatuses = projectFilters.map(({ key }) => key) as ProjectStatus[];
 
 export default function ListsScreen() {
   const router = useRouter();
@@ -276,15 +285,24 @@ function DetailView({
   onToggle: (task: Task) => void;
 }) {
   const router = useRouter();
-  const [project, setProject] = useState<Project | null>(null);
+  const [projectScope, setProjectScope] = useState<ProjectTaskScope>({
+    status: null,
+    projectId: null,
+  });
   const [listActionsVisible, setListActionsVisible] = useState(false);
   const title = view.type === 'list' ? view.list.name : scopeTitles[view.key];
+  const projectQuery = useListProjects({ status: projectStatuses, limit: 100 });
+  const projects = useMemo(() => projectQuery.data?.data ?? [], [projectQuery.data?.data]);
+  const selectedProject = projectScope.projectId
+    ? projects.find((project) => project.id === projectScope.projectId) ?? null
+    : null;
 
-  // 项目范围是在已加载的任务上再筛一层，不重新发请求：
-  // 这些任务本来就都在手里，为一个筛选再拉一遍只会让列表闪一下。
-  const visible = project ? tasks.filter((task) => task.project_id === project.id) : tasks;
-  const emptyCopy = project
-    ? '这个项目在当前范围内还没有任务'
+  // Project 状态和具体项目都是当前清单的展示筛选，不改变 Task 的权威归属。
+  const visible = filterTasksByProjectScope(tasks, projects, projectScope);
+  const emptyCopy = selectedProject
+    ? `项目“${selectedProject.title}”在当前清单中还没有任务`
+    : projectScope.status
+      ? `当前清单没有关联${projectStatusLabels[projectScope.status]}项目的任务`
     : view.type === 'list'
       ? '这里还没有任务'
       : scopeEmptyCopy[view.key];
@@ -306,7 +324,15 @@ function DetailView({
         title={title}
       />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ProjectScopeBar onSelect={setProject} selectedId={project?.id ?? null} />
+        <ProjectScopeBar
+          onSelectProject={(project: Project) => {
+            setProjectScope({ status: project.status, projectId: project.id });
+          }}
+          onSelectStatus={(status) => setProjectScope({ status, projectId: null })}
+          projects={projects}
+          selectedProjectId={projectScope.projectId}
+          selectedStatus={projectScope.status}
+        />
         {visible.length === 0 ? (
           <StatePanel icon="checkmark-done-outline" message={emptyCopy} title="暂无内容" />
         ) : (
@@ -348,7 +374,7 @@ function detailTasks(
   if (view.type === 'scope') {
     return pools[view.key];
   }
-  const merged = [...pools.today, ...pools.tomorrow, ...pools.unscheduled];
+  const merged = [...pools.today, ...pools.tomorrow, ...pools.unscheduled, ...pools.completed];
   const seen = new Set<string>();
   return merged.filter((task) => {
     if (task.list_id !== view.list.id || seen.has(task.id)) return false;

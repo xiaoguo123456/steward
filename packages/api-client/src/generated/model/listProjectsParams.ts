@@ -30,7 +30,7 @@ cursor?: CursorParameter;
  */
 limit?: LimitParameter;
 /**
- * 不传时默认排除 archived。
+ * 不传时默认只返回 active 和 paused。
  */
 status?: ProjectStatus[];
 /**

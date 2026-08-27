@@ -190,26 +190,25 @@ func TestResolveProjectStatus(t *testing.T) {
 			wantErr: apperr.CodeProjectHasOpenTasks,
 		},
 		{
-			name: "确认过之后可以完成",
+			name: "确认过之后完成并自动归档",
 			in: projectStatusChange{
 				From: "active", Requested: "completed", OpenTasks: 2, Force: true,
 			},
-			want: "completed",
+			want: "archived",
 		},
 		{
-			name: "没有未完成任务时不用确认",
+			name: "没有未完成任务时直接完成并归档",
 			in: projectStatusChange{
 				From: "active", Requested: "completed", OpenTasks: 0,
 			},
-			want: "completed",
+			want: "archived",
 		},
 		{
-			// 归档前已完成的项目恢复成进行中，等于替用户改了结论。
-			name: "从归档恢复回到归档前的状态而不是客户端说的那个",
+			name: "历史已完成项目恢复后重新打开",
 			in: projectStatusChange{
 				From: "archived", Requested: "active", BeforeArchived: &completed,
 			},
-			want: "completed",
+			want: "active",
 		},
 		{
 			name: "归档前是暂停就恢复成暂停",
@@ -219,13 +218,12 @@ func TestResolveProjectStatus(t *testing.T) {
 			want: "paused",
 		},
 		{
-			// 用户点的是「恢复项目」，不该弹出「确认要标记完成吗」。
-			name: "恢复一个归档前已完成的项目不再触发未完成任务确认",
+			name: "恢复历史已完成项目不触发未完成任务确认",
 			in: projectStatusChange{
 				From: "archived", Requested: "active",
 				BeforeArchived: &completed, OpenTasks: 3,
 			},
-			want: "completed",
+			want: "active",
 		},
 		{
 			name: "没有记录归档前状态时按客户端请求恢复",

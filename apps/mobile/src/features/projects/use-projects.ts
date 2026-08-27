@@ -3,7 +3,6 @@ import {
   errorMessage,
   isApiError,
   updateProject,
-  useListProjects,
   type Project,
   type ProjectStatus,
 } from '@steward/api-client';
@@ -11,18 +10,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 /**
- * 项目管理的数据层。
+ * 单个项目的数据层。
  *
  * 项目不在计划首屏常驻，也不提供手工新建入口（设计说明 12.1）：
  * 新项目只从 Capture 里来，AI 判断一件事需要持续推进时才生成 Project 候选。
  * 所以这里只有「读、改状态、删」，没有 create。
  */
 
-/** 管理页的四个筛选分组，顺序与设计说明 12.1 一致。 */
+/** 项目的稳定筛选分组；完成后自动归档，不长期保留「已完成」分组。 */
 export const projectFilters = [
   { key: 'active', label: '进行中' },
   { key: 'paused', label: '已暂停' },
-  { key: 'completed', label: '已完成' },
   { key: 'archived', label: '已归档' },
 ] as const satisfies readonly { key: ProjectStatus; label: string }[];
 
@@ -67,11 +65,12 @@ export function transitionsOf(project: Project): { status: ProjectStatus; label:
 /**
  * 归档项目恢复后回到哪个状态。
  *
- * 服务端记了归档前的状态，客户端不该一律恢复成 active——
- * 一个归档前已完成的项目恢复成进行中，等于替用户改了结论。
+ * 服务端记了归档前的状态。历史 completed 项目已经并入归档；恢复它表示
+ * 重新打开，所以回到 active，不把已取消长期展示的 completed 状态带回来。
  */
 export function restoreTargetOf(project: Project): ProjectStatus {
   const before = project.status_before_archived;
+  if (before === 'completed') return 'active';
   if (before && before !== 'archived') return before;
   return 'active';
 }
@@ -92,19 +91,6 @@ export function openTaskCount(project: Project): number {
 // 契约里 task_total / task_done 是可选字段，缺失当 0 处理。
 function taskCounts(project: Project): { done: number; total: number } {
   return { done: project.task_done ?? 0, total: project.task_total ?? 0 };
-}
-
-/** 按状态读项目列表。 */
-export function useProjectsByStatus(status: ProjectStatus) {
-  const query = useListProjects({ status: [status], limit: 100 });
-  return {
-    projects: query.data?.data ?? [],
-    loading: query.isPending,
-    failed: query.isError,
-    error: query.error,
-    refetch: () => void query.refetch(),
-    refreshing: query.isRefetching,
-  };
 }
 
 /** 项目的写操作。改状态、改字段与删除共用一套忙碌与错误状态。 */

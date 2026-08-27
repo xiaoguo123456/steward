@@ -11,7 +11,7 @@ Collection:
       - name: status
         in: query
         required: false
-        description: 不传时默认排除 archived。
+        description: 不传时默认只返回 active 和 paused。
         schema:
           type: array
           items:

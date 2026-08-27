@@ -202,10 +202,10 @@ type projectStatusChange struct {
 // 两条规则容易在实现里互相绊住，所以放在一起：
 //
 //  1. 从归档恢复时目标一律取归档前的状态，客户端报的那个只表示「想恢复」。
-//     归档前已完成的项目恢复成进行中，等于替用户改了结论。
-//  2. 「还有未完成任务」的确认只拦真正的标记完成。恢复归档不拦——
-//     完成这件事在归档之前就确认过了，再问一次，用户点的是「恢复项目」，
-//     弹出来的却是「确认要标记完成吗」。
+//  2. 「还有未完成任务」的确认只拦真正的标记完成。
+//  3. 完成不是长期展示分组。确认完成后直接写成 archived；UpdateProject 的 SQL
+//     会把完成前的 active / paused 状态记入 status_before_archived，用户恢复时
+//     可以继续处理，而不需要先经过一个单独的「已完成」列表。
 //
 // 顺序不能反：先定下真正要写入的状态，才谈得上判断这是不是一次标记完成。
 func resolveProjectStatus(in projectStatusChange) (string, error) {
@@ -217,11 +217,19 @@ func resolveProjectStatus(in projectStatusChange) (string, error) {
 	restoring := in.From == "archived" && in.Requested != "archived"
 	if restoring && in.BeforeArchived != nil {
 		next = *in.BeforeArchived
+		// completed 只可能来自升级前的历史数据。恢复的含义是重新打开，
+		// 不能把它恢复成已经不再长期保存的 completed 状态。
+		if next == "completed" {
+			next = "active"
+		}
 	}
 
 	if next == "completed" && !restoring && in.OpenTasks > 0 && !in.Force {
 		return "", apperr.Newf(apperr.CodeProjectHasOpenTasks,
 			"项目下还有 %d 项未完成的任务，确认要标记完成吗？", in.OpenTasks)
+	}
+	if next == "completed" && !restoring {
+		return "archived", nil
 	}
 	return next, nil
 }
