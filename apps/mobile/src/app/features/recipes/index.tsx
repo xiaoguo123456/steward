@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import {
@@ -347,18 +348,12 @@ function DiscoverHome() {
         {categoryOptions.map((item) => {
           const selected = category === item.id;
           return (
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
+            <FilterChip
               key={item.id}
+              label={item.label}
               onPress={() => setCategory(item.id)}
-              style={({ pressed }) => [styles.categoryItem, pressed && styles.pressed]}
-            >
-              <Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>
-                {item.label}
-              </Text>
-              <View style={[styles.categoryLine, selected && styles.categoryLineSelected]} />
-            </Pressable>
+              selected={selected}
+            />
           );
         })}
       </ScrollView>
@@ -612,37 +607,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   categoryContent: {
-    minHeight: 58,
-    alignItems: 'stretch',
-    gap: 22,
-    paddingRight: 16,
-  },
-  categoryItem: {
     minHeight: 54,
-    justifyContent: 'center',
-  },
-  categoryText: {
-    color: recipeColors.muted,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '600',
-  },
-  categoryTextSelected: {
-    color: colors.primaryStrong,
-    fontWeight: '700',
-  },
-  categoryLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 4,
-    height: 2,
-    borderRadius: radius.pill,
-    backgroundColor: 'transparent',
-  },
-  categoryLineSelected: {
-    backgroundColor: colors.primary,
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 16,
   },
   featuredSection: {
     marginBottom: 16,

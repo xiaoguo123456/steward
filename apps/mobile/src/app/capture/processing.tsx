@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   primaryButton: {
-    minHeight: 48,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButton: {
-    minHeight: 48,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,

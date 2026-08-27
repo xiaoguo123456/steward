@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     ...typography.meta,
   },
   saveButton: {
-    minHeight: 48,
+    minHeight: 52,
     marginTop: 4,
     alignItems: 'center',
     justifyContent: 'center',

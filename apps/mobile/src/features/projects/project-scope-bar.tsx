@@ -1,8 +1,8 @@
 import type { Project, ProjectStatus } from '@steward/api-client';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { projectFilters } from './use-projects';
 
 /**
@@ -32,19 +32,19 @@ export function ProjectScopeBar({
   return (
     <View style={styles.bar}>
       <View style={styles.statusWrap}>
-        <Chip
+        <FilterChip
           accessibilityLabel="查看全部项目状态的任务"
-          active={selectedStatus === null && selectedProjectId === null}
           label="全部项目"
           onPress={() => onSelectStatus(null)}
+          selected={selectedStatus === null && selectedProjectId === null}
         />
         {projectFilters.map((filter) => (
-          <Chip
+          <FilterChip
             accessibilityLabel={`只看关联${filter.label}项目的任务`}
-            active={selectedStatus === filter.key && selectedProjectId === null}
             key={filter.key}
             label={filter.label}
             onPress={() => onSelectStatus(filter.key)}
+            selected={selectedStatus === filter.key && selectedProjectId === null}
           />
         ))}
       </View>
@@ -56,60 +56,22 @@ export function ProjectScopeBar({
           showsHorizontalScrollIndicator={false}
         >
           {scopedProjects.map((project) => (
-            <Chip
+            <FilterChip
               accessibilityLabel={`只看项目${project.title}的任务`}
               accessibilityHint="轻点筛选，长按打开项目"
-              active={selectedProjectId === project.id}
               key={project.id}
               label={project.title}
+              longPressActionLabel="打开项目"
               onLongPress={() =>
                 router.push({ pathname: '/projects/[id]', params: { id: project.id } })
               }
               onPress={() => onSelectProject(project)}
+              selected={selectedProjectId === project.id}
             />
           ))}
         </ScrollView>
       ) : null}
     </View>
-  );
-}
-
-function Chip({
-  accessibilityLabel,
-  accessibilityHint,
-  label,
-  active,
-  onLongPress,
-  onPress,
-}: {
-  accessibilityLabel: string;
-  accessibilityHint?: string;
-  label: string;
-  active: boolean;
-  onLongPress?: () => void;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityActions={
-        onLongPress ? [{ name: 'openProject', label: '打开项目' }] : undefined
-      }
-      accessibilityHint={accessibilityHint}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      delayLongPress={450}
-      onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === 'openProject') onLongPress?.();
-      }}
-      onLongPress={onLongPress}
-      onPress={onPress}
-      style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
-    >
-      <Text numberOfLines={1} style={[styles.chipText, active && styles.chipTextActive]}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -127,29 +89,5 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 8,
     paddingRight: 4,
-  },
-  chip: {
-    minHeight: 34,
-    maxWidth: 160,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  chipActive: {
-    backgroundColor: colors.primarySoft,
-  },
-  chipText: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  chipTextActive: {
-    color: colors.primaryStrong,
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

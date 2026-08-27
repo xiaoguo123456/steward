@@ -1281,7 +1281,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   finishButton: {
-    minHeight: 50,
+    minHeight: 52,
     marginTop: 8,
     alignItems: 'center',
     justifyContent: 'center',

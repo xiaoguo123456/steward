@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import {
@@ -65,24 +66,15 @@ export default function WorkoutHistoryScreen() {
           {filters.map((item) => {
             const selected = item.id === filter;
             return (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected }}
+              <FilterChip
                 key={item.id}
+                label={item.label}
                 onPress={() => {
                   setFilter(item.id);
                   setExpandedId(null);
                 }}
-                style={({ pressed }) => [
-                  styles.filterItem,
-                  selected && styles.filterItemSelected,
-                  pressed && styles.filterItemPressed,
-                ]}
-              >
-                <Text style={[styles.filterLabel, selected && styles.filterLabelSelected]}>
-                  {item.label}
-                </Text>
-              </Pressable>
+                selected={selected}
+              />
             );
           })}
         </ScrollView>
@@ -250,30 +242,6 @@ const styles = StyleSheet.create({
   filterContent: {
     paddingVertical: 18,
     gap: 8,
-  },
-  filterItem: {
-    minHeight: 40,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-  },
-  filterItemSelected: {
-    backgroundColor: colors.primary,
-  },
-  filterItemPressed: {
-    opacity: 0.62,
-  },
-  filterLabel: {
-    color: workoutAccent.muted,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '600',
-  },
-  filterLabelSelected: {
-    color: colors.background,
   },
   historyList: {
     borderTopWidth: StyleSheet.hairlineWidth,

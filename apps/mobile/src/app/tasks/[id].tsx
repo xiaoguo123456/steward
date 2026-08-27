@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     ...typography.detail,
   },
   statusButton: {
-    minHeight: 48,
+    minHeight: 52,
     marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',

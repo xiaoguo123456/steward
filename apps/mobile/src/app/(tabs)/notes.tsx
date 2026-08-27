@@ -15,6 +15,7 @@ import {
 
 import { AI_FAB_TAB_BAR_INSET, AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -171,21 +172,12 @@ export default function NotesScreen() {
           {tags.map((tag) => {
             const selected = activeTag === tag;
             return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
+              <FilterChip
                 key={tag}
+                label={tag}
                 onPress={() => setActiveTag(tag)}
-                style={({ pressed }) => [
-                  styles.tagButton,
-                  selected && styles.tagButtonSelected,
-                  pressed && styles.controlPressed,
-                ]}
-              >
-                <Text style={[styles.tagButtonText, selected && styles.tagButtonTextSelected]}>
-                  {tag}
-                </Text>
-              </Pressable>
+                selected={selected}
+              />
             );
           })}
         </ScrollView>
@@ -283,27 +275,6 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 18,
     gap: 8,
-  },
-  tagButton: {
-    minWidth: 60,
-    minHeight: 40,
-    paddingHorizontal: 17,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  tagButtonSelected: {
-    backgroundColor: colors.primary,
-  },
-  tagButtonText: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.label,
-  },
-  tagButtonTextSelected: {
-    color: colors.background,
-    fontWeight: '600',
   },
   cardList: {
     gap: 12,

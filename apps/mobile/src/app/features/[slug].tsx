@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     opacity: 0.56,
   },
   primaryButton: {
-    minHeight: 48,
+    minHeight: 52,
     paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',

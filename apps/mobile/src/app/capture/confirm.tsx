@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     ...typography.meta,
   },
   saveButton: {
-    minHeight: 50,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
