@@ -1,7 +1,7 @@
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import type { PropsWithChildren } from 'react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   AccessibilityInfo,
   Platform,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { AppIcon } from '@/components/ui/icon';
+import { requestPlanTransientViewReset } from '@/features/plan/plan-tab-navigation';
 import { colors, fontFamily, glass, radius } from '@/theme/tokens';
 
 const nativeGlassAvailable = Platform.OS === 'ios' && isGlassEffectAPIAvailable();
@@ -127,6 +128,12 @@ function BottomTabGlass({ reducedTransparency }: { reducedTransparency: boolean 
 
 export default function TabsLayout() {
   const reducedTransparency = useReducedTransparency();
+  const pathname = usePathname();
+  const resetPlanTransientView = useCallback(() => {
+    if (pathname === '/lists') {
+      requestPlanTransientViewReset();
+    }
+  }, [pathname]);
 
   return (
     <Tabs
@@ -171,6 +178,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
+        listeners={{ tabPress: resetPlanTransientView }}
         name="today"
         options={{
           title: '首页',
@@ -199,6 +207,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        listeners={{ tabPress: resetPlanTransientView }}
         name="notes"
         options={{
           title: '笔记',
@@ -208,6 +217,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        listeners={{ tabPress: resetPlanTransientView }}
         name="data"
         options={{
           title: '打卡',

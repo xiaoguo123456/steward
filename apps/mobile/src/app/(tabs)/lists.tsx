@@ -10,7 +10,7 @@ import {
   type TaskList,
 } from '@steward/api-client';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -30,6 +30,11 @@ import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { CreateTaskListSheet, TaskListActionSheet } from '@/features/plan/task-list-sheets';
 import { TaskListIconChip } from '@/features/plan/task-list-icon';
+import {
+  getPlanTransientViewResetVersion,
+  resolvePlanTransientView,
+  subscribePlanTransientViewReset,
+} from '@/features/plan/plan-tab-navigation';
 import { ProjectScopeBar } from '@/features/projects/project-scope-bar';
 import {
   filterTasksByProjectScope,
@@ -63,7 +68,23 @@ const projectStatuses = projectFilters.map(({ key }) => key) as ProjectStatus[];
 
 export default function ListsScreen() {
   const router = useRouter();
-  const [activeView, setActiveView] = useState<ActiveView>(null);
+  const resetVersion = useSyncExternalStore(
+    subscribePlanTransientViewReset,
+    getPlanTransientViewResetVersion,
+    getPlanTransientViewResetVersion,
+  );
+  const [activeViewState, setActiveViewState] = useState<{
+    resetVersion: number;
+    view: ActiveView;
+  }>(() => ({ resetVersion, view: null }));
+  const activeView = resolvePlanTransientView(
+    activeViewState.view,
+    activeViewState.resetVersion,
+    resetVersion,
+  );
+  const setActiveView = useCallback((view: ActiveView) => {
+    setActiveViewState({ resetVersion, view });
+  }, [resetVersion]);
   const toggleDone = useToggleTaskDone();
 
   const tomorrow = useMemo(() => {
