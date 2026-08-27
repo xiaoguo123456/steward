@@ -175,8 +175,9 @@ export default function HomeScreen() {
         ) : tasks.length === 0 ? (
           <StatePanel
             actionLabel="记一件事"
+            compact
             icon="sunny-outline"
-            message="今天还没有安排。想到什么就记下来，之后再整理。"
+            message="今天还没有安排，想到什么就记下来。"
             onAction={() => router.push('/capture/new')}
             title="今天很清爽"
           />

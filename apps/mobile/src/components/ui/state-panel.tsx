@@ -13,6 +13,7 @@ type StatePanelProps = {
   onAction?: () => void;
   secondaryLabel?: string;
   onSecondary?: () => void;
+  compact?: boolean;
 };
 
 export function StatePanel({
@@ -23,16 +24,24 @@ export function StatePanel({
   onAction,
   secondaryLabel,
   onSecondary,
+  compact = false,
 }: StatePanelProps) {
   return (
-    <View style={styles.panel}>
-      <View style={styles.icon}>
+    <View style={[styles.panel, compact && styles.panelCompact]}>
+      <View style={[styles.icon, compact && styles.iconCompact]}>
         <AppIcon color={colors.primaryStrong} name={icon} size={22} />
       </View>
-      <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
+      <Text accessibilityRole="header" style={styles.title}>
+        {title}
+      </Text>
+      <Text style={[styles.message, compact && styles.messageCompact]}>{message}</Text>
       {actionLabel ? (
-        <AppButton compact label={actionLabel} onPress={onAction} style={styles.action} />
+        <AppButton
+          compact
+          label={actionLabel}
+          onPress={onAction}
+          style={[styles.action, compact && styles.actionCompact]}
+        />
       ) : null}
       {secondaryLabel ? (
         <AppButton compact label={secondaryLabel} onPress={onSecondary} variant="text" />
@@ -49,6 +58,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     backgroundColor: colors.surfaceSubtle,
   },
+  panelCompact: {
+    paddingVertical: 24,
+  },
   icon: {
     width: 44,
     height: 44,
@@ -58,11 +70,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primarySoft,
   },
+  iconCompact: {
+    width: 40,
+    height: 40,
+    marginBottom: 10,
+  },
   title: {
     color: colors.text,
     fontFamily,
     ...typography.section,
     textAlign: 'center',
+  },
+  messageCompact: {
+    marginTop: 4,
   },
   message: {
     maxWidth: 280,
@@ -75,5 +95,8 @@ const styles = StyleSheet.create({
   action: {
     minWidth: 132,
     marginTop: 20,
+  },
+  actionCompact: {
+    marginTop: 14,
   },
 });
