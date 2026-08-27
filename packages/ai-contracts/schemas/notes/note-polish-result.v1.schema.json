@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steward.local/ai-contracts/notes/note-polish-result.v1.schema.json",
+  "title": "Note polish result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "content"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[^\\r\\n]+$"
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 12000
+    }
+  }
+}

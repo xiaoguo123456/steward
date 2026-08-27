@@ -92,7 +92,8 @@ export const CreateNoteBody = zod.object({
   "title": zod.string().nullish().describe('为空时由服务端从正文首行生成。'),
   "content": zod.string().min(1),
   "tags": zod.array(zod.string()).optional(),
-  "project_id": zod.string().nullish()
+  "project_id": zod.string().nullish(),
+  "polish_action_id": zod.string().optional().describe('用户采用一键润色结果后回传的 AI Action ID。服务端校验归属与成功状态，\n并把它写入 Note 的字段来源；不传表示内容完全由用户填写。\n')
 })
 
 export const createNoteResponseDataProvenanceRefsItemSourceDeletedDefault = false;
@@ -126,6 +127,48 @@ export const CreateNoteResponse = zod.object({
   "updated_at": zod.string().datetime({"offset":true}),
   "deleted_at": zod.string().datetime({"offset":true}).nullish(),
   "version": zod.number().int()
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 对尚未保存的标题与正文做一次结构化润色。结果只返回编辑器，
+ * 不直接创建或修改 Note；标题为空时同时生成标题，已有标题保持不变。
+ * @summary 润色 Note 草稿
+ */
+export const polishNoteDraftHeaderIdempotencyKeyMin = 8;
+export const polishNoteDraftHeaderIdempotencyKeyMax = 128;
+
+
+
+export const PolishNoteDraftHeader = zod.object({
+  "Idempotency-Key": zod.string().min(polishNoteDraftHeaderIdempotencyKeyMin).max(polishNoteDraftHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const polishNoteDraftBodyTitleMax = 120;
+
+export const polishNoteDraftBodyContentMax = 6000;
+
+
+
+export const PolishNoteDraftBody = zod.object({
+  "title": zod.string().max(polishNoteDraftBodyTitleMax).nullish().describe('为空时由 AI 生成；非空时润色结果必须保持原值。'),
+  "content": zod.string().min(1).max(polishNoteDraftBodyContentMax)
+})
+
+export const polishNoteDraftResponseDataTitleMax = 120;
+
+export const polishNoteDraftResponseDataContentMax = 12000;
+
+
+
+export const PolishNoteDraftResponse = zod.object({
+  "data": zod.object({
+  "title": zod.string().min(1).max(polishNoteDraftResponseDataTitleMax),
+  "content": zod.string().min(1).max(polishNoteDraftResponseDataContentMax),
+  "ai_action_id": zod.string().describe('本次润色的来源引用；保存笔记时原样回传。')
 }),
   "meta": zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')

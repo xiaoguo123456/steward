@@ -99,3 +99,12 @@ INSERT INTO ai_actions (
     sqlc.arg(input_tokens), sqlc.arg(output_tokens), sqlc.arg(cached_input_tokens),
     sqlc.arg(latency_ms), sqlc.narg(confirmation_outcome)
 );
+
+-- name: GetSuccessfulNotePolishAction :one
+SELECT id
+FROM ai_actions
+WHERE id = sqlc.arg(action_id)
+  AND user_id = sqlc.arg(user_id)
+  AND feature = 'assistant'
+  AND model_policy = 'note_polish'
+  AND status = 'succeeded';

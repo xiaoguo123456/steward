@@ -4,12 +4,13 @@
 
 ## 当前状态
 
-当前定义三条链路：
+当前定义四条链路：
 
 ```text
 schemas/capture/capture-parse-result.v3.schema.json
 schemas/recipes/seasonal-ingredient-tags.v1.schema.json
 schemas/review/review-narrative-result.v2.schema.json
+schemas/notes/note-polish-result.v1.schema.json
 ```
 
 前者描述 `apps/backend/internal/platform/ai` 中 `CaptureParseResult` 的完整契约；v3 增加交通、住宿、活动的结束时间、预订字段和素材来源。旧版本作为历史契约保留。
@@ -21,6 +22,10 @@ schemas/review/review-narrative-result.v2.schema.json
 
 复盘契约要求模型输出短标题、摘要、最多两条指标重点和带来源的建议。
 客户端只渲染这些结构化字段，不接受模型输出的 Markdown、HTML 或样式指令。
+
+笔记润色契约只返回标题与纯文本正文。已有标题由服务端确定性保留；标题为空时
+模型才生成标题。结果先回填编辑器，用户保存后才写入 Note，并通过 AI Action
+来源引用保留这次润色的实际来源。
 
 ## 接入真实 Provider 时必须补上的环节
 

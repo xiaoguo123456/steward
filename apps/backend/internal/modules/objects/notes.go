@@ -89,6 +89,33 @@ func (s *Service) CreateNote(ctx context.Context, userID string, body httpapi.Cr
 				return err
 			}
 		}
+		provenance := []ProvenanceInput{}
+		if body.PolishActionId != nil {
+			actionID := strings.TrimSpace(*body.PolishActionId)
+			if actionID == "" {
+				return apperr.Validation(apperr.Field(
+					"polish_action_id", "润色来源不能为空。"))
+			}
+			if _, err := q.GetSuccessfulNotePolishAction(ctx, dbgen.GetSuccessfulNotePolishActionParams{
+				ActionID: actionID,
+				UserID:   userID,
+			}); err != nil {
+				if database.IsNoRows(err) {
+					return apperr.Validation(apperr.Field(
+						"polish_action_id", "润色结果已失效，请重新润色。"))
+				}
+				return apperr.Internal(err)
+			}
+			provenance = append(provenance, ProvenanceInput{
+				SourceType: "ai_action",
+				SourceID:   actionID,
+				Action:     "derived_from",
+			})
+		}
+		provenanceJSON, err := marshalJSON(provenance)
+		if err != nil {
+			return err
+		}
 		created, err := q.CreateNote(ctx, dbgen.CreateNoteParams{
 			ID:             idgen.New(idgen.PrefixNote),
 			UserID:         userID,
@@ -98,7 +125,7 @@ func (s *Service) CreateNote(ctx context.Context, userID string, body httpapi.Cr
 			Tags:           normalizeTags(body.Tags),
 			ProjectID:      body.ProjectId,
 			CreatedBy:      "user",
-			ProvenanceRefs: emptyJSONArray,
+			ProvenanceRefs: provenanceJSON,
 		})
 		if err != nil {
 			return apperr.Internal(err)

@@ -13,21 +13,10 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { NotePolishResult } from './notePolishResult';
+import type { ResponseMeta } from './responseMeta';
 
-export interface CreateNoteRequest {
-  /**
-     * 为空时由服务端从正文首行生成。
-     * @nullable
-     */
-  title?: string | null;
-  /** @minLength 1 */
-  content: string;
-  tags?: string[];
-  /** @nullable */
-  project_id?: string | null;
-  /**
-     * 用户采用一键润色结果后回传的 AI Action ID。服务端校验归属与成功状态，
-     * 并把它写入 Note 的字段来源；不传表示内容完全由用户填写。
-     */
-  polish_action_id?: string;
+export interface NotePolishResponse {
+  data: NotePolishResult;
+  meta: ResponseMeta;
 }

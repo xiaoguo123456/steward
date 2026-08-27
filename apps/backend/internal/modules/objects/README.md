@@ -11,6 +11,7 @@
 ## 公开接口
 
 - 查询与 CRUD：`ListTasks` / `CreateTask` / `UpdateTask` / `DeleteTask`，Event、Project、Note 同理。
+- Note 草稿润色：`PolishNoteDraft` 只生成待检查草稿，不直接写 Note；用户保存时校验并记录 AI Action 来源。
 - 事务内 Command：`CreateTaskInTx` / `CreateEventInTx` / `CreateNoteInTx` / `CreateProjectInTx`，
   供 Capture 确认在同一事务中写入。
 - 撤销：实现 `activity.Undoer`。
@@ -18,7 +19,7 @@
 
 ## 依赖（均为接口注入）
 
-- `ListResolver`（lists）、`UserProfile`（users）、`ActivityRecorder`（activity）、`MediaResolver`（media）
+- `ListResolver`（lists）、`UserProfile`（users）、`ActivityRecorder`（activity）、`MediaResolver`（media）、`ChatProvider` 与 `aiaudit.Recorder`（可选润色增强）
 
 ## 不变量
 

@@ -228,6 +228,28 @@ func (q *Queries) GetProcessedJob(ctx context.Context, idempotencyKey string) (P
 	return i, err
 }
 
+const getSuccessfulNotePolishAction = `-- name: GetSuccessfulNotePolishAction :one
+SELECT id
+FROM ai_actions
+WHERE id = $1
+  AND user_id = $2
+  AND feature = 'assistant'
+  AND model_policy = 'note_polish'
+  AND status = 'succeeded'
+`
+
+type GetSuccessfulNotePolishActionParams struct {
+	ActionID string
+	UserID   string
+}
+
+func (q *Queries) GetSuccessfulNotePolishAction(ctx context.Context, arg GetSuccessfulNotePolishActionParams) (string, error) {
+	row := q.db.QueryRow(ctx, getSuccessfulNotePolishAction, arg.ActionID, arg.UserID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const listActivityBatches = `-- name: ListActivityBatches :many
 SELECT id, user_id, source, source_id, undoable, undone_at, created_at FROM activity_batches
 WHERE ($1::timestamptz IS NULL

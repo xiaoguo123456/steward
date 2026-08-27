@@ -63,6 +63,42 @@ Collection:
       '500':
         $ref: '../components/responses.yaml#/InternalError'
 
+Polish:
+  post:
+    operationId: polishNoteDraft
+    summary: 润色 Note 草稿
+    description: |
+      对尚未保存的标题与正文做一次结构化润色。结果只返回编辑器，
+      不直接创建或修改 Note；标题为空时同时生成标题，已有标题保持不变。
+    tags: [notes]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/NotePolishRequest'
+    responses:
+      '200':
+        description: 返回待用户检查的润色结果。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/NotePolishResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '503':
+        $ref: '../components/responses.yaml#/ServiceUnavailable'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
 Item:
   get:
     operationId: getNote

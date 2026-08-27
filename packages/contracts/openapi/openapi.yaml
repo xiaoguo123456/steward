@@ -93,6 +93,8 @@ paths:
 
   /v1/notes:
     $ref: './paths/notes.yaml#/Collection'
+  /v1/notes/polish:
+    $ref: './paths/notes.yaml#/Polish'
   /v1/notes/{note_id}:
     $ref: './paths/notes.yaml#/Item'
 

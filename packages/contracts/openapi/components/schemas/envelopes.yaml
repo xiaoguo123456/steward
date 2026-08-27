@@ -105,6 +105,16 @@ NoteResponse:
     meta:
       $ref: './common.yaml#/ResponseMeta'
 
+NotePolishResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './objects.yaml#/NotePolishResult'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
 NotesResponse:
   type: object
   additionalProperties: false

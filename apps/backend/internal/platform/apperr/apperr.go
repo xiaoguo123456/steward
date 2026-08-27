@@ -49,6 +49,7 @@ const (
 	CodeCaptureQuestionResolved Code = "CAPTURE_QUESTION_RESOLVED"
 	CodeAIProviderUnavailable   Code = "AI_PROVIDER_UNAVAILABLE"
 	CodeAIProviderRateLimited   Code = "AI_PROVIDER_RATE_LIMITED"
+	CodeAISuggestionDisabled    Code = "AI_SUGGESTION_DISABLED"
 	CodeAISchemaInvalid         Code = "AI_SCHEMA_INVALID"
 	CodeAISourceInvalid         Code = "AI_SOURCE_INVALID"
 	CodeAIBudgetExceeded        Code = "AI_BUDGET_EXCEEDED"
@@ -143,7 +144,7 @@ func (e *Error) HTTPStatus() int {
 	switch e.Code {
 	case CodeUnauthenticated, CodeRefreshTokenInvalid:
 		return http.StatusUnauthorized
-	case CodePermissionDenied:
+	case CodePermissionDenied, CodeAISuggestionDisabled:
 		return http.StatusForbidden
 	case CodeNotFound:
 		return http.StatusNotFound
@@ -263,6 +264,8 @@ func defaultMessage(code Code) string {
 		return "智能整理暂时不可用，你仍然可以手动填写。"
 	case CodeAIProviderRateLimited:
 		return "智能整理请求过于频繁，请稍后再试。"
+	case CodeAISuggestionDisabled:
+		return "AI 建议已关闭，可在设置中重新开启。"
 	case CodeAISchemaInvalid:
 		return "整理结果格式不正确，请重试。"
 	case CodeAISourceInvalid:

@@ -474,6 +474,22 @@ func (h *ObjectAPI) CreateNote(ctx context.Context, req httpapi.CreateNoteReques
 	return httpapi.CreateNote201JSONResponse{Data: MapNote(created), Meta: httpx.Meta(ctx)}, nil
 }
 
+// PolishNoteDraft 润色尚未保存的 Note 草稿，只返回待确认结果。
+func (h *ObjectAPI) PolishNoteDraft(ctx context.Context, req httpapi.PolishNoteDraftRequestObject) (httpapi.PolishNoteDraftResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := h.svc.PolishNoteDraft(ctx, userID, *req.Body)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.PolishNoteDraft200JSONResponse{
+		Data: result,
+		Meta: httpx.Meta(ctx),
+	}, nil
+}
+
 // GetNote 读取 Note 详情。
 func (h *ObjectAPI) GetNote(ctx context.Context, req httpapi.GetNoteRequestObject) (httpapi.GetNoteResponseObject, error) {
 	userID, err := httpx.UserID(ctx)

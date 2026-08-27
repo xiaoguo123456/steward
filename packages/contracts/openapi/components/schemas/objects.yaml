@@ -902,6 +902,43 @@ CreateNoteRequest:
     project_id:
       type: string
       nullable: true
+    polish_action_id:
+      type: string
+      description: |
+        用户采用一键润色结果后回传的 AI Action ID。服务端校验归属与成功状态，
+        并把它写入 Note 的字段来源；不传表示内容完全由用户填写。
+
+NotePolishRequest:
+  type: object
+  additionalProperties: false
+  required: [content]
+  properties:
+    title:
+      type: string
+      nullable: true
+      maxLength: 120
+      description: 为空时由 AI 生成；非空时润色结果必须保持原值。
+    content:
+      type: string
+      minLength: 1
+      maxLength: 6000
+
+NotePolishResult:
+  type: object
+  additionalProperties: false
+  required: [title, content, ai_action_id]
+  properties:
+    title:
+      type: string
+      minLength: 1
+      maxLength: 120
+    content:
+      type: string
+      minLength: 1
+      maxLength: 12000
+    ai_action_id:
+      type: string
+      description: 本次润色的来源引用；保存笔记时原样回传。
 
 UpdateNoteRequest:
   type: object

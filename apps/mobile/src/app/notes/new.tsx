@@ -1,4 +1,10 @@
-import { createNote, errorMessage } from '@steward/api-client';
+import {
+  createNote,
+  errorMessage,
+  isApiError,
+  polishNoteDraft,
+  useGetAiSettings,
+} from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -12,6 +18,7 @@ export default function NewNoteScreen() {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const aiSettings = useGetAiSettings();
 
   const submit = async (draft: NoteDraft) => {
     setSaving(true);
@@ -22,6 +29,7 @@ export default function NewNoteScreen() {
         title: draft.title || null,
         content: draft.content,
         tags: draft.tags,
+        polish_action_id: draft.polishActionId,
       });
       await queryClient.invalidateQueries();
       router.replace({ pathname: '/notes/[id]', params: { id: created.data.id } });
@@ -32,11 +40,27 @@ export default function NewNoteScreen() {
     }
   };
 
+  const polish = async (draft: NoteDraft) => {
+    try {
+      const response = await polishNoteDraft({
+        title: draft.title || null,
+        content: draft.content,
+      });
+      return response.data;
+    } catch (error) {
+      if (isApiError(error) && error.code === 'INTERNAL_ERROR') {
+        throw new Error('润色暂时不可用，请稍后再试。');
+      }
+      throw new Error(errorMessage(error, '这次没能润色，请稍后再试。'));
+    }
+  };
+
   return (
     <AppScreen includeBottomInset>
       <NavHeader title="新建笔记" />
       <NoteEditor
         failure={failure}
+        onPolish={aiSettings.data?.data.suggestion_enabled === false ? undefined : polish}
         onSubmit={(draft) => void submit(draft)}
         saving={saving}
         submitLabel="保存"

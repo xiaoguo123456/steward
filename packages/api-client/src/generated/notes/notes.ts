@@ -36,12 +36,17 @@ import type {
   BadRequestResponse,
   ConflictResponse,
   CreateNoteRequest,
+  ForbiddenResponse,
   InternalErrorResponse,
   ListNotesParams,
   MutationResponse,
   NotFoundResponse,
+  NotePolishRequest,
+  NotePolishResponse,
   NoteResponse,
   NotesResponse,
+  ServiceUnavailableResponse,
+  TooManyRequestsResponse,
   UnauthorizedResponse,
   UpdateNoteRequest
 } from '../model';
@@ -244,6 +249,78 @@ export const useCreateNote = <TError = BadRequestResponse | UnauthorizedResponse
         TContext
       > => {
       return useMutation(getCreateNoteMutationOptions(options), queryClient);
+    }
+    export const getPolishNoteDraftUrl = () => {
+
+
+
+
+  return `/v1/notes/polish`
+}
+
+/**
+ * 对尚未保存的标题与正文做一次结构化润色。结果只返回编辑器，
+ * 不直接创建或修改 Note；标题为空时同时生成标题，已有标题保持不变。
+ * @summary 润色 Note 草稿
+ */
+export const polishNoteDraft = async (notePolishRequest: NotePolishRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<NotePolishResponse> => {
+
+  return stewardFetch<NotePolishResponse>(getPolishNoteDraftUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(notePolishRequest)
+  }
+);}
+
+
+
+
+
+export const getPolishNoteDraftMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof polishNoteDraft>>, TError,{data: NotePolishRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof polishNoteDraft>>, TError,{data: NotePolishRequest}, TContext> => {
+
+const mutationKey = ['polishNoteDraft'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof polishNoteDraft>>, {data: NotePolishRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  polishNoteDraft(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PolishNoteDraftMutationResult = NonNullable<Awaited<ReturnType<typeof polishNoteDraft>>>
+    export type PolishNoteDraftMutationBody = NotePolishRequest
+    export type PolishNoteDraftMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse
+
+    /**
+ * @summary 润色 Note 草稿
+ */
+export const usePolishNoteDraft = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof polishNoteDraft>>, TError,{data: NotePolishRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof polishNoteDraft>>,
+        TError,
+        {data: NotePolishRequest},
+        TContext
+      > => {
+      return useMutation(getPolishNoteDraftMutationOptions(options), queryClient);
     }
     export const getGetNoteUrl = (noteId: string,) => {
 

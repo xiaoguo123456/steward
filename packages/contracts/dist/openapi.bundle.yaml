@@ -942,6 +942,42 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/notes/polish:
+    post:
+      operationId: polishNoteDraft
+      summary: 润色 Note 草稿
+      description: |
+        对尚未保存的标题与正文做一次结构化润色。结果只返回编辑器，
+        不直接创建或修改 Note；标题为空时同时生成标题，已有标题保持不变。
+      tags:
+        - notes
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotePolishRequest'
+      responses:
+        '200':
+          description: 返回待用户检查的润色结果。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotePolishResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /v1/notes/{note_id}:
     get:
       operationId: getNote
@@ -3017,6 +3053,7 @@ components:
         - CAPTURE_QUESTION_RESOLVED
         - AI_PROVIDER_UNAVAILABLE
         - AI_PROVIDER_RATE_LIMITED
+        - AI_SUGGESTION_DISABLED
         - AI_SCHEMA_INVALID
         - AI_SOURCE_INVALID
         - AI_BUDGET_EXCEEDED
@@ -4588,6 +4625,11 @@ components:
         project_id:
           type: string
           nullable: true
+        polish_action_id:
+          type: string
+          description: |
+            用户采用一键润色结果后回传的 AI Action ID。服务端校验归属与成功状态，
+            并把它写入 Note 的字段来源；不传表示内容完全由用户填写。
     NoteResponse:
       type: object
       additionalProperties: false
@@ -4597,6 +4639,51 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Note'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    NotePolishRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - content
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: 为空时由 AI 生成；非空时润色结果必须保持原值。
+        content:
+          type: string
+          minLength: 1
+          maxLength: 6000
+    NotePolishResult:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - content
+        - ai_action_id
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        ai_action_id:
+          type: string
+          description: 本次润色的来源引用；保存笔记时原样回传。
+    NotePolishResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/NotePolishResult'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     UpdateNoteRequest:
@@ -8149,6 +8236,12 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     NotFound:
       description: 资源不存在，或不属于当前用户。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: 已认证但无权访问该资源。
       content:
         application/json:
           schema:

@@ -38,6 +38,11 @@ var AssistantPolicyV1 string
 //go:embed prompts/review-narrative/v2.md
 var ReviewNarrativePromptV2 string
 
+// NotePolishPromptV1 是笔记草稿润色的系统提示词。
+//
+//go:embed prompts/note-polish/v1.md
+var NotePolishPromptV1 string
+
 // CaptureParseSchemaV1 是解析结果的完整 JSON Schema。
 //
 // 模型返回的原始 JSON 属于不可信输入，必须先通过它再进入 Domain 校验。
@@ -60,6 +65,11 @@ var CaptureParseSchemaV3 []byte
 //go:embed schemas/review/review-narrative-result.v2.schema.json
 var ReviewNarrativeSchemaV2 []byte
 
+// NotePolishSchemaV1 是笔记润色结果的完整 JSON Schema。
+//
+//go:embed schemas/notes/note-polish-result.v1.schema.json
+var NotePolishSchemaV1 []byte
+
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
 	CaptureParsePromptVersion    = "capture-parse@v3"
@@ -67,5 +77,7 @@ const (
 	AssistantPolicyVersion       = "assistant@v1"
 	ReviewNarrativePromptVersion = "review-narrative@v2"
 	ReviewNarrativeSchemaVersion = "review-narrative-result.v2"
+	NotePolishPromptVersion      = "note-polish@v1"
+	NotePolishSchemaVersion      = "note-polish-result.v1"
 	CaptureParseSchemaVersion    = "capture-parse-result.v3"
 )

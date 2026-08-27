@@ -416,7 +416,7 @@ StructuredGenerationProvider
 EmbeddingProvider
 ```
 
-Assistant 需要多轮工具调用时使用 `OrchestrationEngine`；Capture 单次结构化解析、Review 文案和 Embedding 可以直接使用对应窄 Port。不要为了形式统一，把所有简单任务都塞进 Agent Graph。
+Assistant 需要多轮工具调用时使用 `OrchestrationEngine`；Capture 单次结构化解析、Note 草稿润色、Review 文案和 Embedding 可以直接使用对应窄 Port。不要为了形式统一，把所有简单任务都塞进 Agent Graph。
 
 ## 6.5 Provider 状态不是权威会话
 
@@ -902,6 +902,7 @@ Runtime 不能把全量 Capability 永久暴露给模型。Assistant Application
 - 专用 Capture API：由 Capture Pipeline 一次提取意图和候选。
 - Search Answer：API 已明确是查询，模型只解析查询条件。
 - Review Generation：任务类型由 Job 决定。
+- Note 草稿润色：用户点击专用按钮已经给出明确意图，模型只返回待检查的标题与正文，不做路由，也不直接写 Note。
 - 用户点击“确认／拒绝”：由 Proposal API 决定。
 - 用户从快捷答案回应 Capture Question：由 Question 类型和回答 Schema 决定。
 

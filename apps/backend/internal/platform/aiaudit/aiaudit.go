@@ -9,8 +9,8 @@
 // 更容易被导出分析——它反而是最不该存正文的地方。因此 Entry 里
 // **压根没有存正文的字段**：想存也存不进去。
 //
-// 记录失败不影响用户：审计写不进去是我们的问题，不该让用户的 Capture 整理
-// 跟着失败。失败只记日志。
+// 普通审计记录失败不影响用户：写不进去只记日志。只有业务实体需要引用
+// ai_action_id 作为来源时，才通过 RecordRequired 要求审计与来源一起成功。
 package aiaudit
 
 import (
@@ -113,19 +113,34 @@ func Hash(parts ...string) []byte {
 // 不返回错误：审计写不进去是我们的问题，不该让用户的整理跟着失败。
 // 失败只记日志，而且**日志里同样不带正文**。
 func (r *Recorder) Record(ctx context.Context, e Entry) {
-	if r == nil || r.db == nil || e.UserID == "" {
-		return
+	_, err := r.record(ctx, e)
+	if err != nil && r != nil && r.logger != nil {
+		r.logger.Error("AI 审计写入失败",
+			"feature", e.Feature, "run_id", e.RunID, "error", err)
 	}
-	if e.Feature == "" || e.Status == "" {
-		// 落进去也过不了 CHECK，早点在日志里说清楚是哪次漏填。
-		r.logger.Error("AI 审计缺少必填字段", "feature", e.Feature, "status", e.Status)
-		return
+}
+
+// RecordRequired 写入一条需要被业务实体引用的 AI Action，并返回真实 ID。
+//
+// 普通审计失败不影响用户；但当 Note 要把 ai_action 写进 provenance_refs 时，
+// 一个不存在的来源比明确失败更糟，因此这条窄路径把错误交还调用方处理。
+func (r *Recorder) RecordRequired(ctx context.Context, e Entry) (string, error) {
+	return r.record(ctx, e)
+}
+
+func (r *Recorder) record(ctx context.Context, e Entry) (string, error) {
+	if r == nil || r.db == nil {
+		return "", errors.New("AI 审计记录器未配置")
+	}
+	if e.UserID == "" || e.Feature == "" || e.Status == "" {
+		return "", errors.New("AI 审计缺少必填字段")
 	}
 
 	refs, err := json.Marshal(orEmpty(e.InputRefs))
 	if err != nil {
 		refs = []byte("[]")
 	}
+	actionID := idgen.New(idgen.PrefixAIAction)
 
 	// 用户的请求可能已经取消（关掉页面、超时），但那一次模型调用是真花了钱的，
 	// 恰恰最该记下来。所以脱开原 ctx 的取消信号，另给一个短超时。
@@ -134,7 +149,7 @@ func (r *Recorder) Record(ctx context.Context, e Entry) {
 
 	err = r.db.InTx(writeCtx, e.UserID, func(ctx context.Context, q *dbgen.Queries) error {
 		return q.RecordAiAction(ctx, dbgen.RecordAiActionParams{
-			ID:            idgen.New(idgen.PrefixAIAction),
+			ID:            actionID,
 			UserID:        e.UserID,
 			Feature:       e.Feature,
 			RunID:         e.RunID,
@@ -159,9 +174,9 @@ func (r *Recorder) Record(ctx context.Context, e Entry) {
 		})
 	})
 	if err != nil {
-		r.logger.Error("AI 审计写入失败",
-			"feature", e.Feature, "run_id", e.RunID, "error", err)
+		return "", err
 	}
+	return actionID, nil
 }
 
 func orEmpty(v []string) []string {

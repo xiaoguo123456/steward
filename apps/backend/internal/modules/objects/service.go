@@ -5,6 +5,8 @@ import (
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 )
 
@@ -18,6 +20,7 @@ type ListResolver interface {
 // 时间语义依赖时区，因此这是 objects 唯一需要的用户信息。
 type UserProfile interface {
 	Timezone(ctx context.Context, q *dbgen.Queries, userID string) (string, error)
+	AiSettings(ctx context.Context, userID string) (dbgen.UserAiSetting, error)
 }
 
 // ActivityRecorder 是 activity 模块公开的写入能力。
@@ -39,11 +42,20 @@ type Service struct {
 	users    UserProfile
 	activity ActivityRecorder
 	media    MediaResolver
+	polisher ai.ChatProvider
+	audit    *aiaudit.Recorder
 }
 
 // New 构造 Service。
 func New(db *database.DB, lists ListResolver, users UserProfile, act ActivityRecorder, media MediaResolver) *Service {
 	return &Service{db: db, lists: lists, users: users, activity: act, media: media}
+}
+
+// WithNotePolisher 注入显式的一键润色能力。Provider 为空时普通笔记 CRUD 仍可用。
+func (s *Service) WithNotePolisher(chat ai.ChatProvider, audit *aiaudit.Recorder) *Service {
+	s.polisher = chat
+	s.audit = audit
+	return s
 }
 
 // DB 暴露连接供同模块 Handler 使用。

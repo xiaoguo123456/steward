@@ -14,20 +14,17 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface CreateNoteRequest {
+export interface NotePolishResult {
   /**
-     * 为空时由服务端从正文首行生成。
-     * @nullable
+     * @minLength 1
+     * @maxLength 120
      */
-  title?: string | null;
-  /** @minLength 1 */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 12000
+     */
   content: string;
-  tags?: string[];
-  /** @nullable */
-  project_id?: string | null;
-  /**
-     * 用户采用一键润色结果后回传的 AI Action ID。服务端校验归属与成功状态，
-     * 并把它写入 Note 的字段来源；不传表示内容完全由用户填写。
-     */
-  polish_action_id?: string;
+  /** 本次润色的来源引用；保存笔记时原样回传。 */
+  ai_action_id: string;
 }

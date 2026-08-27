@@ -167,6 +167,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	assistant.RegisterProposals(registry, capabilityDeps)
 
 	chat := newChatProvider(parser)
+	objectsSvc.WithNotePolisher(chat, auditor)
 	engine := newEngine(chat, logger)
 	stream, streamLimit, err := newStreamTransport(ctx, cfg, db, logger)
 	if err != nil {
