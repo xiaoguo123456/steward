@@ -43,6 +43,14 @@ def main() -> int:
         cur.execute("SELECT count(*) FROM recipes WHERE content_version = %s", (CONTENT_VERSION,))
         print(f"内容版本 {CONTENT_VERSION}: {cur.fetchone()[0]} 道")
 
+        cur.execute(
+            """SELECT count(*) FROM recipes
+               WHERE 'breakfast' = ANY(meal_slots)
+                 AND '咖喱' = ANY(tags)"""
+        )
+        invalid_breakfast_count = cur.fetchone()[0]
+        print(f"早餐中的咖喱类: {invalid_breakfast_count} 道")
+
         for category in categories:
             cur.execute("SELECT count(*) FROM recipes WHERE %s = ANY(categories)", (category,))
             print(f"{category}: {cur.fetchone()[0]} 道")
@@ -61,6 +69,9 @@ def main() -> int:
                 (category,),
             )
             print(f"{category} 样本: {'、'.join(row[0] for row in cur.fetchall())}")
+    if invalid_breakfast_count:
+        print("校验失败：咖喱类仍进入早餐自动菜单候选。")
+        return 1
     return 0
 
 

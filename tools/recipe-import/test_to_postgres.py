@@ -2,10 +2,31 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from to_postgres import CDN_BASE, build_steps, database_url, nutrition_per_serving
+from to_postgres import (
+    CDN_BASE,
+    build_meal_slots,
+    build_steps,
+    database_url,
+    nutrition_per_serving,
+)
 
 
 class RecipeImportMappingTest(unittest.TestCase):
+    def test_curry_recipe_is_not_mapped_to_breakfast(self):
+        slots = build_meal_slots(["咖喱", "早餐", "炒饭", "虾"])
+
+        self.assertEqual(slots, ["lunch", "dinner"])
+
+    def test_breakfast_mapping_keeps_non_curry_recipe(self):
+        slots = build_meal_slots(["早餐", "粥", "海鲜水产"])
+
+        self.assertEqual(slots, ["breakfast"])
+
+    def test_curry_recipe_keeps_explicit_lunch_and_dinner_slots(self):
+        slots = build_meal_slots(["午餐", "咖喱", "早餐", "晚餐"])
+
+        self.assertEqual(slots, ["lunch", "dinner"])
+
     def test_build_steps_includes_only_uploaded_step_images(self):
         steps = build_steps(
             [
