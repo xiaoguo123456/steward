@@ -1,0 +1,184 @@
+name: 移动端 OTA 更新
+run-name: OTA ${{ inputs.channel }} ${{ inputs.app_version }} · ${{ inputs.commit_sha }} · ${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "更新频道；生产频道必须先由测试包验证"
+        required: true
+        type: choice
+        options:
+          - test
+          - production
+      base_binary_sha:
+        description: "当前目标安装包对应的 main commit SHA"
+        required: true
+        type: string
+      commit_sha:
+        description: "要发布为 OTA 的 main commit SHA"
+        required: true
+        type: string
+      app_version:
+        description: "目标安装包 App 版本号，例如 1.0.0"
+        required: true
+        type: string
+      rollout_percentage:
+        description: "灰度比例 1-100；测试频道通常填 100，生产首次建议 10"
+        required: true
+        default: "10"
+        type: string
+      message:
+        description: "中文更新说明"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steward-mobile-ota-${{ inputs.channel }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: 校验并发布 OTA
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: ${{ inputs.channel }}
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      STEWARD_EXPO_PROJECT_ID: ${{ secrets.EXPO_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 校验并检出更新提交
+        id: vars
+        env:
+          BASE_SHA: ${{ inputs.base_binary_sha }}
+          UPDATE_SHA: ${{ inputs.commit_sha }}
+          APP_VERSION: ${{ inputs.app_version }}
+          DEPLOY_CHANNEL: ${{ inputs.channel }}
+          ROLLOUT_PERCENTAGE: ${{ inputs.rollout_percentage }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+
+          validate_sha() {
+            local name="$1"
+            local requested="$2"
+            if [[ ! "$requested" =~ ^[0-9a-fA-F]{12}([0-9a-fA-F]{28})?$ ]]; then
+              echo "$name 必须是 12 位或 40 位十六进制 commit SHA" >&2
+              exit 1
+            fi
+          }
+          validate_sha "原生包提交" "$BASE_SHA"
+          validate_sha "更新提交" "$UPDATE_SHA"
+
+          base="$(git rev-parse "${BASE_SHA}^{commit}" 2>/dev/null || true)"
+          update="$(git rev-parse "${UPDATE_SHA}^{commit}" 2>/dev/null || true)"
+          test -n "$base"
+          test -n "$update"
+          git merge-base --is-ancestor "$base" "$update"
+          git merge-base --is-ancestor "$update" origin/main
+
+          if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo "App 版本号格式错误：$APP_VERSION" >&2
+            exit 1
+          fi
+          if [[ ! "$ROLLOUT_PERCENTAGE" =~ ^[0-9]+$ ]] \
+            || [ "$ROLLOUT_PERCENTAGE" -lt 1 ] \
+            || [ "$ROLLOUT_PERCENTAGE" -gt 100 ]; then
+            echo "灰度比例必须是 1 到 100 的整数" >&2
+            exit 1
+          fi
+          if [ "$DEPLOY_CHANNEL" = "test" ] && [ "$ROLLOUT_PERCENTAGE" -ne 100 ]; then
+            echo "测试频道必须发布给 100% 测试设备" >&2
+            exit 1
+          fi
+
+          git checkout --detach "$update"
+          if [ "$DEPLOY_CHANNEL" = "test" ]; then
+            app_variant="test"
+            eas_environment="preview"
+            update_channel="steward-test"
+          else
+            app_variant="production"
+            eas_environment="production"
+            update_channel="steward-production"
+          fi
+          {
+            echo "base_sha=$base"
+            echo "update_sha=$update"
+            echo "app_variant=$app_variant"
+            echo "eas_environment=$eas_environment"
+            echo "update_channel=$update_channel"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: 安装依赖并检查移动端
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm mobile:lint
+          pnpm mobile:typecheck
+          pnpm --filter mobile test:config
+
+      - name: 校验 OTA 变更范围
+        run: >-
+          node apps/mobile/scripts/check-ota-safe-changes.mjs
+          "${{ steps.vars.outputs.base_sha }}"
+          "${{ steps.vars.outputs.update_sha }}"
+
+      - name: 恢复 OTA 签名材料
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.EXPO_UPDATES_CERTIFICATE_BASE64 }}
+          PRIVATE_KEY_BASE64: ${{ secrets.EXPO_UPDATES_PRIVATE_KEY_BASE64 }}
+          CERTIFICATE_PATH: apps/mobile/.expo-updates/certificate.pem
+          PRIVATE_KEY_PATH: ${{ runner.temp }}/expo-updates-private-key.pem
+        run: |
+          test -n "$EXPO_TOKEN"
+          test -n "$STEWARD_EXPO_PROJECT_ID"
+          test -n "$CERTIFICATE_BASE64"
+          test -n "$PRIVATE_KEY_BASE64"
+          umask 077
+          mkdir -p "$(dirname "$CERTIFICATE_PATH")"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          printf '%s' "$PRIVATE_KEY_BASE64" | base64 --decode > "$PRIVATE_KEY_PATH"
+          echo "STEWARD_EXPO_UPDATES_CERTIFICATE=.expo-updates/certificate.pem" >> "$GITHUB_ENV"
+          echo "STEWARD_EXPO_UPDATES_PRIVATE_KEY=$PRIVATE_KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: 校验更新配置
+        env:
+          APP_VARIANT: ${{ steps.vars.outputs.app_variant }}
+          STEWARD_APP_VERSION: ${{ inputs.app_version }}
+          STEWARD_REQUIRE_EXPO_UPDATES: "1"
+        run: pnpm --filter mobile exec expo config --type public
+
+      - name: 发布签名 OTA
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: ${{ steps.vars.outputs.app_variant }}
+          STEWARD_APP_VERSION: ${{ inputs.app_version }}
+          STEWARD_REQUIRE_EXPO_UPDATES: "1"
+          EAS_ENVIRONMENT: ${{ steps.vars.outputs.eas_environment }}
+          UPDATE_CHANNEL: ${{ steps.vars.outputs.update_channel }}
+          UPDATE_MESSAGE: ${{ inputs.message }}
+          ROLLOUT_PERCENTAGE: ${{ inputs.rollout_percentage }}
+        run: >-
+          pnpm dlx eas-cli@22.6.0 update
+          --platform android
+          --channel "$UPDATE_CHANNEL"
+          --environment "$EAS_ENVIRONMENT"
+          --message "$UPDATE_MESSAGE"
+          --rollout-percentage "$ROLLOUT_PERCENTAGE"
+          --private-key-path "$STEWARD_EXPO_UPDATES_PRIVATE_KEY"
+          --non-interactive

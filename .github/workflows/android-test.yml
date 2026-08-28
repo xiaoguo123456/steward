@@ -1,11 +1,15 @@
 name: Android 测试包
-run-name: Android 测试包 · ${{ inputs.commit_sha }} · ${{ github.actor }}
+run-name: Android 测试包 ${{ inputs.app_version }} · ${{ inputs.commit_sha }} · ${{ github.actor }}
 
 on:
   workflow_dispatch:
     inputs:
       commit_sha:
         description: "要打包的 main 分支 commit SHA（完整或前 12 位）"
+        required: true
+        type: string
+      app_version:
+        description: "目标 App 版本号，必须与准备验证的生产版本一致，例如 1.0.0"
         required: true
         type: string
 
@@ -21,6 +25,7 @@ jobs:
     name: 构建 Android 测试 APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    environment: test
     env:
       ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
       EXPO_PUBLIC_API_URL: https://test-steward.qhzhiyin.com
@@ -28,6 +33,7 @@ jobs:
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: steward-test
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+      STEWARD_EXPO_PROJECT_ID: ${{ secrets.EXPO_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,11 +43,16 @@ jobs:
         id: vars
         env:
           REQUESTED_SHA: ${{ inputs.commit_sha }}
+          APP_VERSION: ${{ inputs.app_version }}
         run: |
           set -euo pipefail
           requested="$(printf '%s' "$REQUESTED_SHA" | tr '[:upper:]' '[:lower:]')"
           if [[ ! "$requested" =~ ^[0-9a-f]{12}([0-9a-f]{28})?$ ]]; then
             echo "commit SHA 必须是 12 位或 40 位十六进制" >&2
+            exit 1
+          fi
+          if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo "App 版本号格式错误：$APP_VERSION" >&2
             exit 1
           fi
 
@@ -70,7 +81,7 @@ jobs:
           {
             echo "full_sha=$actual"
             echo "version_code=$version_code"
-            echo "apk_name=steward-test-${actual::12}.apk"
+            echo "apk_name=steward-test-${APP_VERSION}-${actual::12}.apk"
           } >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v4
@@ -111,11 +122,25 @@ jobs:
           umask 077
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
 
+      - name: 恢复 OTA 验签证书
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.EXPO_UPDATES_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PATH: apps/mobile/.expo-updates/certificate.pem
+        run: |
+          test -n "$STEWARD_EXPO_PROJECT_ID"
+          test -n "$CERTIFICATE_BASE64"
+          umask 077
+          mkdir -p "$(dirname "$CERTIFICATE_PATH")"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          echo "STEWARD_EXPO_UPDATES_CERTIFICATE=.expo-updates/certificate.pem" >> "$GITHUB_ENV"
+
       - name: 构建并签名测试 APK
         env:
           APP_VARIANT: test
+          STEWARD_APP_VERSION: ${{ inputs.app_version }}
           STEWARD_ANDROID_VERSION_CODE: ${{ steps.vars.outputs.version_code }}
           STEWARD_BUILD_SHA: ${{ steps.vars.outputs.full_sha }}
+          STEWARD_REQUIRE_EXPO_UPDATES: "1"
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/steward-test.jks
         run: scripts/build-android-apk.sh test "output/android/${{ steps.vars.outputs.apk_name }}"
 

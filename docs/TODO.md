@@ -9,5 +9,8 @@
 - [ ] 完成 App 内账号删除和 `/legal/account-deletion` Web 请求链路，并同步 App Store／Google Play 删除与隐私资料。
 - [ ] 核对个人信息收集清单、第三方信息共享清单、iOS Privacy Details、Google Play Data safety 与实际权限／Provider 一致。
 - [ ] 将 `.local/signing` 中的生产签名和密码备份到安全的离线位置。
+- [ ] 创建或确认 Expo Project 与 Production／Enterprise 套餐，生成 OTA 签名证书和私钥，并把 `EXPO_TOKEN`、Project ID、证书和私钥配置到 GitHub `test`／`production` Environment。
+- [ ] 把 Expo／EAS Update 纳入第三方信息共享清单和隐私申报核对：更新请求会发送操作系统、Expo Project ID、随机安装 Token，并产生必要网络日志。
+- [ ] 发布首个包含 `expo-updates` 验签证书的测试 APK，完成测试频道更新、生产 10% 灰度、回到上一更新和回到安装包内置版本演练。
 - [ ] 手工生成并安装测试 APK，完成真机验收。
 - [ ] 验证登录、核心功能、图片上传和管理台。

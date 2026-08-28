@@ -37,6 +37,7 @@ local.properties
 
 # Expo 与 React Native 生成目录
 .expo/
+.expo-updates/
 .metro-health-check*
 apps/mobile/android/
 apps/mobile/ios/

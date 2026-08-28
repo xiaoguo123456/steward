@@ -67,6 +67,18 @@ pnpm mobile:live
 - 修改应用图标、启动图、包名等原生配置。
 - 升级 Expo SDK 或 React Native。
 
+## OTA 远程更新
+
+项目使用 Expo SDK 57 对应的 `expo-updates`。本地开发未配置凭证时自动关闭，继续使用 Metro／Fast Refresh；正式测试和生产 APK 必须注入 Expo Project ID 与验签证书，否则构建失败。
+
+- 测试 APK 固定接收 `steward-test`，生产 APK 固定接收 `steward-production`，不能由用户或页面脚本切换频道。
+- runtime version 等于 App 版本。测试 APK 的 `app_version` 必须与准备验证的生产版本一致；新增原生依赖、权限或配置时提升 App 版本并重新构建。
+- App 启动时后台检查更新，不等待网络；下载成功后在下次冷启动生效，不在用户执行任务时强制重载。
+- OTA 只能通过 GitHub Actions 的“移动端 OTA 更新”发布。工作流要求填写目标原生包 SHA、更新 SHA、App 版本、频道、灰度比例和中文说明，并自动拒绝可能改变原生运行时的文件。
+- 可发布范围默认只有 `apps/mobile/src`、`packages/api-client/src` 与 `apps/mobile/assets/updates`。依赖、锁文件、App Config、图标、启动图和其他原生资源变化必须重新发 APK。
+
+首次启用步骤、Secrets、签名、灰度和回滚见 `docs/ADR-028-移动端OTA更新.md` 与 `docs/部署说明.md`。在 Expo Project、Secret、包含验签证书的新 APK 和回滚演练完成前，不能把 OTA 当作已经对用户生效。
+
 如果同一 Wi-Fi 下无法连接，可检查电脑防火墙、路由器客户端隔离与 VPN；必要时改用 Expo Tunnel 模式。
 
 ## Android APK 预览包
