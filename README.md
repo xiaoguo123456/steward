@@ -102,6 +102,7 @@ make check        # gofmt + go vet + eslint + go test + tsc
 - [产品设计说明](./docs/产品设计说明.md)
 - [整体架构设计](./docs/整体架构设计.md)
 - [后端与 AI 开发指南](./docs/后端与AI开发指南.md)
+- [H5 与公开页面边界](./docs/H5与公开页面边界.md)
 - [后台管理系统设计](./docs/后台管理系统设计.md)
 - [部署说明](./docs/部署说明.md)
 - [上线待办](./docs/TODO.md)
