@@ -49,6 +49,7 @@ import {
   type ProjectTaskScope,
 } from '@/features/projects/project-task-scope';
 import { projectFilters, projectStatusLabels } from '@/features/projects/use-projects';
+import { AddTaskRow } from '@/features/tasks/components/add-task-row';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { useToggleTaskDone, useUpdateTaskFields } from '@/features/tasks/use-task-actions';
 import { formatDateParam } from '@/utils/format';
@@ -333,15 +334,30 @@ function DetailView({
 
   // Project 状态和具体项目都是当前清单的展示筛选，不改变 Task 的权威归属。
   const visible = filterTasksByProjectScope(tasks, projects, projectScope);
+  const hasProjectScope = Boolean(projectScope.status || projectScope.projectId);
+  const canAddTask = !hasProjectScope && (view.type === 'list' || isAnytime);
+  const openManualTask = () => {
+    if (view.type === 'list') {
+      router.push({
+        pathname: '/tasks/new',
+        params: { entry: 'list', listId: view.list.id },
+      });
+      return;
+    }
+    if (isAnytime) {
+      router.push({ pathname: '/tasks/new', params: { entry: 'anytime' } });
+    }
+  };
   const emptyCopy = selectedProject
     ? `项目“${selectedProject.title}”在当前清单中还没有任务`
     : projectScope.status
       ? `当前清单没有关联${projectStatusLabels[projectScope.status]}项目的任务`
     : view.type === 'list'
-      ? '这里还没有任务'
+      ? undefined
       : view.key === 'unscheduled'
         ? undefined
         : scopeEmptyCopy[view.key];
+  const emptyTitle = view.type === 'list' ? '这里还没有任务' : '暂无内容';
 
   return (
     <AppScreen includeBottomInset>
@@ -371,50 +387,55 @@ function DetailView({
         />
         {visible.length === 0 ? (
           <StatePanel
+            actionLabel={canAddTask ? '添加任务' : undefined}
             icon="checkmark-done-outline"
             message={emptyCopy}
-            title="暂无内容"
+            onAction={canAddTask ? openManualTask : undefined}
+            title={emptyTitle}
           />
         ) : (
-          visible.map((task) => {
-            const list = listsById.get(task.list_id);
-            const openTask = () => router.push({ pathname: '/tasks/[id]', params: { id: task.id } });
-            return isAnytime ? (
-              <AnytimeTaskRow
-                busy={updateTaskFields.isPending && updateTaskFields.variables?.task.id === task.id}
-                key={task.id}
-                list={list}
-                onAddToday={() => {
-                  updateTaskFields.mutate({
-                    task,
-                    data: buildAddToTodayRequest(formatDateParam(new Date())),
-                  });
-                }}
-                onOpen={openTask}
-                onPickDate={() => {
-                  setSelectedDate(formatDateParam(new Date()));
-                  setDateTask(task);
-                }}
-                onToggle={() => onToggle(task)}
-                task={task}
-              />
-            ) : (
-              <TaskRow
-                key={task.id}
-                onOpen={openTask}
-                onToggle={() => onToggle(task)}
-                task={{
-                  id: task.id,
-                  title: task.title,
-                  list: list?.name ?? '',
-                  time: task.due_date ?? '无时间',
-                  color: colors.textTertiary,
-                  priority: task.priority,
-                  completed: task.status === 'done',
-                }}
-              />
-            );
-          })
+          <>
+            {visible.map((task) => {
+              const list = listsById.get(task.list_id);
+              const openTask = () => router.push({ pathname: '/tasks/[id]', params: { id: task.id } });
+              return isAnytime ? (
+                <AnytimeTaskRow
+                  busy={updateTaskFields.isPending && updateTaskFields.variables?.task.id === task.id}
+                  key={task.id}
+                  list={list}
+                  onAddToday={() => {
+                    updateTaskFields.mutate({
+                      task,
+                      data: buildAddToTodayRequest(formatDateParam(new Date())),
+                    });
+                  }}
+                  onOpen={openTask}
+                  onPickDate={() => {
+                    setSelectedDate(formatDateParam(new Date()));
+                    setDateTask(task);
+                  }}
+                  onToggle={() => onToggle(task)}
+                  task={task}
+                />
+              ) : (
+                <TaskRow
+                  key={task.id}
+                  onOpen={openTask}
+                  onToggle={() => onToggle(task)}
+                  task={{
+                    id: task.id,
+                    title: task.title,
+                    list: list?.name ?? '',
+                    time: task.due_date ?? '无时间',
+                    color: colors.textTertiary,
+                    priority: task.priority,
+                    completed: task.status === 'done',
+                  }}
+                />
+              );
+            })}
+            {canAddTask ? <AddTaskRow onPress={openManualTask} /> : null}
+          </>
         )}
         {updateTaskFields.isError ? (
           <View accessibilityRole="alert" style={styles.actionError}>

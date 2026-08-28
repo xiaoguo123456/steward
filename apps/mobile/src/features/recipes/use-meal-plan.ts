@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
 import { toRecipe } from './use-recipe-content';
+import { replaceDishInPlan } from './recipe-swap';
 import type {
   MealSlot,
   PlannedDish,
@@ -51,15 +52,15 @@ export function useMealPlan() {
     return out;
   }, [plan]);
 
-  const confirm = async () => {
-    if (!draft || !weekStart) return false;
+  const savePlan = async (nextPlan: WeekPlan) => {
+    if (!weekStart) return false;
     setSaving(true);
     setFailure(null);
     try {
       await confirmMealPlan(
         {
           week_start: weekStart,
-          entries: toEntries(draft),
+          entries: toEntries(nextPlan),
         },
         // 带上版本号：别人在另一台设备上改过这一周时，
         // 服务端会返回 VERSION_CONFLICT 而不是默默覆盖掉。
@@ -74,6 +75,11 @@ export function useMealPlan() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const confirm = async () => {
+    if (!draft) return false;
+    return savePlan(draft);
   };
 
   return {
@@ -91,15 +97,25 @@ export function useMealPlan() {
     plannedNutrition: plan?.planned_nutrition,
     recipes,
 
-    /** 把一格里的某一道换掉。位置不变，所以 component 也不变。 */
-    replaceDish: (dayId: WeekDayId, meal: MealSlot, index: number, recipeId: string) => {
-      setDraft((current) => {
-        const base = current ?? confirmed;
-        const dishes = [...(base[dayId]?.[meal] ?? [])];
-        if (index < 0 || index >= dishes.length) return base;
-        dishes[index] = { ...dishes[index], recipeId };
-        return { ...base, [dayId]: { ...base[dayId], [meal]: dishes } };
-      });
+    /** 弹窗确认单道替换后立即保存整周，不再要求用户去页底二次确认。 */
+    replaceDishAndConfirm: async (
+      dayId: WeekDayId,
+      meal: MealSlot,
+      index: number,
+      recipeId: string,
+      component: RecipeComponent | undefined,
+    ) => {
+      const next = replaceDishInPlan(
+        draft ?? confirmed,
+        dayId,
+        meal,
+        index,
+        recipeId,
+        component,
+      );
+      if (next === (draft ?? confirmed)) return false;
+      // 保存失败时不改当前菜单；候选仍留在弹窗里，用户可以原地重试或取消。
+      return savePlan(next);
     },
     /** 往一格里加一道（从菜谱详情页「加入某一餐」进来）。 */
     addDish: (dayId: WeekDayId, meal: MealSlot, dish: PlannedDish) => {

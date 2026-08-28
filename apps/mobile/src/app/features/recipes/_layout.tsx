@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 
 import { recipeColors } from '@/features/recipes/theme';
 import { RecipePrototypeProvider } from '@/features/recipes/recipe-context';
+import { RecipeSwapConfirmation } from '@/features/recipes/components/recipe-swap-confirmation';
 
 export default function RecipesLayout() {
   return (
@@ -13,6 +14,7 @@ export default function RecipesLayout() {
           contentStyle: { backgroundColor: recipeColors.background },
         }}
       />
+      <RecipeSwapConfirmation />
     </RecipePrototypeProvider>
   );
 }
