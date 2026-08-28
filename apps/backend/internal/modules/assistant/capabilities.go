@@ -83,16 +83,17 @@ type CapabilityDeps struct {
 func RegisterReadOnly(reg *ai.Registry, deps CapabilityDeps) {
 	reg.Register(ai.Capability{
 		Name: "tasks.search",
-		Description: "按状态和截止日期查找用户自己的任务，返回标题、状态、优先级和截止日期。" +
+		Description: "按状态、截止日期或是否无日期查找用户自己的任务，返回标题、状态、优先级和截止日期。" +
 			"需要知道用户有哪些任务时用它。",
 		Risk:           ai.RiskReadOnly,
 		MaxResultBytes: 6 << 10,
 		Parameters: object(props{
 			"status": enumArray([]string{"todo", "doing", "done"},
 				"要查的状态，省略时查未完成的任务。"),
-			"due_from": str("起始截止日期，格式 2026-08-19。"),
-			"due_to":   str("结束截止日期（含当天），格式 2026-08-19。"),
-			"limit":    integer("最多返回多少条，默认 20，上限 50。"),
+			"due_from":    str("起始截止日期，格式 2026-08-19。"),
+			"due_to":      str("结束截止日期（含当天），格式 2026-08-19。"),
+			"unscheduled": boolean("是否只查没有截止、计划和关注日期的待办任务。"),
+			"limit":       integer("最多返回多少条，默认 20，上限 50。"),
 		}, nil),
 		Handler: deps.searchTasks,
 	})
@@ -183,10 +184,11 @@ func (d CapabilityDeps) searchTasks(ctx context.Context, cc ai.CapabilityContext
 
 	loc := timeutil.LoadLocation(cc.Timezone)
 	filter := objects.TaskFilter{
-		Statuses:  stringSlice(args["status"]),
-		DueFrom:   parseDate(args["due_from"], loc),
-		DueBefore: parseDate(args["due_to"], loc),
-		Limit:     clampLimit(args["limit"], 20, 50),
+		Statuses:    stringSlice(args["status"]),
+		DueFrom:     parseDate(args["due_from"], loc),
+		DueBefore:   parseDate(args["due_to"], loc),
+		Unscheduled: boolOf(args["unscheduled"]),
+		Limit:       clampLimit(args["limit"], 20, 50),
 	}
 
 	rows, err := d.Tasks.ListTasks(ctx, cc.UserID, filter)

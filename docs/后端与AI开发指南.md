@@ -766,7 +766,7 @@ Registry 中的 Capability 必须有：
 
 | 名称 | 公开模块 | 作用 |
 |---|---|---|
-| `tasks.search` | Lists／Objects | 按状态、日期、清单和 Project 查 Task 摘要 |
+| `tasks.search` | Lists／Objects | 按状态、日期、是否无日期、清单和 Project 查 Task 摘要 |
 | `calendar.read` | Lists | 读取服务端确定性日期投影 |
 | `objects.get` | Objects | 获取单个正式 Object 最小摘要 |
 | `records.aggregate` | Trackers | 由 SQL 计算计数、求和、平均和范围 |
@@ -782,7 +782,7 @@ Proposal Capability 只构造建议，不执行写入：
 | 名称 | 结果 |
 |---|---|
 | `tasks.propose_create` | `task_create` Proposal |
-| `tasks.propose_update` | 带 `expected_version` 的 `task_update` Proposal |
+| `tasks.propose_update` | 带 `expected_version` 的 `task_update` Proposal；支持截止日期和 `focus_date`，确认后才执行 |
 | `events.propose_create` | `event_create` Proposal |
 | `objects.propose_delete` | 带影响预览的删除 Proposal |
 | `scheduler.propose_schedule` | 只从 Slot Engine 候选中选择的安排 Proposal |

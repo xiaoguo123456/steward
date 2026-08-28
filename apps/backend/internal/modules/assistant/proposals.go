@@ -15,6 +15,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Action Proposal。
@@ -421,7 +422,11 @@ func (s *ProposalService) executeTaskUpdate(ctx context.Context, q *dbgen.Querie
 		return ConfirmResult{}, apperr.New(apperr.CodeAIProposalStale)
 	}
 
-	body, err := buildTaskUpdateBody(command)
+	tz, err := s.users.Timezone(ctx, q, userID)
+	if err != nil {
+		return ConfirmResult{}, err
+	}
+	body, err := buildTaskUpdateBody(command, timeutil.LoadLocation(tz), tz)
 	if err != nil {
 		return ConfirmResult{}, err
 	}
@@ -584,7 +589,8 @@ func provenanceOf(proposal dbgen.ActionProposal) []objects.ProvenanceInput {
 //
 // 只认识固定几个字段：command 不是任意 JSON Patch，
 // 模型塞进来的未知键一律忽略，不会变成对数据库的自由写入。
-func buildTaskUpdateBody(command map[string]any) (httpapi.UpdateTaskRequest, error) {
+func buildTaskUpdateBody(command map[string]any, loc *time.Location,
+	timezone string) (httpapi.UpdateTaskRequest, error) {
 	var body httpapi.UpdateTaskRequest
 
 	if title := strings.TrimSpace(text(command["title"])); title != "" {
@@ -598,8 +604,24 @@ func buildTaskUpdateBody(command map[string]any) (httpapi.UpdateTaskRequest, err
 		p := httpapi.TaskPriority(priority)
 		body.Priority = &p
 	}
+	if raw := strings.TrimSpace(text(command["due_date"])); raw != "" {
+		date := parseDate(raw, loc)
+		if date == nil {
+			return body, apperr.Validation(apperr.Field("due_date", "截止日期格式不正确。"))
+		}
+		body.DueDate = &openapi_types.Date{Time: *date}
+		body.DueTimezone = &timezone
+	}
 	if due := parseTimestamp(command["due_at"]); due != nil {
 		body.DueAt = due
+		body.DueTimezone = &timezone
+	}
+	if raw := strings.TrimSpace(text(command["focus_date"])); raw != "" {
+		date := parseDate(raw, loc)
+		if date == nil {
+			return body, apperr.Validation(apperr.Field("focus_date", "关注日期格式不正确。"))
+		}
+		body.FocusDate = &openapi_types.Date{Time: *date}
 	}
 	if start := parseTimestamp(command["scheduled_start_at"]); start != nil {
 		body.ScheduledStartAt = start
