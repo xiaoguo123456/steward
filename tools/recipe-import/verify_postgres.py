@@ -9,7 +9,7 @@ from pathlib import Path
 
 import psycopg
 
-from to_postgres import CONTENT_VERSION, database_url
+from to_postgres import BREAKFAST_EXCLUDED_TAGS, CONTENT_VERSION, database_url
 
 SEASONS = (
     ("season_spring", "春季"),
@@ -46,10 +46,11 @@ def main() -> int:
         cur.execute(
             """SELECT count(*) FROM recipes
                WHERE 'breakfast' = ANY(meal_slots)
-                 AND '咖喱' = ANY(tags)"""
+                 AND tags && %s::text[]""",
+            (sorted(BREAKFAST_EXCLUDED_TAGS),),
         )
         invalid_breakfast_count = cur.fetchone()[0]
-        print(f"早餐中的咖喱类: {invalid_breakfast_count} 道")
+        print(f"早餐中的午晚餐型菜谱: {invalid_breakfast_count} 道")
 
         for category in categories:
             cur.execute("SELECT count(*) FROM recipes WHERE %s = ANY(categories)", (category,))
@@ -70,7 +71,7 @@ def main() -> int:
             )
             print(f"{category} 样本: {'、'.join(row[0] for row in cur.fetchall())}")
     if invalid_breakfast_count:
-        print("校验失败：咖喱类仍进入早餐自动菜单候选。")
+        print("校验失败：咖喱、炒饭、焖饭或火锅类仍进入早餐自动菜单候选。")
         return 1
     return 0
 

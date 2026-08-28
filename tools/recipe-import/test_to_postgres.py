@@ -12,17 +12,18 @@ from to_postgres import (
 
 
 class RecipeImportMappingTest(unittest.TestCase):
-    def test_curry_recipe_is_not_mapped_to_breakfast(self):
-        slots = build_meal_slots(["咖喱", "早餐", "炒饭", "虾"])
-
-        self.assertEqual(slots, ["lunch", "dinner"])
+    def test_heavy_main_meals_are_not_mapped_to_breakfast(self):
+        for category in ["咖喱", "炒饭", "焖饭", "火锅"]:
+            with self.subTest(category=category):
+                slots = build_meal_slots([category, "早餐", "主食"])
+                self.assertEqual(slots, ["lunch", "dinner"])
 
     def test_breakfast_mapping_keeps_non_curry_recipe(self):
         slots = build_meal_slots(["早餐", "粥", "海鲜水产"])
 
         self.assertEqual(slots, ["breakfast"])
 
-    def test_curry_recipe_keeps_explicit_lunch_and_dinner_slots(self):
+    def test_excluded_breakfast_recipe_keeps_explicit_lunch_and_dinner_slots(self):
         slots = build_meal_slots(["午餐", "咖喱", "早餐", "晚餐"])
 
         self.assertEqual(slots, ["lunch", "dinner"])
