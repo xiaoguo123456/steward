@@ -7,7 +7,7 @@ import { AppIcon } from './icon';
 
 type StatePanelProps = {
   title: string;
-  message: string;
+  message?: string;
   icon?: ComponentProps<typeof AppIcon>['name'];
   actionLabel?: string;
   onAction?: () => void;
@@ -34,7 +34,9 @@ export function StatePanel({
       <Text accessibilityRole="header" style={styles.title}>
         {title}
       </Text>
-      <Text style={[styles.message, compact && styles.messageCompact]}>{message}</Text>
+      {message ? (
+        <Text style={[styles.message, compact && styles.messageCompact]}>{message}</Text>
+      ) : null}
       {actionLabel ? (
         <AppButton
           compact

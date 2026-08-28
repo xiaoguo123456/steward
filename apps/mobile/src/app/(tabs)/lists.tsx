@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,13 +23,20 @@ import {
 } from 'react-native';
 
 import { AI_FAB_TAB_BAR_INSET, AiFab } from '@/components/ui/ai-fab';
+import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
+import { DateWheel } from '@/components/ui/date-wheel';
 import { AppIcon } from '@/components/ui/icon';
+import { ModalSheet } from '@/components/ui/modal-sheet';
 import { NavHeader } from '@/components/ui/nav-header';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import { CreateTaskListSheet, TaskListActionSheet } from '@/features/plan/task-list-sheets';
+import {
+  buildAddToTodayRequest,
+  buildSetTaskDateRequest,
+} from '@/features/plan/anytime-task-actions';
 import { TaskListIconChip } from '@/features/plan/task-list-icon';
 import {
   getPlanTransientViewResetVersion,
@@ -42,7 +50,7 @@ import {
 } from '@/features/projects/project-task-scope';
 import { projectFilters, projectStatusLabels } from '@/features/projects/use-projects';
 import { TaskRow } from '@/features/tasks/components/task-row';
-import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
+import { useToggleTaskDone, useUpdateTaskFields } from '@/features/tasks/use-task-actions';
 import { formatDateParam } from '@/utils/format';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
@@ -54,14 +62,13 @@ const scopeTitles: Record<ScopeKey, string> = {
   today: '今天',
   tomorrow: '明天',
   completed: '已完成',
-  unscheduled: '待安排',
+  unscheduled: '随时可做',
 };
 
-const scopeEmptyCopy: Record<ScopeKey, string> = {
+const scopeEmptyCopy: Record<Exclude<ScopeKey, 'unscheduled'>, string> = {
   today: '今天暂时没有需要处理的任务',
   tomorrow: '明天还没有安排任务',
   completed: '完成任务后会显示在这里',
-  unscheduled: '所有任务都已经安排好了',
 };
 
 const projectStatuses = projectFilters.map(({ key }) => key) as ProjectStatus[];
@@ -214,23 +221,21 @@ export default function ListsScreen() {
               ))}
             </View>
 
-            <SectionTitle
-              count={`${counts.unscheduled} 项`}
-              style={styles.sectionTitle}
-              title="待安排"
-            />
             <Pressable
-              accessibilityLabel={`查看待安排，${counts.unscheduled} 项`}
+              accessibilityLabel={`查看随时可做，${counts.unscheduled} 项`}
               accessibilityRole="button"
               onPress={() => setActiveView({ type: 'scope', key: 'unscheduled' })}
-              style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.anytimeEntry, pressed && styles.pressed]}
             >
-              <View style={[styles.rowIcon, { backgroundColor: colors.surface }]}>
-                <AppIcon color={colors.textSecondary} name="albums-outline" size={19} />
+              <View style={styles.anytimeEntryIcon}>
+                <AppIcon color={colors.primaryStrong} name="time-outline" size={21} />
               </View>
-              <Text style={styles.rowTitle}>没有日期的任务</Text>
+              <View style={styles.anytimeEntryCopy}>
+                <Text style={styles.anytimeEntryTitle}>随时可做</Text>
+                <Text style={styles.anytimeEntrySubtitle}>没有固定日期的任务</Text>
+              </View>
               <Text style={styles.rowCount}>{counts.unscheduled}</Text>
-              <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
+              <AppIcon color={colors.textTertiary} name="chevron-forward" size={17} />
             </Pressable>
 
             <SectionTitle
@@ -306,14 +311,22 @@ function DetailView({
   onToggle: (task: Task) => void;
 }) {
   const router = useRouter();
+  const updateTaskFields = useUpdateTaskFields();
   const [projectScope, setProjectScope] = useState<ProjectTaskScope>({
     status: null,
     projectId: null,
   });
   const [listActionsVisible, setListActionsVisible] = useState(false);
+  const [dateTask, setDateTask] = useState<Task | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => formatDateParam(new Date()));
   const title = view.type === 'list' ? view.list.name : scopeTitles[view.key];
+  const isAnytime = view.type === 'scope' && view.key === 'unscheduled';
   const projectQuery = useListProjects({ status: projectStatuses, limit: 100 });
   const projects = useMemo(() => projectQuery.data?.data ?? [], [projectQuery.data?.data]);
+  const listsById = useMemo(
+    () => new Map(allLists.map((list) => [list.id, list])),
+    [allLists],
+  );
   const selectedProject = projectScope.projectId
     ? projects.find((project) => project.id === projectScope.projectId) ?? null
     : null;
@@ -326,7 +339,9 @@ function DetailView({
       ? `当前清单没有关联${projectStatusLabels[projectScope.status]}项目的任务`
     : view.type === 'list'
       ? '这里还没有任务'
-      : scopeEmptyCopy[view.key];
+      : view.key === 'unscheduled'
+        ? undefined
+        : scopeEmptyCopy[view.key];
 
   return (
     <AppScreen includeBottomInset>
@@ -355,25 +370,60 @@ function DetailView({
           selectedStatus={projectScope.status}
         />
         {visible.length === 0 ? (
-          <StatePanel icon="checkmark-done-outline" message={emptyCopy} title="暂无内容" />
+          <StatePanel
+            icon="checkmark-done-outline"
+            message={emptyCopy}
+            title="暂无内容"
+          />
         ) : (
-          visible.map((task) => (
-            <TaskRow
-              key={task.id}
-              onOpen={() => router.push({ pathname: '/tasks/[id]', params: { id: task.id } })}
-              onToggle={() => onToggle(task)}
-              task={{
-                id: task.id,
-                title: task.title,
-                list: '',
-                time: task.due_date ?? '无时间',
-                color: colors.textTertiary,
-                priority: task.priority,
-                completed: task.status === 'done',
-              }}
-            />
-          ))
+          visible.map((task) => {
+            const list = listsById.get(task.list_id);
+            const openTask = () => router.push({ pathname: '/tasks/[id]', params: { id: task.id } });
+            return isAnytime ? (
+              <AnytimeTaskRow
+                busy={updateTaskFields.isPending && updateTaskFields.variables?.task.id === task.id}
+                key={task.id}
+                list={list}
+                onAddToday={() => {
+                  updateTaskFields.mutate({
+                    task,
+                    data: buildAddToTodayRequest(formatDateParam(new Date())),
+                  });
+                }}
+                onOpen={openTask}
+                onPickDate={() => {
+                  setSelectedDate(formatDateParam(new Date()));
+                  setDateTask(task);
+                }}
+                onToggle={() => onToggle(task)}
+                task={task}
+              />
+            ) : (
+              <TaskRow
+                key={task.id}
+                onOpen={openTask}
+                onToggle={() => onToggle(task)}
+                task={{
+                  id: task.id,
+                  title: task.title,
+                  list: list?.name ?? '',
+                  time: task.due_date ?? '无时间',
+                  color: colors.textTertiary,
+                  priority: task.priority,
+                  completed: task.status === 'done',
+                }}
+              />
+            );
+          })
         )}
+        {updateTaskFields.isError ? (
+          <View accessibilityRole="alert" style={styles.actionError}>
+            <AppIcon color={colors.danger} name="alert-circle-outline" size={17} />
+            <Text style={styles.actionErrorText}>
+              {errorMessage(updateTaskFields.error, '操作失败，请稍后重试。')}
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
       {view.type === 'list' && listActionsVisible ? (
         <TaskListActionSheet
@@ -383,7 +433,130 @@ function DetailView({
           onClose={() => setListActionsVisible(false)}
         />
       ) : null}
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setDateTask(null)}
+        statusBarTranslucent
+        transparent
+        visible={dateTask !== null}
+      >
+        <ModalSheet maxHeight="58%" onClose={() => setDateTask(null)}>
+          <View style={styles.dateSheetHeader}>
+            <View>
+              <Text accessibilityRole="header" style={styles.dateSheetTitle}>设置日期</Text>
+              <Text numberOfLines={1} style={styles.dateSheetTaskTitle}>{dateTask?.title}</Text>
+            </View>
+            <Pressable
+              accessibilityLabel="关闭日期选择"
+              accessibilityRole="button"
+              onPress={() => setDateTask(null)}
+              style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+            >
+              <AppIcon color={colors.text} name="close" size={22} />
+            </Pressable>
+          </View>
+          <View style={styles.dateWheelWrap}>
+            <DateWheel
+              endYear={new Date().getFullYear() + 10}
+              onChange={setSelectedDate}
+              startYear={new Date().getFullYear() - 1}
+              value={selectedDate}
+            />
+          </View>
+          <View style={styles.dateSheetFooter}>
+            <AppButton
+              disabled={updateTaskFields.isPending}
+              label={updateTaskFields.isPending ? '保存中…' : '确定'}
+              onPress={() => {
+                if (!dateTask) return;
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+                updateTaskFields.mutate(
+                  {
+                    task: dateTask,
+                    data: buildSetTaskDateRequest(selectedDate, timezone),
+                  },
+                  { onSuccess: () => setDateTask(null) },
+                );
+              }}
+            />
+          </View>
+        </ModalSheet>
+      </Modal>
     </AppScreen>
+  );
+}
+
+function AnytimeTaskRow({
+  busy,
+  list,
+  onAddToday,
+  onOpen,
+  onPickDate,
+  onToggle,
+  task,
+}: {
+  busy: boolean;
+  list?: TaskList;
+  onAddToday: () => void;
+  onOpen: () => void;
+  onPickDate: () => void;
+  onToggle: () => void;
+  task: Task;
+}) {
+  return (
+    <View style={styles.anytimeTask}>
+      <View style={styles.anytimeTaskMain}>
+        <Pressable
+          accessibilityLabel={`完成任务：${task.title}`}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: false }}
+          hitSlop={10}
+          onPress={onToggle}
+          style={styles.taskCheckbox}
+        />
+        <Pressable accessibilityRole="button" onPress={onOpen} style={styles.anytimeTaskCopy}>
+          <Text numberOfLines={2} style={styles.anytimeTaskTitle}>{task.title}</Text>
+          <View style={styles.anytimeTaskMeta}>
+            {list ? <TaskListIconChip list={list} size={20} /> : null}
+            <Text numberOfLines={1} style={styles.anytimeTaskList}>{list?.name ?? '任务'}</Text>
+          </View>
+        </Pressable>
+        {task.priority !== 'normal' ? (
+          <AppIcon
+            color={task.priority === 'high' ? colors.danger : colors.textTertiary}
+            name="flag"
+            size={16}
+          />
+        ) : null}
+      </View>
+      <View style={styles.anytimeActions}>
+        <Pressable
+          accessibilityLabel={`加入今天：${task.title}`}
+          accessibilityRole="button"
+          disabled={busy}
+          onPress={onAddToday}
+          style={({ pressed }) => [styles.anytimeAction, pressed && styles.pressed]}
+        >
+          <AppIcon color={colors.primaryStrong} name="today" size={16} />
+          <Text style={styles.anytimeActionText}>加入今天</Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel={`设置日期：${task.title}`}
+          accessibilityRole="button"
+          disabled={busy}
+          onPress={onPickDate}
+          style={({ pressed }) => [
+            styles.anytimeAction,
+            styles.anytimeActionSecondary,
+            pressed && styles.pressed,
+          ]}
+        >
+          <AppIcon color={colors.textSecondary} name="calendar-outline" size={16} />
+          <Text style={[styles.anytimeActionText, styles.anytimeActionTextSecondary]}>设置日期</Text>
+        </Pressable>
+        {busy ? <ActivityIndicator color={colors.primary} size="small" /> : null}
+      </View>
+    </View>
   );
 }
 
@@ -456,6 +629,161 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: 13,
     lineHeight: 18,
+  },
+  anytimeEntry: {
+    minHeight: 74,
+    marginTop: 18,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+  },
+  anytimeEntryIcon: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
+  },
+  anytimeEntryCopy: {
+    minWidth: 0,
+    flex: 1,
+  },
+  anytimeEntryTitle: {
+    color: colors.text,
+    fontFamily,
+    ...typography.bodyStrong,
+  },
+  anytimeEntrySubtitle: {
+    marginTop: 1,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  anytimeTask: {
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  anytimeTaskMain: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  taskCheckbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 1.7,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.pill,
+  },
+  anytimeTaskCopy: {
+    minWidth: 0,
+    flex: 1,
+  },
+  anytimeTaskTitle: {
+    color: colors.text,
+    fontFamily,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: '500',
+  },
+  anytimeTaskMeta: {
+    marginTop: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  anytimeTaskList: {
+    minWidth: 0,
+    color: colors.textTertiary,
+    fontFamily,
+    ...typography.meta,
+  },
+  anytimeActions: {
+    minHeight: 34,
+    marginTop: 8,
+    marginLeft: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  anytimeAction: {
+    minHeight: 34,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+  },
+  anytimeActionSecondary: {
+    backgroundColor: colors.surfaceSubtle,
+  },
+  anytimeActionText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  anytimeActionTextSecondary: {
+    color: colors.textSecondary,
+  },
+  actionError: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: radius.md,
+    backgroundColor: colors.dangerSoft,
+  },
+  actionErrorText: {
+    minWidth: 0,
+    flex: 1,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
+  },
+  dateSheetHeader: {
+    minHeight: 64,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateSheetTitle: {
+    color: colors.text,
+    fontFamily,
+    ...typography.section,
+  },
+  dateSheetTaskTitle: {
+    maxWidth: 260,
+    marginTop: 1,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+  },
+  dateWheelWrap: {
+    paddingHorizontal: 16,
+  },
+  dateSheetFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
   },
   sectionTitle: {
     marginTop: 10,

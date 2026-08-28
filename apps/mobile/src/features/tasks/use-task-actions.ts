@@ -3,6 +3,7 @@ import {
   getListTasksQueryKey,
   updateTask,
   type Task,
+  type UpdateTaskRequest,
 } from '@steward/api-client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -28,6 +29,32 @@ export function useToggleTaskDone() {
     },
     onSuccess: async (response) => {
       // 按响应里的 affected_resources 精确失效，而不是清空全部缓存。
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetTodayQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: ['getTask', response.data.id] }),
+      ]);
+    },
+  });
+}
+
+/**
+ * 任务日期类快捷更新。
+ *
+ * “加入今天”和“设置日期”仍走正式 Task PATCH，并携带任务当前版本；
+ * Today 收录与“随时可做”归属由服务端依据字段重新计算。
+ */
+export function useUpdateTaskFields() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ data, task }: { data: UpdateTaskRequest; task: Task }) =>
+      updateTask(
+        task.id,
+        data,
+        { headers: { 'If-Match': String(task.version) } },
+      ),
+    onSuccess: async (response) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getGetTodayQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() }),
