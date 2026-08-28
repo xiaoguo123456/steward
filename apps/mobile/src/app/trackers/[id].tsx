@@ -116,7 +116,13 @@ export default function TrackerDetailScreen() {
               style={styles.section}
               title="趋势"
             />
-            <TrackerTrendChart field={numericField} range={range} records={records} />
+            <TrackerTrendChart
+              failed={recordsQuery.isError}
+              field={numericField}
+              loading={recordsQuery.isPending}
+              range={range}
+              records={records}
+            />
           </>
         ) : null}
 
