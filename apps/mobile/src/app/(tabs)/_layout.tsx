@@ -59,8 +59,13 @@ function useReducedTransparency() {
   const [reducedTransparency, setReducedTransparency] = useState(false);
 
   useEffect(() => {
+    // 只有 iOS 原生玻璃效果需要读取这个偏好；React Native Web 没有实现该方法。
+    if (Platform.OS !== 'ios') return;
+    const getReducedTransparency = AccessibilityInfo.isReduceTransparencyEnabled;
+    if (typeof getReducedTransparency !== 'function') return;
+
     let mounted = true;
-    void AccessibilityInfo.isReduceTransparencyEnabled().then((enabled) => {
+    void getReducedTransparency().then((enabled) => {
       if (mounted) setReducedTransparency(enabled);
     });
     const subscription = AccessibilityInfo.addEventListener(

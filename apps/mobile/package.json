@@ -68,7 +68,7 @@
     "test:trackers": "node --experimental-strip-types --test src/features/trackers/trend-chart-model.test.mjs",
     "test:recipes": "node --experimental-strip-types --test src/features/recipes/discovery-order.test.mjs src/features/recipes/recipe-swap.test.mjs",
     "test:trips": "node --experimental-strip-types --test src/features/trips/trip-form.test.mjs",
-    "test:ui": "node --test src/components/ui/icon-system.test.mjs src/components/ui/filter-chip-system.test.mjs",
+    "test:ui": "node --experimental-strip-types --test src/components/ui/icon-system.test.mjs src/components/ui/filter-chip-system.test.mjs src/components/ui/tab-shell-compatibility.test.mjs src/features/home/home-top-navigation.test.mjs",
     "test:assistant": "node --experimental-strip-types --test src/features/assistant/assistant-markdown-policy.test.mjs src/features/assistant/assistant-media-capture.test.mjs src/features/assistant/assistant-thread-session.test.mjs",
     "test:calendar": "node --experimental-strip-types --test src/features/calendar/calendar-month.test.mjs",
     "test:workouts": "node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs src/features/workouts/workout-voice.test.mjs",

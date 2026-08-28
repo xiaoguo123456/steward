@@ -9,12 +9,14 @@ import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
-import { TaskRow } from '@/features/tasks/components/task-row';
-import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
+import type { HomeTopTabId } from '@/features/home/home-top-navigation';
+import { HomeFeaturePreview, HomeTopTabs } from '@/features/home/home-top-tabs';
 import {
   describeReminder,
   usePendingReminders,
 } from '@/features/reminders/use-pending-reminders';
+import { TaskRow } from '@/features/tasks/components/task-row';
+import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type HomeShortcut = {
@@ -94,6 +96,7 @@ const groupLabels: Record<TodayTask['group'], string> = {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [activeHomeTab, setActiveHomeTab] = useState<HomeTopTabId>('today');
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const today = useGetToday();
   const toggleDone = useToggleTaskDone();
@@ -112,9 +115,15 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl onRefresh={() => void today.refetch()} refreshing={today.isRefetching} />
+          activeHomeTab === 'today' ? (
+            <RefreshControl
+              onRefresh={() => void today.refetch()}
+              refreshing={today.isRefetching}
+            />
+          ) : undefined
         }
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[1]}
       >
         <PageHeader
           action={
@@ -130,135 +139,152 @@ export default function HomeScreen() {
           title="首页"
         />
 
-        <PendingRemindersBlock />
-
-        <View style={styles.shortcutPanel}>
-          <View style={styles.shortcutGrid}>
-            {homeShortcuts.map((item) => (
-              <Pressable
-                accessibilityLabel={`打开${item.label}`}
-                accessibilityRole="button"
-                key={item.label}
-                onPress={() => router.push(item.href)}
-                style={({ pressed }) => [
-                  styles.shortcutItem,
-                  pressed && styles.shortcutItemPressed,
-                ]}
-              >
-                <View style={[styles.shortcutIcon, { backgroundColor: item.background }]}>
-                  <AppIcon color={item.color} name={item.icon} size={21} />
-                </View>
-                <Text style={styles.shortcutLabel}>{item.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <SectionTitle
-          count={counts ? `${counts.total} 项` : undefined}
-          style={styles.homeSectionTitle}
-          title="今天要做"
+        <HomeTopTabs
+          onChange={(tab) => {
+            setActiveHomeTab(tab);
+            setTasksExpanded(false);
+          }}
+          value={activeHomeTab}
         />
 
-        {today.isPending ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
-        ) : today.isError ? (
-          <StatePanel
-            actionLabel="重试"
-            icon="cloud-offline-outline"
-            message={errorMessage(today.error, '暂时无法加载今天的安排。')}
-            onAction={() => void today.refetch()}
-            title="加载失败"
-          />
-        ) : tasks.length === 0 ? (
-          <StatePanel
-            actionLabel="记一件事"
-            compact
-            icon="sunny-outline"
-            message="今天还没有安排，想到什么就记下来。"
-            onAction={() => router.push('/capture/new')}
-            title="今天很清爽"
-          />
-        ) : (
+        {activeHomeTab === 'today' ? (
           <>
-            {visibleTasks.map((item, index) => (
-              <View key={item.task.id}>
-                {shouldShowGroupLabel(visibleTasks, index) ? (
-                  <Text style={styles.groupLabel}>{groupLabels[item.group]}</Text>
-                ) : null}
-                <TaskRow
-                  onOpen={() =>
-                    router.push({ pathname: '/tasks/[id]', params: { id: item.task.id } })
-                  }
-                  onToggle={() => toggleDone.mutate(item.task)}
-                  task={{
-                    id: item.task.id,
-                    title: item.task.title,
-                    list: item.list_name ?? '',
-                    time: formatTaskTime(item.task),
-                    color: listColor(item.list_color),
-                    priority: item.task.priority,
-                    completed: item.task.status === 'done',
-                  }}
-                />
-              </View>
-            ))}
-            {showTaskToggle ? (
-              <Pressable
-                accessibilityLabel={
-                  tasksExpanded ? '收起今日任务' : `展开剩余 ${remainingTaskCount} 项任务`
-                }
-                accessibilityRole="button"
-                accessibilityState={{ expanded: tasksExpanded }}
-                onPress={() => setTasksExpanded((current) => !current)}
-                style={({ pressed }) => [styles.taskToggle, pressed && styles.taskTogglePressed]}
-              >
-                <Text style={styles.taskToggleText}>
-                  {tasksExpanded ? '收起' : `展开剩余 ${remainingTaskCount} 项`}
-                </Text>
-                <AppIcon
-                  color={colors.primaryStrong}
-                  name={tasksExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                />
-              </Pressable>
-            ) : null}
-          </>
-        )}
+            <PendingRemindersBlock />
 
-        <SectionTitle style={styles.homeSectionTitle} title="今日安排" />
-        <Pressable
-          accessibilityHint="进入日历查看今天的完整安排"
-          accessibilityLabel="打开日历查看今日安排"
-          accessibilityRole="button"
-          onPress={() => router.push('/calendar')}
-          style={({ pressed }) => [styles.brief, pressed && styles.briefPressed]}
-        >
-          <View style={styles.briefIcon}>
-            <AppIcon color={colors.primaryStrong} name="sparkles" size={19} />
-          </View>
-          <View style={styles.briefCopy}>
-            <Text style={styles.briefTitle}>
-              {events.length > 0 ? `今天有 ${events.length} 个日程` : '今天没有日程安排'}
-            </Text>
-            <Text style={styles.briefSummary}>
-              {events.length > 0
-                ? events
-                    .slice(0, 2)
-                    .map((event) => event.title)
-                    .join('、')
-                : '点击查看日历，安排接下来的时间。'}
-            </Text>
-            {counts && counts.overdue > 0 ? (
-              <Text style={styles.briefSource}>还有 {counts.overdue} 项已逾期</Text>
-            ) : null}
-          </View>
-          <View style={styles.briefChevron}>
-            <AppIcon color={colors.textTertiary} name="chevron-forward" size={18} />
-          </View>
-        </Pressable>
+            <View style={styles.shortcutPanel}>
+              <View style={styles.shortcutGrid}>
+                {homeShortcuts.map((item) => (
+                  <Pressable
+                    accessibilityLabel={`打开${item.label}`}
+                    accessibilityRole="button"
+                    key={item.label}
+                    onPress={() => router.push(item.href)}
+                    style={({ pressed }) => [
+                      styles.shortcutItem,
+                      pressed && styles.shortcutItemPressed,
+                    ]}
+                  >
+                    <View style={[styles.shortcutIcon, { backgroundColor: item.background }]}>
+                      <AppIcon color={item.color} name={item.icon} size={21} />
+                    </View>
+                    <Text style={styles.shortcutLabel}>{item.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <SectionTitle
+              count={counts ? `${counts.total} 项` : undefined}
+              style={styles.homeSectionTitle}
+              title="今天要做"
+            />
+
+            {today.isPending ? (
+              <View style={styles.loading}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : today.isError ? (
+              <StatePanel
+                actionLabel="重试"
+                icon="cloud-offline-outline"
+                message={errorMessage(today.error, '暂时无法加载今天的安排。')}
+                onAction={() => void today.refetch()}
+                title="加载失败"
+              />
+            ) : tasks.length === 0 ? (
+              <StatePanel
+                actionLabel="记一件事"
+                compact
+                icon="sunny-outline"
+                message="今天还没有安排，想到什么就记下来。"
+                onAction={() => router.push('/capture/new')}
+                title="今天很清爽"
+              />
+            ) : (
+              <>
+                {visibleTasks.map((item, index) => (
+                  <View key={item.task.id}>
+                    {shouldShowGroupLabel(visibleTasks, index) ? (
+                      <Text style={styles.groupLabel}>{groupLabels[item.group]}</Text>
+                    ) : null}
+                    <TaskRow
+                      onOpen={() =>
+                        router.push({ pathname: '/tasks/[id]', params: { id: item.task.id } })
+                      }
+                      onToggle={() => toggleDone.mutate(item.task)}
+                      task={{
+                        id: item.task.id,
+                        title: item.task.title,
+                        list: item.list_name ?? '',
+                        time: formatTaskTime(item.task),
+                        color: listColor(item.list_color),
+                        priority: item.task.priority,
+                        completed: item.task.status === 'done',
+                      }}
+                    />
+                  </View>
+                ))}
+                {showTaskToggle ? (
+                  <Pressable
+                    accessibilityLabel={
+                      tasksExpanded ? '收起今日任务' : `展开剩余 ${remainingTaskCount} 项任务`
+                    }
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: tasksExpanded }}
+                    onPress={() => setTasksExpanded((current) => !current)}
+                    style={({ pressed }) => [
+                      styles.taskToggle,
+                      pressed && styles.taskTogglePressed,
+                    ]}
+                  >
+                    <Text style={styles.taskToggleText}>
+                      {tasksExpanded ? '收起' : `展开剩余 ${remainingTaskCount} 项`}
+                    </Text>
+                    <AppIcon
+                      color={colors.primaryStrong}
+                      name={tasksExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                    />
+                  </Pressable>
+                ) : null}
+              </>
+            )}
+
+            <SectionTitle style={styles.homeSectionTitle} title="今日安排" />
+            <Pressable
+              accessibilityHint="进入日历查看今天的完整安排"
+              accessibilityLabel="打开日历查看今日安排"
+              accessibilityRole="button"
+              onPress={() => router.push('/calendar')}
+              style={({ pressed }) => [styles.brief, pressed && styles.briefPressed]}
+            >
+              <View style={styles.briefIcon}>
+                <AppIcon color={colors.primaryStrong} name="sparkles" size={19} />
+              </View>
+              <View style={styles.briefCopy}>
+                <Text style={styles.briefTitle}>
+                  {events.length > 0 ? `今天有 ${events.length} 个日程` : '今天没有日程安排'}
+                </Text>
+                <Text style={styles.briefSummary}>
+                  {events.length > 0
+                    ? events
+                        .slice(0, 2)
+                        .map((event) => event.title)
+                        .join('、')
+                    : '点击查看日历，安排接下来的时间。'}
+                </Text>
+                {counts && counts.overdue > 0 ? (
+                  <Text style={styles.briefSource}>还有 {counts.overdue} 项已逾期</Text>
+                ) : null}
+              </View>
+              <View style={styles.briefChevron}>
+                <AppIcon color={colors.textTertiary} name="chevron-forward" size={18} />
+              </View>
+            </Pressable>
+          </>
+        ) : (
+          <HomeFeaturePreview tab={activeHomeTab} />
+        )}
       </ScrollView>
       <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />
     </AppScreen>
