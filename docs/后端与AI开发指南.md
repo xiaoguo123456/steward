@@ -512,6 +512,8 @@ Thread 可以归档或软删除。归档只影响默认列表展示，不让待�
 
 默认入口按用户时区的自然日恢复对话。服务端以当天最近一条 `role=user` Message 选择 active Thread；只完成了 Assistant 回复不能改变当天归属。当天没有用户消息时 `GET /assistant/threads/current` 返回 `data: null`，且不创建空 Thread。无标题、未设置 `force_new` 的创建请求复用当天 Thread；`force_new=true` 始终创建新 Thread。用户从历史 Thread 在当天继续发送后，该 Thread 自然成为当天最近使用的对话。
 
+`CreateTurnRequest` 保持纯文字。移动端 AI 对话一旦包含图片，不把媒体塞入 Message 或 Turn，而是按现有上传授权完成 OSS 直传，再创建 `origin=assistant` 的多模态 Capture；Capture Parse 只生成 Candidate，用户确认后仍由 Go Domain 写入正式内容。
+
 ## 8.2 Turn 状态
 
 ```text
