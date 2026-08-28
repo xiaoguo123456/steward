@@ -63,7 +63,7 @@
     "test:notes": "node --experimental-strip-types --test src/features/notes/note-polish.test.mjs",
     "test:plan": "node --experimental-strip-types --test src/features/plan/anytime-task-actions.test.mjs src/features/plan/task-list-order.test.mjs src/features/plan/task-list-appearance.test.mjs src/features/plan/task-list-policy.test.mjs src/features/plan/plan-tab-navigation.test.mjs src/features/projects/project-task-scope.test.mjs",
     "test:review": "node --experimental-strip-types --test src/features/review/review-period.test.mjs src/features/review/review-metrics.test.mjs",
-    "test:recipes": "node --experimental-strip-types --test src/features/recipes/discovery-order.test.mjs",
+    "test:recipes": "node --experimental-strip-types --test src/features/recipes/discovery-order.test.mjs src/features/recipes/recipe-swap.test.mjs",
     "test:trips": "node --experimental-strip-types --test src/features/trips/trip-form.test.mjs",
     "test:ui": "node --test src/components/ui/icon-system.test.mjs src/components/ui/filter-chip-system.test.mjs",
     "test:assistant": "node --experimental-strip-types --test src/features/assistant/assistant-markdown-policy.test.mjs src/features/assistant/assistant-thread-session.test.mjs",
