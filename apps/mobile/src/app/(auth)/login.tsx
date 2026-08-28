@@ -1,15 +1,27 @@
 import { errorMessage, login, requestPhoneCode } from '@steward/api-client';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { session } from '@/api/session';
+import { deviceTimezone } from '@/api/timezone-sync';
 import { PrimaryButton } from '@/features/auth/components/auth-actions';
 import { AuthInput, AuthShell } from '@/features/auth/components/auth-shell';
+import {
+  normalizePhoneInput,
+  phoneValidationMessage,
+  PHONE_PATTERN,
+} from '@/features/auth/login-input';
 import { resolvePhoneCodeDelivery } from '@/features/auth/phone-code';
-import { colors, fontFamily } from '@/theme/tokens';
-
-const PHONE_PATTERN = /^1[3-9]\d{9}$/;
+import { colors, fontFamily, typography } from '@/theme/tokens';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -20,8 +32,10 @@ export default function LoginScreen() {
   const [sending, setSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const phoneRef = useRef('');
+  const codeInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     return () => {
@@ -44,21 +58,24 @@ export default function LoginScreen() {
   };
 
   const phoneValid = PHONE_PATTERN.test(phone);
-  const canSubmit = phoneValid && code.length === 6 && !submitting;
+  const phoneError = phoneValidationMessage(phone, phoneTouched);
+  const canSubmit = phoneValid && code.length === 6 && !sending && !submitting;
 
   const handleSendCode = async () => {
-    if (!phoneValid || sending || cooldown > 0) return;
+    setPhoneTouched(true);
+    if (!phoneValid || sending || submitting || cooldown > 0) return;
     const requestedPhone = phone;
     setError(null);
     setSending(true);
     try {
       const response = await requestPhoneCode({ phone: requestedPhone });
-      startCooldown(response.data.resend_after_seconds);
       // 请求期间若改了手机号，旧号码的验证码不能填进新号码表单。
       if (phoneRef.current !== requestedPhone) return;
+      startCooldown(response.data.resend_after_seconds);
       const delivery = resolvePhoneCodeDelivery(response.data);
       setCode(delivery.code);
       setHint(delivery.hint);
+      if (!delivery.code) codeInputRef.current?.focus();
     } catch (err) {
       setError(errorMessage(err, '验证码发送失败，请稍后重试。'));
     } finally {
@@ -74,25 +91,31 @@ export default function LoginScreen() {
       const response = await login({
         phone,
         code,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone: deviceTimezone(),
       });
       await session.signIn(response.data.tokens);
       router.replace('/today');
     } catch (err) {
       setError(errorMessage(err, '登录失败，请检查手机号与验证码。'));
+      codeInputRef.current?.focus();
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <AuthShell heading="欢迎回来" subtitle="用手机号登录，继续高效的一天">
+    <AuthShell heading="欢迎回来" subtitle="手机号验证后即可继续">
       <AuthInput
+        accessibilityLabel="手机号"
+        autoComplete="tel"
+        editable={!submitting}
         icon="phone-portrait-outline"
+        importantForAutofill="yes"
         keyboardType="number-pad"
         maxLength={11}
+        onBlur={() => setPhoneTouched(true)}
         onChangeText={(value) => {
-          const normalized = value.replace(/\D/g, '');
+          const normalized = normalizePhoneInput(value);
           phoneRef.current = normalized;
           setPhone(normalized);
           setCode('');
@@ -100,13 +123,24 @@ export default function LoginScreen() {
           setHint(null);
         }}
         placeholder="请输入手机号"
+        textContentType="telephoneNumber"
         value={phone}
       />
+      {phoneError ? (
+        <Text accessibilityLiveRegion="polite" style={styles.fieldError}>
+          {phoneError}
+        </Text>
+      ) : null}
       <View style={styles.codeRow}>
         <View style={styles.codeInput}>
           <AuthInput
+            accessibilityLabel="短信验证码"
+            autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
             containerStyle={styles.codeInputShell}
+            editable={!submitting}
             icon="keypad-outline"
+            importantForAutofill="yes"
+            inputRef={codeInputRef}
             keyboardType="number-pad"
             maxLength={6}
             onChangeText={(value) => {
@@ -114,18 +148,22 @@ export default function LoginScreen() {
               setError(null);
             }}
             placeholder="6 位验证码"
+            textContentType="oneTimeCode"
             value={code}
           />
         </View>
         <Pressable
-          accessibilityLabel="获取验证码"
+          accessibilityLabel={cooldown > 0 ? `${cooldown} 秒后可重新获取验证码` : '获取验证码'}
           accessibilityRole="button"
-          accessibilityState={{ disabled: !phoneValid || cooldown > 0 || sending }}
-          disabled={!phoneValid || cooldown > 0 || sending}
+          accessibilityState={{
+            busy: sending,
+            disabled: !phoneValid || cooldown > 0 || sending || submitting,
+          }}
+          disabled={!phoneValid || cooldown > 0 || sending || submitting}
           onPress={handleSendCode}
           style={({ pressed }) => [
             styles.codeButton,
-            (!phoneValid || cooldown > 0) && styles.codeButtonDisabled,
+            (!phoneValid || cooldown > 0 || submitting) && styles.codeButtonDisabled,
             pressed && styles.codeButtonPressed,
           ]}
         >
@@ -139,8 +177,16 @@ export default function LoginScreen() {
         </Pressable>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {!error && hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {error ? (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
+      {!error && hint ? (
+        <Text accessibilityLiveRegion="polite" style={styles.hint}>
+          {hint}
+        </Text>
+      ) : null}
 
       <View style={styles.buttonWrap}>
         <PrimaryButton disabled={!canSubmit} onPress={handleLogin}>
@@ -156,7 +202,7 @@ const styles = StyleSheet.create({
   codeRow: {
     marginBottom: 16,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     gap: 10,
   },
   codeInput: {
@@ -167,8 +213,9 @@ const styles = StyleSheet.create({
   },
   codeButton: {
     minWidth: 96,
-    height: 54,
+    minHeight: 54,
     paddingHorizontal: 12,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,
@@ -193,21 +240,26 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: colors.danger,
     fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.meta,
   },
   hint: {
     marginTop: 12,
     color: colors.primaryStrong,
     fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.meta,
+  },
+  fieldError: {
+    marginTop: -8,
+    marginBottom: 14,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
   },
   muted: {
     marginTop: 16,
     color: colors.textSecondary,
     fontFamily,
-    fontSize: 13,
+    ...typography.meta,
     textAlign: 'center',
   },
 });

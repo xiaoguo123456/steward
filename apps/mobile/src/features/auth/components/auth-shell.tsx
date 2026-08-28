@@ -1,4 +1,4 @@
-import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
+import type { ComponentProps, PropsWithChildren, ReactNode, Ref } from 'react';
 import {
   Platform,
   ScrollView,
@@ -48,16 +48,18 @@ export function AuthShell({ children, heading, subtitle, compactLogo = false }: 
 type AuthInputProps = ComponentProps<typeof TextInput> & {
   containerStyle?: StyleProp<ViewStyle>;
   icon: ComponentProps<typeof AppIcon>['name'];
+  inputRef?: Ref<TextInput>;
   trailing?: ReactNode;
 };
 
-export function AuthInput({ containerStyle, icon, trailing, style, ...props }: AuthInputProps) {
+export function AuthInput({ containerStyle, icon, inputRef, trailing, style, ...props }: AuthInputProps) {
   return (
     <View style={[styles.inputShell, containerStyle]}>
       <AppIcon color={colors.textTertiary} name={icon} size={19} />
       <TextInput
         autoCapitalize="none"
         placeholderTextColor={colors.textTertiary}
+        ref={inputRef}
         style={[styles.input, style]}
         {...props}
       />
@@ -117,7 +119,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   inputShell: {
-    height: 54,
+    minHeight: 54,
     marginBottom: 16,
     paddingHorizontal: 18,
     flexDirection: 'row',
@@ -128,8 +130,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 54,
-    paddingVertical: 0,
+    minHeight: 54,
+    paddingVertical: 10,
     color: colors.text,
     fontFamily,
     fontSize: 15,

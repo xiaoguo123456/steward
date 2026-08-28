@@ -112,6 +112,7 @@ import VolumeHighIcon from '@hugeicons/core-free-icons/VolumeHighIcon';
 import WalkingIcon from '@hugeicons/core-free-icons/WalkingIcon';
 import Wallet01Icon from '@hugeicons/core-free-icons/Wallet01Icon';
 import { HugeiconsIcon } from '@hugeicons/react-native';
+import { Platform } from 'react-native';
 import type { ComponentProps } from 'react';
 
 import { colors } from '@/theme/tokens';
@@ -277,7 +278,7 @@ type AppIconProps = {
 export function AppIcon({ name, size = 22, color = colors.text }: AppIconProps) {
   return (
     <HugeiconsIcon
-      accessible={false}
+      accessible={Platform.OS === 'web' ? undefined : false}
       color={color}
       icon={appIcons[name]}
       size={size}
@@ -314,7 +315,7 @@ export function SportModeIcon({
 
   return (
     <HugeiconsIcon
-      accessible={false}
+      accessible={Platform.OS === 'web' ? undefined : false}
       color={color}
       icon={spec.icon}
       size={renderedSize}

@@ -34,3 +34,10 @@ test('移动端图标层只保留 Hugeicons 直接依赖', () => {
   assert.ok(packageJson.dependencies['@hugeicons/react-native']);
   assert.ok(packageJson.dependencies['react-native-svg']);
 });
+
+test('Web 图标不把布尔 accessible 属性透传给 SVG DOM', () => {
+  const source = readFileSync(iconAdapter, 'utf8');
+
+  assert.match(source, /accessible=\{Platform\.OS === 'web' \? undefined : false\}/);
+  assert.doesNotMatch(source, /accessible=\{false\}/);
+});

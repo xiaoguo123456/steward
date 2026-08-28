@@ -3,15 +3,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
 import { AppState } from 'react-native';
 
 import { initApiClient, session } from './session';
+import { syncDeviceTimezone } from './timezone-sync';
 
 /** 构造 Query Client。 */
 function createQueryClient(): QueryClient {
@@ -50,7 +53,25 @@ const BootContext = createContext<BootState>('loading');
 export function ApiProvider({ children }: PropsWithChildren) {
   const queryClient = useMemo(() => createQueryClient(), []);
   const [boot, setBoot] = useState<BootState>('loading');
+  const timezoneSync = useRef<Promise<void> | null>(null);
   const router = useRouter();
+
+  const syncTimezone = useCallback(() => {
+    if (timezoneSync.current) return timezoneSync.current;
+
+    const run = syncDeviceTimezone()
+      .then((changed) => {
+        if (changed) void queryClient.invalidateQueries();
+      })
+      .catch(() => {
+        // 离线或服务端失败时继续使用旧时区；下次回到前台会再次尝试。
+      })
+      .finally(() => {
+        timezoneSync.current = null;
+      });
+    timezoneSync.current = run;
+    return run;
+  }, [queryClient]);
 
   useEffect(() => {
     initApiClient();
@@ -77,14 +98,18 @@ export function ApiProvider({ children }: PropsWithChildren) {
   }, [queryClient, router]);
 
   useEffect(() => {
+    if (boot === 'signed-in') void syncTimezone();
+  }, [boot, syncTimezone]);
+
+  useEffect(() => {
     // 回到前台时刷新服务端事实，避免展示过期的 Today。
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active' && session.isLoggedIn()) {
-        void queryClient.invalidateQueries();
+        void syncTimezone().finally(() => queryClient.invalidateQueries());
       }
     });
     return () => subscription.remove();
-  }, [queryClient]);
+  }, [queryClient, syncTimezone]);
 
   useEffect(() => {
     // 任何查询遇到登录失效都统一跳回登录页。

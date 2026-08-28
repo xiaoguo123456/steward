@@ -99,6 +99,7 @@ export function useAccountActions() {
      */
     signOut: async () => {
       setBusy(true);
+      setFailure(null);
       try {
         await logout().catch(() => undefined);
       } finally {

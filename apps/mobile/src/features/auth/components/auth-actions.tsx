@@ -28,7 +28,9 @@ export function PrimaryButton({ children, onPress, disabled = false }: PrimaryBu
 
 const styles = StyleSheet.create({
   button: {
-    height: 52,
+    minHeight: 52,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
