@@ -490,6 +490,17 @@ export default function CaptureInputScreen() {
               <AppIcon color={colors.primaryStrong} name={mode === 'text' ? 'mic-outline' : 'keypad-outline'} size={20} />
               <Text style={styles.inputOptionText}>{mode === 'text' ? '语音' : '键盘'}</Text>
             </Pressable>
+            {!hasContent && !isTripIntent && !isTripItemIntent ? (
+              <Pressable
+                accessibilityLabel="手动新建任务"
+                accessibilityRole="button"
+                onPress={() => router.replace('/tasks/new')}
+                style={({ pressed }) => [styles.inputOption, pressed && styles.optionPressed]}
+              >
+                <AppIcon color={colors.primaryStrong} name="create-outline" size={20} />
+                <Text style={styles.inputOptionText}>新建任务</Text>
+              </Pressable>
+            ) : null}
           </View>
           {hasContent ? (
             <AppButton
