@@ -51,7 +51,9 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 			"title":              str("新标题，不改就不要传。"),
 			"status":             enumOf([]string{"todo", "doing", "done"}, "新状态，不改就不要传。"),
 			"priority":           enumOf([]string{"low", "normal", "high", "urgent"}, "新优先级，不改就不要传。"),
+			"due_date":           str("新的截止日期，格式 2026-08-19。只有日期没有具体时刻时用它。"),
 			"due_at":             str("新的截止时刻，RFC3339 格式。"),
+			"focus_date":         str("新的关注日期，格式 2026-08-19。用户说加入今天时使用当天日期。"),
 			"scheduled_start_at": str("新的计划开始时刻，RFC3339 格式。"),
 			"scheduled_end_at":   str("新的计划结束时刻，RFC3339 格式。"),
 			"reason":             str("一句话说明你为什么这样建议。"),
@@ -173,12 +175,17 @@ func (d CapabilityDeps) proposeTaskUpdate(ctx context.Context, cc ai.CapabilityC
 	}
 
 	command := pick(args, "title", "status", "priority",
-		"due_at", "scheduled_start_at", "scheduled_end_at")
+		"due_date", "due_at", "focus_date", "scheduled_start_at", "scheduled_end_at")
 	if len(command) == 0 {
 		return ai.CapabilityResult{}, fmt.Errorf("至少要指定一个要修改的字段")
 	}
 
 	loc := timeutil.LoadLocation(cc.Timezone)
+	for _, field := range []string{"due_date", "focus_date"} {
+		if raw := strings.TrimSpace(text(command[field])); raw != "" && parseDate(raw, loc) == nil {
+			return ai.CapabilityResult{}, fmt.Errorf("%s 必须是 YYYY-MM-DD 格式的有效日期", field)
+		}
+	}
 	changes := describeTaskChanges(command, current.Status, current.Priority, current.Title, loc)
 
 	return ai.CapabilityResult{
@@ -197,7 +204,7 @@ func (d CapabilityDeps) proposeTaskUpdate(ctx context.Context, cc ai.CapabilityC
 			Reason: strings.TrimSpace(text(args["reason"])),
 			EditableFields: []string{
 				"title", "status", "priority",
-				"due_at", "scheduled_start_at", "scheduled_end_at",
+				"due_date", "due_at", "focus_date", "scheduled_start_at", "scheduled_end_at",
 			},
 			SourceRefs: sources,
 		}},
@@ -364,6 +371,16 @@ func describeTaskChanges(command map[string]any,
 			Field: "priority", Label: "优先级",
 			Before: priorityLabel(beforePriority), After: priorityLabel(v),
 		})
+	}
+	for _, field := range []struct{ key, label string }{
+		{"due_date", "截止日期"},
+		{"focus_date", "关注日期"},
+	} {
+		if v := strings.TrimSpace(text(command[field.key])); v != "" {
+			changes = append(changes, ai.ProposalChange{
+				Field: field.key, Label: field.label, After: v,
+			})
+		}
 	}
 	for _, field := range []struct{ key, label string }{
 		{"due_at", "截止"},

@@ -1,4 +1,5 @@
 import {
+  createCapture,
   errorMessage,
   useCreateThread,
   useCreateTurn,
@@ -10,6 +11,7 @@ import {
   type AssistantMessage,
 } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import {
@@ -27,11 +29,17 @@ import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { AssistantMarkdown } from '@/features/assistant/assistant-markdown';
 import {
+  assistantCaptureDraftSummary,
+  buildAssistantCaptureParts,
+} from '@/features/assistant/assistant-media-capture';
+import {
   assistantThreadSessionReducer,
   createAssistantThreadSession,
 } from '@/features/assistant/assistant-thread-session';
 import { ProposalCard } from '@/features/assistant/proposal-card';
 import { useTurnStream } from '@/features/assistant/use-turn-stream';
+import { useImagePicker } from '@/features/capture/use-media-picker';
+import { useMediaUpload, type LocalMedia } from '@/features/capture/use-media-upload';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 /**
@@ -58,7 +66,12 @@ export default function AiConversationScreen() {
   const [turnId, setTurnId] = useState('');
   const [operationId, setOperationId] = useState('');
   const [input, setInput] = useState('');
+  const [images, setImages] = useState<LocalMedia[]>([]);
+  const [showMediaMenu, setShowMediaMenu] = useState(false);
+  const [submittingCapture, setSubmittingCapture] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const picker = useImagePicker();
+  const media = useMediaUpload();
 
   // 打开面板只读取今天的默认对话，不创建空 Thread。
   const currentThread = useGetCurrentThread({
@@ -157,8 +170,46 @@ export default function AiConversationScreen() {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || thinking || restoring || createThread.isPending || createTurn.isPending) return;
+    if (
+      (!text && images.length === 0)
+      || thinking
+      || restoring
+      || createThread.isPending
+      || createTurn.isPending
+      || submittingCapture
+      || media.uploading
+    ) return;
     setFailure(null);
+    setShowMediaMenu(false);
+
+    if (images.length > 0) {
+      setSubmittingCapture(true);
+      try {
+        const uploaded = await media.upload(images);
+        const response = await createCapture({
+          origin: 'assistant',
+          parts: buildAssistantCaptureParts(text, uploaded),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+        const draft = assistantCaptureDraftSummary(text, images.length);
+        setInput('');
+        setImages([]);
+        router.replace({
+          pathname: '/capture/processing',
+          params: {
+            captureId: response.data.resource_id ?? '',
+            operationId: response.data.operation_id,
+            draft,
+          },
+        });
+      } catch (error) {
+        setFailure(errorMessage(error, '图片没能发出去，请稍后重试。'));
+      } finally {
+        setSubmittingCapture(false);
+      }
+      return;
+    }
+
     setInput('');
     try {
       // 服务端按用户时区复用当天 Thread；只有用户点过“新对话”才强制新建。
@@ -175,6 +226,14 @@ export default function AiConversationScreen() {
     }
   };
 
+  const addImages = async (source: 'camera' | 'library') => {
+    setShowMediaMenu(false);
+    setFailure(null);
+    picker.clearError();
+    const picked = await picker.pick(source);
+    setImages((current) => [...current, ...picked].slice(0, 9));
+  };
+
   const scrollToLatest = () => {
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   };
@@ -182,13 +241,13 @@ export default function AiConversationScreen() {
   // 契约按 message_seq 倒序返回，展示要按时间正序。
   const ordered = [...(messages.data?.data ?? [])].reverse();
   const pending = proposals.data?.data ?? [];
-  const sending = createThread.isPending || createTurn.isPending;
-  const canSend = Boolean(input.trim()) && !thinking && !restoring && !sending;
+  const sending = createThread.isPending || createTurn.isPending || submittingCapture || media.uploading;
+  const canSend = Boolean(input.trim() || images.length) && !thinking && !restoring && !sending;
   const canStartFresh = Boolean(threadId) && !thinking && !sending;
   const restoreFailure = threadSession.mode === 'default' && !threadId && currentThread.isError
     ? errorMessage(currentThread.error, '没能恢复今天的对话，发送时会再试。')
     : null;
-  const visibleFailure = failure ?? turnFailure ?? restoreFailure;
+  const visibleFailure = failure ?? picker.error ?? turnFailure ?? restoreFailure;
 
   return (
     <ModalSheet maxHeight="84%" onClose={() => router.back()}>
@@ -220,6 +279,8 @@ export default function AiConversationScreen() {
             setTurnId('');
             setOperationId('');
             setInput('');
+            setImages([]);
+            setShowMediaMenu(false);
             setFailure(null);
           }}
           style={({ pressed }) => [
@@ -320,14 +381,85 @@ export default function AiConversationScreen() {
       </ScrollView>
 
       <View style={styles.composerWrap}>
+        {images.length > 0 ? (
+          <ScrollView
+            contentContainerStyle={styles.imagePreviews}
+            horizontal
+            keyboardShouldPersistTaps="handled"
+            showsHorizontalScrollIndicator={false}
+          >
+            {images.map((image, index) => (
+              <View key={`${image.uri}-${index}`} style={styles.imagePreview}>
+                <Image contentFit="cover" source={{ uri: image.uri }} style={styles.imageThumb} />
+                <Pressable
+                  accessibilityLabel={`删除图片 ${index + 1}`}
+                  accessibilityRole="button"
+                  onPress={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                  style={styles.removeImage}
+                >
+                  <AppIcon color={colors.background} name="close" size={11} />
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        ) : null}
+
+        {showMediaMenu ? (
+          <View style={styles.mediaMenu}>
+            <Pressable
+              accessibilityLabel="拍照"
+              accessibilityRole="button"
+              onPress={() => void addImages('camera')}
+              style={({ pressed }) => [styles.mediaAction, pressed && styles.mediaActionPressed]}
+            >
+              <AppIcon color={colors.primaryStrong} name="camera-outline" size={20} />
+              <Text style={styles.mediaActionText}>拍照</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="从相册选择"
+              accessibilityRole="button"
+              onPress={() => void addImages('library')}
+              style={({ pressed }) => [styles.mediaAction, pressed && styles.mediaActionPressed]}
+            >
+              <AppIcon color={colors.primaryStrong} name="images-outline" size={20} />
+              <Text style={styles.mediaActionText}>相册</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <View style={styles.composer}>
+          <Pressable
+            accessibilityLabel="添加图片"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: thinking || restoring || sending }}
+            disabled={thinking || restoring || sending}
+            onPress={() => setShowMediaMenu((current) => !current)}
+            style={({ pressed }) => [
+              styles.imageButton,
+              showMediaMenu && styles.imageButtonActive,
+              pressed && styles.mediaActionPressed,
+            ]}
+          >
+            <AppIcon
+              color={showMediaMenu ? colors.primaryStrong : colors.textSecondary}
+              name="image-outline"
+              size={21}
+            />
+          </Pressable>
           <TextInput
             accessibilityLabel="输入给 AI 管家的消息"
             editable
             multiline
             onChangeText={setInput}
+            onFocus={() => setShowMediaMenu(false)}
             placeholder={
-              thinking || sending ? '正在回复…' : restoring ? '正在恢复对话…' : '说点什么…'
+              thinking || sending
+                ? '正在处理…'
+                : restoring
+                  ? '正在恢复对话…'
+                  : images.length
+                    ? '补一句想怎么处理…'
+                    : '说点什么…'
             }
             placeholderTextColor={colors.textTertiary}
             style={styles.input}
@@ -545,14 +677,73 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
+  imagePreviews: {
+    paddingBottom: 8,
+    gap: 8,
+  },
+  imagePreview: {
+    width: 58,
+    height: 58,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+  },
+  imageThumb: {
+    width: '100%',
+    height: '100%',
+    borderRadius: radius.sm,
+  },
+  removeImage: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 21,
+    height: 21,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.text,
+  },
+  mediaMenu: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 8,
+  },
+  mediaAction: {
+    minHeight: 42,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: colors.primarySoft,
+  },
+  mediaActionText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    ...typography.label,
+  },
+  mediaActionPressed: {
+    opacity: 0.68,
+  },
   composer: {
     minHeight: 54,
-    paddingHorizontal: 14,
+    paddingLeft: 5,
     paddingRight: 4,
     borderRadius: radius.lg,
     flexDirection: 'row',
     alignItems: 'flex-end',
     backgroundColor: colors.surface,
+  },
+  imageButton: {
+    width: 42,
+    height: 42,
+    marginVertical: 6,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageButtonActive: {
+    backgroundColor: colors.primarySoft,
   },
   input: {
     flex: 1,

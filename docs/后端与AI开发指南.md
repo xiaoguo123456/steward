@@ -512,6 +512,8 @@ Thread 可以归档或软删除。归档只影响默认列表展示，不让待�
 
 默认入口按用户时区的自然日恢复对话。服务端以当天最近一条 `role=user` Message 选择 active Thread；只完成了 Assistant 回复不能改变当天归属。当天没有用户消息时 `GET /assistant/threads/current` 返回 `data: null`，且不创建空 Thread。无标题、未设置 `force_new` 的创建请求复用当天 Thread；`force_new=true` 始终创建新 Thread。用户从历史 Thread 在当天继续发送后，该 Thread 自然成为当天最近使用的对话。
 
+`CreateTurnRequest` 保持纯文字。移动端 AI 对话一旦包含图片，不把媒体塞入 Message 或 Turn，而是按现有上传授权完成 OSS 直传，再创建 `origin=assistant` 的多模态 Capture；Capture Parse 只生成 Candidate，用户确认后仍由 Go Domain 写入正式内容。
+
 ## 8.2 Turn 状态
 
 ```text
@@ -764,7 +766,7 @@ Registry 中的 Capability 必须有：
 
 | 名称 | 公开模块 | 作用 |
 |---|---|---|
-| `tasks.search` | Lists／Objects | 按状态、日期、清单和 Project 查 Task 摘要 |
+| `tasks.search` | Lists／Objects | 按状态、日期、是否无日期、清单和 Project 查 Task 摘要 |
 | `calendar.read` | Lists | 读取服务端确定性日期投影 |
 | `objects.get` | Objects | 获取单个正式 Object 最小摘要 |
 | `records.aggregate` | Trackers | 由 SQL 计算计数、求和、平均和范围 |
@@ -780,7 +782,7 @@ Proposal Capability 只构造建议，不执行写入：
 | 名称 | 结果 |
 |---|---|
 | `tasks.propose_create` | `task_create` Proposal |
-| `tasks.propose_update` | 带 `expected_version` 的 `task_update` Proposal |
+| `tasks.propose_update` | 带 `expected_version` 的 `task_update` Proposal；支持截止日期和 `focus_date`，确认后才执行 |
 | `events.propose_create` | `event_create` Proposal |
 | `objects.propose_delete` | 带影响预览的删除 Proposal |
 | `scheduler.propose_schedule` | 只从 Slot Engine 候选中选择的安排 Proposal |
