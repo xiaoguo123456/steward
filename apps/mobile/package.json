@@ -57,7 +57,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "preview:web": "node scripts/serve-preview.mjs --host 0.0.0.0 --port 4174 --dir dist",
-    "test": "pnpm run test:important-dates && pnpm run test:review && pnpm run test:recipes && pnpm run test:trips && pnpm run test:workouts && pnpm run test:assistant && pnpm run test:notes && pnpm run test:plan && pnpm run test:ui && pnpm run test:auth",
+    "test": "pnpm run test:important-dates && pnpm run test:review && pnpm run test:recipes && pnpm run test:trips && pnpm run test:workouts && pnpm run test:assistant && pnpm run test:calendar && pnpm run test:notes && pnpm run test:plan && pnpm run test:ui && pnpm run test:auth",
     "test:auth": "node --experimental-strip-types --test src/features/auth/phone-code.test.mjs",
     "test:important-dates": "node --experimental-strip-types --test src/features/important-dates/important-date-picker.test.mjs",
     "test:notes": "node --experimental-strip-types --test src/features/notes/note-polish.test.mjs",
@@ -67,6 +67,7 @@
     "test:trips": "node --experimental-strip-types --test src/features/trips/trip-form.test.mjs",
     "test:ui": "node --test src/components/ui/icon-system.test.mjs src/components/ui/filter-chip-system.test.mjs",
     "test:assistant": "node --experimental-strip-types --test src/features/assistant/assistant-markdown-policy.test.mjs src/features/assistant/assistant-thread-session.test.mjs",
+    "test:calendar": "node --experimental-strip-types --test src/features/calendar/calendar-month.test.mjs",
     "test:workouts": "node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs src/features/workouts/workout-voice.test.mjs",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web"
