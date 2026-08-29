@@ -1,0 +1,39 @@
+# 时光移动端原型
+
+## 当前范围
+
+`features/memories` 承载首页“时光”分区的 React Native 原生交互原型，包含：
+
+- 照片主导的月份时间线。
+- 独立月历查找。
+- 1～9 张系统选图、排序、移除、日期与文字编辑。
+- AI 文案 Candidate 的生成、采用与忽略交互。
+- 详情浏览、编辑和整条删除。
+
+每条时光必须至少包含一张图片，不提供纯文字入口。文字为空时仍可保存照片和日期。
+
+## 数据与契约边界
+
+- `MemoryMoment` 是移动端非权威视图模型，不是网络 DTO，也不得与后端长期记忆 `memory_items` 混用。
+- `MemoriesPrototypeProvider` 只在当前 App 进程中保存演示条目和用户本次新增内容；重启后恢复仓库内演示 Fixture。
+- 当前不会上传媒体、调用 AI Provider、写数据库或调用临时时光 API。
+- 文案 Candidate 由确定性本地函数生成，只用于验证“建议—采用—用户保存”的交互，页面明确标注为交互演示。
+- 正式接入前必须先完成 OpenAPI、生成 Client、Go Domain、用户隔离、幂等、媒体来源、重复检测、删除与保留、AI Schema 和 Eval。
+
+## 媒体与隐私
+
+- 相册入口复用已安装的 `expo-image-picker`，只在用户点击后打开系统选择器，限制最多 9 张。
+- 原型不读取未选择媒体，不使用 EXIF 定位，不根据照片位置自动创建足迹。
+- 后续开放拍照时，只能在用户主动点击后申请相机权限。
+- 正式上传或把图片发送给第三方 AI 前，必须更新隐私政策、个人信息／第三方清单、单独同意、撤回删除路径以及应用商店申报。
+
+## 文件
+
+- `memory-model.ts`：纯展示模型、日期分组和本地 Candidate 规则。
+- `memory-picker.ts`：选图转换、去重、九张上限和排序。
+- `memories-context.tsx`：进程内原型状态。
+- `memories-home.tsx`：首页时间线。
+- `memory-moment-row.tsx`、`memory-photo-grid.tsx`：可复用照片与日期组件。
+- `memory-fixtures.ts`：明确标注的本地演示数据。
+
+路由位于 `src/app/memories`：`calendar.tsx`、`new.tsx` 和 `[id].tsx`。

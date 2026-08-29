@@ -1,6 +1,6 @@
 export type HomeTopTabId = 'today' | 'memories' | 'music' | 'footprints' | 'mood';
 
-export type PlannedHomeTopTabId = Exclude<HomeTopTabId, 'today'>;
+export type PlannedHomeTopTabId = Exclude<HomeTopTabId, 'today' | 'memories'>;
 
 export const HOME_TOP_TABS: readonly { id: HomeTopTabId; label: string }[] = [
   { id: 'today', label: '今天' },
@@ -14,10 +14,6 @@ export const HOME_FEATURE_PREVIEWS: Record<
   PlannedHomeTopTabId,
   { title: string; message: string }
 > = {
-  memories: {
-    title: '时光正在准备',
-    message: '以后可以在这里按日期整理主动选择的照片与生活记录；当前不会读取相册。',
-  },
   music: {
     title: '音乐正在准备',
     message: '以后可以在这里生成适合专注、运动和回忆的生活配乐；当前不会播放或生成音频。',

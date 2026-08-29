@@ -15,7 +15,6 @@ const previewIcons: Record<
   PlannedHomeTopTabId,
   ComponentProps<typeof AppIcon>['name']
 > = {
-  memories: 'images-outline',
   music: 'radio',
   footprints: 'map-outline',
   mood: 'leaf-outline',

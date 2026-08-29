@@ -11,6 +11,7 @@ import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import type { HomeTopTabId } from '@/features/home/home-top-navigation';
 import { HomeFeaturePreview, HomeTopTabs } from '@/features/home/home-top-tabs';
+import { MemoriesHome } from '@/features/memories/memories-home';
 import {
   describeReminder,
   usePendingReminders,
@@ -282,6 +283,8 @@ export default function HomeScreen() {
               </View>
             </Pressable>
           </>
+        ) : activeHomeTab === 'memories' ? (
+          <MemoriesHome />
         ) : (
           <HomeFeaturePreview tab={activeHomeTab} />
         )}
