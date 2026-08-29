@@ -12,6 +12,7 @@ import { AiFab } from '@/components/ui/ai-fab';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
+import { SectionTitle } from '@/components/ui/section-title';
 import { ImportantDatesContent } from '@/features/important-dates/important-dates-content';
 import { LedgerContent } from '@/features/ledger/ledger-content';
 import { ReviewContent } from '@/features/review/review-content';
@@ -77,17 +78,6 @@ function isFeatureSlug(value: string): value is FeatureSlug {
   return value in featureMeta;
 }
 
-function SectionTitle({ title, aside }: { title: string; aside?: string }) {
-  return (
-    <View style={styles.sectionHeading}>
-      <Text accessibilityRole="header" style={styles.sectionTitle}>
-        {title}
-      </Text>
-      {aside ? <Text style={styles.sectionAside}>{aside}</Text> : null}
-    </View>
-  );
-}
-
 function LinkRow({
   title,
   meta,
@@ -145,7 +135,11 @@ function MoreContent() {
 
   return (
     <>
-      <SectionTitle aside="按需使用" title="更多功能" />
+      <SectionTitle
+        action={<Text style={styles.sectionAside}>按需使用</Text>}
+        style={styles.moreHeading}
+        title="更多功能"
+      />
       <View style={styles.linkRows}>
         {moreTools.map((tool) => (
           <LinkRow
@@ -299,19 +293,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '500',
   },
-  sectionHeading: {
-    minHeight: 52,
+  moreHeading: {
     marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: '600',
   },
   sectionAside: {
     color: colors.textSecondary,

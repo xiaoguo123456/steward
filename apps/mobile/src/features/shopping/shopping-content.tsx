@@ -21,6 +21,7 @@ import {
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import { StatePanel } from '@/components/ui/state-panel';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 /**
@@ -275,6 +276,7 @@ export function ShoppingContent({
   const editingItem = items.find((item) => item.id === editingItemId);
 
   const totalCount = items.length;
+  const listIsEmpty = totalCount === 0;
   const completedCount = completedItems.length;
   const progress = totalCount === 0 ? 0 : completedCount / totalCount;
   const progressWidth = `${Math.round(progress * 100)}%` as `${number}%`;
@@ -308,9 +310,15 @@ export function ShoppingContent({
       <View style={styles.listStatus}>
         <View style={styles.statusCopy}>
           <Text accessibilityRole="header" style={styles.statusTitle}>
-            {remainingItems.length > 0 ? `待购买 ${remainingItems.length} 项` : '已全部买齐'}
+            {listIsEmpty
+              ? '购物清单'
+              : remainingItems.length > 0
+                ? `待购买 ${remainingItems.length} 项`
+                : '已全部买齐'}
           </Text>
-          <Text style={styles.statusMeta}>已完成 {completedCount} / {totalCount}</Text>
+          <Text style={styles.statusMeta}>
+            {listIsEmpty ? '还没有商品' : `已完成 ${completedCount} / ${totalCount}`}
+          </Text>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -321,9 +329,11 @@ export function ShoppingContent({
           <Text style={styles.recipeActionText}>从食谱添加</Text>
         </Pressable>
       </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: progressWidth }]} />
-      </View>
+      {!listIsEmpty ? (
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: progressWidth }]} />
+        </View>
+      ) : null}
 
       {failure ? <Text style={styles.failureText}>{failure}</Text> : null}
 
@@ -339,11 +349,22 @@ export function ShoppingContent({
             />
           ))}
         </View>
+      ) : listIsEmpty ? (
+        <StatePanel
+          actionLabel="添加第一件商品"
+          compact
+          icon="cart-outline"
+          message="从右上角新增商品，或把食谱食材加入清单。"
+          onAction={() => onCreateVisibleChange(true)}
+          title="购物清单还是空的"
+        />
       ) : (
-        <View style={styles.emptyState}>
-          <AppIcon color={colors.primaryStrong} name="checkmark-circle-outline" size={22} />
-          <Text style={styles.emptyTitle}>清单已完成</Text>
-        </View>
+        <StatePanel
+          compact
+          icon="checkmark-circle-outline"
+          message="需要时可以继续新增，已买到的商品仍保留在下方。"
+          title="今天已全部买齐"
+        />
       )}
 
       {completedItems.length > 0 ? (
@@ -564,22 +585,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 14,
     fontWeight: '600',
-  },
-  emptyState: {
-    minHeight: 72,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
-  },
-  emptyTitle: {
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.bodyStrong,
   },
   completedSection: {
     marginTop: 18,

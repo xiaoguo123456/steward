@@ -11,8 +11,9 @@ export const colors = {
   surface: '#F3F4F6',
   surfaceRaised: '#FFFFFF',
   text: '#1A1D1C',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
+  // 次级与弱提示文字仍需在白色和浅灰表面满足 WCAG AA 小字号对比度。
+  textSecondary: '#526070',
+  textTertiary: '#667085',
   border: '#E5E7EB',
   borderStrong: '#D7DDD9',
   danger: '#D9485F',

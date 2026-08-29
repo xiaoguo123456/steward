@@ -304,6 +304,8 @@ export default function CaptureInputScreen() {
                 </View>
                 <Pressable
                   accessibilityLabel={`删除图片 ${index + 1}`}
+                  accessibilityRole="button"
+                  hitSlop={9}
                   onPress={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                   style={styles.removeImage}
                 >

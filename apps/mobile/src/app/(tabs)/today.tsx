@@ -134,6 +134,7 @@ export default function HomeScreen() {
           action={
             <Pressable
               accessibilityLabel="打开我的"
+              accessibilityRole="button"
               onPress={() => router.push('/me')}
               style={styles.avatar}
             >
@@ -484,8 +485,8 @@ const styles = StyleSheet.create({
     paddingBottom: 92,
   },
   avatar: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
