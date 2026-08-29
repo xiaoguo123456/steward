@@ -147,6 +147,112 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/me/account-deletion/code:
+    post:
+      operationId: requestAccountDeletionCode
+      summary: 向当前账号手机号发送删除重新认证验证码
+      tags:
+        - auth
+      responses:
+        '200':
+          description: 已发送，验证码用途固定为 account_delete_reauth。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneCodeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/me/account-deletion/reauth:
+    post:
+      operationId: reauthenticateAccountDeletion
+      summary: 消费验证码并签发单用途删除凭证
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountDeletionReauthRequest'
+      responses:
+        '200':
+          description: 重新认证成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionReauthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/me/account-deletion:
+    post:
+      operationId: requestAccountDeletion
+      summary: 正式受理账号与数据删除
+      description: |
+        受理事务会消费重新认证凭证、把账号置为 deletion_pending、撤销全部会话、
+        取消未完成异步操作并登记 retention Worker。相同幂等键与相同请求可安全重放，
+        即使账号已进入删除状态也只会返回首次受理结果。
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountDeletionRequest'
+      responses:
+        '202':
+          description: 已受理；普通登录会话立即失效。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/account-deletions/{deletion_request_id}:
+    get:
+      operationId: getAccountDeletionStatus
+      summary: 使用独立凭证查询删除状态
+      tags:
+        - users
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/DeletionRequestId'
+        - $ref: '#/components/parameters/DeletionStatusToken'
+      responses:
+        '200':
+          description: 成功。响应不包含用户 ID、手机号或业务资源引用。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDeletionStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me:
     get:
       operationId: getCurrentUser
@@ -1624,6 +1730,33 @@ paths:
                 $ref: '#/components/schemas/MediaAssetResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/media/{media_id}/upload-grant:
+    post:
+      operationId: renewMediaUploadGrant
+      summary: 为同一个待上传媒体重新签发直传授权
+      description: |
+        仅允许当前用户自己的 pending 资产。客户端恢复离线上传或授权过期时调用，
+        必须复用原 media_id，不得新建第二份资产。
+      tags:
+        - media
+      parameters:
+        - $ref: '#/components/parameters/MediaId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 已重新签发授权。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadGrantResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -3238,6 +3371,11 @@ components:
         - VERIFICATION_CODE_EXPIRED
         - REFRESH_TOKEN_INVALID
         - SMS_PROVIDER_UNAVAILABLE
+        - ACCOUNT_NOT_ACTIVE
+        - REAUTH_TOKEN_INVALID
+        - REAUTH_TOKEN_EXPIRED
+        - ACCOUNT_DELETION_ALREADY_REQUESTED
+        - ACCOUNT_DELETION_STATUS_TOKEN_INVALID
         - TASK_LIST_NAME_DUPLICATED
         - TASK_LIST_NOT_EMPTY
         - TASK_LIST_DEFAULT_REQUIRED
@@ -3434,6 +3572,136 @@ components:
       required:
         - meta
       properties:
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    AccountDeletionReauthRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          pattern: ^[0-9]{6}$
+    AccountDeletionReauthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - reauth_token
+            - expires_at
+          properties:
+            reauth_token:
+              type: string
+              description: 单用途、一次消费的账号删除重新认证凭证。
+            expires_at:
+              type: string
+              format: date-time
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    AccountDeletionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - reauth_token
+        - acknowledgement
+      properties:
+        reauth_token:
+          type: string
+        acknowledgement:
+          type: boolean
+          description: 用户已阅读删除范围、不可恢复影响与备份到期说明。
+    AccountDeletionStatus:
+      type: string
+      enum:
+        - accepted
+        - revoking_sessions
+        - purging_assets
+        - purging_derivatives
+        - purging_primary
+        - completed
+        - failed
+    AccountDeletionAccepted:
+      type: object
+      additionalProperties: false
+      required:
+        - deletion_request_id
+        - status_token
+        - status
+        - accepted_at
+        - backup_expires_at
+      properties:
+        deletion_request_id:
+          type: string
+        status_token:
+          type: string
+          description: 仅用于删除状态查询；客户端必须存入安全存储。
+        status:
+          $ref: '#/components/schemas/AccountDeletionStatus'
+        accepted_at:
+          type: string
+          format: date-time
+        backup_expires_at:
+          type: string
+          format: date-time
+          description: 备份系统预计完成不可恢复清除的最晚时间。
+    AccountDeletionAcceptedResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/AccountDeletionAccepted'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    AccountDeletionStatusRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - deletion_request_id
+        - status
+        - accepted_at
+        - updated_at
+        - backup_expires_at
+      properties:
+        deletion_request_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/AccountDeletionStatus'
+        accepted_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        backup_expires_at:
+          type: string
+          format: date-time
+        public_error:
+          type: string
+          nullable: true
+          description: 仅包含可公开给用户的失败说明，不含内部资源或身份信息。
+    AccountDeletionStatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/AccountDeletionStatusRecord'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     UserResponse:
@@ -5875,6 +6143,17 @@ components:
           type: string
           nullable: true
           description: 客户端计算的 SHA-256，仅用于比对与去重提示。
+    UploadGrantResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/UploadGrant'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
     CaptureOrigin:
       type: string
       description: Capture 入口来源，只影响候选建议，不授权跳过确认。
@@ -8846,6 +9125,21 @@ components:
         type: string
         minLength: 8
         maxLength: 128
+    DeletionRequestId:
+      name: deletion_request_id
+      in: path
+      required: true
+      schema:
+        type: string
+    DeletionStatusToken:
+      name: Deletion-Status-Token
+      in: header
+      required: true
+      description: 删除受理时一次性下发的独立状态凭证，不是登录 Token。
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 256
     TaskListId:
       name: list_id
       in: path

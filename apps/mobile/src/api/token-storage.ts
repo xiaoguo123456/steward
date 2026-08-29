@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 /** 保存在设备上的令牌对。 */
 export type StoredSession = {
+  userId: string;
   accessToken: string;
   refreshToken: string;
   accessExpiresAt: string;
@@ -24,7 +25,11 @@ export async function loadSession(): Promise<StoredSession | null> {
   }
   try {
     const raw = await SecureStore.getItemAsync(KEY);
-    return raw ? (JSON.parse(raw) as StoredSession) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredSession>;
+    return parsed.userId && parsed.accessToken && parsed.refreshToken && parsed.accessExpiresAt
+      ? (parsed as StoredSession)
+      : null;
   } catch {
     // 钥匙串不可用时按未登录处理，不阻断应用启动。
     return null;

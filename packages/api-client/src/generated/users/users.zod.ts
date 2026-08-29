@@ -17,6 +17,70 @@ import * as zod from 'zod';
 
 
 /**
+ * 受理事务会消费重新认证凭证、把账号置为 deletion_pending、撤销全部会话、
+ * 取消未完成异步操作并登记 retention Worker。相同幂等键与相同请求可安全重放，
+ * 即使账号已进入删除状态也只会返回首次受理结果。
+ * @summary 正式受理账号与数据删除
+ */
+export const requestAccountDeletionHeaderIdempotencyKeyMin = 8;
+export const requestAccountDeletionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RequestAccountDeletionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(requestAccountDeletionHeaderIdempotencyKeyMin).max(requestAccountDeletionHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const RequestAccountDeletionBody = zod.object({
+  "reauth_token": zod.string(),
+  "acknowledgement": zod.boolean().describe('用户已阅读删除范围、不可恢复影响与备份到期说明。')
+})
+
+export const RequestAccountDeletionResponse = zod.object({
+  "data": zod.object({
+  "deletion_request_id": zod.string(),
+  "status_token": zod.string().describe('仅用于删除状态查询；客户端必须存入安全存储。'),
+  "status": zod.enum(['accepted', 'revoking_sessions', 'purging_assets', 'purging_derivatives', 'purging_primary', 'completed', 'failed']),
+  "accepted_at": zod.string().datetime({"offset":true}),
+  "backup_expires_at": zod.string().datetime({"offset":true}).describe('备份系统预计完成不可恢复清除的最晚时间。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * @summary 使用独立凭证查询删除状态
+ */
+export const GetAccountDeletionStatusParams = zod.object({
+  "deletion_request_id": zod.string()
+})
+
+export const getAccountDeletionStatusHeaderDeletionStatusTokenMin = 32;
+export const getAccountDeletionStatusHeaderDeletionStatusTokenMax = 256;
+
+
+
+export const GetAccountDeletionStatusHeader = zod.object({
+  "Deletion-Status-Token": zod.string().min(getAccountDeletionStatusHeaderDeletionStatusTokenMin).max(getAccountDeletionStatusHeaderDeletionStatusTokenMax).describe('删除受理时一次性下发的独立状态凭证，不是登录 Token。')
+})
+
+export const GetAccountDeletionStatusResponse = zod.object({
+  "data": zod.object({
+  "deletion_request_id": zod.string(),
+  "status": zod.enum(['accepted', 'revoking_sessions', 'purging_assets', 'purging_derivatives', 'purging_primary', 'completed', 'failed']),
+  "accepted_at": zod.string().datetime({"offset":true}),
+  "updated_at": zod.string().datetime({"offset":true}),
+  "completed_at": zod.string().datetime({"offset":true}).nullish(),
+  "backup_expires_at": zod.string().datetime({"offset":true}),
+  "public_error": zod.string().nullish().describe('仅包含可公开给用户的失败说明，不含内部资源或身份信息。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
  * @summary 读取当前用户资料
  */
 export const GetCurrentUserResponse = zod.object({

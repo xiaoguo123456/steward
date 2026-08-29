@@ -31,6 +31,7 @@ export const ListMoodJournalEntriesQueryParams = zod.object({
   "to": zod.string().date().optional(),
   "q": zod.string().optional()
 })
+
 export const listMoodJournalEntriesResponseDataItemContentBlocksItemIdMax = 80;
 
 export const listMoodJournalEntriesResponseDataItemContentBlocksItemRunsItemTextMax = 12000;
@@ -94,7 +95,6 @@ export const ListMoodJournalEntriesResponse = zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
 }).describe('所有成功响应共有的元信息。')
 })
-
 /**
  * @summary 新建心情日记
  */

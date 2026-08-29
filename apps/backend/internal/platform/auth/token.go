@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -35,6 +36,34 @@ func (s *TokenService) AccessTTL() time.Duration { return s.accessTTL }
 
 // RefreshTTL 返回 Refresh Token 有效期。
 func (s *TokenService) RefreshTTL() time.Duration { return s.refreshTTL }
+
+// DeriveDeletionStatusToken 从删除请求 ID 派生独立的高熵状态凭证。
+//
+// 数据库只保存其哈希；相同 request_id 可以在删除受理幂等重放时重新得到
+// 完全相同的明文，避免把可直接使用的状态凭证另存一份密文。
+func (s *TokenService) DeriveDeletionStatusToken(requestID string) string {
+	mac := hmac.New(sha256.New, s.secret)
+	_, _ = mac.Write([]byte("account-deletion-status:v1:" + requestID))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+// DeriveDeletionReauthToken 从账号和幂等键派生单用途重新认证凭证。
+//
+// 这样网络丢包后的同键重放可以返回同一明文，而数据库仍只保存哈希；
+// 幂等键不能跨账号复用，领域隔离字符串也避免与状态凭证混用。
+func (s *TokenService) DeriveDeletionReauthToken(userID, idempotencyKey string) string {
+	mac := hmac.New(sha256.New, s.secret)
+	_, _ = mac.Write([]byte("account-deletion-reauth:v1:" + userID + ":" + idempotencyKey))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+// DeriveDeletionUserFingerprint 生成只用于删除受理重放的不可逆账号指纹。
+// 主用户记录物理删除后，状态镜像仍可据此精确恢复首次受理响应。
+func (s *TokenService) DeriveDeletionUserFingerprint(userID string) []byte {
+	mac := hmac.New(sha256.New, s.secret)
+	_, _ = mac.Write([]byte("account-deletion-user-fingerprint:v1:" + userID))
+	return mac.Sum(nil)
+}
 
 // IssueAccessToken 为用户签发 Access Token。
 func (s *TokenService) IssueAccessToken(userID string, now time.Time) (string, time.Time, error) {

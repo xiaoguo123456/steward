@@ -54,6 +54,12 @@
           "photosPermission": "从相册选图，识别其中的文字帮你整理成任务、日程或账单。",
           "cameraPermission": "拍下小票或屏幕截图，识别其中的文字帮你整理。"
         }
+      ],
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
       ]
     ],
     "experiments": {

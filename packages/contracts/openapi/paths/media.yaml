@@ -110,3 +110,30 @@ Complete:
         $ref: '../components/responses.yaml#/Conflict'
       '500':
         $ref: '../components/responses.yaml#/InternalError'
+
+Regrant:
+  post:
+    operationId: renewMediaUploadGrant
+    summary: 为同一个待上传媒体重新签发直传授权
+    description: |
+      仅允许当前用户自己的 pending 资产。客户端恢复离线上传或授权过期时调用，
+      必须复用原 media_id，不得新建第二份资产。
+    tags: [media]
+    parameters:
+      - $ref: '../components/parameters.yaml#/MediaId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 已重新签发授权。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/media.yaml#/UploadGrantResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

@@ -31,6 +31,11 @@ const (
 	CodeCodeExpired            Code = "VERIFICATION_CODE_EXPIRED"
 	CodeRefreshTokenInvalid    Code = "REFRESH_TOKEN_INVALID"
 	CodeSMSProviderUnavailable Code = "SMS_PROVIDER_UNAVAILABLE"
+	CodeAccountNotActive       Code = "ACCOUNT_NOT_ACTIVE"
+	CodeReauthTokenInvalid     Code = "REAUTH_TOKEN_INVALID"
+	CodeReauthTokenExpired     Code = "REAUTH_TOKEN_EXPIRED"
+	CodeDeletionAlreadyReq     Code = "ACCOUNT_DELETION_ALREADY_REQUESTED"
+	CodeDeletionStatusInvalid  Code = "ACCOUNT_DELETION_STATUS_TOKEN_INVALID"
 
 	CodeTaskListNameDuplicated Code = "TASK_LIST_NAME_DUPLICATED"
 	CodeTaskListNotEmpty       Code = "TASK_LIST_NOT_EMPTY"
@@ -142,7 +147,8 @@ func As(err error) (*Error, bool) {
 // HTTPStatus 返回错误码对应的 HTTP 状态码。
 func (e *Error) HTTPStatus() int {
 	switch e.Code {
-	case CodeUnauthenticated, CodeRefreshTokenInvalid:
+	case CodeUnauthenticated, CodeRefreshTokenInvalid, CodeAccountNotActive,
+		CodeDeletionStatusInvalid:
 		return http.StatusUnauthorized
 	case CodePermissionDenied, CodeAISuggestionDisabled:
 		return http.StatusForbidden
@@ -153,7 +159,7 @@ func (e *Error) HTTPStatus() int {
 		CodeTaskStatusInvalid, CodeProjectHasOpenTasks, CodeObjectAlreadyDeleted,
 		CodeCaptureAlreadyConfirm, CodeCaptureRevisionStale, CodeCaptureQuestionResolved,
 		CodeAIProposalStale, CodeAIProposalExpired, CodeAIProposalResolved,
-		CodeAITurnCancelled, CodePhoneInUse:
+		CodeAITurnCancelled, CodePhoneInUse, CodeDeletionAlreadyReq:
 		return http.StatusConflict
 	case CodeRateLimited, CodeAIProviderRateLimited:
 		return http.StatusTooManyRequests
@@ -222,6 +228,16 @@ func defaultMessage(code Code) string {
 		return "登录状态已失效，请重新登录。"
 	case CodeSMSProviderUnavailable:
 		return "短信发送暂时不可用，请稍后重试。"
+	case CodeAccountNotActive:
+		return "账号当前不可登录，请查看账号状态。"
+	case CodeReauthTokenInvalid:
+		return "账号删除验证已失效，请重新验证。"
+	case CodeReauthTokenExpired:
+		return "账号删除验证已过期，请重新获取验证码。"
+	case CodeDeletionAlreadyReq:
+		return "账号删除已经受理，请查看处理进度。"
+	case CodeDeletionStatusInvalid:
+		return "删除状态凭证无效，请使用受理时保存的凭证。"
 	case CodeTaskListNameDuplicated:
 		return "已有同名清单，请换一个名称。"
 	case CodeTaskListNotEmpty:

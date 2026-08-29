@@ -1,0 +1,118 @@
+# 账号删除重新认证、受理与独立状态查询。
+
+AccountDeletionReauthRequest:
+  type: object
+  additionalProperties: false
+  required: [code]
+  properties:
+    code:
+      type: string
+      pattern: '^[0-9]{6}$'
+
+AccountDeletionReauthResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: object
+      additionalProperties: false
+      required: [reauth_token, expires_at]
+      properties:
+        reauth_token:
+          type: string
+          description: 单用途、一次消费的账号删除重新认证凭证。
+        expires_at:
+          type: string
+          format: date-time
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+AccountDeletionRequest:
+  type: object
+  additionalProperties: false
+  required: [reauth_token, acknowledgement]
+  properties:
+    reauth_token:
+      type: string
+    acknowledgement:
+      type: boolean
+      description: 用户已阅读删除范围、不可恢复影响与备份到期说明。
+
+AccountDeletionAccepted:
+  type: object
+  additionalProperties: false
+  required: [deletion_request_id, status_token, status, accepted_at, backup_expires_at]
+  properties:
+    deletion_request_id:
+      type: string
+    status_token:
+      type: string
+      description: 仅用于删除状态查询；客户端必须存入安全存储。
+    status:
+      $ref: '#/AccountDeletionStatus'
+    accepted_at:
+      type: string
+      format: date-time
+    backup_expires_at:
+      type: string
+      format: date-time
+      description: 备份系统预计完成不可恢复清除的最晚时间。
+
+AccountDeletionAcceptedResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/AccountDeletionAccepted'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+AccountDeletionStatus:
+  type: string
+  enum:
+    - accepted
+    - revoking_sessions
+    - purging_assets
+    - purging_derivatives
+    - purging_primary
+    - completed
+    - failed
+
+AccountDeletionStatusRecord:
+  type: object
+  additionalProperties: false
+  required: [deletion_request_id, status, accepted_at, updated_at, backup_expires_at]
+  properties:
+    deletion_request_id:
+      type: string
+    status:
+      $ref: '#/AccountDeletionStatus'
+    accepted_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time
+      nullable: true
+    backup_expires_at:
+      type: string
+      format: date-time
+    public_error:
+      type: string
+      nullable: true
+      description: 仅包含可公开给用户的失败说明，不含内部资源或身份信息。
+
+AccountDeletionStatusResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/AccountDeletionStatusRecord'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

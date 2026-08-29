@@ -107,3 +107,49 @@ export const LogoutResponse = zod.object({
 }).describe('所有成功响应共有的元信息。')
 })
 
+/**
+ * @summary 向当前账号手机号发送删除重新认证验证码
+ */
+export const requestAccountDeletionCodeResponseDataDevCodeRegExp = new RegExp('^[0-9]{6}$');
+
+
+export const RequestAccountDeletionCodeResponse = zod.object({
+  "data": zod.object({
+  "expires_in_seconds": zod.number().int().describe('验证码有效期。'),
+  "resend_after_seconds": zod.number().int().describe('允许再次发送前需要等待的秒数。'),
+  "dev_code": zod.string().regex(requestAccountDeletionCodeResponseDataDevCodeRegExp).nullish().describe('仅在本地或测试环境返回的固定验证码，生产环境恒为 null。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * @summary 消费验证码并签发单用途删除凭证
+ */
+export const reauthenticateAccountDeletionHeaderIdempotencyKeyMin = 8;
+export const reauthenticateAccountDeletionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ReauthenticateAccountDeletionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(reauthenticateAccountDeletionHeaderIdempotencyKeyMin).max(reauthenticateAccountDeletionHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const reauthenticateAccountDeletionBodyCodeRegExp = new RegExp('^[0-9]{6}$');
+
+
+export const ReauthenticateAccountDeletionBody = zod.object({
+  "code": zod.string().regex(reauthenticateAccountDeletionBodyCodeRegExp)
+})
+
+export const ReauthenticateAccountDeletionResponse = zod.object({
+  "data": zod.object({
+  "reauth_token": zod.string().describe('单用途、一次消费的账号删除重新认证凭证。'),
+  "expires_at": zod.string().datetime({"offset":true})
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+

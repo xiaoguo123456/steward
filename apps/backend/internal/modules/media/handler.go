@@ -21,7 +21,7 @@ func (h *MediaAPI) CreateUploadGrants(ctx context.Context, req httpapi.CreateUpl
 	if err != nil {
 		return nil, err
 	}
-	grants, err := h.svc.CreateGrants(ctx, userID, req.Body.Items)
+	grants, err := h.svc.CreateGrants(ctx, userID, req.Params.IdempotencyKey, req.Body.Items)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +66,30 @@ func (h *MediaAPI) CompleteMediaUpload(ctx context.Context, req httpapi.Complete
 		return nil, err
 	}
 	return httpapi.CompleteMediaUpload200JSONResponse{Data: mapAsset(asset), Meta: httpx.Meta(ctx)}, nil
+}
+
+// RenewMediaUploadGrant 为已有待上传媒体重新签发授权。
+func (h *MediaAPI) RenewMediaUploadGrant(ctx context.Context,
+	req httpapi.RenewMediaUploadGrantRequestObject,
+) (httpapi.RenewMediaUploadGrantResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	grant, err := h.svc.RenewGrant(ctx, userID, req.MediaId)
+	if err != nil {
+		return nil, err
+	}
+	headers := grant.Upload.Headers
+	maxBytes := grant.MaxBytes
+	return httpapi.RenewMediaUploadGrant200JSONResponse{
+		Data: httpapi.UploadGrant{
+			MediaId: grant.MediaID, UploadUrl: grant.Upload.URL,
+			Method: httpapi.UploadGrantMethod(grant.Upload.Method), Headers: &headers,
+			MaxBytes: &maxBytes, ExpiresAt: grant.Upload.ExpiresAt,
+		},
+		Meta: httpx.Meta(ctx),
+	}, nil
 }
 
 // DeleteMediaAsset 删除媒体资产。

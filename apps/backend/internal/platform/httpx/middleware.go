@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -54,7 +55,7 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 				w.Header().Set("Vary", "Origin")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Allow-Headers",
-					"Authorization, Content-Type, Idempotency-Key, If-Match")
+					"Authorization, Content-Type, Idempotency-Key, If-Match, Deletion-Status-Token")
 				w.Header().Set("Access-Control-Allow-Methods",
 					"GET, POST, PATCH, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id, ETag")
@@ -72,10 +73,12 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 // AuthMiddleware 校验 Bearer Token 并把用户 ID 写入上下文。
 //
 // 客户端自报的任何身份信息都被忽略：用户 ID 只来自服务端验证过的令牌。
-func AuthMiddleware(tokens *auth.TokenService) func(http.Handler) http.Handler {
+type AccountStateChecker func(context.Context, string) (bool, error)
+
+func AuthMiddleware(tokens *auth.TokenService, accountActive AccountStateChecker) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if isPublicPath(r.URL.Path) {
+			if isPublicRequest(r) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -90,6 +93,17 @@ func AuthMiddleware(tokens *auth.TokenService) func(http.Handler) http.Handler {
 			if err != nil {
 				WriteError(w, r, apperr.New(apperr.CodeUnauthenticated))
 				return
+			}
+			if !bypassAccountStateCheck(r) && accountActive != nil {
+				active, err := accountActive(r.Context(), userID)
+				if err != nil {
+					WriteError(w, r, apperr.Internal(err))
+					return
+				}
+				if !active {
+					WriteError(w, r, apperr.New(apperr.CodeAccountNotActive))
+					return
+				}
 			}
 
 			ctx := WithUserID(r.Context(), userID)
@@ -120,7 +134,8 @@ func RecovererMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-func isPublicPath(path string) bool {
+func isPublicRequest(r *http.Request) bool {
+	path := r.URL.Path
 	if slices.Contains(publicPaths, path) {
 		return true
 	}
@@ -129,7 +144,16 @@ func isPublicPath(path string) bool {
 			return true
 		}
 	}
+	if r.Method == http.MethodGet && strings.HasPrefix(path, "/v1/account-deletions/") {
+		return true
+	}
 	return false
+}
+
+// 删除提交允许同一个尚未过期的 Access Token 做严格幂等重放；
+// 它仍需要有效 JWT，且只放行这一条路径，不恢复任何普通账号权限。
+func bypassAccountStateCheck(r *http.Request) bool {
+	return r.Method == http.MethodPost && r.URL.Path == "/v1/me/account-deletion"
 }
 
 // WriteError 按契约结构输出错误响应。

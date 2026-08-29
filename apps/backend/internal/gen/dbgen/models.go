@@ -10,6 +10,42 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AccountDeletionReauthToken struct {
+	ID             string
+	UserID         string
+	IdempotencyKey string
+	RequestHash    []byte
+	TokenHash      []byte
+	ExpiresAt      time.Time
+	ConsumedAt     *time.Time
+	CreatedAt      time.Time
+}
+
+type AccountDeletionRequest struct {
+	ID              string
+	UserID          string
+	IdempotencyKey  string
+	RequestHash     []byte
+	Status          string
+	AcceptedAt      time.Time
+	BackupExpiresAt time.Time
+	UpdatedAt       time.Time
+}
+
+type AccountDeletionStatusRecord struct {
+	RequestID          string
+	ReplayUserHash     []byte
+	IdempotencyKeyHash []byte
+	RequestHash        []byte
+	StatusTokenHash    []byte
+	Status             string
+	AcceptedAt         time.Time
+	UpdatedAt          time.Time
+	CompletedAt        *time.Time
+	BackupExpiresAt    time.Time
+	PublicError        *string
+}
+
 type ActionProposal struct {
 	ID                    string
 	UserID                string

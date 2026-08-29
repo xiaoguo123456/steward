@@ -1,3 +1,6 @@
+extends:
+  - minimal
+
 apis:
   public:
     root: openapi/openapi.yaml

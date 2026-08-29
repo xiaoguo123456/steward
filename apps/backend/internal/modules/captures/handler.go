@@ -22,7 +22,7 @@ func (h *CaptureAPI) CreateCapture(ctx context.Context, req httpapi.CreateCaptur
 	if err != nil {
 		return nil, err
 	}
-	result, err := h.svc.Create(ctx, userID, *req.Body)
+	result, err := h.svc.Create(ctx, userID, req.Params.IdempotencyKey, *req.Body)
 	if err != nil {
 		return nil, err
 	}

@@ -149,3 +149,35 @@ export const CompleteMediaUploadResponse = zod.object({
 }).describe('所有成功响应共有的元信息。')
 })
 
+/**
+ * 仅允许当前用户自己的 pending 资产。客户端恢复离线上传或授权过期时调用，
+ * 必须复用原 media_id，不得新建第二份资产。
+ * @summary 为同一个待上传媒体重新签发直传授权
+ */
+export const RenewMediaUploadGrantParams = zod.object({
+  "media_id": zod.string()
+})
+
+export const renewMediaUploadGrantHeaderIdempotencyKeyMin = 8;
+export const renewMediaUploadGrantHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RenewMediaUploadGrantHeader = zod.object({
+  "Idempotency-Key": zod.string().min(renewMediaUploadGrantHeaderIdempotencyKeyMin).max(renewMediaUploadGrantHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const RenewMediaUploadGrantResponse = zod.object({
+  "data": zod.object({
+  "media_id": zod.string(),
+  "upload_url": zod.string().describe('短期直传地址。客户端按 method 发送字节并带上 headers 即可，\n不需要知道背后是哪家对象存储。该地址不得写入日志或分享。\n'),
+  "method": zod.enum(['PUT', 'POST']),
+  "headers": zod.record(zod.string(), zod.string()).optional().describe('上传时必须原样携带的请求头，其中 Content-Type 参与签名。'),
+  "max_bytes": zod.number().int().optional().describe('该类型允许的最大字节数，超出时上传会被拒绝。'),
+  "expires_at": zod.string().datetime({"offset":true}).describe('过期后需要重新申请授权，但仍复用同一个 media_id。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+

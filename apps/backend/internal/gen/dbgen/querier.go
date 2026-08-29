@@ -10,6 +10,8 @@ import (
 )
 
 type Querier interface {
+	// 同一用户、端点和幂等键的并发请求串行化，避免先创建资源、后写幂等记录时产生重复数据。
+	AcquireIdempotencyLock(ctx context.Context, lockKey string) error
 	AdminClearBudget(ctx context.Context, userID string) error
 	// AI 口径。
 	//
@@ -75,10 +77,12 @@ type Querier interface {
 	AnswerCaptureQuestion(ctx context.Context, arg AnswerCaptureQuestionParams) (CaptureQuestion, error)
 	BumpCaptureRevision(ctx context.Context, arg BumpCaptureRevisionParams) (Capture, error)
 	CancelTurn(ctx context.Context, id string) (AssistantTurn, error)
+	CancelUserOperationsForDeletion(ctx context.Context, userID string) error
 	ClearProjectFromEvents(ctx context.Context, projectID *string) error
 	ClearProjectFromNotes(ctx context.Context, projectID *string) error
 	ClearProjectFromRecords(ctx context.Context, projectID *string) error
 	ClearProjectFromTasks(ctx context.Context, projectID *string) error
+	ConsumeAccountDeletionReauthToken(ctx context.Context, id string) error
 	ConsumeVerificationCode(ctx context.Context, id string) error
 	// 追加说明后生成新 revision 时，保留原有输入项并复用其处理结果。
 	CopyCapturePartsToRevision(ctx context.Context, arg CopyCapturePartsToRevisionParams) error
@@ -100,6 +104,10 @@ type Querier interface {
 	CountTaskLists(ctx context.Context) (int32, error)
 	CountTasksByProject(ctx context.Context, projectID *string) (CountTasksByProjectRow, error)
 	CountTasksInList(ctx context.Context, listID string) (int32, error)
+	// 账号删除事务内查询；Worker 跨用户路径只调用迁移中的固定 SECURITY DEFINER 函数。
+	CreateAccountDeletionReauthToken(ctx context.Context, arg CreateAccountDeletionReauthTokenParams) (AccountDeletionReauthToken, error)
+	CreateAccountDeletionRequest(ctx context.Context, arg CreateAccountDeletionRequestParams) (AccountDeletionRequest, error)
+	CreateAccountDeletionStatusRecord(ctx context.Context, arg CreateAccountDeletionStatusRecordParams) (AccountDeletionStatusRecord, error)
 	CreateActivityBatch(ctx context.Context, arg CreateActivityBatchParams) (ActivityBatch, error)
 	CreateActivityEntry(ctx context.Context, arg CreateActivityEntryParams) (ActivityEntry, error)
 	// 后台管理的查询。
@@ -178,6 +186,11 @@ type Querier interface {
 	FindUploadedMediaByHash(ctx context.Context, contentHash *string) (MediaAsset, error)
 	FinishAggregationRun(ctx context.Context, arg FinishAggregationRunParams) error
 	FinishTurn(ctx context.Context, arg FinishTurnParams) (AssistantTurn, error)
+	GetAccountDeletionReauthTokenByIdempotency(ctx context.Context, arg GetAccountDeletionReauthTokenByIdempotencyParams) (AccountDeletionReauthToken, error)
+	GetAccountDeletionReauthTokenForUpdate(ctx context.Context, tokenHash []byte) (AccountDeletionReauthToken, error)
+	GetAccountDeletionReplayByKey(ctx context.Context, arg GetAccountDeletionReplayByKeyParams) (AccountDeletionStatusRecord, error)
+	GetAccountDeletionRequestByUser(ctx context.Context, userID string) (AccountDeletionRequest, error)
+	GetAccountDeletionStatusByToken(ctx context.Context, arg GetAccountDeletionStatusByTokenParams) (AccountDeletionStatusRecord, error)
 	GetActiveMemoryByKey(ctx context.Context, memoryKey string) (MemoryItem, error)
 	GetActiveShoppingTaskList(ctx context.Context, userID string) (TaskList, error)
 	GetActivityBatch(ctx context.Context, id string) (ActivityBatch, error)
@@ -348,6 +361,7 @@ type Querier interface {
 	MarkProposalExecuted(ctx context.Context, arg MarkProposalExecutedParams) (ActionProposal, error)
 	// 用于 rejected、stale、expired、failed 等终态。
 	MarkProposalResolved(ctx context.Context, arg MarkProposalResolvedParams) (ActionProposal, error)
+	MarkUserDeletionPending(ctx context.Context, id string) error
 	MarkUserInitialized(ctx context.Context, id string) error
 	MoveTasksToList(ctx context.Context, arg MoveTasksToListParams) error
 	// 日表跟着索引走：索引里没有的用户，日报也留不住。
@@ -445,6 +459,7 @@ type Querier interface {
 	// 「已经不存在的人」删掉——一次临时故障能删掉一批真实用户的索引。
 	TouchUserIndex(ctx context.Context, userID string) error
 	UnfavoriteRecipe(ctx context.Context, recipeID string) error
+	UpdateAccountDeletionStatus(ctx context.Context, arg UpdateAccountDeletionStatusParams) error
 	UpdateAiSettings(ctx context.Context, arg UpdateAiSettingsParams) (UserAiSetting, error)
 	UpdateCapturePartResult(ctx context.Context, arg UpdateCapturePartResultParams) error
 	UpdateCaptureStatus(ctx context.Context, arg UpdateCaptureStatusParams) (Capture, error)

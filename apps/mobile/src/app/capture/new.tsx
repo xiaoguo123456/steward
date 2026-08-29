@@ -1,12 +1,11 @@
 import {
-  createCapture,
   errorMessage,
-  type CreateCaptureRequest,
 } from '@steward/api-client';
+import NetInfo from '@react-native-community/netinfo';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   Linking,
@@ -22,8 +21,22 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { useImagePicker } from '@/features/capture/use-media-picker';
-import { useMediaUpload, type LocalMedia } from '@/features/capture/use-media-upload';
+import {
+  deleteCaptureDraft,
+  getCaptureDraft,
+  persistDraftMedia,
+  saveCaptureDraft,
+} from '@/features/capture/capture-draft-store';
+import {
+  createCaptureDraft,
+  draftSummary as summarizeDraft,
+  type CaptureDraft,
+  type CaptureDraftPart,
+} from '@/features/capture/capture-draft-model';
+import { processCaptureDraft } from '@/features/capture/capture-upload-queue';
+import type { LocalMedia } from '@/features/capture/use-media-upload';
 import { useVoiceRecorder } from '@/features/capture/use-voice-recorder';
+import { session } from '@/api/session';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type InputMode = 'text' | 'voice';
@@ -68,15 +81,15 @@ function VoiceWaveform({ active = false, compact = false, level = 0.5 }: {
 
 export default function CaptureInputScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ intent?: string; projectId?: string }>();
+  const params = useLocalSearchParams<{ intent?: string; projectId?: string; draftId?: string }>();
   const isTripIntent = params.intent === 'trip';
   const isTripItemIntent = params.intent === 'trip_item';
   const isLedgerIntent = params.intent === 'ledger';
   const [mode, setMode] = useState<InputMode>(isLedgerIntent ? 'text' : 'voice');
   const [text, setText] = useState('');
   // 图片与录音只保存在本地，用户明确发送后才上传。
-  const [images, setImages] = useState<LocalMedia[]>([]);
-  const [audio, setAudio] = useState<LocalMedia | null>(null);
+  const [images, setImages] = useState<CaptureDraftPart[]>([]);
+  const [audio, setAudio] = useState<CaptureDraftPart | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [showMediaMenu, setShowMediaMenu] = useState(isLedgerIntent);
   const [showClosePrompt, setShowClosePrompt] = useState(false);
@@ -85,31 +98,89 @@ export default function CaptureInputScreen() {
   const [finishingRecording, setFinishingRecording] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<CaptureDraft | null>(null);
+  const hydrated = useRef(false);
+  const everHadContent = useRef(false);
+
+  const snapshot = useCallback((status: CaptureDraft['status']): CaptureDraft => {
+    if (!draft) throw new Error('草稿尚未初始化');
+    return {
+      ...draft,
+      status,
+      mode,
+      text,
+      audioDuration: audioDuration ?? undefined,
+      parts: [...images, ...(audio ? [audio] : [])].map((part, position) => ({
+        ...part,
+        position,
+      })),
+      error: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+  }, [audio, audioDuration, draft, images, mode, text]);
+
+  const persistMedia = useCallback(async (
+    item: LocalMedia,
+    position: number,
+  ): Promise<CaptureDraftPart> => {
+    if (!draft) throw new Error('草稿尚未初始化');
+    return persistDraftMedia(draft.accountId, draft.id, item, position);
+  }, [draft]);
 
   const picker = useImagePicker();
   const recorder = useVoiceRecorder({
     maxDurationSeconds: MAX_RECORDING_SECONDS,
     onMaxDuration: (file, durationSeconds) => {
-      setAudio(file);
-      setAudioDuration(durationSeconds);
+      void persistMedia(file, images.length).then((saved) => {
+        setAudio(saved);
+        setAudioDuration(durationSeconds);
+      }).catch(() => setSubmitError('录音没能保存到草稿，请重新录制。'));
     },
   });
-  const media = useMediaUpload();
   const audioPlayer = useAudioPlayer(audio?.uri ?? null, { updateInterval: 100 });
   const playback = useAudioPlayerStatus(audioPlayer);
 
   const hasContent = Boolean(text.trim() || images.length || audio);
-  const canSend = hasContent && !recorder.active && !finishingRecording && !submitting;
+  const canSend = Boolean(draft) && hasContent && !recorder.active && !finishingRecording && !submitting;
   const remainingSeconds = MAX_RECORDING_SECONDS - recorder.durationSeconds;
   const recordingLevel = Math.max(0, Math.min(1, (recorder.metering + 60) / 60));
 
-  const draftSummary = useMemo(() => {
-    if (text.trim()) return text.trim();
-    if (audioDuration) return `语音输入 ${formatDuration(audioDuration)}`;
-    return `${images.length} 张图片`;
-  }, [audioDuration, images.length, text]);
-
   const failure = submitError ?? picker.error ?? (recorder.permissionDenied ? null : recorder.error);
+
+  useEffect(() => {
+    const accountId = session.userId();
+    if (!accountId) return;
+    let cancelled = false;
+    void (async () => {
+      const existing = params.draftId
+        ? await getCaptureDraft(accountId, params.draftId)
+        : null;
+      const initial = existing ?? createCaptureDraft(accountId, {
+        mode: isLedgerIntent ? 'text' : 'voice',
+        intent: params.intent,
+        projectId: params.projectId,
+      });
+      if (cancelled) return;
+      setDraft(initial);
+      setMode(initial.mode);
+      setText(initial.text);
+      setImages(initial.parts.filter((part) => part.kind === 'image'));
+      setAudio(initial.parts.find((part) => part.kind === 'audio') ?? null);
+      setAudioDuration(initial.audioDuration ?? null);
+      everHadContent.current = Boolean(initial.text.trim() || initial.parts.length);
+      hydrated.current = true;
+    })().catch(() => setSubmitError('草稿暂时无法打开，请稍后重试。'));
+    return () => { cancelled = true; };
+  }, [isLedgerIntent, params.draftId, params.intent, params.projectId]);
+
+  useEffect(() => {
+    if (hasContent) everHadContent.current = true;
+    if (!hydrated.current || !draft || (!hasContent && !everHadContent.current) || submitting) return;
+    const timer = setTimeout(() => {
+      void saveCaptureDraft(draft.accountId, snapshot('editing'));
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [draft, hasContent, snapshot, submitting]);
 
   const stopPlayback = useCallback(async () => {
     audioPlayer.pause();
@@ -121,11 +192,17 @@ export default function CaptureInputScreen() {
     setFinishingRecording(true);
     const seconds = Math.max(1, recorder.durationSeconds);
     const file = await recorder.stop();
-    if (file) {
-      setAudio(file);
-      setAudioDuration(seconds);
+    try {
+      if (file) {
+        const saved = await persistMedia(file, images.length);
+        setAudio(saved);
+        setAudioDuration(seconds);
+      }
+    } catch {
+      setSubmitError('录音没能保存到草稿，请重新录制。');
+    } finally {
+      setFinishingRecording(false);
     }
-    setFinishingRecording(false);
   };
 
   const close = async () => {
@@ -139,6 +216,7 @@ export default function CaptureInputScreen() {
       setShowClosePrompt(true);
       return;
     }
+    if (draft) await deleteCaptureDraft(draft.accountId, draft.id);
     router.back();
   };
 
@@ -147,7 +225,16 @@ export default function CaptureInputScreen() {
     setSubmitError(null);
     const picked = await picker.pick(source);
     // 上限 9 张：再多的话一次 Capture 要处理的内容已经超出「记一件事」了。
-    setImages((current) => [...current, ...picked].slice(0, 9));
+    try {
+      const available = Math.max(0, 9 - images.length);
+      const saved: CaptureDraftPart[] = [];
+      for (const [index, item] of picked.slice(0, available).entries()) {
+        saved.push(await persistMedia(item, images.length + index));
+      }
+      setImages((current) => [...current, ...saved].slice(0, 9));
+    } catch {
+      setSubmitError('图片没能保存到草稿，请重新选择。');
+    }
   };
 
   const requestMode = (nextMode: InputMode) => {
@@ -229,51 +316,26 @@ export default function CaptureInputScreen() {
     Keyboard.dismiss();
     audioPlayer.pause();
 
-    const content = text.trim();
     setSubmitError(null);
     setSubmitting(true);
     try {
-      // 先把媒体传上去：Capture 只能引用已经确认上传的资产。
-      const files = [...images, ...(audio ? [audio] : [])];
-      const uploaded = await media.upload(files);
-
-      // parts 的顺序就是用户看到的顺序，服务端按 position 保留它。
-      const parts: CreateCaptureRequest['parts'] = [];
-      if (isTripIntent) {
-        parts.push({
-          kind: 'text',
-          text: content ? `创建行程：${content}` : '创建行程。',
-        });
-      } else if (isLedgerIntent) {
-        parts.push({
-          kind: 'text',
-          text: content
-            ? `请整理为记账记录：${content}`
-            : '请识别票据，并整理为需要我确认的记账记录。',
-        });
-      } else if (content) {
-        parts.push({ kind: 'text', text: content });
+      if (!draft) throw new Error('草稿尚未初始化');
+      const network = await NetInfo.fetch();
+      const online = network.isConnected === true && network.isInternetReachable !== false;
+      const queued = snapshot(online ? 'ready_for_upload' : 'waiting_for_network');
+      await saveCaptureDraft(draft.accountId, queued);
+      setDraft(queued);
+      if (!online) {
+        router.replace('/settings/captures');
+        return;
       }
-      for (const item of uploaded) {
-        parts.push({ kind: item.kind, media_id: item.mediaId });
-      }
-
-      const response = await createCapture({
-        origin: isTripIntent || isTripItemIntent
-          ? 'project_manager'
-          : isLedgerIntent
-            ? 'tracker'
-            : 'home',
-        parts,
-        suggested_project_id: isTripItemIntent ? params.projectId : undefined,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
+      const submitted = await processCaptureDraft(draft.accountId, draft.id);
       router.replace({
         pathname: '/capture/processing',
         params: {
-          captureId: response.data.resource_id ?? '',
-          operationId: response.data.operation_id,
-          draft: draftSummary,
+          captureId: submitted.captureId ?? '',
+          operationId: submitted.operationId ?? '',
+          draft: summarizeDraft(submitted),
           intent: isTripIntent
             ? 'trip'
             : isTripItemIntent
@@ -285,7 +347,13 @@ export default function CaptureInputScreen() {
         },
       });
     } catch (error) {
-      setSubmitError(errorMessage(error, '提交失败，请稍后重试。'));
+      const network = await NetInfo.fetch().catch(() => null);
+      if (draft && network?.isConnected === false) {
+        const waiting = snapshot('waiting_for_network');
+        await saveCaptureDraft(draft.accountId, waiting);
+        setDraft(waiting);
+      }
+      setSubmitError(errorMessage(error, '提交未完成，已保留在“最近输入”中。'));
     } finally {
       setSubmitting(false);
     }
@@ -531,7 +599,7 @@ export default function CaptureInputScreen() {
           {hasContent ? (
             <AppButton
               disabled={!canSend}
-              label={submitting || media.uploading ? '正在提交…' : '发送并整理'}
+              label={submitting ? '正在提交…' : '发送并整理'}
               onPress={() => void submit()}
             />
           ) : null}
@@ -542,12 +610,21 @@ export default function CaptureInputScreen() {
         <View style={styles.confirmOverlay}>
           <Pressable onPress={() => setShowClosePrompt(false)} style={styles.confirmBackdrop} />
           <View style={styles.confirmSheet}>
-            <Text style={styles.confirmTitle}>放弃这次输入？</Text>
-            <Text style={styles.confirmCopy}>返回后，尚未发送的文字、图片和录音不会保留。</Text>
+            <Text style={styles.confirmTitle}>保留这次输入？</Text>
+            <Text style={styles.confirmCopy}>可以保存为仅当前账号可见的设备草稿，稍后继续。</Text>
+            <AppButton
+              label="保存草稿并返回"
+              onPress={async () => {
+                if (!draft) return;
+                await saveCaptureDraft(draft.accountId, snapshot('editing'));
+                router.back();
+              }}
+            />
             <AppButton
               label="放弃并返回"
-              onPress={() => {
+              onPress={async () => {
                 if (recorder.active) void recorder.discard();
+                if (draft) await deleteCaptureDraft(draft.accountId, draft.id);
                 router.back();
               }}
               variant="danger"

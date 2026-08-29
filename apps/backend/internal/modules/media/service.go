@@ -6,6 +6,7 @@ package media
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
+	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage"
@@ -81,13 +83,25 @@ type Grant struct {
 	MaxBytes int64
 }
 
+type createGrantsReplay struct {
+	MediaIDs []string `json:"media_ids"`
+}
+
 // CreateGrants 为每个媒体项分配对象键与直传授权。
-func (s *Service) CreateGrants(ctx context.Context, userID string,
+func (s *Service) CreateGrants(ctx context.Context, userID, idempotencyKey string,
 	items []httpapi.UploadGrantRequestItem) ([]Grant, error) {
 
 	if len(items) == 0 {
 		return nil, apperr.Validation(apperr.Field("items", "至少需要一个媒体项。"))
 	}
+	if strings.TrimSpace(idempotencyKey) == "" {
+		return nil, apperr.New(apperr.CodeIdempotencyKeyReq)
+	}
+	rawItems, err := json.Marshal(items)
+	if err != nil {
+		return nil, apperr.Internal(err)
+	}
+	requestHash := authpkg.HashToken(string(rawItems))
 
 	// 先在事务外完成全部校验与键生成，事务内只做插入。
 	type prepared struct {
@@ -129,15 +143,55 @@ func (s *Service) CreateGrants(ctx context.Context, userID string,
 		})
 	}
 
-	var out []Grant
-	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		for _, plan := range plans {
-			if _, err := q.CreateMediaAsset(ctx, dbgen.CreateMediaAssetParams{
-				ID: plan.mediaID, UserID: userID, ObjectKey: plan.key,
-				Kind: plan.kind, ContentType: plan.contentType,
-			}); err != nil {
+	var persisted []dbgen.MediaAsset
+	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if err := q.AcquireIdempotencyLock(ctx,
+			"media.upload-grants:"+userID+":"+idempotencyKey); err != nil {
+			return apperr.Internal(err)
+		}
+		replayed, err := q.GetIdempotencyRecord(ctx, dbgen.GetIdempotencyRecordParams{
+			UserID: userID, Endpoint: "media.upload-grants", Key: idempotencyKey,
+		})
+		if err == nil {
+			if subtle.ConstantTimeCompare(replayed.RequestHash, requestHash) != 1 {
+				return apperr.New(apperr.CodeIdempotencyReused)
+			}
+			var snapshot createGrantsReplay
+			if err := json.Unmarshal(replayed.ResponseBody, &snapshot); err != nil {
 				return apperr.Internal(err)
 			}
+			for _, mediaID := range snapshot.MediaIDs {
+				asset, err := q.GetMediaAsset(ctx, mediaID)
+				if err != nil {
+					return apperr.Internal(err)
+				}
+				persisted = append(persisted, asset)
+			}
+			return nil
+		}
+		if !database.IsNoRows(err) {
+			return apperr.Internal(err)
+		}
+		for _, plan := range plans {
+			asset, err := q.CreateMediaAsset(ctx, dbgen.CreateMediaAssetParams{
+				ID: plan.mediaID, UserID: userID, ObjectKey: plan.key,
+				Kind: plan.kind, ContentType: plan.contentType,
+			})
+			if err != nil {
+				return apperr.Internal(err)
+			}
+			persisted = append(persisted, asset)
+		}
+		snapshot, err := json.Marshal(createGrantsReplay{MediaIDs: mediaIDs(persisted)})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		if err := q.SaveIdempotencyRecord(ctx, dbgen.SaveIdempotencyRecordParams{
+			UserID: userID, Endpoint: "media.upload-grants", Key: idempotencyKey,
+			RequestHash: requestHash, StatusCode: 201, ResponseBody: snapshot,
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		}); err != nil {
+			return apperr.Internal(err)
 		}
 		return nil
 	})
@@ -146,14 +200,57 @@ func (s *Service) CreateGrants(ctx context.Context, userID string,
 	}
 
 	// 签名不落库也不进事务：它是一次性的传输凭证，随时可以重新生成。
-	for _, plan := range plans {
-		grant, err := s.store.PresignUpload(ctx, plan.key, plan.contentType, uploadTTL)
+	var out []Grant
+	for _, asset := range persisted {
+		grant, err := s.store.PresignUpload(ctx, asset.ObjectKey, asset.ContentType, uploadTTL)
 		if err != nil {
 			return nil, apperr.Internal(err)
 		}
-		out = append(out, Grant{MediaID: plan.mediaID, Upload: grant, MaxBytes: plan.maxBytes})
+		out = append(out, Grant{MediaID: asset.ID, Upload: grant,
+			MaxBytes: storage.MaxBytesFor(asset.ContentType)})
 	}
 	return out, nil
+}
+
+func mediaIDs(assets []dbgen.MediaAsset) []string {
+	ids := make([]string, 0, len(assets))
+	for _, asset := range assets {
+		ids = append(ids, asset.ID)
+	}
+	return ids
+}
+
+// RenewGrant 为同一个 pending 媒体重新签发直传授权。
+// 签名地址从不落库；恢复离线队列时只持久化 media_id，再按需调用这里。
+func (s *Service) RenewGrant(ctx context.Context, userID, mediaID string) (Grant, error) {
+	var row dbgen.MediaAsset
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		found, err := q.GetMediaAsset(ctx, mediaID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return apperr.NotFound("媒体文件")
+			}
+			return apperr.Internal(err)
+		}
+		if found.UserID != userID || found.DeletedAt != nil {
+			return apperr.NotFound("媒体文件")
+		}
+		if found.Status != "pending" {
+			return apperr.Newf(apperr.CodeVersionConflict,
+				"媒体文件当前状态为 %s，不能重新签发上传授权。", found.Status)
+		}
+		row = found
+		return nil
+	})
+	if err != nil {
+		return Grant{}, err
+	}
+	grant, err := s.store.PresignUpload(ctx, row.ObjectKey, row.ContentType, uploadTTL)
+	if err != nil {
+		return Grant{}, apperr.Internal(err)
+	}
+	return Grant{MediaID: row.ID, Upload: grant,
+		MaxBytes: storage.MaxBytesFor(row.ContentType)}, nil
 }
 
 // Asset 是媒体资产及其短期只读地址。

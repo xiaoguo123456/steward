@@ -9,6 +9,10 @@ test('公开 H5 跟随当前环境域名且路径固定', () => {
     'https://test-steward.qhzhiyin.com/legal/privacy/',
   );
   assert.equal(
+    buildPublicPageUrl('https://steward.qhzhiyin.com', publicPagePaths.accountDeletion),
+    'https://steward.qhzhiyin.com/account-deletion',
+  );
+  assert.equal(
     buildPublicPageUrl('https://steward.qhzhiyin.com', publicPagePaths.support),
     'https://steward.qhzhiyin.com/support/',
   );

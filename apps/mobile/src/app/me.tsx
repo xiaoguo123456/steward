@@ -29,6 +29,11 @@ import {
 } from '@/features/account/use-account';
 import { openPublicPage } from '@/features/legal/open-public-page';
 import { publicPagePaths, type PublicPagePath } from '@/features/legal/public-pages';
+import {
+  deleteAccountCaptureDrafts,
+  listCaptureDrafts,
+} from '@/features/capture/capture-draft-store';
+import { session } from '@/api/session';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 /**
@@ -46,6 +51,7 @@ export default function MeScreen() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [deviceDraftCount, setDeviceDraftCount] = useState(0);
 
   const openPage = (path: PublicPagePath) => {
     void openPublicPage(path).catch(() => {
@@ -114,6 +120,12 @@ export default function MeScreen() {
           偏好
         </Text>
         <FlatListGroup>
+		  <FlatListRow
+			icon="time-outline"
+			onPress={() => router.push('/settings/captures')}
+			subtitle="设备草稿与离线上传队列"
+			title="最近输入"
+		  />
           <FlatListRow
             icon="time-outline"
             onPress={() => router.push('/settings/preferences')}
@@ -152,7 +164,7 @@ export default function MeScreen() {
           />
           <FlatListRow
             icon="trash-outline"
-            onPress={() => openPage(publicPagePaths.accountDeletion)}
+			onPress={() => router.push('/account-deletion')}
             showDivider={false}
             subtitle="查看删除范围、处理步骤与当前开放状态"
             title="账号与数据删除"
@@ -198,7 +210,14 @@ export default function MeScreen() {
           <AppButton
             disabled={actions.busy}
             label="退出登录"
-            onPress={() => setConfirmingSignOut(true)}
+			onPress={() => {
+			  const accountId = session.userId();
+			  if (!accountId) return;
+			  void listCaptureDrafts(accountId).then((drafts) => {
+				setDeviceDraftCount(drafts.filter((draft) => draft.status !== 'submitted').length);
+				setConfirmingSignOut(true);
+			  });
+			}}
             variant="danger"
           />
         </View>
@@ -312,12 +331,14 @@ export default function MeScreen() {
                 退出登录？
               </Text>
               <Text style={styles.sheetCopy}>
-                退出后需要重新用手机号登录。你的内容保存在服务端，不会被删除。
+				{deviceDraftCount > 0
+				  ? `这台设备还有 ${deviceDraftCount} 条未提交输入。你可以为当前账号保留，或在退出时一并删除。其他账号无法看到这些草稿。`
+				  : '退出后需要重新用手机号登录。服务端内容不会被删除。'}
               </Text>
               <View style={styles.sheetActions}>
                 <AppButton
                   disabled={actions.busy}
-                  label={actions.busy ? '正在退出…' : '退出登录'}
+				  label={actions.busy ? '正在退出…' : deviceDraftCount > 0 ? '保留草稿并退出' : '退出登录'}
                   onPress={async () => {
                     await actions.signOut();
                     setConfirmingSignOut(false);
@@ -325,6 +346,20 @@ export default function MeScreen() {
                   }}
                   variant="danger"
                 />
+				{deviceDraftCount > 0 ? (
+				  <AppButton
+					disabled={actions.busy}
+					label="删除设备草稿并退出"
+					onPress={async () => {
+					  const accountId = session.userId();
+					  if (accountId) await deleteAccountCaptureDrafts(accountId);
+					  await actions.signOut();
+					  setConfirmingSignOut(false);
+					  router.replace('/');
+					}}
+					variant="danger"
+				  />
+				) : null}
                 <AppButton
                   disabled={actions.busy}
                   label="取消"

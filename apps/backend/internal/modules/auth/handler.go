@@ -129,3 +129,44 @@ func (h *SessionAPI) RequestCurrentPhoneCode(ctx context.Context,
 	}
 	return resp, nil
 }
+
+// RequestAccountDeletionCode 发送账号删除重新认证验证码。
+func (h *SessionAPI) RequestAccountDeletionCode(ctx context.Context,
+	_ httpapi.RequestAccountDeletionCodeRequestObject,
+) (httpapi.RequestAccountDeletionCodeResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := h.svc.RequestAccountDeletionCode(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	resp := httpapi.RequestAccountDeletionCode200JSONResponse{Meta: httpx.Meta(ctx)}
+	resp.Data.ExpiresInSeconds = result.ExpiresInSeconds
+	resp.Data.ResendAfterSeconds = result.ResendAfterSeconds
+	if result.DevCode != "" {
+		resp.Data.DevCode = &result.DevCode
+	}
+	return resp, nil
+}
+
+// ReauthenticateAccountDeletion 签发一次性删除凭证。
+func (h *SessionAPI) ReauthenticateAccountDeletion(ctx context.Context,
+	req httpapi.ReauthenticateAccountDeletionRequestObject,
+) (httpapi.ReauthenticateAccountDeletionResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	token, expiresAt, err := h.svc.ReauthenticateAccountDeletion(
+		ctx, userID, req.Params.IdempotencyKey, req.Body.Code,
+	)
+	if err != nil {
+		return nil, err
+	}
+	resp := httpapi.ReauthenticateAccountDeletion200JSONResponse{Meta: httpx.Meta(ctx)}
+	resp.Data.ReauthToken = token
+	resp.Data.ExpiresAt = expiresAt
+	return resp, nil
+}

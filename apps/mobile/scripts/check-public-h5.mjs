@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultPublicRoot = path.resolve(scriptDirectory, '../public');
+const functionalDeletionRoute = path.resolve(scriptDirectory, '../src/app/account-deletion.tsx');
 
 export const requiredPublicPages = [
   'legal/index.html',
@@ -45,7 +46,7 @@ export function validateHtmlSource(relativePath, source, { production = false } 
     errors.push(`${relativePath}：公开纯内容页不得读取会话或调用用户 API`);
   }
   if (relativePath === 'legal/account-deletion/index.html' && /<form[\s>]/i.test(source)) {
-    errors.push(`${relativePath}：正式删除契约未实现前不得放置静态申请表单`);
+    errors.push(`${relativePath}：公开说明页不得放置申请表单，删除操作只能进入生成 Client 的功能路由`);
   }
   if (source.length < 900) {
     errors.push(`${relativePath}：正文过短，疑似空白或占位壳页`);
@@ -89,6 +90,23 @@ export async function validatePublicH5({
     blockers.push(...result.blockers);
   }
 
+  try {
+	const route = await readFile(functionalDeletionRoute, 'utf8');
+	for (const symbol of [
+	  'requestAccountDeletionCode',
+	  'reauthenticateAccountDeletion',
+	  'requestAccountDeletion',
+	  'getAccountDeletionStatus',
+	]) {
+	  if (!route.includes(symbol)) errors.push(`account-deletion.tsx：缺少正式生成 Client 调用 ${symbol}`);
+	}
+	if (/fetch\s*\(\s*["'`]\/v1\//.test(route)) {
+	  errors.push('account-deletion.tsx：功能型 H5 不得手写 /v1 URL');
+	}
+  } catch {
+	errors.push('account-deletion.tsx：缺少功能型账号删除 H5 路由');
+  }
+
   return { errors, blockers };
 }
 
@@ -107,7 +125,7 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  console.log(`公开 H5 ${mode} 校验通过：${requiredPublicPages.length} 个固定页面可读取。`);
+  console.log(`公开 H5 ${mode} 校验通过：${requiredPublicPages.length} 个固定页面与账号删除功能路由可读取。`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

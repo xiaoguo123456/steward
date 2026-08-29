@@ -60,6 +60,8 @@ const (
 	PrefixMealPlan         = "mpl"
 	PrefixMealPlanEntry    = "mpe"
 	PrefixReminderDismiss  = "rdm"
+	PrefixDeletionReauth   = "dra"
+	PrefixDeletionRequest  = "drq"
 )
 
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)

@@ -6,6 +6,7 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"regexp"
 	"strings"
@@ -33,6 +34,10 @@ const (
 	// 与登录分开是有意的：登录码不能拿来换绑，否则一个骗到登录码的人
 	// 就能顺手把号码换走。限流口径也因此各算各的。
 	purposeChangePhone = "change_phone"
+	// purposeAccountDeleteReauth 是账号删除的独立验证码用途。
+	purposeAccountDeleteReauth = "account_delete_reauth"
+	// deletionReauthTTL 是单用途删除凭证有效期。
+	deletionReauthTTL = 10 * time.Minute
 )
 
 var phonePattern = regexp.MustCompile(`^1[3-9][0-9]{9}$`)
@@ -227,6 +232,9 @@ func (s *Service) Login(ctx context.Context, phone, code, timezone string) (Logi
 		existing, err := s.findUserByPhone(ctx, tx, phone)
 		switch {
 		case err == nil:
+			if existing.AccountStatus != "active" {
+				return apperr.New(apperr.CodeAccountNotActive)
+			}
 			userID = existing.ID
 			result.User = toUserRow(existing)
 		case isNoRows(err):
@@ -369,15 +377,106 @@ func (s *Service) Logout(ctx context.Context, userID string) error {
 // toUserRow 把登录路径的最小用户信息转换成通用用户行。
 func toUserRow(u UserRecord) dbgen.User {
 	return dbgen.User{
-		ID:          u.ID,
-		Phone:       u.Phone,
-		DisplayName: u.DisplayName,
-		AvatarUrl:   u.AvatarURL,
-		Timezone:    u.Timezone,
-		Initialized: u.Initialized,
-		CreatedAt:   u.CreatedAt,
-		UpdatedAt:   u.UpdatedAt,
+		ID:            u.ID,
+		Phone:         u.Phone,
+		DisplayName:   u.DisplayName,
+		AvatarUrl:     u.AvatarURL,
+		Timezone:      u.Timezone,
+		Initialized:   u.Initialized,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+		AccountStatus: u.AccountStatus,
 	}
+}
+
+// RequestAccountDeletionCode 给当前绑定手机号发送删除重新认证验证码。
+func (s *Service) RequestAccountDeletionCode(ctx context.Context, userID string) (CodeResult, error) {
+	var phone string
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		row, err := q.GetUser(ctx, userID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return apperr.New(apperr.CodeAccountNotActive)
+			}
+			return apperr.Internal(err)
+		}
+		if row.AccountStatus != "active" {
+			return apperr.New(apperr.CodeAccountNotActive)
+		}
+		phone = row.Phone
+		return nil
+	})
+	if err != nil {
+		return CodeResult{}, err
+	}
+	return s.RequestCode(ctx, phone, purposeAccountDeleteReauth)
+}
+
+// ReauthenticateAccountDeletion 消费验证码并签发一次性删除凭证。
+func (s *Service) ReauthenticateAccountDeletion(
+	ctx context.Context, userID, idempotencyKey, code string,
+) (string, time.Time, error) {
+	if strings.TrimSpace(idempotencyKey) == "" {
+		return "", time.Time{}, apperr.New(apperr.CodeIdempotencyKeyReq)
+	}
+	now := time.Now()
+	plain := s.tokens.DeriveDeletionReauthToken(userID, idempotencyKey)
+	hash := auth.HashToken(plain)
+	requestHash := auth.HashToken(code)
+	expiresAt := now.Add(deletionReauthTTL)
+
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if err := q.AcquireIdempotencyLock(ctx,
+			"account-deletion.reauth:"+userID+":"+idempotencyKey); err != nil {
+			return apperr.Internal(err)
+		}
+		replayed, err := q.GetAccountDeletionReauthTokenByIdempotency(ctx,
+			dbgen.GetAccountDeletionReauthTokenByIdempotencyParams{
+				UserID: userID, IdempotencyKey: idempotencyKey,
+			})
+		if err == nil {
+			if subtle.ConstantTimeCompare(replayed.RequestHash, requestHash) != 1 {
+				return apperr.New(apperr.CodeIdempotencyReused)
+			}
+			if now.After(replayed.ExpiresAt) {
+				return apperr.New(apperr.CodeReauthTokenExpired)
+			}
+			expiresAt = replayed.ExpiresAt
+			return nil
+		}
+		if !database.IsNoRows(err) {
+			return apperr.Internal(err)
+		}
+		row, err := q.GetUser(ctx, userID)
+		if err != nil || row.AccountStatus != "active" {
+			return apperr.New(apperr.CodeAccountNotActive)
+		}
+		if err := consumeCode(ctx, q, row.Phone, purposeAccountDeleteReauth, code, now); err != nil {
+			return err
+		}
+		_, err = q.CreateAccountDeletionReauthToken(ctx, dbgen.CreateAccountDeletionReauthTokenParams{
+			ID: idgen.New(idgen.PrefixDeletionReauth), UserID: userID,
+			IdempotencyKey: idempotencyKey, RequestHash: requestHash,
+			TokenHash: hash, ExpiresAt: expiresAt,
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return plain, expiresAt, nil
+}
+
+// AccountActive 为无状态 Access Token 补一层实时账号状态检查。
+func (s *Service) AccountActive(ctx context.Context, userID string) (bool, error) {
+	var active bool
+	err := s.withAnonymousTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT auth_account_is_active($1)`, userID).Scan(&active)
+	})
+	return active, err
 }
 
 // defaultDisplayName 用手机号后四位生成初始昵称，用户可以随时修改。

@@ -23,6 +23,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/moodjournal"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/recipes"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/retention"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/users"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/views"
@@ -51,6 +52,7 @@ import (
 type Server struct {
 	*authmod.SessionAPI
 	*users.ProfileAPI
+	*retention.AccountDeletionAPI
 	*lists.ListAPI
 	*objects.ObjectAPI
 	*trackers.TrackerAPI
@@ -83,6 +85,8 @@ type App struct {
 	Assistant     *assistant.Service
 	Stream        streams.Transport
 	StreamLimiter *streams.Limiter
+	// AccountActive 为无状态 Access Token 补充实时账号状态检查。
+	AccountActive func(context.Context, string) (bool, error)
 	// LocalStore 只在使用本地存储时非空，供路由挂载传输端点。
 	LocalStore *localfs.Store
 }
@@ -134,6 +138,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	// Capture 需要队列才能入队，而队列的 Worker 又需要 Capture 服务。
 	// 用一个延迟绑定的入队器打破这个循环，绑定发生在任何请求到达之前。
 	enqueuer := &lazyEnqueuer{}
+	retentionEnqueuer := &lazyRetentionEnqueuer{}
 	trackersSvc.WithJobs(enqueuer)
 	listsSvc.WithJobs(enqueuer)
 	// Provider 同时实现解析与媒体处理时把它接上；fake 只做解析，媒体处理为空，
@@ -184,6 +189,8 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		assistantSvc = assistantSvc.WithStream(stream)
 	}
 	viewsSvc.WithNarrative(chat, enqueuer, auditor, logger)
+	retentionSvc := retention.New(db, store, tokens, retentionEnqueuer,
+		cfg.AccountDeletionBackupRetention)
 
 	runtime, err := jobs.New(db.Pool, jobs.Deps{
 		Captures:  capturesSvc,
@@ -191,6 +198,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		Views:     viewsSvc,
 		Trackers:  trackersSvc,
 		Lists:     listsSvc,
+		Retention: retentionSvc,
 		Aggregate: aggregateSvc,
 	}, logger, opts.RunWorkers)
 	if err != nil {
@@ -198,6 +206,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		return nil, err
 	}
 	enqueuer.inner = runtime.Enqueuer
+	retentionEnqueuer.inner = runtime.Enqueuer
 
 	authSvc := authmod.New(db, tokens, usersSvc, cfg.DevSMSCode, codeSender)
 
@@ -207,14 +216,15 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		DB:     db,
 		Tokens: tokens,
 		Server: &Server{
-			SessionAPI: authmod.NewSessionAPI(authSvc),
-			ProfileAPI: users.NewProfileAPI(usersSvc),
-			ListAPI:    lists.NewListAPI(listsSvc),
-			ObjectAPI:  objects.NewObjectAPI(objectsSvc),
-			TrackerAPI: trackers.NewTrackerAPI(trackersSvc),
-			ViewAPI:    views.NewViewAPI(viewsSvc),
-			CaptureAPI: captures.NewCaptureAPI(capturesSvc),
-			MediaAPI:   media.NewMediaAPI(mediaSvc),
+			SessionAPI:         authmod.NewSessionAPI(authSvc),
+			ProfileAPI:         users.NewProfileAPI(usersSvc),
+			AccountDeletionAPI: retention.NewAccountDeletionAPI(retentionSvc),
+			ListAPI:            lists.NewListAPI(listsSvc),
+			ObjectAPI:          objects.NewObjectAPI(objectsSvc),
+			TrackerAPI:         trackers.NewTrackerAPI(trackersSvc),
+			ViewAPI:            views.NewViewAPI(viewsSvc),
+			CaptureAPI:         captures.NewCaptureAPI(capturesSvc),
+			MediaAPI:           media.NewMediaAPI(mediaSvc),
 			// 撤销必须回到拥有资源的模块执行，Activity 自己不改别人的表。
 			ActivityAPI:  activity.NewActivityAPI(activitySvc, objectsSvc, trackersSvc),
 			AssistantAPI: assistant.NewAssistantAPI(assistantSvc, proposalSvc),
@@ -230,6 +240,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		Assistant:     assistantSvc,
 		Stream:        stream,
 		StreamLimiter: streams.NewLimiter(streamLimit),
+		AccountActive: authSvc.AccountActive,
 	}, nil
 }
 
@@ -342,6 +353,20 @@ func newStreamTransport(ctx context.Context, cfg config.Config, db *database.DB,
 // 说明组装顺序出了问题，此时必须明确报错而不是静默丢弃任务。
 type lazyEnqueuer struct {
 	inner *jobs.Enqueuer
+}
+
+// lazyRetentionEnqueuer 解决 Retention Service 与 Worker Runtime 的组装环。
+type lazyRetentionEnqueuer struct {
+	inner *jobs.Enqueuer
+}
+
+func (l *lazyRetentionEnqueuer) EnqueueAccountDeletion(
+	ctx context.Context, q *dbgen.Queries, args retention.AccountDeletionArgs,
+) error {
+	if l.inner == nil {
+		return fmt.Errorf("任务队列尚未初始化，无法登记账号删除任务")
+	}
+	return l.inner.EnqueueAccountDeletion(ctx, q, args)
 }
 
 func (l *lazyEnqueuer) EnqueueCaptureParse(ctx context.Context, q *dbgen.Queries, args captures.CaptureParseArgs) error {

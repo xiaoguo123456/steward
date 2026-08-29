@@ -64,6 +64,10 @@ ORDER BY batch_id, position, id;
 SELECT * FROM idempotency_keys
 WHERE user_id = sqlc.arg(user_id) AND endpoint = sqlc.arg(endpoint) AND key = sqlc.arg(key);
 
+-- name: AcquireIdempotencyLock :exec
+-- 同一用户、端点和幂等键的并发请求串行化，避免先创建资源、后写幂等记录时产生重复数据。
+SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(lock_key), 0));
+
 -- name: SaveIdempotencyRecord :exec
 INSERT INTO idempotency_keys (
     user_id, endpoint, key, request_hash, status_code, response_body, resource_id, expires_at

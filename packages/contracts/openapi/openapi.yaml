@@ -63,6 +63,14 @@ paths:
     $ref: './paths/auth.yaml#/Refresh'
   /v1/auth/logout:
     $ref: './paths/auth.yaml#/Logout'
+  /v1/me/account-deletion/code:
+    $ref: './paths/account-deletion.yaml#/ReauthCode'
+  /v1/me/account-deletion/reauth:
+    $ref: './paths/account-deletion.yaml#/Reauth'
+  /v1/me/account-deletion:
+    $ref: './paths/account-deletion.yaml#/RequestDeletion'
+  /v1/account-deletions/{deletion_request_id}:
+    $ref: './paths/account-deletion.yaml#/Status'
 
   /v1/me:
     $ref: './paths/users.yaml#/Me'
@@ -122,6 +130,8 @@ paths:
     $ref: './paths/media.yaml#/Item'
   /v1/media/{media_id}/complete:
     $ref: './paths/media.yaml#/Complete'
+  /v1/media/{media_id}/upload-grant:
+    $ref: './paths/media.yaml#/Regrant'
 
   /v1/captures:
     $ref: './paths/captures.yaml#/Collection'

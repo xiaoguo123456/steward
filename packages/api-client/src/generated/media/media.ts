@@ -43,7 +43,8 @@ import type {
   MutationResponse,
   NotFoundResponse,
   TooManyRequestsResponse,
-  UnauthorizedResponse
+  UnauthorizedResponse,
+  UploadGrantResponse
 } from '../model';
 
 import { stewardFetch } from '../../http/fetcher';
@@ -384,4 +385,76 @@ export const useCompleteMediaUpload = <TError = BadRequestResponse | Unauthorize
         TContext
       > => {
       return useMutation(getCompleteMediaUploadMutationOptions(options), queryClient);
+    }
+    export const getRenewMediaUploadGrantUrl = (mediaId: string,) => {
+
+
+
+
+  return `/v1/media/${mediaId}/upload-grant`
+}
+
+/**
+ * 仅允许当前用户自己的 pending 资产。客户端恢复离线上传或授权过期时调用，
+ * 必须复用原 media_id，不得新建第二份资产。
+ * @summary 为同一个待上传媒体重新签发直传授权
+ */
+export const renewMediaUploadGrant = async (mediaId: string, options?: Parameters<typeof stewardFetch>[1]): Promise<UploadGrantResponse> => {
+
+  return stewardFetch<UploadGrantResponse>(getRenewMediaUploadGrantUrl(mediaId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRenewMediaUploadGrantMutationOptions = <TError = UnauthorizedResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renewMediaUploadGrant>>, TError,{mediaId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof renewMediaUploadGrant>>, TError,{mediaId: string}, TContext> => {
+
+const mutationKey = ['renewMediaUploadGrant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof renewMediaUploadGrant>>, {mediaId: string}> = (props) => {
+          const {mediaId} = props ?? {};
+
+          return  renewMediaUploadGrant(mediaId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RenewMediaUploadGrantMutationResult = NonNullable<Awaited<ReturnType<typeof renewMediaUploadGrant>>>
+
+    export type RenewMediaUploadGrantMutationError = UnauthorizedResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse
+
+    /**
+ * @summary 为同一个待上传媒体重新签发直传授权
+ */
+export const useRenewMediaUploadGrant = <TError = UnauthorizedResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renewMediaUploadGrant>>, TError,{mediaId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof renewMediaUploadGrant>>,
+        TError,
+        {mediaId: string},
+        TContext
+      > => {
+      return useMutation(getRenewMediaUploadGrantMutationOptions(options), queryClient);
     }

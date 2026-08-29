@@ -13,12 +13,12 @@
     <main class="page">
       <p class="eyebrow">Account Deletion</p><h1>账号与数据删除</h1>
       <p class="lead">账号删除是不可逆的高影响操作，需要正式身份核验、幂等受理、会话撤销和可恢复的删除状态机。</p>
-      <div class="meta"><span>能力状态：结构已完成，提交链路未开放</span><span>更新日期：2026-08-29</span></div>
-      <aside class="release-blocker" data-release-blocker="true"><strong>账号删除申请尚未开放，禁止生产发布</strong><p>当前页面不提供静态表单，也不会声称已受理请求。必须先完成 App 内删除路径、公开 Web 验证与正式 OpenAPI，生产门禁才可解除。</p></aside>
+      <div class="meta"><span>能力状态：技术链路已完成，法务信息仍阻断生产发布</span><span>更新日期：2026-08-29</span></div>
+      <aside class="release-blocker" data-release-blocker="true"><strong>正式运营与备份政策仍待确认，禁止生产发布</strong><p>账号删除的 OpenAPI、手机号重新认证、会话撤销、后台清理与独立状态查询已经接通；运营主体、人工支持渠道和备份期限必须由负责人确认后，生产门禁才可解除。</p></aside>
       <section class="section"><h2>计划删除的范围</h2><ul><li>全部普通会话、业务数据、媒体、提醒、通知、缓存和可重建派生产物。</li><li>Assistant、Memory、Proposal、Embedding 和 Provider 侧可删除状态。</li><li>只保留法律或安全确需的最小不可逆审计，以及明确的加密备份到期边界。</li></ul></section>
-      <section class="section"><h2>计划处理流程</h2><ol><li>用户通过 App 或公开 Web 进行手机号验证码与单用途再次验证。</li><li>明确确认删除范围后，以幂等请求创建 deletion request；成功受理才撤销全部普通会话。</li><li>状态依次推进为撤销会话、清理主数据、媒体和派生产物，最终完成或返回可安全公开的失败状态。</li><li>用户使用一次性状态凭证查询进度；凭证不得进入 URL、日志或普通 API。</li></ol></section>
-      <section class="section"><h2>当前可做什么</h2><p>正式申请渠道、身份核验方式、处理期限和人工支持路径：<span class="todo">待确认并实现</span>。在能力完成前，请不要通过本页提交手机号或其他个人信息。</p><p class="note">本页没有表单是有意的安全边界：静态页面不能手写平行接口或把一封未确认能送达的邮件包装成“账号已申请删除”。</p></section>
+      <section class="section"><h2>处理流程</h2><ol><li>用户通过 App 或公开 Web 进行手机号验证码登录与单用途再次验证。</li><li>明确确认删除范围后，以幂等请求创建 deletion request；成功受理后立即撤销全部普通会话。</li><li>状态依次推进为撤销会话、清理媒体、派生数据与在线主库，最终完成或返回可安全公开的失败状态。</li><li>用户使用一次性状态凭证查询进度；凭证不会进入 URL、日志或普通 API。</li></ol></section>
+      <section class="section"><h2>开始申请</h2><p><a class="button-link" href="../../account-deletion">进入账号删除验证与申请</a></p><p class="note">申请页由与 App 相同的生成 API Client 驱动；本说明页不手写表单、不直接拼接内部接口。</p></section>
     </main>
-    <footer class="site-footer"><div class="site-footer__inner"><p><a href="../../support/">帮助与联系我们</a> · <a href="../privacy/">查看隐私政策</a></p><p>正式受理渠道：<span class="todo">待确认</span></p></div></footer>
+    <footer class="site-footer"><div class="site-footer__inner"><p><a href="../../support/">帮助与联系我们</a> · <a href="../privacy/">查看隐私政策</a></p><p>人工支持渠道：<span class="todo">待确认</span></p></div></footer>
   </body>
 </html>

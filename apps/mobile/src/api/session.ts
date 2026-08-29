@@ -30,8 +30,15 @@ class SessionStore {
     return this.session?.accessToken ?? null;
   }
 
-  async signIn(tokens: TokenPair): Promise<void> {
+  userId(): string | null {
+    return this.session?.userId ?? null;
+  }
+
+  async signIn(tokens: TokenPair, userId?: string): Promise<void> {
+    const resolvedUserId = userId ?? this.session?.userId;
+    if (!resolvedUserId) throw new Error('保存登录态前必须确定用户 ID');
     this.session = {
+      userId: resolvedUserId,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       accessExpiresAt: tokens.access_expires_at,
@@ -68,7 +75,7 @@ class SessionStore {
     this.refreshing = (async () => {
       try {
         const response = await refreshToken({ refresh_token: this.session!.refreshToken });
-        await this.signIn(response.data);
+        await this.signIn(response.data, this.session!.userId);
         return true;
       } catch {
         // 刷新失败说明登录态确实失效了，清理后由 UI 跳回登录页。

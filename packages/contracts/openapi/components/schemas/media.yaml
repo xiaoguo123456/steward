@@ -87,6 +87,16 @@ CreateUploadGrantsResponse:
     meta:
       $ref: './common.yaml#/ResponseMeta'
 
+UploadGrantResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/UploadGrant'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
 CompleteUploadRequest:
   type: object
   additionalProperties: false

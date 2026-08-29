@@ -25,7 +25,7 @@ func (a *App) Router() http.Handler {
 	r.Use(httpx.RecovererMiddleware(a.Logger))
 	r.Use(httpx.CORSMiddleware(a.Config.CORSOrigins))
 	r.Use(httpx.PrivateCacheMiddleware)
-	r.Use(httpx.AuthMiddleware(a.Tokens))
+	r.Use(httpx.AuthMiddleware(a.Tokens, a.AccountActive))
 
 	// /healthz 是运维探针，不属于产品 API 契约，因此不在 OpenAPI 中定义。
 	httpx.RegisterHealthRoutes(r, "/healthz", a.healthHandler)

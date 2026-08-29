@@ -7,6 +7,7 @@ package captures
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
+	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
@@ -118,13 +120,41 @@ type CreateResult struct {
 }
 
 // Create 保存输入并登记解析任务。
-func (s *Service) Create(ctx context.Context, userID string, body httpapi.CreateCaptureRequest) (CreateResult, error) {
+func (s *Service) Create(ctx context.Context, userID, idempotencyKey string, body httpapi.CreateCaptureRequest) (CreateResult, error) {
 	if len(body.Parts) == 0 {
 		return CreateResult{}, apperr.Validation(apperr.Field("parts", "至少需要一项输入。"))
 	}
+	if idempotencyKey == "" {
+		return CreateResult{}, apperr.New(apperr.CodeIdempotencyKeyReq)
+	}
+	rawBody, err := json.Marshal(body)
+	if err != nil {
+		return CreateResult{}, apperr.Internal(err)
+	}
+	requestHash := authpkg.HashToken(string(rawBody))
 
 	var out CreateResult
-	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if err := q.AcquireIdempotencyLock(ctx,
+			"captures.create:"+userID+":"+idempotencyKey); err != nil {
+			return apperr.Internal(err)
+		}
+		replayed, err := q.GetIdempotencyRecord(ctx, dbgen.GetIdempotencyRecordParams{
+			UserID: userID, Endpoint: "captures.create", Key: idempotencyKey,
+		})
+		if err == nil {
+			if subtle.ConstantTimeCompare(replayed.RequestHash, requestHash) != 1 {
+				return apperr.New(apperr.CodeIdempotencyReused)
+			}
+			if err := json.Unmarshal(replayed.ResponseBody, &out); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		if !database.IsNoRows(err) {
+			return apperr.Internal(err)
+		}
+
 		tz, err := s.users.Timezone(ctx, q, userID)
 		if err != nil {
 			return err
@@ -241,6 +271,17 @@ func (s *Service) Create(ctx context.Context, userID string, body httpapi.Create
 		}
 
 		out = CreateResult{CaptureID: capture.ID, OperationID: op.ID}
+		responseBody, err := json.Marshal(out)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		if err := q.SaveIdempotencyRecord(ctx, dbgen.SaveIdempotencyRecordParams{
+			UserID: userID, Endpoint: "captures.create", Key: idempotencyKey,
+			RequestHash: requestHash, StatusCode: 202, ResponseBody: responseBody,
+			ResourceID: &capture.ID, ExpiresAt: time.Now().Add(24 * time.Hour),
+		}); err != nil {
+			return apperr.Internal(err)
+		}
 		return nil
 	})
 	return out, err

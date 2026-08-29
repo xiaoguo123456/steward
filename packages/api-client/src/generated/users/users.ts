@@ -33,11 +33,16 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountDeletionAcceptedResponse,
+  AccountDeletionRequest,
+  AccountDeletionStatusResponse,
   AiSettingsResponse,
   BadRequestResponse,
   ChangePhoneRequest,
+  ConflictResponse,
   ErrorResponse,
   InternalErrorResponse,
+  NotFoundResponse,
   PhoneCodeResponse,
   ServiceUnavailableResponse,
   TooManyRequestsResponse,
@@ -70,6 +75,179 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getRequestAccountDeletionUrl = () => {
+
+
+
+
+  return `/v1/me/account-deletion`
+}
+
+/**
+ * 受理事务会消费重新认证凭证、把账号置为 deletion_pending、撤销全部会话、
+ * 取消未完成异步操作并登记 retention Worker。相同幂等键与相同请求可安全重放，
+ * 即使账号已进入删除状态也只会返回首次受理结果。
+ * @summary 正式受理账号与数据删除
+ */
+export const requestAccountDeletion = async (accountDeletionRequest: AccountDeletionRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<AccountDeletionAcceptedResponse> => {
+
+  return stewardFetch<AccountDeletionAcceptedResponse>(getRequestAccountDeletionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(accountDeletionRequest)
+  }
+);}
+
+
+
+
+
+export const getRequestAccountDeletionMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ConflictResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError,{data: AccountDeletionRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError,{data: AccountDeletionRequest}, TContext> => {
+
+const mutationKey = ['requestAccountDeletion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestAccountDeletion>>, {data: AccountDeletionRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestAccountDeletion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestAccountDeletionMutationResult = NonNullable<Awaited<ReturnType<typeof requestAccountDeletion>>>
+    export type RequestAccountDeletionMutationBody = AccountDeletionRequest
+    export type RequestAccountDeletionMutationError = BadRequestResponse | UnauthorizedResponse | ConflictResponse | InternalErrorResponse
+
+    /**
+ * @summary 正式受理账号与数据删除
+ */
+export const useRequestAccountDeletion = <TError = BadRequestResponse | UnauthorizedResponse | ConflictResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletion>>, TError,{data: AccountDeletionRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestAccountDeletion>>,
+        TError,
+        {data: AccountDeletionRequest},
+        TContext
+      > => {
+      return useMutation(getRequestAccountDeletionMutationOptions(options), queryClient);
+    }
+    export const getGetAccountDeletionStatusUrl = (deletionRequestId: string,) => {
+
+
+
+
+  return `/v1/account-deletions/${deletionRequestId}`
+}
+
+/**
+ * @summary 使用独立凭证查询删除状态
+ */
+export const getAccountDeletionStatus = async (deletionRequestId: string, options?: Parameters<typeof stewardFetch>[1]): Promise<AccountDeletionStatusResponse> => {
+
+  return stewardFetch<AccountDeletionStatusResponse>(getGetAccountDeletionStatusUrl(deletionRequestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountDeletionStatusQueryKey = (deletionRequestId: string,) => {
+    return [
+    `/v1/account-deletions/${deletionRequestId}`
+    ] as const;
+    }
+
+
+export const getGetAccountDeletionStatusQueryOptions = <TData = Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(deletionRequestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountDeletionStatusQueryKey(deletionRequestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountDeletionStatus>>> = ({ signal }) => getAccountDeletionStatus(deletionRequestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: deletionRequestId !== null && deletionRequestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAccountDeletionStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountDeletionStatus>>>
+export type GetAccountDeletionStatusQueryError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse
+
+
+export function useGetAccountDeletionStatus<TData = Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
+ deletionRequestId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountDeletionStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountDeletionStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAccountDeletionStatus<TData = Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
+ deletionRequestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountDeletionStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountDeletionStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAccountDeletionStatus<TData = Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
+ deletionRequestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 使用独立凭证查询删除状态
+ */
+
+export function useGetAccountDeletionStatus<TData = Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError = UnauthorizedResponse | NotFoundResponse | InternalErrorResponse>(
+ deletionRequestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountDeletionStatus>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAccountDeletionStatusQueryOptions(deletionRequestId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
 
 export const getGetCurrentUserUrl = () => {
 

@@ -22,6 +22,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/retention"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/views"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
@@ -120,6 +121,19 @@ type TaskListArchiveCleanupArgs struct {
 	UserID         string    `json:"user_id"`
 	TaskListID     string    `json:"resource_id"`
 	ArchivedBefore time.Time `json:"archived_before"`
+}
+
+// AccountDeletionArgs 是 account.deletion 的 River 参数，只含删除请求 ID。
+type AccountDeletionArgs struct {
+	RequestID string `json:"request_id"`
+}
+
+// Kind 返回任务类型名。
+func (AccountDeletionArgs) Kind() string { return "account.deletion" }
+
+// InsertOpts 让账号删除进入单并发 retention 队列。
+func (AccountDeletionArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueRetention, MaxAttempts: 8}
 }
 
 // Kind 返回任务类型名。
@@ -243,6 +257,21 @@ func (e *Enqueuer) EnqueueTaskListArchiveCleanup(
 	return nil
 }
 
+// EnqueueAccountDeletion 在受理事务内登记账号删除任务。
+func (e *Enqueuer) EnqueueAccountDeletion(
+	ctx context.Context, _ *dbgen.Queries, args retention.AccountDeletionArgs,
+) error {
+	tx, err := database.TxFrom(ctx)
+	if err != nil {
+		return apperr.Internal(err)
+	}
+	_, err = e.client.InsertTx(ctx, tx, AccountDeletionArgs{RequestID: args.RequestID}, nil)
+	if err != nil {
+		return apperr.Internal(fmt.Errorf("登记账号删除任务失败：%w", err))
+	}
+	return nil
+}
+
 // CaptureParseWorker 执行解析任务。
 type CaptureParseWorker struct {
 	river.WorkerDefaults[CaptureParseArgs]
@@ -341,6 +370,30 @@ type TaskListArchiveCleanupWorker struct {
 	logger *slog.Logger
 }
 
+// AccountDeletionWorker 执行账号在线数据清理。
+type AccountDeletionWorker struct {
+	river.WorkerDefaults[AccountDeletionArgs]
+	svc    *retention.Service
+	logger *slog.Logger
+}
+
+// Work 执行删除；只有重试耗尽后才公开 failed。
+func (w *AccountDeletionWorker) Work(ctx context.Context, job *river.Job[AccountDeletionArgs]) error {
+	err := w.svc.RunDeletion(ctx, job.Args.RequestID)
+	if err == nil {
+		return nil
+	}
+	w.logger.Error("账号删除任务失败", "request_id", job.Args.RequestID,
+		"attempt", job.Attempt, "error", err)
+	if job.Attempt >= job.MaxAttempts {
+		if markErr := w.svc.MarkFailed(ctx, job.Args.RequestID); markErr != nil {
+			w.logger.Error("标记账号删除失败时出错", "request_id", job.Args.RequestID,
+				"error", markErr)
+		}
+	}
+	return err
+}
+
 // Work 执行一次幂等清单归档清理。
 func (w *TaskListArchiveCleanupWorker) Work(
 	ctx context.Context, job *river.Job[TaskListArchiveCleanupArgs],
@@ -396,6 +449,7 @@ type Deps struct {
 	Views     *views.Service
 	Trackers  *trackers.Service
 	Lists     *lists.Service
+	Retention *retention.Service
 	// Aggregate 生成后台读模型。为空时不注册周期任务，
 	// 后台会看到 aggregation_status=pending 而不是一份看起来正常的空数据。
 	Aggregate *aggregate.Service
@@ -426,6 +480,10 @@ func New(pool *pgxpool.Pool, deps Deps, logger *slog.Logger, runWorkers bool) (*
 		if err := river.AddWorkerSafely(workers,
 			&TaskListArchiveCleanupWorker{svc: deps.Lists, logger: logger}); err != nil {
 			return nil, fmt.Errorf("注册清单归档清理 Worker 失败：%w", err)
+		}
+		if err := river.AddWorkerSafely(workers,
+			&AccountDeletionWorker{svc: deps.Retention, logger: logger}); err != nil {
+			return nil, fmt.Errorf("注册账号删除 Worker 失败：%w", err)
 		}
 		logger.Info("注册周期任务", "aggregate_enabled", deps.Aggregate != nil)
 		if deps.Aggregate != nil {

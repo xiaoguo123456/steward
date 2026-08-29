@@ -6,11 +6,12 @@
 
 ## 拥有数据
 
-`auth_verification_codes`、`auth_refresh_tokens`。
+`auth_verification_codes`、`auth_refresh_tokens`、`account_deletion_reauth_tokens`。
 
 ## 公开接口
 
 - `Service.RequestCode` / `Login` / `Refresh` / `Logout`
+- `Service.RequestAccountDeletionCode` / `ReauthenticateAccountDeletion`
 - `SessionAPI` 实现契约中的 `/v1/auth/*`
 
 ## 依赖
@@ -38,3 +39,7 @@
 `BYPASSRLS`，因此另有只对表属主、且仅在 `current_user != session_user` 时生效的
 最小 SELECT／INSERT 策略；该条件只会在 SECURITY DEFINER 切换执行身份时成立。
 三个函数同时撤销 `PUBLIC` 的默认执行权，只允许迁移明确授权的应用角色调用。
+
+账号删除重新认证与登录、换绑使用不同验证码用途。reauth token 绑定用户和
+`Idempotency-Key` 稳定派生，数据库只保存 token hash 与请求 hash；相同请求断线重放
+返回同一凭证，不重复消费验证码，同键不同验证码返回 `IDEMPOTENCY_KEY_REUSED`。

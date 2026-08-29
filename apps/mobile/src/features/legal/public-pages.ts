@@ -4,7 +4,7 @@ export const publicPagePaths = {
   terms: '/legal/terms/',
   personalInformation: '/legal/personal-information/',
   thirdParties: '/legal/third-parties/',
-  accountDeletion: '/legal/account-deletion/',
+	accountDeletion: '/account-deletion',
   support: '/support/',
 } as const;
 

@@ -97,6 +97,23 @@ MediaId:
   schema:
     type: string
 
+DeletionRequestId:
+  name: deletion_request_id
+  in: path
+  required: true
+  schema:
+    type: string
+
+DeletionStatusToken:
+  name: Deletion-Status-Token
+  in: header
+  required: true
+  description: 删除受理时一次性下发的独立状态凭证，不是登录 Token。
+  schema:
+    type: string
+    minLength: 32
+    maxLength: 256
+
 CaptureId:
   name: capture_id
   in: path

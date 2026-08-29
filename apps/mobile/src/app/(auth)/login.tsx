@@ -105,7 +105,7 @@ export default function LoginScreen() {
         code,
         timezone: deviceTimezone(),
       });
-      await session.signIn(response.data.tokens);
+      await session.signIn(response.data.tokens, response.data.user.id);
       router.replace('/today');
     } catch (err) {
       setError(errorMessage(err, '登录失败，请检查手机号与验证码。'));

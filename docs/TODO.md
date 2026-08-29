@@ -25,7 +25,8 @@
 - [ ] 按实际实现逐项确认个人信息的字段、处理目的、处理方式、必要性、保存期限、删除方式、跨境情况和用户权利受理期限。
 - [ ] 确认所有实际第三方处理者，包括短信、对象存储、AI／语音／视觉、地图、日志监控和 Expo／EAS Update；逐项填写主体、产品／SDK、信息种类、目的、处理地区、保留与删除策略、隐私政策 URL。
 - [ ] 由产品／法务把正式内容替换进 `/legal/*` 与 `/support`，删除生产阻塞标记和 `noindex`，通过生产 H5 门禁，并在正式 HTTPS 域名验证免登录、关闭 JavaScript、移动窄屏、打印和所有站内链接。
-- [ ] 完成 App 内账号删除和 `/legal/account-deletion` Web 请求链路：确认再次验证方式、删除范围、受理与完成 SLA、备份到期边界、法定保留、失败恢复、申诉和人工支持口径。
+- [x] 完成 App 内及 `/account-deletion` Web 账号删除技术链路：手机号验证码、单用途 reauth、幂等受理、会话撤销、后台清理和独立状态查询均已落地。
+- [ ] 由产品／法务确认账号删除 SLA、备份最晚自然过期、法定保留、申诉和人工支持口径，并替换公开页面占位内容；生产网关补账号／IP 限流与告警。
 - [ ] 核对个人信息收集清单、第三方信息共享清单、iOS Privacy Details、Google Play Data safety、权限用途文案与运行中的 SDK／Provider 完全一致。
 - [ ] 在 App Store Connect 与 Google Play Console 填写正式 Privacy Policy URL、Terms URL、Support URL、账号删除 URL，并完成人工可访问性检查。
 

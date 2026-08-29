@@ -1,6 +1,6 @@
 import { isApiError, isUnauthenticated } from '@steward/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import {
   createContext,
   useCallback,
@@ -55,6 +55,7 @@ export function ApiProvider({ children }: PropsWithChildren) {
   const [boot, setBoot] = useState<BootState>('loading');
   const timezoneSync = useRef<Promise<void> | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   const syncTimezone = useCallback(() => {
     if (timezoneSync.current) return timezoneSync.current;
@@ -92,10 +93,11 @@ export function ApiProvider({ children }: PropsWithChildren) {
       if (!loggedIn) {
         // 退出登录后必须清空缓存，避免下一个账号看到上一个账号的数据。
         queryClient.clear();
-        router.replace('/login');
+        // 删除受理后当前会话会立即失效，但公开状态页仍需留在原地展示独立凭证。
+        if (pathname !== '/account-deletion') router.replace('/login');
       }
     });
-  }, [queryClient, router]);
+  }, [pathname, queryClient, router]);
 
   useEffect(() => {
     if (boot === 'signed-in') void syncTimezone();

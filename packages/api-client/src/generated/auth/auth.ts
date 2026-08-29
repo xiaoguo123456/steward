@@ -24,6 +24,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountDeletionReauthRequest,
+  AccountDeletionReauthResponse,
   BadRequestResponse,
   EmptyResponse,
   InternalErrorResponse,
@@ -324,4 +326,144 @@ export const useLogout = <TError = UnauthorizedResponse | InternalErrorResponse,
         TContext
       > => {
       return useMutation(getLogoutMutationOptions(options), queryClient);
+    }
+    export const getRequestAccountDeletionCodeUrl = () => {
+
+
+
+
+  return `/v1/me/account-deletion/code`
+}
+
+/**
+ * @summary 向当前账号手机号发送删除重新认证验证码
+ */
+export const requestAccountDeletionCode = async ( options?: Parameters<typeof stewardFetch>[1]): Promise<PhoneCodeResponse> => {
+
+  return stewardFetch<PhoneCodeResponse>(getRequestAccountDeletionCodeUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRequestAccountDeletionCodeMutationOptions = <TError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletionCode>>, TError,void, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletionCode>>, TError,void, TContext> => {
+
+const mutationKey = ['requestAccountDeletionCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestAccountDeletionCode>>, void> = () => {
+
+
+          return  requestAccountDeletionCode(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestAccountDeletionCodeMutationResult = NonNullable<Awaited<ReturnType<typeof requestAccountDeletionCode>>>
+
+    export type RequestAccountDeletionCodeMutationError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse
+
+    /**
+ * @summary 向当前账号手机号发送删除重新认证验证码
+ */
+export const useRequestAccountDeletionCode = <TError = UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestAccountDeletionCode>>, TError,void, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestAccountDeletionCode>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRequestAccountDeletionCodeMutationOptions(options), queryClient);
+    }
+    export const getReauthenticateAccountDeletionUrl = () => {
+
+
+
+
+  return `/v1/me/account-deletion/reauth`
+}
+
+/**
+ * @summary 消费验证码并签发单用途删除凭证
+ */
+export const reauthenticateAccountDeletion = async (accountDeletionReauthRequest: AccountDeletionReauthRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<AccountDeletionReauthResponse> => {
+
+  return stewardFetch<AccountDeletionReauthResponse>(getReauthenticateAccountDeletionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(accountDeletionReauthRequest)
+  }
+);}
+
+
+
+
+
+export const getReauthenticateAccountDeletionMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reauthenticateAccountDeletion>>, TError,{data: AccountDeletionReauthRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reauthenticateAccountDeletion>>, TError,{data: AccountDeletionReauthRequest}, TContext> => {
+
+const mutationKey = ['reauthenticateAccountDeletion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reauthenticateAccountDeletion>>, {data: AccountDeletionReauthRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reauthenticateAccountDeletion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReauthenticateAccountDeletionMutationResult = NonNullable<Awaited<ReturnType<typeof reauthenticateAccountDeletion>>>
+    export type ReauthenticateAccountDeletionMutationBody = AccountDeletionReauthRequest
+    export type ReauthenticateAccountDeletionMutationError = BadRequestResponse | UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse
+
+    /**
+ * @summary 消费验证码并签发单用途删除凭证
+ */
+export const useReauthenticateAccountDeletion = <TError = BadRequestResponse | UnauthorizedResponse | TooManyRequestsResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reauthenticateAccountDeletion>>, TError,{data: AccountDeletionReauthRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reauthenticateAccountDeletion>>,
+        TError,
+        {data: AccountDeletionReauthRequest},
+        TContext
+      > => {
+      return useMutation(getReauthenticateAccountDeletionMutationOptions(options), queryClient);
     }

@@ -83,7 +83,7 @@ export function useMediaUpload() {
  *
  * 返回实际发送的字节数，交给服务端比对——但最终以服务端回查为准。
  */
-async function putBytes(grant: UploadGrant, item: LocalMedia): Promise<number> {
+export async function putBytes(grant: UploadGrant, item: LocalMedia): Promise<number> {
   const headers = grant.headers ?? {};
 
   if (Platform.OS === 'web') {

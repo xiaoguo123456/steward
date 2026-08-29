@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ApiProvider, useBootState } from '@/api/provider';
 import { ToastProvider } from '@/components/ui/toast';
 import { FocusPrototypeProvider } from '@/features/focus/focus-context';
+import { CaptureQueueProvider } from '@/features/capture/capture-queue-provider';
 import { MemoriesPrototypeProvider } from '@/features/memories/memories-context';
 import { colors } from '@/theme/tokens';
 
@@ -17,11 +18,13 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ApiProvider>
           <ToastProvider>
-            <FocusPrototypeProvider>
-              <MemoriesPrototypeProvider>
-                <RootNavigator />
-              </MemoriesPrototypeProvider>
-            </FocusPrototypeProvider>
+            <CaptureQueueProvider>
+              <FocusPrototypeProvider>
+                <MemoriesPrototypeProvider>
+                  <RootNavigator />
+                </MemoriesPrototypeProvider>
+              </FocusPrototypeProvider>
+            </CaptureQueueProvider>
           </ToastProvider>
         </ApiProvider>
       </SafeAreaProvider>
@@ -49,6 +52,7 @@ function RootNavigator() {
       }}
     >
       <Stack.Screen name="index" />
+	  <Stack.Screen name="account-deletion" />
 
       <Stack.Protected guard={boot === 'signed-out'}>
         <Stack.Screen name="(auth)" />
@@ -85,6 +89,7 @@ function RootNavigator() {
         <Stack.Screen name="settings/preferences" />
         <Stack.Screen name="settings/phone" />
         <Stack.Screen name="settings/memories" />
+		<Stack.Screen name="settings/captures" />
         <Stack.Screen name="relationships-preview" />
         <Stack.Screen name="assistant/threads" />
         <Stack.Screen

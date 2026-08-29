@@ -21,14 +21,15 @@ import (
 
 // UserRecord 是登录路径需要的最小用户信息。
 type UserRecord struct {
-	ID          string
-	Phone       string
-	DisplayName string
-	AvatarURL   *string
-	Timezone    string
-	Initialized bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID            string
+	Phone         string
+	DisplayName   string
+	AvatarURL     *string
+	Timezone      string
+	Initialized   bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	AccountStatus string
 }
 
 // RefreshTokenRecord 是刷新路径需要的最小令牌信息。
@@ -40,7 +41,7 @@ type RefreshTokenRecord struct {
 }
 
 const findUserByPhoneSQL = `
-SELECT id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at
+SELECT id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, account_status
 FROM auth_find_user_by_phone($1)`
 
 const createUserSQL = `
@@ -56,7 +57,7 @@ func (s *Service) findUserByPhone(ctx context.Context, tx pgx.Tx, phone string) 
 	var u UserRecord
 	err := tx.QueryRow(ctx, findUserByPhoneSQL, phone).Scan(
 		&u.ID, &u.Phone, &u.DisplayName, &u.AvatarURL,
-		&u.Timezone, &u.Initialized, &u.CreatedAt, &u.UpdatedAt)
+		&u.Timezone, &u.Initialized, &u.CreatedAt, &u.UpdatedAt, &u.AccountStatus)
 	return u, err
 }
 
@@ -66,6 +67,7 @@ func (s *Service) createUser(ctx context.Context, tx pgx.Tx, id, phone, displayN
 	err := tx.QueryRow(ctx, createUserSQL, id, phone, displayName, timezone).Scan(
 		&u.ID, &u.Phone, &u.DisplayName, &u.AvatarURL,
 		&u.Timezone, &u.Initialized, &u.CreatedAt, &u.UpdatedAt)
+	u.AccountStatus = "active"
 	return u, err
 }
 

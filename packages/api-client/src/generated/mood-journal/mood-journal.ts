@@ -337,6 +337,9 @@ export function useGetMoodJournalEntry<TData = Awaited<ReturnType<typeof getMood
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
 export const getUpdateMoodJournalEntryUrl = (entryId: string,) => {
 
 
@@ -579,10 +582,6 @@ export function useGetMoodJournalCalendar<TData = Awaited<ReturnType<typeof getM
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-
-
-
-
 
 
 export const getGetMoodJournalStatisticsUrl = (params: GetMoodJournalStatisticsParams,) => {

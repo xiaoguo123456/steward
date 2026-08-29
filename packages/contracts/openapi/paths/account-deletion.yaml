@@ -1,0 +1,107 @@
+# 账号删除必须完成重新认证、正式受理与独立状态查询。
+
+ReauthCode:
+  post:
+    operationId: requestAccountDeletionCode
+    summary: 向当前账号手机号发送删除重新认证验证码
+    tags: [auth]
+    responses:
+      '200':
+        description: 已发送，验证码用途固定为 account_delete_reauth。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account.yaml#/PhoneCodeResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '503':
+        $ref: '../components/responses.yaml#/ServiceUnavailable'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Reauth:
+  post:
+    operationId: reauthenticateAccountDeletion
+    summary: 消费验证码并签发单用途删除凭证
+    tags: [auth]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/account-deletion.yaml#/AccountDeletionReauthRequest'
+    responses:
+      '200':
+        description: 重新认证成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account-deletion.yaml#/AccountDeletionReauthResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+RequestDeletion:
+  post:
+    operationId: requestAccountDeletion
+    summary: 正式受理账号与数据删除
+    description: |
+      受理事务会消费重新认证凭证、把账号置为 deletion_pending、撤销全部会话、
+      取消未完成异步操作并登记 retention Worker。相同幂等键与相同请求可安全重放，
+      即使账号已进入删除状态也只会返回首次受理结果。
+    tags: [users]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/account-deletion.yaml#/AccountDeletionRequest'
+    responses:
+      '202':
+        description: 已受理；普通登录会话立即失效。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account-deletion.yaml#/AccountDeletionAcceptedResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Status:
+  get:
+    operationId: getAccountDeletionStatus
+    summary: 使用独立凭证查询删除状态
+    tags: [users]
+    security: []
+    parameters:
+      - $ref: '../components/parameters.yaml#/DeletionRequestId'
+      - $ref: '../components/parameters.yaml#/DeletionStatusToken'
+    responses:
+      '200':
+        description: 成功。响应不包含用户 ID、手机号或业务资源引用。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/account-deletion.yaml#/AccountDeletionStatusResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
