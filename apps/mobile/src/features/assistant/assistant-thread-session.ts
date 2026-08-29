@@ -9,11 +9,14 @@ export type AssistantThreadSessionAction =
   | { type: 'attach_thread'; threadId: string }
   | { type: 'select_thread'; threadId: string };
 
-export function createAssistantThreadSession(routeThreadId?: string): AssistantThreadSession {
+export function createAssistantThreadSession(
+  routeThreadId?: string,
+  startFresh = false,
+): AssistantThreadSession {
   const threadId = routeThreadId?.trim() ?? '';
   return {
     threadId,
-    mode: threadId ? 'selected' : 'default',
+    mode: threadId ? 'selected' : startFresh ? 'fresh' : 'default',
   };
 }
 

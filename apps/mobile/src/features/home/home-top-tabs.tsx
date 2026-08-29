@@ -15,14 +15,8 @@ const previewIcons: Record<
   PlannedHomeTopTabId,
   ComponentProps<typeof AppIcon>['name']
 > = {
-  relationships: 'person-outline',
-  footprints: 'map-outline',
+  music: 'radio',
 };
-
-const relationshipTabColors = {
-  primary: '#3A86D8',
-  strong: '#236DB8',
-} as const;
 
 export function HomeTopTabs({
   value,
@@ -41,10 +35,7 @@ export function HomeTopTabs({
       >
         {HOME_TOP_TABS.map((tab) => {
           const selected = value === tab.id;
-          const selectedColor =
-            tab.id === 'relationships' ? relationshipTabColors.strong : colors.primaryStrong;
-          const indicatorColor =
-            tab.id === 'relationships' ? relationshipTabColors.primary : colors.primary;
+          const inspirationSelected = selected && tab.id === 'inspiration';
           return (
             <Pressable
               accessibilityLabel={`${tab.label}首页分区`}
@@ -55,22 +46,18 @@ export function HomeTopTabs({
               onPress={() => onChange(tab.id)}
               style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
             >
-              <Text
-                style={[
-                  styles.label,
-                  selected && styles.labelSelected,
-                  selected && { color: selectedColor },
-                ]}
-              >
+              <Text style={[
+                styles.label,
+                selected && styles.labelSelected,
+                inspirationSelected && styles.labelInspirationSelected,
+              ]}>
                 {tab.label}
               </Text>
-              <View
-                style={[
-                  styles.indicator,
-                  selected && styles.indicatorSelected,
-                  selected && { backgroundColor: indicatorColor },
-                ]}
-              />
+              <View style={[
+                styles.indicator,
+                selected && styles.indicatorSelected,
+                inspirationSelected && styles.indicatorInspirationSelected,
+              ]} />
             </Pressable>
           );
         })}
@@ -129,6 +116,9 @@ const styles = StyleSheet.create({
     color: colors.primaryStrong,
     fontWeight: '700',
   },
+  labelInspirationSelected: {
+    color: colors.inspiration,
+  },
   indicator: {
     position: 'absolute',
     right: 14,
@@ -140,6 +130,9 @@ const styles = StyleSheet.create({
   },
   indicatorSelected: {
     backgroundColor: colors.primary,
+  },
+  indicatorInspirationSelected: {
+    backgroundColor: colors.inspiration,
   },
   preview: {
     paddingTop: 24,

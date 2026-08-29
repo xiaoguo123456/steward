@@ -1643,10 +1643,12 @@ capture_parse_result
 action_proposal_batch
 memory_suggestion
 review_narrative
+inspiration_card_batch
 ```
 
 不能让一个通用“大而全”Schema 同时承载所有功能。输出类型越窄，校验、评估和替换 Provider 越容易。
 `review_narrative` 使用版本化 JSON Schema，字段只承载标题、摘要、指标 key、简短解释和来源引用；指标值与界面样式由确定性代码控制。
+`inspiration_card_batch` 使用版本化 JSON Schema，只承载当地日期、卡片类型、标题、简短联系说明、`SourceRef[]` 和可选的下一步建议。候选来源、每日数量、去重、敏感级别、来源版本和是否与 Daily Brief 重复全部由确定性代码控制；模型不得自行扩展检索范围或输出无来源的用户事实。
 
 ## 15.7 来源引用
 
@@ -2057,6 +2059,16 @@ source_refs
 - Search 模块查正式 Object、Record、Review 和允许的 Note 内容。
 - 不把 Memory 当作 Task／Event 的替代搜索源。
 - 同一事实若已正式成为 Event／Task，Assistant 应引用实体而不是旧 Memory 文本。
+
+## 19.6 Inspiration Retrieval
+
+- 灵感不是通用推荐流。检索先排除 Today、Daily Brief 已覆盖的当天／逾期事实，再从用户允许的 Note、Project、Event 和已确认 Memory 中形成候选；心情、位置、媒体、音乐和高敏 Memory 默认不进入候选。
+- 首版移动端只做确定性的旧 Note 重现，不调用 `inspiration_card_batch`。后续服务端批次先执行 `user_id`、状态、删除、来源版本、最小沉淀时间、最近展示和用户屏蔽过滤，再按主题相关性与来源多样性选择最多三组证据。
+- Embedding 只负责语义召回，不能决定来源权限、敏感级别、当天事实、重复展示或写入动作。所有召回结果在进入模型前再次验证当前用户、资源状态和 source version。
+- 模型只解释已给定证据之间的联系。每个事实句必须能映射到至少一个实际读取过的 `SourceRef`；证据不足时少生成卡片或不生成，不用常识、流行趋势或用户画像填满配额。
+- 灵感卡进入 Assistant 时，页面上下文低于用户当前明确表达，且只影响当前 Turn。由灵感产生的 Task、Project、Note 或 Memory 继续创建独立 Proposal，用户反馈不能直接写成长期记忆。
+- 首页通用问题进入 Assistant 时同样只作为首个 Turn 的页面上下文，并使用独立 `force_new` Thread，不能把当天已有通用对话误当成该问题的回答历史。客户端可以隐藏上下文模板，只展示用户实际输入，但发送给服务端的 Message 必须保留可审计的完整文本。
+- 灵感对话整理为笔记时，当前阶段复用 `origin=assistant` 的纯文字 Capture 生成 Note Candidate；生成待办继续复用 `task_create` Proposal。两者都必须经过既有确认流程，Assistant Runtime 不因入口来自灵感而获得直接写 Note 或 Task 的能力。
 
 ---
 

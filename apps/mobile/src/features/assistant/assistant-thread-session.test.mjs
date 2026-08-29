@@ -27,6 +27,13 @@ test('点击新对话后忽略迟到的当天恢复结果', () => {
   assert.deepEqual(restored, { threadId: '', mode: 'fresh' });
 });
 
+test('灵感对话从独立的新会话开始', () => {
+  assert.deepEqual(createAssistantThreadSession(undefined, true), {
+    threadId: '',
+    mode: 'fresh',
+  });
+});
+
 test('首条消息取得服务端 Thread 后成为当天默认对话', () => {
   const fresh = assistantThreadSessionReducer(createAssistantThreadSession(), {
     type: 'start_fresh',

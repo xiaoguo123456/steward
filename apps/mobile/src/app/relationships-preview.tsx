@@ -1,12 +1,8 @@
 import { Redirect } from 'expo-router';
-import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
-import { PageHeader } from '@/components/ui/page-header';
-import { StatePanel } from '@/components/ui/state-panel';
-import type { HomeTopTabId } from '@/features/home/home-top-navigation';
-import { HomeFeaturePreview, HomeTopTabs } from '@/features/home/home-top-tabs';
+import { NavHeader } from '@/components/ui/nav-header';
 import { RelationshipsContent } from '@/features/relationships/relationships-content';
 import { fontFamily } from '@/theme/tokens';
 
@@ -17,54 +13,23 @@ import { fontFamily } from '@/theme/tokens';
  * 不绕过登录，也不读取通讯录、账号数据或远程接口。
  */
 export default function RelationshipsPreviewRoute() {
-  const [activeTab, setActiveTab] = useState<HomeTopTabId>('relationships');
-
   if (!__DEV__) return <Redirect href="/" />;
 
   return (
     <AppScreen includeBottomInset>
+      <NavHeader
+        right={(
+          <View accessibilityLabel="本地界面预览" style={styles.previewBadge}>
+            <Text style={styles.previewBadgeText}>预览</Text>
+          </View>
+        )}
+        title="亲友"
+      />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[1]}
       >
-        <PageHeader
-          action={
-            <View accessibilityLabel="本地界面预览" style={styles.previewBadge}>
-              <Text style={styles.previewBadgeText}>预览</Text>
-            </View>
-          }
-          subtitle="8月28日 · 星期五"
-          title="首页"
-        />
-
-        <HomeTopTabs onChange={setActiveTab} value={activeTab} />
-
-        {activeTab === 'relationships' ? (
-          <RelationshipsContent />
-        ) : activeTab === 'today' ? (
-          <View style={styles.placeholder}>
-            <StatePanel
-              icon="shield-checkmark-outline"
-              message="开发预览入口不加载账号数据；返回正式首页后可查看今天的真实内容。"
-              title="今天保持安全隔离"
-            />
-          </View>
-        ) : activeTab === 'memories' || activeTab === 'mood' ? (
-          <View style={styles.placeholder}>
-            <StatePanel
-              icon="shield-checkmark-outline"
-              message={
-                activeTab === 'memories'
-                  ? '开发预览入口不加载时光内容；返回正式首页后可查看时光相册。'
-                  : '开发预览入口不加载私人日记；返回正式首页后可查看心情内容。'
-              }
-              title={activeTab === 'memories' ? '时光保持安全隔离' : '心情保持安全隔离'}
-            />
-          </View>
-        ) : (
-          <HomeFeaturePreview tab={activeTab} />
-        )}
+        <RelationshipsContent />
       </ScrollView>
     </AppScreen>
   );
@@ -89,8 +54,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
-  },
-  placeholder: {
-    paddingTop: 24,
   },
 });
