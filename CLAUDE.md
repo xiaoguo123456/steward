@@ -6,49 +6,9 @@
 
 ## 当前实现状态
 
-对应后端指南第 25 节的**阶段 0～7 的服务端部分已完成**：
+全局进度只在 `docs/实现状态.md` 维护。开始任务时先从 `docs/README.md` 选择必读文档，再用 OpenAPI、迁移、模块 README、测试和目标代码核对；不要根据本文、阶段编号或页面外观推断能力已经接入正式数据。
 
-- `packages/contracts`：OpenAPI 3.0.3 契约，55 个路径、85 个操作，是前后端唯一事实来源。
-- `apps/backend`：Go 模块化单体，实现全部契约操作；PostgreSQL + RLS + River。
-- `packages/api-client`：Orval 生成的 TypeScript Client、TanStack Query Hooks 与 Zod 校验器。
-- `apps/mobile`：登录、首页、计划、笔记、打卡、日历、任务详情与 Capture 全流程已接真实 API；
-  项目、打卡项与账号偏好的读写界面也已接通。
-- `packages/ai-contracts/evals` + `internal/platform/ai/eval`：AI 评测套件。
-  硬门槛用脚本化 Provider，不依赖真实模型，`make test` 里就会跑；
-  质量用例靠提交在仓库里的 `baseline.json` 判退化。
-
-尚未实现：向量检索与 Embedding（等搜索失败率数据再决定，见下）。
-`STEWARD_AI_PROVIDER=fake` 时使用确定性本地解析，不发起任何外部请求，
-此时对话会明确返回"暂时回复不了"而不是伪造一个回答。
-
-全部生活场景都已接真实 API，它们复用既有领域而不是新建实体：
-
-| 场景 | 落到哪 |
-|---|---|
-| 重要日 | `event_kind=important_date` 的全天 Event + `/v1/important-dates` 投影视图 |
-| 购物 | `list_kind=shopping` 的 TaskList；数量是自由文本，品类由服务端确定性分类 |
-| 运动／番茄钟／记账 | 三个内置 Tracker（`builtin_key`），按需创建 |
-| 行程 | `project_kind=trip` 的 Project + `/v1/projects/{id}/itinerary` 聚合 |
-| 食谱 | 菜谱是只读平台内容（`recipes` 表，不受 RLS）；饮食档案、收藏、做过与本周菜单是用户数据，各自受 RLS |
-
-菜谱库里是 4267 条导入内容（来源懒饭，已授权）加 6 条平台自有示例。
-导入工具链见 `tools/recipe-import/`。
-
-`source_name`、`license`、`content_version` 仍是 NOT NULL：新增其他来源的
-内容时，这三个字段要填真实结论，不能填好看的占位值——约束的用意就是
-逼出「有没有权利展示」这个问题。
-
-图片在 OSS 的 `weishen-assets/steward/recipes/`，该前缀在 CDN 上配了免鉴权，
-所以 `image_url` 是永久地址；`image_key` 是稳定标识，换分发方式时重跑映射即可。
-**这个前缀是公开的，只放该公开的东西**；备份之类放 `steward/backups/`（不公开）。
-
-营养里 `fat_g` 与 `fiber_g` 可能为空，空表示「不知道」不是 0——
-导入内容有脂肪没纤维，手写内容反过来。整周求和时只要有一道菜缺，
-这一项就返回空，不把缺的当 0 加进去。
-
-本周菜单只存已确认的那版，AI 预览留在客户端（规格 8.2.2）。
-周起始日由服务端按用户偏好与时区算，条目按真实日期存而不是「周几」。
-身体数据属高敏，只接受用户自己填写，能力层没有登记对应 Capability。
+时光、亲友、音乐及部分生活场景仍存在原型、准备状态或本地会话边界，公开法律页面与账号删除也尚未形成发布闭环。状态跨级时只更新 `docs/实现状态.md` 和目标模块 README，不在本文件复制全量进度表。
 
 ## 常用命令
 
@@ -403,16 +363,7 @@ APNs/FCM 配置与真机构建，不在代码。
 
 ## 文档与事实来源
 
-改动前按 `AGENTS.md` 的要求读对应章节。事实来源优先级：
-
-1. `docs/功能规格说明.md` — 业务规则、状态、边界与验收
-2. `docs/产品设计说明.md` — 页面、交互、视觉与用户文案
-3. `docs/整体架构设计.md` — 系统边界、依赖方向与技术实现
-4. `docs/后端与AI开发指南.md` — Go 后端、AI 编排、Assistant、用户记忆
-5. `packages/contracts` → `packages/ai-contracts` → 数据库迁移
-
-`PRODUCT.md` 是品牌与设计原则来源（含 WCAG AA 无障碍底线）。
-`AI事管家_PRD_v1.0.md` 是原始需求，冲突时以 `docs/` 为准。
+改动前按 `AGENTS.md` 的要求阅读对应章节。完整阅读路径、权威优先级、文档定位和同步规则只在 `docs/README.md` 维护；当前代码完成度只查 `docs/实现状态.md`。`AI事管家_PRD_v1.0.md` 是历史需求来源，不覆盖当前核心基线。
 
 ## 技术栈注意事项
 

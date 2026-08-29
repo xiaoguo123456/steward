@@ -2,7 +2,7 @@
 
 ## 职责
 
-本模块负责首页“重要日”场景的非权威前端原型，包括下一次日期摘要、后续列表、新增表单、日期选择、年度重复、提醒选项和详情面板。
+本模块负责首页“重要日”场景，包括下一次日期摘要、后续列表、新增表单、日期选择、年度重复、提醒选项和详情面板。
 
 ## 入口与公开接口
 
@@ -12,10 +12,10 @@
 
 ## 数据边界
 
-- 当前数据来自本地 Fixture，新建内容只保存在当前组件状态中。
-- `ImportantDateKind` 只用于图标、表单默认值和本地展示，不是网络字段。
-- 正式接入后，所有类型均映射为 `event_kind=important_date` 的全天 Event，并通过生成的 API Client 保存。
-- 年度投影、2 月 29 日、时区、提醒触发和重复规则由 Go Domain 负责，前端排序只用于原型验收，不具备权威性。
+- 列表使用正式 `GET /v1/important-dates` 读模型；新增通过生成 Client 创建 `event_kind=important_date` 的全天 Event。
+- `ImportantDateKind` 是页面视图模型；保存时映射到契约中的 `important_date_kind`，不得作为另一套网络 DTO。
+- 年度投影、2 月 29 日、时区、剩余天数和排序由 Go Domain 负责，客户端按服务端顺序渲染，不自行重算。
+- 当前提醒只保存正式 Event 提醒规则，设备推送注册与 Expo Notifications 尚未接入；页面不得暗示系统通知已经送达。
 
 ## 日期选择
 
@@ -25,6 +25,6 @@
 ## 禁止依赖
 
 - 不直接依赖后端、数据库或 AI Provider 实现。
-- 不手写 Event 网络 DTO、URL 或 Schema。
+- 不手写 Event 网络 DTO、URL 或 Schema，只使用 `@steward/api-client`。
 - 不直接访问系统联系人、设备日历或通知权限。
 - 不让 AI 或前端绕过用户确认写入正式数据。
