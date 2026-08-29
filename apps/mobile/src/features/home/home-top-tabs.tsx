@@ -16,10 +16,15 @@ const previewIcons: Record<
   ComponentProps<typeof AppIcon>['name']
 > = {
   memories: 'images-outline',
-  music: 'radio',
+  relationships: 'person-outline',
   footprints: 'map-outline',
   mood: 'leaf-outline',
 };
+
+const relationshipTabColors = {
+  primary: '#3A86D8',
+  strong: '#236DB8',
+} as const;
 
 export function HomeTopTabs({
   value,
@@ -37,6 +42,10 @@ export function HomeTopTabs({
       >
         {HOME_TOP_TABS.map((tab) => {
           const selected = value === tab.id;
+          const selectedColor =
+            tab.id === 'relationships' ? relationshipTabColors.strong : colors.primaryStrong;
+          const indicatorColor =
+            tab.id === 'relationships' ? relationshipTabColors.primary : colors.primary;
           return (
             <Pressable
               accessibilityLabel={`${tab.label}首页分区`}
@@ -47,8 +56,22 @@ export function HomeTopTabs({
               onPress={() => onChange(tab.id)}
               style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
             >
-              <Text style={[styles.label, selected && styles.labelSelected]}>{tab.label}</Text>
-              <View style={[styles.indicator, selected && styles.indicatorSelected]} />
+              <Text
+                style={[
+                  styles.label,
+                  selected && styles.labelSelected,
+                  selected && { color: selectedColor },
+                ]}
+              >
+                {tab.label}
+              </Text>
+              <View
+                style={[
+                  styles.indicator,
+                  selected && styles.indicatorSelected,
+                  selected && { backgroundColor: indicatorColor },
+                ]}
+              />
             </Pressable>
           );
         })}
