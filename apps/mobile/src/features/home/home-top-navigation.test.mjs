@@ -9,7 +9,7 @@ test('首页顶部导航保持固定顺序和短标签', () => {
     [
       ['today', '今天'],
       ['memories', '时光'],
-      ['music', '音乐'],
+      ['relationships', '亲友'],
       ['footprints', '足迹'],
       ['mood', '心情'],
     ],
@@ -18,7 +18,8 @@ test('首页顶部导航保持固定顺序和短标签', () => {
 
 test('仍未开放的分区明确说明当前不读取或分析用户资料', () => {
   assert.equal('memories' in HOME_FEATURE_PREVIEWS, false);
-  assert.match(HOME_FEATURE_PREVIEWS.music.message, /不会播放或生成音频/);
+  assert.match(HOME_FEATURE_PREVIEWS.relationships.message, /不会读取通讯录/);
+  assert.match(HOME_FEATURE_PREVIEWS.relationships.message, /不会.*调用 AI/);
   assert.match(HOME_FEATURE_PREVIEWS.footprints.message, /不会申请定位/);
   assert.equal('mood' in HOME_FEATURE_PREVIEWS, false);
 });

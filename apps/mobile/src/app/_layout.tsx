@@ -62,6 +62,7 @@ export default function RootLayout() {
                   <Stack.Screen name="settings/preferences" />
                   <Stack.Screen name="settings/phone" />
                   <Stack.Screen name="settings/memories" />
+                  <Stack.Screen name="relationships-preview" />
                   <Stack.Screen name="assistant/threads" />
                   <Stack.Screen
                     name="capture/new"

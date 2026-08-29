@@ -13,6 +13,7 @@ import type { HomeTopTabId } from '@/features/home/home-top-navigation';
 import { HomeFeaturePreview, HomeTopTabs } from '@/features/home/home-top-tabs';
 import { MemoriesHome } from '@/features/memories/memories-home';
 import { MoodJournalContent } from '@/features/mood-journal/mood-journal-content';
+import { RelationshipsContent } from '@/features/relationships/relationships-content';
 import {
   describeReminder,
   usePendingReminders,
@@ -290,6 +291,8 @@ export default function HomeScreen() {
           <MemoriesHome key="memories-home-content" />
         ) : activeHomeTab === 'mood' ? (
           <MoodJournalContent initialDate={params.date} key="mood-journal-content" />
+        ) : activeHomeTab === 'relationships' ? (
+          <RelationshipsContent />
         ) : (
           <HomeFeaturePreview key={`home-preview-${activeHomeTab}`} tab={activeHomeTab} />
         )}
