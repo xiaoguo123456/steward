@@ -1,114 +1,71 @@
 # AI事管家
 
-AI事管家是一套统一管理任务、日程、项目、笔记和结构化记录的个人事务系统。用户通过文字、语音、图片、图片＋文字或图片＋语音提交内容，AI 生成可编辑候选结果，用户确认后进入首页、计划、笔记、数据与复盘流程。
+AI事管家是一套统一管理任务、日程、项目、笔记和结构化记录的个人事务系统。用户可以通过文字、语音、图片或组合输入提交内容；AI 生成可编辑候选，只有用户确认后才由 Go Domain 写入正式数据。
 
-## 当前阶段
+## 当前状态
 
-仓库已经打通「移动端 → 契约 → Go 后端 → PostgreSQL」的完整链路。对照 [后端与 AI 开发指南](./docs/后端与AI开发指南.md) 第 25 节的分阶段计划：
+仓库已打通“Expo 移动端 → OpenAPI 生成 Client → Go API／Worker → PostgreSQL／River”的核心链路，Task、Event、Project、Note、Tracker／Record、Capture、Assistant 与长期记忆均有正式契约和服务端实现。
 
-| 阶段 | 状态 |
-|---|---|
-| 阶段 0 决策与骨架 | 已完成 |
-| 阶段 1 无 AI 的后端闭环 | 已完成 |
-| 阶段 2 AI Platform 基础 | 已完成（Provider 中立接口 + 兼容 OpenAI 协议的适配器 + 确定性 Fake） |
-| 阶段 3 Capture 正式闭环 | 已完成（阿里云 OSS 直传、模型 OCR 与转写） |
-| 阶段 4 Search 与 Review | 已完成（复盘叙述有来源校验，无来源结论会被丢弃） |
-| 阶段 5 Assistant 只读对话 | 已完成（Capability Registry + DirectEngine 工具循环） |
-| 阶段 6 Proposal 与确认 | 已完成（确认事务重新读目标并重跑校验；移动端确认卡片已接） |
-| 阶段 7 长期记忆 | 已完成（Evidence、Revision、敏感策略、删除与禁止重新学习；设置页已接） |
-| 阶段 8 优化与可选 Eino | 部分：SSE 已接，向量检索按搜索失败率再决定 |
-
-全部生活场景已接真实 API，均复用既有领域而不是新建实体：重要日是全天 Event，
-购物是 TaskList/Task，运动／番茄钟／记账是三个内置 Tracker，行程是 Project 聚合，
-食谱是只读平台内容。
-
-即使关闭全部 Provider，用户仍可以用表单管理正式内容；Today、状态转换、时间语义与重复检测都只有 Go 实现。
-复盘的确定性指标同样不依赖模型：叙述生成失败时指标仍然完整可用。
+这不代表所有页面都已正式接入，也不代表已经满足应用商店发布条件。时光、亲友、音乐及部分生活场景仍有原型、准备状态或本地会话边界；公开法律页面、账号删除和商店资料仍是上线阻塞项。唯一的全局进度表见 [实现状态](./docs/实现状态.md)。
 
 ## 本地启动
 
-需要 Go 1.26、Node 22、pnpm 10 与 PostgreSQL 16 以上。
+需要 Go 1.26、Node.js 22、pnpm 10 和 PostgreSQL 16 以上。
 
 ```bash
 cp .env.example .env
 createdb steward_dev
 
 pnpm install
-make migrate      # 建表、启用 RLS、创建应用角色、初始化 River 队列
-make seed         # 演示数据：用户 13800138000，验证码 123456
+make migrate
+make seed
 
-STEWARD_EMBEDDED_WORKER=true make api    # API 与 Worker 单进程启动，便于本地开发
-pnpm mobile:web                          # 另开一个终端
+STEWARD_EMBEDDED_WORKER=true make api
+pnpm mobile:web
 ```
 
-生产后端分为公共 API、Worker 和管理 API 三个进程。
-
-验证服务是否就绪：
+后两条命令分别在两个终端运行。默认开发验证码为 `123456`；`make seed` 写入手机号 `13800138000` 的演示数据。API 就绪检查：
 
 ```bash
 curl -s localhost:8787/healthz
 ```
 
+生产环境将公共 API、Worker 和管理 API 作为独立进程运行，具体配置见 [部署说明](./docs/部署说明.md)。
+
 ## 工程结构
 
 ```text
-apps/mobile       Expo / React Native App
-apps/backend      Go HTTP API 与 Go River Worker
-apps/admin        React 管理台
-packages/contracts    OpenAPI 契约、错误码与 Fixture（唯一网络事实来源）
-packages/api-client   由 OpenAPI 生成的 TypeScript Client、Query Hooks 与 Zod 校验器
-packages/admin-api-client 由 Admin OpenAPI 生成的 TypeScript Client
-packages/ai-contracts AI 结构化输入输出的 JSON Schema
-docs              产品、设计、架构与后端 AI 指南
+apps/mobile                Expo / React Native App
+apps/backend               Go 公共 API、Worker、管理 API 与迁移
+apps/admin                 React 管理台
+packages/contracts         公共与管理 OpenAPI、Fixture
+packages/api-client        公共 OpenAPI 生成的 TypeScript Client 与 Zod 校验器
+packages/admin-api-client  管理 OpenAPI 生成的 TypeScript Client
+packages/ai-contracts      AI JSON Schema、Prompt 与 Eval
+docs                       产品、设计、架构、现状与运维文档
 ```
 
-移动端与 Go 后端保留在同一个 Git 仓库中。TypeScript 使用 pnpm workspace，Go 使用根 `go.work` 与 `apps/backend/go.mod`。网络字段和错误码以 `packages/contracts/openapi` 为唯一来源，并生成 Go Server／DTO、TypeScript Client、Zod 校验器。
+移动端与后端位于同一个仓库。TypeScript 使用 pnpm workspace，Go 使用根 `go.work` 与 `apps/backend/go.mod`。网络字段、枚举和错误码只定义在 `packages/contracts/openapi`；AI 结构化输出只定义在 `packages/ai-contracts/schemas`。
 
-## 代码生成
-
-契约与迁移是源码，生成产物禁止手工修改：
+## 常用命令
 
 ```bash
-make generate          # 打包 OpenAPI → 生成 Go Server + sqlc + TS Client
+make generate       # OpenAPI bundle、Go Server／DTO、sqlc、TS Client 与 AI 契约同步
+make check          # 格式、Lint、测试和类型检查
+make test-race      # 核心并发路径 race 检测
+make build          # 构建 API、Worker、管理 API 与迁移二进制
 ```
 
-| 源 | 产物 |
-|---|---|
-| `packages/contracts/openapi/**` | `packages/contracts/dist/openapi.bundle.yaml` |
-| bundle | `apps/backend/internal/gen/httpapi` |
-| bundle | `packages/api-client/src/generated` |
-| `apps/backend/db/migrations/**` | `apps/backend/internal/gen/dbgen` |
-
-## 质量检查
-
-```bash
-make check        # gofmt + go vet + eslint + go test + tsc
-```
-
-## 自动部署
-
-测试环境随 `main` 自动发布，生产环境按 commit SHA 手工发布。机器复用、端口、Secrets 和首次配置见 [部署说明](./docs/部署说明.md)。
+生成目录禁止手工修改。契约变更必须重新生成两端产物并确认没有漂移。
 
 ## 安全边界
 
-- 所有用户数据访问都在受行级安全约束的短事务内进行。API 与 Worker 使用非超级用户的 `steward_app` 角色连接，因为 `FORCE ROW LEVEL SECURITY` 约束不到超级用户。
-- AI 只产出候选，任何正式写入都必须经过用户确认后由 Go Domain 执行。
-- 未确认的 Capture 候选不会出现在首页、计划、笔记、数据与搜索中。
-- 验证码与 Refresh Token 只以哈希形式落库，不写入日志与埋点。
+- 所有用户数据访问都在服务端按当前用户隔离；API 与 Worker 使用受 RLS 约束的非超级用户角色。
+- AI 只产出 Candidate 或 Proposal，不直接写数据库；确认事务重新执行权限、状态机、版本和幂等校验。
+- 未确认 Capture 不进入 Today、计划、笔记、数据、搜索或复盘。
+- 验证码、Token、完整原始媒体和不必要的用户正文不得进入日志、埋点或测试快照。
+- 运营主体、联系方式、法律文本或第三方处理者未确认时，不得用占位内容发布。
 
-## 文档入口
+## 文档与协作
 
-- [功能规格说明](./docs/功能规格说明.md)
-- [产品设计说明](./docs/产品设计说明.md)
-- [整体架构设计](./docs/整体架构设计.md)
-- [后端与 AI 开发指南](./docs/后端与AI开发指南.md)
-- [H5 与公开页面边界](./docs/H5与公开页面边界.md)
-- [后台管理系统设计](./docs/后台管理系统设计.md)
-- [部署说明](./docs/部署说明.md)
-- [上线待办](./docs/TODO.md)
-- [品牌与设计原则](./PRODUCT.md)
-- [原始 PRD](./AI事管家_PRD_v1.0.md)
-
-## 协作规范
-
-编码 Agent 和团队成员开始任务前必须阅读 [AGENTS.md](./AGENTS.md)。代码提交信息、文档说明、代码注释和 PR 描述统一使用中文。
+从 [项目文档入口](./docs/README.md) 开始阅读；该页说明权威来源、任务阅读路径、实现状态和文档维护规则。编码与提交前同时遵守 [AGENTS.md](./AGENTS.md)。团队可读内容统一使用中文，领域类型、API 字段和代码标识符保持稳定英文名。

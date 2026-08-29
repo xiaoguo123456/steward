@@ -10,7 +10,8 @@
 | 架构依据 | `整体架构设计.md` |
 | 目标读者 | 后端、AI、移动端、测试、运维及编码 Agent |
 | 当前状态 | 开发基线 |
-| 更新日期 | 2026-08-19 |
+| 文档定位 | 后端与 AI 的实现指南，不作为全局进度表 |
+| 更新日期 | 2026-08-29 |
 
 本文回答四个开发问题：后端怎样分层和落库、AI 怎样理解并调用能力、每个用户的长期记忆怎样管理、未来怎样替换模型 Provider 或编排框架而不重写业务系统。
 
@@ -22,6 +23,8 @@
 4. 本文决定上述规则在后端与 AI 工程中的具体实现方式。
 
 如果开发中发现本文与前三份文档不一致，不得只改代码适配；先修正文档和契约，再实施代码。
+
+当前代码完成度统一见 [实现状态](./实现状态.md)，文档导航与维护方式见 [项目文档入口](./README.md)。本文阶段清单用于说明依赖顺序和验收目标，不再承担仓库进度汇报。
 
 按角色建议阅读：
 
@@ -48,7 +51,7 @@
 - 用户短期上下文、显式偏好、长期记忆和派生摘要。
 - 关系表、JSONB、向量和对象存储各自应该保存什么。
 - OpenAPI、AI JSON Schema、River Job、错误码、测试和 Eval。
-- 从当前前端原型到正式后端的实施顺序。
+- 从当前实现缺口到完整正式闭环的依赖顺序。
 
 ## 1.2 本文不覆盖
 
@@ -61,12 +64,12 @@
 
 ## 1.3 当前正式范围与技术预留
 
-现有正式范围已经包含 Capture、AI 建议、自然语言搜索、Review、来源追溯和长期偏好管理。通用 Assistant 多轮对话属于目标能力，但移动端何时完整开放，仍需在对应功能规格和产品设计章节中明确。
+现有正式范围已经包含 Capture、AI 建议、自然语言搜索、Review、来源追溯、长期记忆与通用 Assistant 多轮对话。移动端已接入默认当天会话、历史会话、流式回复、图片转 Capture 和 Action Proposal 确认；具体实现状态仍以 [实现状态](./实现状态.md) 的基线核对为准。
 
 因此开发时遵守两条规则：
 
-- 可以先建设 Provider 中立的 Assistant、Memory 和 Tool Runtime 基础设施，并由现有 Capture、Search、Review 复用。
-- 在功能规格和 OpenAPI 未同步前，不得仅凭本文让 App 新增未定义的正式写入入口或跳过已有 Confirmation。
+- Assistant、Memory 和 Tool Runtime 必须保持 Provider 中立，并由 Capture、Search、Review 等能力复用同一审计、来源和确认边界。
+- 新增 Assistant Capability 或写入入口时，仍须先同步功能规格、产品设计、OpenAPI／AI Schema 与 Eval；不得仅凭本文跳过已有 Confirmation。
 
 ---
 
@@ -538,7 +541,7 @@ queued
 4. 保存用户 Message，正文按敏感数据策略处理。
 5. 保存 `assistant_turns(status=queued)`。
 6. 保存 `async_operations(status=queued)`。
-7. 向 `river_user.ai` 事务内插入 `assistant.respond`。
+7. 向 River 的 `ai` Queue 事务内插入 `assistant.respond`；当前使用默认 schema。
 8. 保存 `202` 响应幂等快照并提交。
 
 返回示例：
@@ -1891,7 +1894,7 @@ Worker 重新读取 Memory，发现 deleted、sensitive disallowed 或版本变�
 - `ai` Queue 配置全局并发、Provider 并发和单用户并发上限。
 - 同一 Thread 顺序执行影响上下文的 Turn。
 - 一个用户的大量历史总结不能饿死其他用户的交互 Turn。
-- Interactive 与 background 可以使用同一 Queue 的优先级或拆分命名 Queue，但仍位于 `river_user` schema。
+- Interactive 与 background 可以使用同一 Queue 的优先级或拆分命名 Queue；当前 River 使用默认 schema，未来若拆 schema 必须同步迁移、权限和部署配置。
 - 维护扫描只分派用户 Job，不在 Maintenance Profile 调 Provider。
 
 ## 17.6 取消

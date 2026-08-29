@@ -1,40 +1,33 @@
 # AI事管家移动端
 
-当前目录是基于 Expo SDK 57、React Native 与 Expo Router 的移动端前端工程。
+## 文档信息
 
-## 当前实现范围
+| 项目 | 内容 |
+|---|---|
+| 文档类型 | 移动端工程说明 |
+| 适用范围 | `apps/mobile` |
+| 当前状态 | 维护中 |
+| 更新日期 | 2026-08-29 |
 
-第一版严格以 Ardot 文件“清单设计”的现有视觉稿为准，使用本地 Mock 数据实现以下可运行页面：
+本目录是基于 Expo SDK 57、React Native 0.86、React 19 与 Expo Router 的移动端应用。全局功能进度只在 [实现状态](../../docs/实现状态.md) 维护；本页说明移动端工程边界和开发方式，不重复逐页需求。
 
-- 登录、注册、找回密码。
-- 首页、计划、笔记、打卡，以及从首页头像进入的“我的”与设置。
-- 首页标题下方提供“今天、时光、音乐、灵感、心情”可横向滚动并吸顶的页内标签导航；“今天”保留完整 Today 聚合，“时光”提供照片时间线、独立月历查找、1～9 张系统选图、手工编辑、AI 文案 Candidate 确认和详情查看的原生交互原型，“心情”已接正式心情日记，“灵感”复用正式 Notes API，以稳定问题和沉淀至少 7 天的真实笔记组成发现页，并进入独立全屏对话。“音乐”继续显示不播放或生成音频的准备状态。“时光”的演示数据与新增结果只保留在 App 进程内，不上传图片、不调用模型、不写正式接口。
-- 心情分区采用“私人日记”为主体，已接入正式 `mood-journal` API、`blocks_v1` 基础富文本、按日时间线、日历、搜索、确定性统计和抽象心情花园；标题、心情和精力均可跳过，未发送草稿使用本机安全存储恢复。普通 Note 继续使用 `plain_text`，服务端从两种权威正文格式统一生成只读纯文本投影。深度 AI 回望的 Schema、Prompt 和 Eval 已固化，但在单独同意、Provider 敏感等级、处理地区、保留与删除策略确认前不发送真实日记正文，页面只展示确定性统计和清楚的未开放说明。
-- 亲友人物关系 CRM 保留为开发构建中的独立界面预览，覆盖搜索、关系筛选、今天要关心、最近联系、全部亲友和人物详情；预览不读取通讯录、不保存人物、不调用 AI，也不作为当前首页顶部标签。
-- 底栏中央“新增”打开统一 Capture 底部输入面板，支持文字、语音和图片组合；通用空白面板在“图片”“键盘”旁提供同规格“新建任务”，直接调用正式 Task 创建接口，已有 Capture 草稿或行程等专用上下文中不显示。
-- 首页提供运动、食谱、番茄钟、记账、重要日、购物、复盘和更多 8 个生活场景快捷入口，并包含可操作的本地原型页面。运动已拆为独立二级流程，支持户外跑步、健走、骑行和力量训练；食谱覆盖本周菜单、发现、问卷、详情、烹饪和购物确认；番茄钟覆盖任务关联、倒计时／正向计时、想法暂存、休息、保存确认和专注记录；记账覆盖当月概览、预算、拍照／截图识别确认、手动记账、最近账单和月度报告；重要日覆盖日期排序、类型预设、年月日选择、年度重复、提醒和详情查看；购物覆盖右上角新增、数量／规格编辑、自动品类分组、进度、食谱来源和已买到收纳；复盘采用一页式 AI 周报告，覆盖历史周切换、来源追溯、个人补充和建议确认；更多功能中心当前只保留行程入口，行程覆盖专用新建页、独立总览、按天安排、预订信息、注意事项和行前清单。
-- 首页“今天要做”、计划“清单”以及打卡“今日待打卡／我的打卡”的数量统一使用紧跟标题的小胶囊；首页“今日提醒”整张承载面进入日历，不在标题右侧重复放置文字入口。
-- 打卡页只展示自定义 Tracker，按服务端返回的 `due_today` 形成今日待打卡；运动、专注和记账的内置 Tracker 留在对应场景中。
-- 首页 Today 不提供局部“添加任务”；具体 TaskList 和计划“随时可做”保留就地入口，具体 TaskList 预选当前清单，“随时可做”不预设日期。全局手动新建从中央 Capture 的输入工具栏进入。新建任务页使用分组属性行，日期、优先级和清单按需从底部选择；设置截止日期并打开提醒后可以选择具体提醒时间。新建 TaskList 仍只从“计划 → 清单 → 新建清单”进入。计划页使用“今天／明天／已完成”紧凑入口、独立“随时可做”和统一清单；“随时可做”聚合没有固定日期的任务，保留原清单归属，并支持直接完成、加入今天或设置日期。日历从右上角进入，支持“月历／周历”显示方式切换。固定 6 周月格每个日期只显示第一条安排的前 4 个字，不换行、不显示省略号或剩余数量；周历使用 7 天日期条联动选中日安排，并支持按钮或横向滑动换周。右上角显示完整年月并可按年份选择月份；月格不常驻重复的当日议程，点击日期后从底部打开当天全部安排。
-- 任务详情、新建任务、笔记详情、专注、“我的”与设置。
-- 笔记首页使用标签筛选和单一卡片流，不显示置顶／最近更新分区或列表分割线；搜索按需展开。“我的”从首页头像进入，直接收纳资料、偏好、手机号与退出登录，不再增加“全部设置”或“账号与登录”中转页；“我的”与日历均使用独立二级页面，不显示底部一级导航。资料编辑使用当前页底部面板，时区由系统自动同步，不向普通用户展示。
-- 全局 AI 助手使用统一的暖色叠页管家形象和聊天式底部面板，支持跨页面拖动、松手贴边吸附、保留停靠位置、快捷回答并返回 Capture 确认页。输入区支持拍照或从相册选择最多 9 张图片并在发送前删除；带图片消息复用统一媒体上传和 `origin=assistant` 的 Capture 流程。默认入口会按用户时区恢复当天最近使用的对话，仅在发送首条消息时创建 Thread，并保留显式新建与历史选择；Assistant 最终消息使用受限 Markdown 渲染，用户消息和流式草稿保持纯文本，远程图片不自动加载，正式操作继续由独立建议确认卡片承载。复盘页本身已经是 AI 报告，不重复叠加悬浮入口，避免遮挡来源与建议内容。
+## 工程边界
 
-已接入服务端的能力统一使用生成的 API Client；仍处于本地交互阶段的场景不定义临时网络 DTO，也不把 Mock 数据写入正式契约。
+- 路由位于 `src/app`，业务 UI 与数据编排位于 `src/features`，App 内共享组件位于 `src/components/ui`，视觉 Token 位于 `src/theme/tokens.ts`。
+- 服务端事实使用 TanStack Query；网络请求必须通过 `@steward/api-client` 的生成 Client 和 Zod 校验器，不手写 URL、网络 DTO 或第二套错误码。
+- 当前跨组件状态使用 React Context／Reducer／页面状态；凭证和心情日记草稿使用 `expo-secure-store`。仓库当前没有 Zustand、React Hook Form 或通用 SQLite 草稿层。
+- Hugeicons 只能经 `src/components/ui/icon.tsx` 的语义名称使用。Expo UI 与 Slider 只能经 `src/components/ui/selection-controls.tsx` 适配后使用；Feature 不直接绑定底层组件库。
+- MapLibre、Location、Image Picker、Speech、Secure Store 和 Updates 都包含平台或生命周期边界。新增原生依赖、权限或 Plugin 后必须重新构建原生包，不能只发布 JavaScript 更新。
 
-公开《隐私政策》《用户协议》、个人信息／第三方清单、帮助页和 Web 账号删除路径尚未实现，当前构建不具备正式应用商店发布条件。后续页面复用现有 Expo 静态 Web 输出，固定放在 `/legal/*` 与 `/support`，App 使用外部浏览器打开；核心隐私控制和账号删除仍保持原生并走正式契约。开发触发条件与载体边界见 `docs/H5与公开页面边界.md`。
+## 当前能力边界
 
-运动模块的户外跑步、健走和骑行已接入 MapLibre 与前台 GPS：显示真实路线、距离、平均配速或平均速度，用户在总结页确认后写入既有 Tracker / Record。原始坐标不上传，不申请后台定位；健走步数仍由用户选填。
+核心管理、Capture、Assistant、心情日记、食谱、行程、重要日、购物和复盘等页面已经使用正式 API；时光仍是进程内原型，亲友只在开发构建中预览，音乐是准备状态。专注、记账和运动虽已写入正式 Tracker／Record，计时中状态、模拟图片识别或原始 GPS 等数据仍按各模块 README 的边界留在设备会话。
 
-专注模块的计时、想法和记录只保存在当前 App 进程内；“标记任务完成”不会修改首页 Task，“保存专注记录”也不会写入正式 Tracker / Record。正式接入前仍需完成 Task 更新、Tracker Schema、Record 字段、后台恢复和时间语义的跨端契约设计。
+不要从页面是否“看起来完整”推断是否已接正式数据。开发前先查 [实现状态](../../docs/实现状态.md)，再阅读目标 Feature 的 README、[功能规格说明](../../docs/功能规格说明.md) 和 [产品设计说明](../../docs/产品设计说明.md)。
 
-记账模块当前使用本地账单 Fixture 与模拟图片识别流程，不会调用真实相机、相册、OCR 或上传接口；识别结果仍需用户确认才加入本地账单。接入真实能力前需要完成媒体上传、识别候选、重复检测、确认保存和 Record Schema 的跨端契约设计，并在新增原生媒体依赖后重新构建开发预览 APK。
+公开法律与支持 H5、App 内及 Web 账号删除链路尚未完成；当前构建不具备正式应用商店发布条件。涉及登录、隐私、第三方 SDK／Provider、权限、公开页面、OTA 或商店发布时，必须先阅读 [H5 与公开页面边界](../../docs/H5与公开页面边界.md)。
 
-重要日模块当前使用本地 Fixture 和进程内新增状态，只支持公历，不会申请通知、联系人或系统日历权限。生日、纪念日、到期日和其他只是前端交互预设；正式接入后均保存为 `event_kind=important_date` 的全天 Event，并由服务端处理年度投影、时区、提醒与重复规则。
-
-购物模块当前使用本地 Fixture、关键词品类模拟结果和进程内新增／编辑／勾选状态，不会同步家庭成员、读取商店货架、计算价格预算或连接线上商城。正式接入后继续复用 TaskList / Task；数量／规格、品类、备注和食谱来源若需要结构化持久化，必须先完成跨端契约设计。新增表单不维护独立单位或品类，正式品类由服务端返回。
-
-## 启动方式
+## 启动与检查
 
 在仓库根目录执行：
 
@@ -43,89 +36,41 @@ pnpm install
 pnpm mobile:web
 ```
 
-也可以进入本目录启动 iOS 或 Android：
+iOS 或 Android 原生开发：
 
 ```bash
-pnpm ios
-pnpm android
+pnpm --filter mobile ios
+pnpm --filter mobile android
 ```
 
-## Android 真机实时预览
-
-项目使用 `expo-dev-client` 提供真机开发预览。MapLibre 包含原生代码，不能使用 Expo Go；安装包含 MapLibre 与 Expo Location 的开发预览 APK 后，普通 TypeScript、JavaScript 和样式改动可继续通过 Fast Refresh 刷新。
-
-电脑与 Android 手机连接同一个局域网后，在仓库根目录启动实时服务：
+MapLibre 包含原生代码，不能使用 Expo Go。已安装开发预览包的真机与电脑处于同一局域网时，可以运行：
 
 ```bash
 pnpm mobile:live
 ```
 
-该命令默认连接测试环境 `https://test-steward.qhzhiyin.com`，因此热更新期间产生和读取的服务端数据均属于测试环境。需要临时连接其他后端时，可直接使用 `EXPO_PUBLIC_API_URL` 覆盖。
+该命令默认连接测试环境 `https://test-steward.qhzhiyin.com`。需要其他后端时显式设置 `EXPO_PUBLIC_API_URL`，避免把测试数据写入错误环境。
 
-随后打开手机上的“清单”开发预览版，选择检测到的本地开发服务。首次连接也可以扫描 Expo CLI 显示的二维码。
-
-以下变更仍需要重新构建并安装开发预览 APK：
-
-- 新增或升级包含 Android 原生代码的依赖。
-- 修改应用图标、启动图、包名等原生配置。
-- 升级 Expo SDK 或 React Native。
-
-## OTA 远程更新
-
-项目使用 Expo SDK 57 对应的 `expo-updates`。本地开发未配置凭证时自动关闭，继续使用 Metro／Fast Refresh；正式测试和生产 APK 必须注入 Expo Project ID 与验签证书，否则构建失败。
-
-- 测试 APK 固定接收 `steward-test`，生产 APK 固定接收 `steward-production`，不能由用户或页面脚本切换频道。
-- runtime version 等于 App 版本。测试 APK 的 `app_version` 必须与准备验证的生产版本一致；新增原生依赖、权限或配置时提升 App 版本并重新构建。
-- App 启动时后台检查更新，不等待网络；下载成功后在下次冷启动生效，不在用户执行任务时强制重载。
-- OTA 只能通过 GitHub Actions 的“移动端 OTA 更新”发布。工作流要求填写目标原生包 SHA、更新 SHA、App 版本、频道、灰度比例和中文说明，并自动拒绝可能改变原生运行时的文件。
-- 可发布范围默认只有 `apps/mobile/src`、`packages/api-client/src` 与 `apps/mobile/assets/updates`。依赖、锁文件、App Config、图标、启动图和其他原生资源变化必须重新发 APK。
-
-首次启用步骤、Secrets、签名、灰度和回滚见 `docs/ADR-028-移动端OTA更新.md` 与 `docs/部署说明.md`。在 Expo Project、Secret、包含验签证书的新 APK 和回滚演练完成前，不能把 OTA 当作已经对用户生效。
-
-如果同一 Wi-Fi 下无法连接，可检查电脑防火墙、路由器客户端隔离与 VPN；必要时改用 Expo Tunnel 模式。
-
-## Android APK 预览包
-
-Android Release APK 会把 JavaScript、静态资源和 API 地址写入安装包，安装后无需连接电脑或 Metro。打包时必须明确指定环境地址。
-
-正常发布使用 GitHub Actions：
-
-- `main` 中包含移动端、公共 API 契约或 Android 打包配置的改动时，测试部署成功后自动生成“清单测试”，在本次 Actions 的 Artifacts 下载，保留 30 天；纯后端或管理台改动不打包。手工运行测试部署时可自行勾选是否生成。
-- 需要发布正式 App 时，手工运行独立的“Android 正式发布”，输入 main commit SHA 和 App 版本号；“生产环境部署”只更新服务器，不生成 APK。
-- 正式 APK 长期保存到对应 GitHub Release。
-- 测试包名为 `com.aisteward.mobile.test`，生产包名为 `com.aisteward.mobile`，可在同一台手机安装。
-
-本地构建需要 JDK 17、Android SDK Platform 36、Build Tools 36，以及 Android NDK 27。配置好 `JAVA_HOME` 与 `ANDROID_HOME` 后执行：
+移动端检查：
 
 ```bash
-# 测试包
-APP_VARIANT=test \
-EXPO_PUBLIC_API_URL=https://test-steward.qhzhiyin.com \
-pnpm --filter mobile exec expo prebuild --platform android --clean --no-install
-
-cd apps/mobile/android
-APP_VARIANT=test \
-NODE_ENV=production \
-EXPO_PUBLIC_API_URL=https://test-steward.qhzhiyin.com \
-./gradlew :app:assembleRelease \
-  -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
-  --no-daemon
+pnpm --filter mobile lint
+pnpm --filter mobile typecheck
+pnpm --filter mobile test
 ```
 
-原始产物位于：
+完整仓库检查仍从根目录运行 `make check`。
 
-```text
-apps/mobile/android/app/build/outputs/apk/release/app-release.apk
-```
+## 原生包与 OTA
 
-上面的本地命令使用开发调试签名，只适合临时验收；自动流程使用固定的测试或生产签名。
+- 测试 APK、生产 APK 和服务器部署由独立 GitHub Actions 工作流负责，触发方式、签名和产物见 [部署说明](../../docs/部署说明.md)。
+- OTA 只允许发布与已安装原生 runtime 兼容的 JavaScript、样式和专用资源，且只能经仓库工作流执行；runtime、频道、签名、灰度与回滚规则见 [ADR-028：移动端 OTA 更新](../../docs/ADR-028-移动端OTA更新.md)。
+- 新增原生依赖、权限、App Config、图标、启动图或普通原生资源时必须提升 App 版本并重新构建 APK。
+- Expo Project、验签证书、Secrets、首个原生包和回滚演练完成前，不得声称 OTA 已对用户生效。
 
-在 Android 手机上打开 APK 后，如果系统拦截安装，需要为当前浏览器或文件管理器临时开启“允许安装未知应用”。
+## 相关文档
 
-## 质量检查
-
-```bash
-pnpm check
-```
-
-后续接入正式业务时，页面只能通过 `packages/api-client` 的生成 Client 与 Zod 校验器访问网络数据，不能直接把本地 Mock 类型扩展为手写 DTO。
+- [项目文档入口](../../docs/README.md)
+- [整体架构设计](../../docs/整体架构设计.md)
+- [后端与 AI 开发指南](../../docs/后端与AI开发指南.md)
+- [上线阻塞项](../../docs/TODO.md)
