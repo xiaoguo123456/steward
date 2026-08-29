@@ -1,12 +1,22 @@
 import {
+  listRecords,
   useCreateRecord,
-  useListRecords,
   useListTrackers,
   type Record as TrackerRecord,
   type RecordValue,
   type TrackerBuiltinKey,
 } from '@steward/api-client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { collectCursorPages } from './record-pagination';
+
+type BuiltinTrackerOptions = {
+  enabled?: boolean;
+  from?: string;
+  limit?: number;
+  loadAll?: boolean;
+  to?: string;
+};
 
 /**
  * 内置记录项的数据层。
@@ -19,10 +29,11 @@ import { useQueryClient } from '@tanstack/react-query';
  */
 export function useBuiltinTracker(
   key: TrackerBuiltinKey,
-  options?: { limit?: number; enabled?: boolean },
+  options?: BuiltinTrackerOptions,
 ) {
   const queryClient = useQueryClient();
   const enabled = options?.enabled ?? true;
+  const limit = options?.limit ?? 50;
 
   const trackers = useListTrackers(
     { builtin_key: key },
@@ -30,10 +41,33 @@ export function useBuiltinTracker(
   );
   const tracker = trackers.data?.data[0];
 
-  const records = useListRecords(
-    { tracker_id: tracker?.id, limit: options?.limit ?? 50 },
-    { query: { enabled: enabled && Boolean(tracker) } },
-  );
+  const records = useQuery({
+    enabled: enabled && Boolean(tracker),
+    queryKey: [
+      'builtin-tracker-records',
+      tracker?.id ?? key,
+      limit,
+      options?.from ?? null,
+      options?.to ?? null,
+      options?.loadAll ?? false,
+    ],
+    queryFn: async ({ signal }) => {
+      if (!tracker) return [];
+      return collectCursorPages<TrackerRecord>(
+        (cursor) => listRecords(
+          {
+            cursor,
+            from: options?.from,
+            limit,
+            to: options?.to,
+            tracker_id: tracker.id,
+          },
+          { signal },
+        ),
+        options?.loadAll,
+      );
+    },
+  });
 
   const create = useCreateRecord({
     mutation: {
@@ -45,12 +79,35 @@ export function useBuiltinTracker(
     },
   });
 
+  const buildCreateRequest = (
+    values: Record<string, number | string | undefined>,
+    timestamp: Date,
+    note?: string,
+  ) => {
+    if (!tracker) return null;
+    const trimmed = note?.trim();
+    return {
+      data: {
+        tracker_id: tracker.id,
+        timestamp: timestamp.toISOString(),
+        values: toRecordValues(tracker.fields.map((field) => field.key), values),
+        ...(trimmed ? { note: trimmed } : {}),
+      },
+    };
+  };
+
   return {
     tracker,
-    records: records.data?.data ?? [],
+    records: records.data ?? [],
     loading: trackers.isLoading || records.isLoading,
+    failed: trackers.isError || records.isError,
+    queryError: trackers.error ?? records.error,
     saving: create.isPending,
     error: create.error,
+    refetch: async () => {
+      await trackers.refetch();
+      if (tracker) await records.refetch();
+    },
 
     /**
      * 保存一条记录。
@@ -63,18 +120,19 @@ export function useBuiltinTracker(
       timestamp: Date,
       note?: string,
     ) => {
-      if (!tracker) return;
-      const trimmed = note?.trim();
-      create.mutate({
-        data: {
-          tracker_id: tracker.id,
-          timestamp: timestamp.toISOString(),
-          values: toRecordValues(tracker.fields.map((f) => f.key), values),
-          // 记录项字段之外的补充说明走 note，不为了一句话去改内置 Schema：
-          // 改字段会让已有记录读不出来。
-          ...(trimmed ? { note: trimmed } : {}),
-        },
-      });
+      const request = buildCreateRequest(values, timestamp, note);
+      if (request) create.mutate(request);
+    },
+
+    /** 需要等待保存结果的表单使用此入口，失败时保留用户输入。 */
+    saveAsync: async (
+      values: Record<string, number | string | undefined>,
+      timestamp: Date,
+      note?: string,
+    ) => {
+      const request = buildCreateRequest(values, timestamp, note);
+      if (!request) throw new Error('记录项尚未加载完成，请稍后重试。');
+      return create.mutateAsync(request);
     },
   };
 }

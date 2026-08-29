@@ -85,10 +85,14 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 			if item.override != nil {
 				payload = *item.override
 			}
-			if len(candidate.MissingFields) > 0 {
-				// 存在未解决的必填字段时不允许保存该候选（CFM-001）。
+			if unresolved := unresolvedConfirmationFields(
+				candidate.CandidateType, payload, candidate.MissingFields,
+			); len(unresolved) > 0 {
+				// 原候选缺失字段可以由确认页 payload 补齐，但服务端必须重新检查，
+				// 不能把“客户端提交了 override”等同于已经完成校验（CFM-001）。
 				return apperr.Validation(apperr.Field(
-					"items", "还有必填信息没有补全，请先完善后再保存。"))
+					"items", "还有必填信息没有补全，请先完善后再保存："+
+						strings.Join(unresolved, "、")))
 			}
 
 			switch candidate.CandidateType {
@@ -397,6 +401,114 @@ func decodePayload(raw []byte) httpapi.CaptureDraftPayload {
 	var payload httpapi.CaptureDraftPayload
 	_ = json.Unmarshal(raw, &payload)
 	return payload
+}
+
+// unresolvedConfirmationFields 检查用户编辑后的 payload 是否真正补齐原候选的缺失字段。
+// 字段名来自 AI Schema，但最终只在受控 DTO 序列化出的对象中读取；未知字段保持未解决。
+func unresolvedConfirmationFields(candidateType string, payload httpapi.CaptureDraftPayload,
+	missing []string) []string {
+	if len(missing) == 0 {
+		return nil
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return append([]string(nil), missing...)
+	}
+	var wrapper map[string]any
+	if err := json.Unmarshal(raw, &wrapper); err != nil {
+		return append([]string(nil), missing...)
+	}
+	object, _ := wrapper[candidateType].(map[string]any)
+	if object == nil {
+		return append([]string(nil), missing...)
+	}
+
+	unresolved := make([]string, 0, len(missing))
+	for _, field := range missing {
+		if confirmationFieldPresent(candidateType, object, field) {
+			continue
+		}
+		unresolved = append(unresolved, field)
+	}
+	return unresolved
+}
+
+func confirmationFieldPresent(candidateType string, object map[string]any, field string) bool {
+	if candidateType == "record" {
+		recordKey := field
+		if field == "amount" {
+			recordKey = "amount"
+		}
+		if values, ok := object["values"].([]any); ok {
+			for _, rawValue := range values {
+				value, _ := rawValue.(map[string]any)
+				if value["key"] == recordKey &&
+					(presentJSONValue(value["number_value"]) || presentJSONValue(value["text_value"])) {
+					return true
+				}
+			}
+		}
+	}
+
+	for _, candidate := range confirmationFieldCandidates(candidateType, field) {
+		if presentJSONValue(readJSONPath(object, candidate)) {
+			return true
+		}
+	}
+	return false
+}
+
+func confirmationFieldCandidates(candidateType, field string) []string {
+	if field == "date" {
+		switch candidateType {
+		case "task":
+			return []string{"due_date", "due_at"}
+		case "event":
+			return []string{"start_date", "start_at"}
+		case "project":
+			return []string{"start_date", "target_date"}
+		}
+	}
+	if field == "time" {
+		switch candidateType {
+		case "task":
+			return []string{"due_at", "scheduled_start_at"}
+		case "event":
+			return []string{"start_at", "end_at"}
+		}
+	}
+	return []string{field}
+}
+
+func readJSONPath(object map[string]any, path string) any {
+	var current any = object
+	for _, segment := range strings.Split(path, ".") {
+		item, ok := current.(map[string]any)
+		if !ok {
+			return nil
+		}
+		current = item[segment]
+	}
+	return current
+}
+
+func presentJSONValue(value any) bool {
+	switch typed := value.(type) {
+	case nil:
+		return false
+	case string:
+		return strings.TrimSpace(typed) != ""
+	case float64:
+		return typed > 0
+	case bool:
+		return true
+	case []any:
+		return len(typed) > 0
+	case map[string]any:
+		return len(typed) > 0
+	default:
+		return true
+	}
 }
 
 func resource(kind httpapi.AffectedResourceType, id string) httpapi.AffectedResource {

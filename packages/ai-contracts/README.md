@@ -33,8 +33,9 @@ schemas/mood-journal/mood-reflection-result.v1.schema.json
 心情日记回望契约只用于用户主动选择范围并单独同意后的深度回望，输出为摘要、
 带日记来源的观察、反思问题和温和建议。当前运营主体、Provider 处理地区、保留与
 删除策略尚未确认，因此客户端只开放 Go 确定性统计，真实日记正文不会进入
-Provider；Schema、Prompt 和安全 Eval 已先固化，待合规与 Provider 敏感等级门禁
-完成后再接正式 Operation 与保存确认链路。
+Provider；Schema、Prompt 和契约安全 Eval 已先固化。当前 Eval 只确定性检查输入边界、
+来源字段、诊断禁令和输出上限，不冒充真实模型质量评测；待合规与 Provider 敏感等级
+门禁完成后，再接正式 Operation、保存确认链路和 Provider 运行时 Eval。
 
 ## 接入真实 Provider 时必须补上的环节
 

@@ -21,6 +21,8 @@ import {
   PHONE_PATTERN,
 } from '@/features/auth/login-input';
 import { resolvePhoneCodeDelivery } from '@/features/auth/phone-code';
+import { openPublicPage } from '@/features/legal/open-public-page';
+import { publicPagePaths } from '@/features/legal/public-pages';
 import { colors, fontFamily, typography } from '@/theme/tokens';
 
 export default function LoginScreen() {
@@ -33,6 +35,7 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [phoneTouched, setPhoneTouched] = useState(false);
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const phoneRef = useRef('');
   const codeInputRef = useRef<TextInput>(null);
@@ -59,11 +62,20 @@ export default function LoginScreen() {
 
   const phoneValid = PHONE_PATTERN.test(phone);
   const phoneError = phoneValidationMessage(phone, phoneTouched);
-  const canSubmit = phoneValid && code.length === 6 && !sending && !submitting;
+  const canRequestCode = agreementAccepted && phoneValid && cooldown === 0 && !sending && !submitting;
+  const canSubmit = agreementAccepted && phoneValid && code.length === 6 && !sending && !submitting;
+
+  const openLegalPage = async (path: typeof publicPagePaths.privacy | typeof publicPagePaths.terms) => {
+    try {
+      await openPublicPage(path);
+    } catch {
+      setError('暂时无法打开公开页面，手机号和勾选状态已为你保留，请稍后重试。');
+    }
+  };
 
   const handleSendCode = async () => {
     setPhoneTouched(true);
-    if (!phoneValid || sending || submitting || cooldown > 0) return;
+    if (!canRequestCode) return;
     const requestedPhone = phone;
     setError(null);
     setSending(true);
@@ -131,6 +143,50 @@ export default function LoginScreen() {
           {phoneError}
         </Text>
       ) : null}
+
+      <View style={styles.agreementRow}>
+        <Pressable
+          accessibilityLabel={agreementAccepted ? '取消同意用户协议与隐私政策' : '同意用户协议与隐私政策'}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreementAccepted }}
+          hitSlop={6}
+          onPress={() => {
+            setAgreementAccepted((current) => !current);
+            setError(null);
+          }}
+          style={({ pressed }) => [
+            styles.checkbox,
+            agreementAccepted && styles.checkboxChecked,
+            pressed && styles.checkboxPressed,
+          ]}
+        >
+          {agreementAccepted ? <Text style={styles.checkboxMark}>✓</Text> : null}
+        </Pressable>
+        <Text style={styles.agreementText}>
+          我已阅读并同意
+          <Text
+            accessibilityRole="link"
+            onPress={() => void openLegalPage(publicPagePaths.terms)}
+            style={styles.agreementLink}
+          >
+            《用户协议》
+          </Text>
+          和
+          <Text
+            accessibilityRole="link"
+            onPress={() => void openLegalPage(publicPagePaths.privacy)}
+            style={styles.agreementLink}
+          >
+            《隐私政策》
+          </Text>
+        </Text>
+      </View>
+      {!agreementAccepted ? (
+        <Text accessibilityLiveRegion="polite" style={styles.agreementHint}>
+          勾选后才能获取验证码；手机号会在发送验证码时开始处理。
+        </Text>
+      ) : null}
+
       <View style={styles.codeRow}>
         <View style={styles.codeInput}>
           <AuthInput
@@ -153,17 +209,24 @@ export default function LoginScreen() {
           />
         </View>
         <Pressable
-          accessibilityLabel={cooldown > 0 ? `${cooldown} 秒后可重新获取验证码` : '获取验证码'}
+          accessibilityHint={!agreementAccepted ? '请先阅读并同意用户协议与隐私政策' : undefined}
+          accessibilityLabel={
+            !agreementAccepted
+              ? '获取验证码，当前不可用，请先同意协议'
+              : cooldown > 0
+                ? `${cooldown} 秒后可重新获取验证码`
+                : '获取验证码'
+          }
           accessibilityRole="button"
           accessibilityState={{
             busy: sending,
-            disabled: !phoneValid || cooldown > 0 || sending || submitting,
+            disabled: !canRequestCode,
           }}
-          disabled={!phoneValid || cooldown > 0 || sending || submitting}
+          disabled={!canRequestCode}
           onPress={handleSendCode}
           style={({ pressed }) => [
             styles.codeButton,
-            (!phoneValid || cooldown > 0 || submitting) && styles.codeButtonDisabled,
+            !canRequestCode && styles.codeButtonDisabled,
             pressed && styles.codeButtonPressed,
           ]}
         >
@@ -199,6 +262,55 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  agreementRow: {
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    marginRight: 9,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  checkboxChecked: {
+    borderColor: colors.primaryStrong,
+    backgroundColor: colors.primaryStrong,
+  },
+  checkboxPressed: {
+    opacity: 0.68,
+  },
+  checkboxMark: {
+    color: colors.background,
+    fontFamily,
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  agreementText: {
+    minWidth: 0,
+    flex: 1,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+    lineHeight: 22,
+  },
+  agreementLink: {
+    color: colors.primaryStrong,
+    fontWeight: '600',
+  },
+  agreementHint: {
+    marginBottom: 12,
+    marginLeft: 33,
+    color: colors.textTertiary,
+    fontFamily,
+    ...typography.caption,
+  },
   codeRow: {
     marginBottom: 16,
     flexDirection: 'row',

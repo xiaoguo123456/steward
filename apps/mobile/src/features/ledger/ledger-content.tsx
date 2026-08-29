@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   Modal,
   Pressable,
@@ -14,8 +15,10 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { AppSegmentedControl } from '@/components/ui/selection-controls';
-import type { Record as TrackerRecord } from '@steward/api-client';
+import { StatePanel } from '@/components/ui/state-panel';
+import { errorMessage, type Record as TrackerRecord } from '@steward/api-client';
 
+import { buildMonthlyLedgerReport, type MonthlyLedgerReport } from './ledger-report';
 import {
   numberOf,
   textOf,
@@ -25,7 +28,6 @@ import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 import { formatRelativeTime } from '@/utils/format';
 
 type LedgerEntryType = 'expense' | 'income';
-type ScanStep = 'source' | 'processing' | 'review';
 type LedgerIconName = ComponentProps<typeof AppIcon>['name'];
 
 type LedgerEntry = {
@@ -35,6 +37,7 @@ type LedgerEntry = {
   amount: number;
   type: LedgerEntryType;
   time: string;
+  timestamp: Date;
   account: string;
 };
 
@@ -62,14 +65,6 @@ const incomeCategories: CategoryOption[] = [
 const categoryIconMap = new Map(
   [...expenseCategories, ...incomeCategories].map((category) => [category.label, category.icon]),
 );
-
-const categoryReport = [
-  { label: '餐饮', amount: 1146, ratio: 0.35, icon: 'restaurant-outline' as const },
-  { label: '居住', amount: 920, ratio: 0.28, icon: 'home-outline' as const },
-  { label: '购物', amount: 624, ratio: 0.19, icon: 'bag-handle-outline' as const },
-];
-
-const weeklySpend = [620, 1030, 890, 746];
 
 function formatAmount(value: number) {
   return value.toLocaleString('zh-CN', {
@@ -165,10 +160,10 @@ function LedgerRow({ entry }: { entry: LedgerEntry }) {
   const icon = categoryIconMap.get(entry.category) ?? 'receipt-outline';
 
   return (
-    <Pressable
+    <View
+      accessible
       accessibilityLabel={`${entry.title}，${entry.category}，${isIncome ? '收入' : '支出'}${formatAmount(entry.amount)}元`}
-      accessibilityRole="button"
-      style={({ pressed }) => [styles.ledgerRow, pressed && styles.rowPressed]}
+      style={styles.ledgerRow}
     >
       <View style={[styles.entryIcon, isIncome && styles.entryIconIncome]}>
         <AppIcon color={colors.primaryStrong} name={icon} size={19} />
@@ -182,177 +177,26 @@ function LedgerRow({ entry }: { entry: LedgerEntry }) {
       <Text style={[styles.entryAmount, isIncome && styles.entryAmountIncome]}>
         {isIncome ? '+' : '-'}¥{formatAmount(entry.amount)}
       </Text>
-    </Pressable>
-  );
-}
-
-function ScanSource({ onSelect }: { onSelect: () => void }) {
-  return (
-    <>
-      <View style={styles.sheetHeader}>
-        <View>
-          <Text accessibilityRole="header" style={styles.sheetTitle}>拍照记账</Text>
-          <Text style={styles.sheetSubtitle}>识别后先确认，再写入账本</Text>
-        </View>
-      </View>
-      <View style={styles.sourceActions}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onSelect}
-          style={({ pressed }) => [styles.sourceRow, pressed && styles.rowPressed]}
-        >
-          <View style={styles.sourceIcon}>
-            <AppIcon color={colors.primaryStrong} name="camera-outline" size={22} />
-          </View>
-          <View style={styles.sourceCopy}>
-            <Text style={styles.sourceTitle}>拍摄小票</Text>
-            <Text style={styles.sourceMeta}>适合纸质小票、发票和收据</Text>
-          </View>
-          <AppIcon color={colors.borderStrong} name="chevron-forward" size={18} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onSelect}
-          style={({ pressed }) => [styles.sourceRow, pressed && styles.rowPressed]}
-        >
-          <View style={styles.sourceIcon}>
-            <AppIcon color={colors.primaryStrong} name="images-outline" size={22} />
-          </View>
-          <View style={styles.sourceCopy}>
-            <Text style={styles.sourceTitle}>选择账单截图</Text>
-            <Text style={styles.sourceMeta}>支持支付账单和电子小票截图</Text>
-          </View>
-          <AppIcon color={colors.borderStrong} name="chevron-forward" size={18} />
-        </Pressable>
-      </View>
-    </>
-  );
-}
-
-function ScanProcessing() {
-  return (
-    <View accessibilityLiveRegion="polite" style={styles.processingBody}>
-      <View style={styles.receiptPreview}>
-        <View style={styles.receiptIcon}>
-          <AppIcon color={colors.primaryStrong} name="receipt-outline" size={25} />
-        </View>
-        <View style={[styles.skeletonLine, styles.skeletonLineWide]} />
-        <View style={[styles.skeletonLine, styles.skeletonLineMedium]} />
-        <View style={[styles.skeletonLine, styles.skeletonLineShort]} />
-      </View>
-      <Text style={styles.processingTitle}>正在读取账单</Text>
-      <Text style={styles.processingCopy}>识别商家、金额、时间和支付方式…</Text>
     </View>
   );
 }
 
-function ScanReview({
-  amount,
-  merchant,
-  category,
-  onAmountChange,
-  onMerchantChange,
-  onCategoryChange,
-  onConfirm,
-  onRetry,
-}: {
-  amount: string;
-  merchant: string;
-  category: string;
-  onAmountChange: (value: string) => void;
-  onMerchantChange: (value: string) => void;
-  onCategoryChange: (value: string) => void;
-  onConfirm: () => void;
-  onRetry: () => void;
-}) {
-  const parsedAmount = Number(amount);
-  const canConfirm = merchant.trim().length > 0 && Number.isFinite(parsedAmount) && parsedAmount > 0;
-
-  return (
-    <>
-      <View style={styles.sheetHeader}>
-        <View>
-          <Text accessibilityRole="header" style={styles.sheetTitle}>确认识别结果</Text>
-          <Text style={styles.sheetSubtitle}>有误的内容可以直接修改</Text>
-        </View>
-        <View style={styles.recognizedBadge}>
-          <AppIcon color={colors.primaryStrong} name="checkmark-circle" size={17} />
-          <Text style={styles.recognizedBadgeText}>已识别</Text>
-        </View>
-      </View>
-      <ScrollView
-        contentContainerStyle={styles.reviewBody}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.recognizedSource}>
-          <View style={styles.recognizedSourceIcon}>
-            <AppIcon color={colors.primaryStrong} name="receipt-outline" size={22} />
-          </View>
-          <View style={styles.sourceCopy}>
-            <Text style={styles.sourceTitle}>购物小票</Text>
-            <Text style={styles.sourceMeta}>今天 14:32 · 微信支付</Text>
-          </View>
-        </View>
-
-        <Text style={styles.fieldLabel}>金额</Text>
-        <View style={styles.reviewAmountField}>
-          <Text style={styles.reviewCurrency}>¥</Text>
-          <TextInput
-            accessibilityLabel="识别金额"
-            keyboardType="decimal-pad"
-            onChangeText={onAmountChange}
-            style={styles.reviewAmountInput}
-            value={amount}
-          />
-        </View>
-
-        <Text style={styles.fieldLabel}>商家或备注</Text>
-        <TextInput
-          accessibilityLabel="识别商家或备注"
-          onChangeText={onMerchantChange}
-          style={styles.reviewTextInput}
-          value={merchant}
-        />
-
-        <Text style={styles.fieldLabel}>分类</Text>
-        <CategoryPicker
-          onSelect={onCategoryChange}
-          options={expenseCategories}
-          selected={category}
-        />
-
-        <AppButton
-          disabled={!canConfirm}
-          label="确认记入账本"
-          onPress={onConfirm}
-          style={styles.reviewPrimaryButton}
-        />
-        <AppButton label="重新选择图片" onPress={onRetry} variant="text" />
-      </ScrollView>
-    </>
-  );
-}
-
 function MonthlyReport({
-  expense,
-  income,
+  report,
   onClose,
 }: {
-  expense: number;
-  income: number;
+  report: MonthlyLedgerReport;
   onClose: () => void;
 }) {
-  const balance = income - expense;
-  const maxWeek = Math.max(...weeklySpend);
+  const maxWeek = Math.max(0, ...report.weeklySpend);
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible>
       <ModalSheet maxHeight="94%" onClose={onClose}>
         <View style={styles.reportHeader}>
           <View>
-            <Text accessibilityRole="header" style={styles.reportTitle}>8月月报</Text>
-            <Text style={styles.sheetSubtitle}>8月1日—8月18日</Text>
+            <Text accessibilityRole="header" style={styles.reportTitle}>{report.label}</Text>
+            <Text style={styles.sheetSubtitle}>{report.period}</Text>
           </View>
           <Pressable
             accessibilityLabel="关闭月报"
@@ -368,31 +212,31 @@ function MonthlyReport({
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.reportPrimaryLabel}>本月支出</Text>
-          <Text style={styles.reportPrimaryValue}>¥{formatAmount(expense)}</Text>
+          <Text style={styles.reportPrimaryValue}>¥{formatAmount(report.expense)}</Text>
           <View style={styles.reportMetricRow}>
             <View style={styles.reportMetric}>
               <Text style={styles.reportMetricLabel}>本月收入</Text>
-              <Text style={styles.reportMetricValue}>¥{formatAmount(income)}</Text>
+              <Text style={styles.reportMetricValue}>¥{formatAmount(report.income)}</Text>
             </View>
             <View style={styles.reportMetric}>
               <Text style={styles.reportMetricLabel}>本月结余</Text>
-              <Text style={styles.reportMetricValue}>¥{formatAmount(balance)}</Text>
+              <Text style={styles.reportMetricValue}>¥{formatAmount(report.balance)}</Text>
             </View>
           </View>
 
           <View style={styles.reportSection}>
             <View style={styles.reportSectionHeader}>
               <Text style={styles.reportSectionTitle}>每周支出</Text>
-              <Text style={styles.reportSectionMeta}>较上月同期少 8%</Text>
+              <Text style={styles.reportSectionMeta}>{report.expenseCount} 笔真实记录</Text>
             </View>
             <View style={styles.weekChart}>
-              {weeklySpend.map((value, index) => (
+              {report.weeklySpend.map((value, index) => (
                 <View key={`${value}-${index}`} style={styles.weekColumn}>
                   <View style={styles.weekBarTrack}>
                     <View
                       style={[
                         styles.weekBar,
-                        { height: Math.max(16, Math.round((value / maxWeek) * 84)) },
+                        { height: maxWeek > 0 ? Math.max(4, Math.round((value / maxWeek) * 84)) : 4 },
                       ]}
                     />
                   </View>
@@ -404,12 +248,17 @@ function MonthlyReport({
 
           <View style={styles.reportSection}>
             <Text style={styles.reportSectionTitle}>支出去向</Text>
-            <View style={styles.categoryReportList}>
-              {categoryReport.map((item) => (
+            {report.categoryReport.length > 0 ? (
+              <View style={styles.categoryReportList}>
+                {report.categoryReport.map((item) => (
                 <View key={item.label} style={styles.categoryReportRow}>
                   <View style={styles.categoryReportTopline}>
                     <View style={styles.categoryReportName}>
-                      <AppIcon color={colors.primaryStrong} name={item.icon} size={17} />
+                      <AppIcon
+                        color={colors.primaryStrong}
+                        name={categoryIconMap.get(item.label) ?? 'receipt-outline'}
+                        size={17}
+                      />
                       <Text style={styles.categoryReportLabel}>{item.label}</Text>
                     </View>
                     <Text style={styles.categoryReportAmount}>¥{formatAmount(item.amount)}</Text>
@@ -423,26 +272,34 @@ function MonthlyReport({
                     />
                   </View>
                 </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.reportEmpty}>本月还没有支出记录。</Text>
+            )}
           </View>
 
           <View style={styles.reportSection}>
-            <Text style={styles.reportSectionTitle}>本月变化</Text>
-            <View style={styles.insightList}>
-              <View style={styles.insightRow}>
-                <View style={styles.insightIcon}>
-                  <AppIcon color={colors.primaryStrong} name="restaurant-outline" size={18} />
+            <Text style={styles.reportSectionTitle}>确定性摘要</Text>
+            {report.categoryReport[0] ? (
+              <View style={styles.insightList}>
+                <View style={styles.insightRow}>
+                  <View style={styles.insightIcon}>
+                    <AppIcon
+                      color={colors.primaryStrong}
+                      name={categoryIconMap.get(report.categoryReport[0].label) ?? 'receipt-outline'}
+                      size={18}
+                    />
+                  </View>
+                  <Text style={styles.insightText}>
+                    {report.categoryReport[0].label}是本月最大支出，占总支出的{' '}
+                    {Math.round(report.categoryReport[0].ratio * 100)}%
+                  </Text>
                 </View>
-                <Text style={styles.insightText}>餐饮是本月最大支出，占总支出的 35%</Text>
               </View>
-              <View style={styles.insightRow}>
-                <View style={styles.insightIcon}>
-                  <AppIcon color={colors.primaryStrong} name="trending-down-outline" size={18} />
-                </View>
-                <Text style={styles.insightText}>交通支出较上月同期减少 18%</Text>
-              </View>
-            </View>
+            ) : (
+              <Text style={styles.reportEmpty}>有真实账单后，这里会按确定性规则生成摘要。</Text>
+            )}
           </View>
         </ScrollView>
       </ModalSheet>
@@ -450,56 +307,63 @@ function MonthlyReport({
   );
 }
 
+function LedgerSkeleton() {
+  return (
+    <View accessibilityLabel="正在加载账本" style={styles.ledgerSkeleton}>
+      <View style={styles.skeletonOverview}>
+        <View style={[styles.skeletonBlock, styles.skeletonHeading]} />
+        <View style={[styles.skeletonBlock, styles.skeletonAmount]} />
+        <View style={[styles.skeletonBlock, styles.skeletonMetric]} />
+      </View>
+      <View style={styles.skeletonActions}>
+        <View style={[styles.skeletonBlock, styles.skeletonAction]} />
+        <View style={[styles.skeletonBlock, styles.skeletonAction]} />
+      </View>
+      {[0, 1, 2].map((item) => (
+        <View key={item} style={styles.skeletonRow}>
+          <View style={[styles.skeletonBlock, styles.skeletonIcon]} />
+          <View style={styles.skeletonRowCopy}>
+            <View style={[styles.skeletonBlock, styles.skeletonRowTitle]} />
+            <View style={[styles.skeletonBlock, styles.skeletonRowMeta]} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function LedgerContent() {
-  const ledger = useBuiltinTracker('ledger', { limit: 100 });
+  const router = useRouter();
+  const [reportNow] = useState(() => new Date());
+  const reportRange = ledgerQueryRange(reportNow);
+  const ledger = useBuiltinTracker('ledger', {
+    from: reportRange.from,
+    limit: 100,
+    loadAll: true,
+    to: reportRange.to,
+  });
   const entries = useMemo<LedgerEntry[]>(
-    () => ledger.records.map(toLedgerEntry),
-    [ledger.records],
+    () => ledger.records
+      .map(toLedgerEntry)
+      .filter((entry) => isCurrentMonthEntry(entry, reportNow)),
+    [ledger.records, reportNow],
   );
   const [entryType, setEntryType] = useState<LedgerEntryType>('expense');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [category, setCategory] = useState('餐饮');
   const [manualOpen, setManualOpen] = useState(false);
-  const [scanOpen, setScanOpen] = useState(false);
-  const [scanStep, setScanStep] = useState<ScanStep>('source');
-  const [recognizedAmount, setRecognizedAmount] = useState('86.40');
-  const [recognizedMerchant, setRecognizedMerchant] = useState('盒马鲜生');
-  const [recognizedCategory, setRecognizedCategory] = useState('餐饮');
   const [reportOpen, setReportOpen] = useState(false);
-
-  useEffect(() => {
-    if (scanStep !== 'processing') return undefined;
-    const timer = setTimeout(() => setScanStep('review'), 720);
-    return () => clearTimeout(timer);
-  }, [scanStep]);
+  const [showAll, setShowAll] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
 
   const currentCategoryOptions = entryType === 'expense' ? expenseCategories : incomeCategories;
   const parsedAmount = Number(amount);
   const canSave = Number.isFinite(parsedAmount) && parsedAmount > 0;
-  // 统计只算真实记录，不叠一个编出来的基数。
-  const monthExpense = useMemo(
-    () =>
-      entries
-        .filter((entry) => entry.type === 'expense')
-        .reduce((total, entry) => total + entry.amount, 0),
-    [entries],
+  const report = useMemo(
+    () => buildMonthlyLedgerReport(entries, reportNow),
+    [entries, reportNow],
   );
-  const monthIncome = useMemo(
-    () =>
-      entries
-        .filter((entry) => entry.type === 'income')
-        .reduce((total, entry) => total + entry.amount, 0),
-    [entries],
-  );
-  const monthBalance = monthIncome - monthExpense;
-  const budget = 6000;
-  const budgetRatio = Math.min(1, monthExpense / budget);
-
-  const closeScan = () => {
-    setScanOpen(false);
-    setScanStep('source');
-  };
 
   const changeEntryType = (index: number) => {
     const nextType: LedgerEntryType = index === 0 ? 'expense' : 'income';
@@ -507,46 +371,48 @@ export function LedgerContent() {
     setCategory(nextType === 'expense' ? expenseCategories[0].label : incomeCategories[0].label);
   };
 
-  const saveManualEntry = () => {
-    if (!canSave) return;
-    ledger.save(
-      {
-        amount: parsedAmount,
-        // 收支方向单独存，不用金额正负表达：负数在统计和展示里容易被读错。
-        direction: entryType,
-        category,
-        merchant: note.trim() || undefined,
-      },
-      new Date(),
-    );
-    setAmount('');
-    setNote('');
-    setManualOpen(false);
+  const saveManualEntry = async () => {
+    if (!canSave || ledger.saving) return;
+    setManualError(null);
+    try {
+      await ledger.saveAsync(
+        {
+          amount: parsedAmount,
+          // 收支方向单独存，不用金额正负表达：负数在统计和展示里容易被读错。
+          direction: entryType,
+          category,
+          merchant: note.trim() || undefined,
+        },
+        new Date(),
+      );
+      setAmount('');
+      setNote('');
+      setManualOpen(false);
+    } catch (error) {
+      setManualError(errorMessage(error, '保存失败，输入内容已保留，请重试。'));
+    }
   };
 
-  const confirmRecognizedEntry = () => {
-    const parsedRecognizedAmount = Number(recognizedAmount);
-    if (!Number.isFinite(parsedRecognizedAmount) || parsedRecognizedAmount <= 0) return;
-    // 识别结果只是候选：走到这里说明用户已经在确认页看过并点了确认。
-    ledger.save(
-      {
-        amount: parsedRecognizedAmount,
-        direction: 'expense',
-        category: recognizedCategory,
-        merchant: recognizedMerchant.trim() || undefined,
-        payment_method: '微信支付',
-      },
-      new Date(),
+  if (ledger.loading) return <LedgerSkeleton />;
+
+  if (ledger.failed) {
+    return (
+      <StatePanel
+        actionLabel="重试"
+        icon="cloud-offline-outline"
+        message={errorMessage(ledger.queryError, '暂时无法加载账本。')}
+        onAction={() => void ledger.refetch()}
+        title="账本加载失败"
+      />
     );
-    closeScan();
-  };
+  }
 
   return (
     <>
       <View style={styles.overview}>
         <View style={styles.overviewHeader}>
           <View>
-            <Text style={styles.overviewPeriod}>8月账本</Text>
+            <Text style={styles.overviewPeriod}>{report.label.replace('月报', '账本')}</Text>
             <Text style={styles.overviewDate}>截至今天</Text>
           </View>
           <Pressable
@@ -560,42 +426,34 @@ export function LedgerContent() {
         </View>
 
         <Text style={styles.overviewPrimaryLabel}>本月支出</Text>
-        <Text style={styles.overviewPrimaryValue}>¥{formatAmount(monthExpense)}</Text>
+        <Text style={styles.overviewPrimaryValue}>¥{formatAmount(report.expense)}</Text>
         <View style={styles.overviewMetrics}>
           <View style={styles.overviewMetric}>
             <Text style={styles.overviewMetricLabel}>本月收入</Text>
-            <Text style={styles.overviewMetricValue}>¥{formatAmount(monthIncome)}</Text>
+            <Text style={styles.overviewMetricValue}>¥{formatAmount(report.income)}</Text>
           </View>
           <View style={styles.overviewMetric}>
             <Text style={styles.overviewMetricLabel}>本月结余</Text>
-            <Text style={styles.overviewMetricValue}>¥{formatAmount(monthBalance)}</Text>
+            <Text style={styles.overviewMetricValue}>¥{formatAmount(report.balance)}</Text>
           </View>
         </View>
-        <View style={styles.budgetTopline}>
-          <Text style={styles.budgetLabel}>月预算 ¥{formatAmount(budget)}</Text>
-          <Text style={styles.budgetRemaining}>
-            还可支出 ¥{formatAmount(Math.max(0, budget - monthExpense))}
-          </Text>
-        </View>
-        <View style={styles.budgetTrack}>
-          <View style={[styles.budgetFill, { width: `${Math.round(budgetRatio * 100)}%` }]} />
-        </View>
+        <Text style={styles.overviewFootnote}>仅汇总当前月已保存的真实账单</Text>
       </View>
 
       <View style={styles.actionRow}>
         <ActionButton
           icon="camera-outline"
           label="拍照记账"
-          onPress={() => {
-            setScanOpen(true);
-            setScanStep('source');
-          }}
+          onPress={() => router.push({ pathname: '/capture/new', params: { intent: 'ledger' } })}
           primary
         />
         <ActionButton
           icon={manualOpen ? 'close' : 'add'}
           label={manualOpen ? '收起' : '手动记账'}
-          onPress={() => setManualOpen((current) => !current)}
+          onPress={() => {
+            setManualError(null);
+            setManualOpen((current) => !current);
+          }}
         />
       </View>
 
@@ -633,49 +491,53 @@ export function LedgerContent() {
             style={styles.noteInput}
             value={note}
           />
-          <AppButton disabled={!canSave} label="保存这笔记录" onPress={saveManualEntry} />
+          {manualError ? (
+            <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.manualError}>
+              {manualError}
+            </Text>
+          ) : null}
+          <AppButton
+            disabled={!canSave || ledger.saving}
+            label={ledger.saving ? '正在保存…' : '保存这笔记录'}
+            onPress={() => void saveManualEntry()}
+          />
         </View>
       ) : null}
 
       <View style={styles.listHeader}>
-        <Text accessibilityRole="header" style={styles.listTitle}>最近账单</Text>
-        <Pressable
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.allBillsLink, pressed && styles.rowPressed]}
-        >
-          <Text style={styles.allBillsText}>全部账单</Text>
-          <AppIcon color={colors.textSecondary} name="chevron-forward" size={15} />
-        </Pressable>
-      </View>
-      <View style={styles.entryList}>
-        {entries.slice(0, 5).map((entry) => (
-          <LedgerRow entry={entry} key={entry.id} />
-        ))}
-      </View>
-
-      <Modal animationType="fade" onRequestClose={closeScan} transparent visible={scanOpen}>
-        <ModalSheet maxHeight="90%" onClose={closeScan}>
-          {scanStep === 'source' ? <ScanSource onSelect={() => setScanStep('processing')} /> : null}
-          {scanStep === 'processing' ? <ScanProcessing /> : null}
-          {scanStep === 'review' ? (
-            <ScanReview
-              amount={recognizedAmount}
-              category={recognizedCategory}
-              merchant={recognizedMerchant}
-              onAmountChange={setRecognizedAmount}
-              onCategoryChange={setRecognizedCategory}
-              onConfirm={confirmRecognizedEntry}
-              onMerchantChange={setRecognizedMerchant}
-              onRetry={() => setScanStep('source')}
+        <Text accessibilityRole="header" style={styles.listTitle}>本月账单</Text>
+        {entries.length > 5 ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setShowAll((current) => !current)}
+            style={({ pressed }) => [styles.allBillsLink, pressed && styles.rowPressed]}
+          >
+            <Text style={styles.allBillsText}>{showAll ? '收起' : '展开全部'}</Text>
+            <AppIcon
+              color={colors.textSecondary}
+              name={showAll ? 'chevron-up' : 'chevron-down'}
+              size={15}
             />
-          ) : null}
-        </ModalSheet>
-      </Modal>
+          </Pressable>
+        ) : null}
+      </View>
+      {entries.length > 0 ? (
+        <View style={styles.entryList}>
+          {(showAll ? entries : entries.slice(0, 5)).map((entry) => (
+            <LedgerRow entry={entry} key={entry.id} />
+          ))}
+        </View>
+      ) : (
+        <View style={styles.emptyLedger}>
+          <AppIcon color={colors.textTertiary} name="receipt-outline" size={28} />
+          <Text style={styles.emptyLedgerTitle}>还没有账单</Text>
+          <Text style={styles.emptyLedgerCopy}>手动记一笔，或上传票据进入统一 AI 确认流程。</Text>
+        </View>
+      )}
 
       {reportOpen ? (
         <MonthlyReport
-          expense={monthExpense}
-          income={monthIncome}
+          report={report}
           onClose={() => setReportOpen(false)}
         />
       ) : null}
@@ -756,35 +618,11 @@ const styles = StyleSheet.create({
     ...typography.bodyStrong,
     fontVariant: ['tabular-nums'],
   },
-  budgetTopline: {
-    marginTop: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  budgetLabel: {
-    color: colors.textSecondary,
+  overviewFootnote: {
+    marginTop: 20,
+    color: colors.textTertiary,
     fontFamily,
-    ...typography.meta,
-  },
-  budgetRemaining: {
-    color: colors.text,
-    fontFamily,
-    ...typography.meta,
-    fontWeight: '500',
-  },
-  budgetTrack: {
-    height: 6,
-    marginTop: 9,
-    overflow: 'hidden',
-    borderRadius: radius.pill,
-    backgroundColor: colors.border,
-  },
-  budgetFill: {
-    height: '100%',
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
+    ...typography.caption,
   },
   actionRow: {
     marginTop: 16,
@@ -897,6 +735,12 @@ const styles = StyleSheet.create({
     ...typography.body,
     backgroundColor: colors.background,
   },
+  manualError: {
+    marginBottom: 12,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
+  },
   listHeader: {
     minHeight: 58,
     marginTop: 13,
@@ -923,6 +767,26 @@ const styles = StyleSheet.create({
   },
   entryList: {
     gap: 3,
+  },
+  emptyLedger: {
+    minHeight: 180,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyLedgerTitle: {
+    marginTop: 10,
+    color: colors.text,
+    fontFamily,
+    ...typography.bodyStrong,
+  },
+  emptyLedgerCopy: {
+    maxWidth: 300,
+    marginTop: 5,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+    textAlign: 'center',
   },
   ledgerRow: {
     minHeight: 67,
@@ -972,182 +836,11 @@ const styles = StyleSheet.create({
   entryAmountIncome: {
     color: colors.primaryStrong,
   },
-  sheetHeader: {
-    minHeight: 76,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sheetTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.section,
-  },
   sheetSubtitle: {
     marginTop: 2,
     color: colors.textSecondary,
     fontFamily,
     ...typography.meta,
-  },
-  sourceActions: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  sourceRow: {
-    minHeight: 72,
-    paddingHorizontal: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sourceIcon: {
-    width: 44,
-    height: 44,
-    marginRight: 12,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
-  },
-  sourceCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  sourceTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
-  sourceMeta: {
-    marginTop: 3,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  processingBody: {
-    minHeight: 340,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  receiptPreview: {
-    width: 176,
-    height: 154,
-    padding: 20,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  receiptIcon: {
-    width: 44,
-    height: 44,
-    marginBottom: 16,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
-  },
-  skeletonLine: {
-    height: 7,
-    marginTop: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.border,
-  },
-  skeletonLineWide: {
-    width: '100%',
-  },
-  skeletonLineMedium: {
-    width: '72%',
-  },
-  skeletonLineShort: {
-    width: '46%',
-  },
-  processingTitle: {
-    marginTop: 23,
-    color: colors.text,
-    fontFamily,
-    ...typography.bodyStrong,
-  },
-  processingCopy: {
-    marginTop: 4,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  recognizedBadge: {
-    minHeight: 34,
-    paddingHorizontal: 10,
-    borderRadius: radius.pill,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: colors.primarySoft,
-  },
-  recognizedBadgeText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.meta,
-    fontWeight: '600',
-  },
-  reviewBody: {
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-  },
-  recognizedSource: {
-    minHeight: 64,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSubtle,
-  },
-  recognizedSourceIcon: {
-    width: 40,
-    height: 40,
-    marginRight: 11,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
-  },
-  reviewAmountField: {
-    minHeight: 68,
-    paddingHorizontal: 14,
-    borderRadius: radius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSubtle,
-  },
-  reviewCurrency: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 21,
-    lineHeight: 29,
-    fontWeight: '600',
-  },
-  reviewAmountInput: {
-    flex: 1,
-    minHeight: 60,
-    paddingHorizontal: 9,
-    color: colors.text,
-    fontFamily,
-    fontSize: 28,
-    lineHeight: 36,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  reviewTextInput: {
-    minHeight: 50,
-    paddingHorizontal: 14,
-    borderRadius: radius.md,
-    color: colors.text,
-    fontFamily,
-    ...typography.body,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  reviewPrimaryButton: {
-    marginTop: 22,
   },
   reportHeader: {
     minHeight: 76,
@@ -1322,6 +1015,72 @@ const styles = StyleSheet.create({
     fontFamily,
     ...typography.meta,
   },
+  reportEmpty: {
+    marginTop: 12,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  ledgerSkeleton: {
+    paddingTop: 8,
+  },
+  skeletonOverview: {
+    minHeight: 196,
+    padding: 18,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  skeletonBlock: {
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  skeletonHeading: {
+    width: 92,
+    height: 18,
+  },
+  skeletonAmount: {
+    width: 156,
+    height: 36,
+    marginTop: 36,
+  },
+  skeletonMetric: {
+    width: '72%',
+    height: 17,
+    marginTop: 28,
+  },
+  skeletonActions: {
+    marginTop: 16,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  skeletonAction: {
+    height: 52,
+    flex: 1,
+    borderRadius: radius.md,
+  },
+  skeletonRow: {
+    minHeight: 67,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  skeletonIcon: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+    borderRadius: radius.md,
+  },
+  skeletonRowCopy: {
+    flex: 1,
+    gap: 7,
+  },
+  skeletonRowTitle: {
+    width: '44%',
+    height: 14,
+  },
+  skeletonRowMeta: {
+    width: '68%',
+    height: 11,
+  },
 });
 
 /** 把一条记录映射成展示模型。 */
@@ -1334,6 +1093,32 @@ function toLedgerEntry(row: TrackerRecord): LedgerEntry {
     amount: numberOf(row, 'amount') ?? 0,
     type: (textOf(row, 'direction') as LedgerEntryType | undefined) ?? 'expense',
     time: formatRelativeTime(row.timestamp),
+    timestamp: new Date(row.timestamp),
     account: textOf(row, 'payment_method') ?? '默认账户',
   };
+}
+
+/**
+ * Record 接口的日期筛选按 UTC 日期解释；查询边界各放宽一天后再按设备当地月份过滤，
+ * 避免 UTC 偏移让月初、月末账单漏出统计。
+ */
+function ledgerQueryRange(now: Date) {
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 0);
+  const dayAfterToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return {
+    from: formatLocalDate(firstDay),
+    to: formatLocalDate(dayAfterToday),
+  };
+}
+
+function isCurrentMonthEntry(entry: LedgerEntry, now: Date) {
+  return entry.timestamp <= now
+    && entry.timestamp.getFullYear() === now.getFullYear()
+    && entry.timestamp.getMonth() === now.getMonth();
+}
+
+function formatLocalDate(value: Date) {
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${value.getFullYear()}-${month}-${day}`;
 }

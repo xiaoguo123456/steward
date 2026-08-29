@@ -138,6 +138,16 @@ jobs:
           "${{ steps.vars.outputs.base_sha }}"
           "${{ steps.vars.outputs.update_sha }}"
 
+      - name: 校验公开 H5 发布门禁
+        env:
+          DEPLOY_CHANNEL: ${{ inputs.channel }}
+        run: |
+          if [ "$DEPLOY_CHANNEL" = "production" ]; then
+            node apps/mobile/scripts/check-public-h5.mjs --mode=production
+          else
+            node apps/mobile/scripts/check-public-h5.mjs --mode=staging
+          fi
+
       - name: 恢复 OTA 签名材料
         env:
           CERTIFICATE_BASE64: ${{ secrets.EXPO_UPDATES_CERTIFICATE_BASE64 }}

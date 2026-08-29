@@ -2,7 +2,6 @@ import { errorMessage } from '@steward/api-client';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -28,6 +27,8 @@ import {
   useCurrentUser,
   useUserPreferences,
 } from '@/features/account/use-account';
+import { openPublicPage } from '@/features/legal/open-public-page';
+import { publicPagePaths, type PublicPagePath } from '@/features/legal/public-pages';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 /**
@@ -45,6 +46,12 @@ export default function MeScreen() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+
+  const openPage = (path: PublicPagePath) => {
+    void openPublicPage(path).catch(() => {
+      toast.showToast('公开页面暂时打不开，请稍后重试');
+    });
+  };
 
   const openProfileEditor = () => {
     if (!user) return;
@@ -84,9 +91,7 @@ export default function MeScreen() {
             title="资料加载失败"
           />
         ) : loading ? (
-          <View accessibilityLabel="正在加载个人资料" style={styles.loading}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <MeSkeleton />
         ) : user ? (
           <Pressable
             accessibilityHint="头像会随名字首字更新，在当前页面打开编辑面板"
@@ -142,9 +147,47 @@ export default function MeScreen() {
           <FlatListRow
             icon="phone-portrait-outline"
             onPress={user ? () => router.push('/settings/phone') : undefined}
-            showDivider={false}
             subtitle={user?.phone}
             title="手机号"
+          />
+          <FlatListRow
+            icon="trash-outline"
+            onPress={() => openPage(publicPagePaths.accountDeletion)}
+            showDivider={false}
+            subtitle="查看删除范围、处理步骤与当前开放状态"
+            title="账号与数据删除"
+          />
+        </FlatListGroup>
+
+        <Text accessibilityRole="header" style={styles.groupTitle}>
+          法律与支持
+        </Text>
+        <FlatListGroup>
+          <FlatListRow
+            icon="shield-checkmark-outline"
+            onPress={() => openPage(publicPagePaths.privacy)}
+            title="隐私政策"
+          />
+          <FlatListRow
+            icon="document-text-outline"
+            onPress={() => openPage(publicPagePaths.terms)}
+            title="用户协议"
+          />
+          <FlatListRow
+            icon="list-outline"
+            onPress={() => openPage(publicPagePaths.personalInformation)}
+            title="个人信息收集清单"
+          />
+          <FlatListRow
+            icon="link"
+            onPress={() => openPage(publicPagePaths.thirdParties)}
+            title="第三方信息共享清单"
+          />
+          <FlatListRow
+            icon="information-circle-outline"
+            onPress={() => openPage(publicPagePaths.support)}
+            showDivider={false}
+            title="帮助与联系我们"
           />
         </FlatListGroup>
 
@@ -307,16 +350,99 @@ function Avatar({ displayName, large = false }: { displayName: string; large?: b
   );
 }
 
+function MeSkeleton() {
+  return (
+    <View accessibilityLabel="正在加载个人资料">
+      <View style={styles.profileSkeleton}>
+        <View style={[styles.skeletonBlock, styles.avatarSkeleton]} />
+        <View style={styles.profileSkeletonCopy}>
+          <View style={[styles.skeletonBlock, styles.nameSkeleton]} />
+          <View style={[styles.skeletonBlock, styles.phoneSkeleton]} />
+        </View>
+      </View>
+      {[0, 1, 2].map((group) => (
+        <View key={group}>
+          <View style={[styles.skeletonBlock, styles.groupTitleSkeleton]} />
+          <View style={styles.groupSkeleton}>
+            {[0, 1, 2].map((row) => (
+              <View key={row} style={styles.rowSkeleton}>
+                <View style={[styles.skeletonBlock, styles.rowIconSkeleton]} />
+                <View style={[styles.skeletonBlock, styles.rowTextSkeleton]} />
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 92,
   },
-  loading: {
-    minHeight: 96,
+  skeletonBlock: {
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  profileSkeleton: {
+    minHeight: 84,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  avatarSkeleton: {
+    width: 48,
+    height: 48,
+    marginRight: 12,
+    borderRadius: radius.md,
+  },
+  profileSkeletonCopy: {
+    flex: 1,
+    gap: 8,
+  },
+  nameSkeleton: {
+    width: 104,
+    height: 16,
+  },
+  phoneSkeleton: {
+    width: 138,
+    height: 12,
+  },
+  groupTitleSkeleton: {
+    width: 62,
+    height: 16,
+    marginTop: 28,
+    marginBottom: 12,
+  },
+  groupSkeleton: {
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+  },
+  rowSkeleton: {
+    minHeight: 60,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  rowIconSkeleton: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+  },
+  rowTextSkeleton: {
+    width: '48%',
+    height: 14,
   },
   profile: {
     minHeight: 84,

@@ -22,7 +22,7 @@ func TestBuildPayloadMapsTripFields(t *testing.T) {
 		Description: "和爸妈一起，记得带身份证",
 		StartDate:   &start,
 		TargetDate:  &end,
-	}, "", loc, nil)
+	}, "", loc, nil, nil)
 	if err != nil {
 		t.Fatalf("映射失败：%v", err)
 	}
@@ -56,7 +56,7 @@ func TestBuildPayloadRejectsIncompleteTrip(t *testing.T) {
 		Action:      "create",
 		Title:       "未完整行程",
 		ProjectKind: "trip",
-	}, "", loc, nil)
+	}, "", loc, nil, nil)
 	if err != nil {
 		t.Fatalf("映射失败：%v", err)
 	}
@@ -93,7 +93,7 @@ func TestBuildPayloadKeepsTripReferenceAndTicketImage(t *testing.T) {
 			Kind: "transport", TransportMode: "train", Origin: "北京南",
 			Destination: "上海虹桥", ServiceNumber: "G1", BookingStatus: "ticketed",
 		},
-	}, "", loc, map[string]string{"part_ticket": "med_ticket"})
+	}, "", loc, map[string]string{"part_ticket": "med_ticket"}, nil)
 	if err != nil {
 		t.Fatalf("映射失败：%v", err)
 	}
@@ -112,5 +112,42 @@ func TestBuildPayloadKeepsTripReferenceAndTicketImage(t *testing.T) {
 	attachments := details["attachment_media_ids"].([]any)
 	if len(attachments) != 1 || attachments[0] != "med_ticket" {
 		t.Errorf("票据图片引用不正确：%v", attachments)
+	}
+}
+
+func TestBuildPayloadMarksMissingRequiredRecordFields(t *testing.T) {
+	loc := time.FixedZone("CST", 8*60*60)
+	amount := 28.5
+	_, missing, err := buildPayload(ai.CandidateDraft{
+		Type:      "record",
+		Action:    "create",
+		TrackerID: "trk_ledger",
+		RecordValues: []ai.RecordValueDraft{
+			{Key: "amount", Number: &amount},
+		},
+	}, "", loc, nil, []ai.TrackerRef{{
+		ID: "trk_ledger",
+		Fields: []ai.TrackerFieldRef{
+			{Key: "amount", Type: "currency", Required: true},
+			{Key: "direction", Type: "text", Required: true},
+			{Key: "category", Type: "text", Required: true},
+		},
+	}})
+	if err != nil {
+		t.Fatalf("映射失败：%v", err)
+	}
+	want := map[string]bool{"direction": false, "category": false}
+	for _, field := range missing {
+		if _, ok := want[field]; ok {
+			want[field] = true
+		}
+		if field == "amount" {
+			t.Errorf("已有金额不应再标记缺失：%v", missing)
+		}
+	}
+	for field, found := range want {
+		if !found {
+			t.Errorf("应标记缺少 %s，实际 %v", field, missing)
+		}
 	}
 }

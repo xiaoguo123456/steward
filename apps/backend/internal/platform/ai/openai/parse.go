@@ -274,6 +274,9 @@ func buildUserPrompt(req ai.CaptureParseRequest) string {
 				if f.Unit != "" {
 					label += "/" + f.Unit
 				}
+				if f.Required {
+					label += "，必填"
+				}
 				fields = append(fields, fmt.Sprintf("%s(%s)", label, f.Key))
 			}
 			fmt.Fprintf(&b, "- %s [id=%s] 字段：%s\n", t.Name, t.ID, strings.Join(fields, "、"))

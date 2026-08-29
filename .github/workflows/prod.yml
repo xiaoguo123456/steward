@@ -160,6 +160,8 @@ jobs:
           file: infra/docker/mobile-web.Dockerfile
           platforms: linux/amd64
           push: true
+          build-args: |
+            STEWARD_H5_RELEASE_MODE=production
           tags: |
             ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/steward-mobile-web:prod-latest
             ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/steward-mobile-web:${{ steps.vars.outputs.sha }}

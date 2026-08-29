@@ -74,10 +74,11 @@ type TrackerRef struct {
 
 // TrackerFieldRef 是记录项的单个字段定义。
 type TrackerFieldRef struct {
-	Key   string
-	Label string
-	Type  string
-	Unit  string
+	Key      string
+	Label    string
+	Type     string
+	Unit     string
+	Required bool
 }
 
 // CaptureParseRequest 是一次 Capture 结构化解析的中立输入。
