@@ -23,6 +23,7 @@ import { AppButton } from '@/components/ui/app-button';
 import { DateWheel } from '@/components/ui/date-wheel';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import { StatePanel } from '@/components/ui/state-panel';
 import {
   parseImportantDateParts,
 } from '@/features/important-dates/important-date-picker';
@@ -594,26 +595,35 @@ export function ImportantDatesContent({
       ) : null}
 
       {!nextItem && !importantDates.isLoading ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>还没有添加重要日</Text>
-        </View>
+        <StatePanel
+          actionLabel="添加第一个重要日"
+          compact
+          icon="gift-outline"
+          message="记录生日、纪念日或证件到期日，到时间前再提醒你。"
+          onAction={() => onCreateVisibleChange(true)}
+          title="还没有重要日"
+        />
       ) : null}
 
       {failure ? <Text style={styles.failureText}>{failure}</Text> : null}
 
-      <View style={styles.listHeader}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>更多重要日</Text>
-        <Text style={styles.listCount}>{laterItems.length} 项</Text>
-      </View>
-      <View style={styles.dateList}>
-        {laterItems.map((item) => (
-          <ImportantDateRow
-            item={item}
-            key={item.id}
-            onPress={() => setSelectedId(item.id)}
-          />
-        ))}
-      </View>
+      {laterItems.length > 0 ? (
+        <>
+          <View style={styles.listHeader}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>更多重要日</Text>
+            <Text style={styles.listCount}>{laterItems.length} 项</Text>
+          </View>
+          <View style={styles.dateList}>
+            {laterItems.map((item) => (
+              <ImportantDateRow
+                item={item}
+                key={item.id}
+                onPress={() => setSelectedId(item.id)}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
 
       <CreateSheet
         onClose={() => onCreateVisibleChange(false)}
@@ -647,17 +657,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
-  },
-  emptyCard: {
-    padding: 14,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.body,
-    fontWeight: '600',
   },
   failureText: {
     marginTop: 10,

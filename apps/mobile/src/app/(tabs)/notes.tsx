@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -214,19 +213,6 @@ export default function NotesScreen() {
   );
 }
 
-const cardShadow = Platform.select({
-  web: {
-    boxShadow: '0 10px 28px rgba(29, 64, 51, 0.065)',
-  },
-  default: {
-    shadowColor: '#1D4033',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.065,
-    shadowRadius: 18,
-    elevation: 2,
-  },
-});
-
 const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
@@ -238,7 +224,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   screen: {
-    backgroundColor: '#F5F7F6',
+    backgroundColor: colors.background,
   },
   content: {
     paddingHorizontal: 16,
@@ -263,7 +249,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceSubtle,
   },
   searchInput: {
     flex: 1,
@@ -277,20 +263,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardList: {
-    gap: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   noteCard: {
-    minHeight: 154,
-    paddingHorizontal: 18,
-    paddingTop: 17,
-    paddingBottom: 19,
-    borderRadius: radius.xl,
+    minHeight: 146,
+    paddingHorizontal: 2,
+    paddingTop: 16,
+    paddingBottom: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
     backgroundColor: colors.background,
-    ...cardShadow,
   },
   noteCardPressed: {
-    opacity: 0.86,
-    transform: [{ scale: 0.988 }],
+    opacity: 0.62,
   },
   cardTopLine: {
     minHeight: 26,
