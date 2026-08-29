@@ -32,7 +32,11 @@ export default function NoteDetailScreen() {
       // 而不是把对方的修改静默覆盖掉。
       await updateNote(
         note.id,
-        { title: draft.title || undefined, content: draft.content, tags: draft.tags },
+        {
+          title: draft.title || undefined,
+          content: { format: 'plain_text', text: draft.content },
+          tags: draft.tags,
+        },
         { headers: { 'If-Match': String(note.version) } },
       );
       await queryClient.invalidateQueries();
@@ -96,7 +100,7 @@ export default function NoteDetailScreen() {
         />
         <NoteEditor
           failure={error}
-          initial={{ title: note.title, content: note.content, tags: note.tags }}
+          initial={{ title: note.title, content: note.content_plaintext, tags: note.tags }}
           onSubmit={(draft) => void save(draft)}
           saving={saving}
           submitLabel="保存修改"
@@ -140,7 +144,7 @@ export default function NoteDetailScreen() {
           ))}
         </View>
 
-        <Text style={styles.paragraph}>{note.content}</Text>
+        <Text style={styles.paragraph}>{note.content_plaintext}</Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 

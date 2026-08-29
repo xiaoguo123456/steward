@@ -32,14 +32,46 @@ export const ListNotesQueryParams = zod.object({
   "q": zod.string().optional().describe('标题与正文关键词。')
 })
 
+export const listNotesResponseDataItemContentOneTextMax = 12000;
+
+export const listNotesResponseDataItemContentTwoBlocksItemIdMax = 80;
+
+export const listNotesResponseDataItemContentTwoBlocksItemRunsItemTextMax = 12000;
+
+export const listNotesResponseDataItemContentTwoBlocksItemRunsItemMarksLinkRegExp = new RegExp('^https?:/');
+export const listNotesResponseDataItemContentTwoBlocksItemRunsMax = 200;
+
+export const listNotesResponseDataItemContentTwoBlocksMax = 500;
+
 export const listNotesResponseDataItemProvenanceRefsItemSourceDeletedDefault = false;
 
 export const ListNotesResponse = zod.object({
   "data": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['note']),
+  "note_kind": zod.enum(['general', 'mood_journal']),
   "title": zod.string(),
-  "content": zod.string().describe('MVP 保存为纯文本；富文本块结构在后续版本扩展。'),
+  "content": zod.union([zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(listNotesResponseDataItemContentOneTextMax)
+}),zod.object({
+  "format": zod.enum(['blocks_v1']),
+  "version": zod.literal(1),
+  "blocks": zod.array(zod.object({
+  "id": zod.string().min(1).max(listNotesResponseDataItemContentTwoBlocksItemIdMax),
+  "type": zod.enum(['paragraph', 'heading_2', 'heading_3', 'bullet_item', 'ordered_item', 'quote', 'divider']),
+  "runs": zod.array(zod.object({
+  "text": zod.string().max(listNotesResponseDataItemContentTwoBlocksItemRunsItemTextMax),
+  "marks": zod.object({
+  "bold": zod.boolean().optional(),
+  "italic": zod.boolean().optional(),
+  "strikethrough": zod.boolean().optional(),
+  "link": zod.string().url().regex(listNotesResponseDataItemContentTwoBlocksItemRunsItemMarksLinkRegExp).optional()
+}).optional()
+})).max(listNotesResponseDataItemContentTwoBlocksItemRunsMax)
+})).min(1).max(listNotesResponseDataItemContentTwoBlocksMax)
+})]),
+  "content_plaintext": zod.string().describe('服务端从权威正文确定性派生，用于摘要、搜索和降级只读展示。'),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "kind": zod.enum(['image']),
@@ -85,16 +117,31 @@ export const CreateNoteHeader = zod.object({
   "Idempotency-Key": zod.string().min(createNoteHeaderIdempotencyKeyMin).max(createNoteHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
 })
 
+export const createNoteBodyContentTextMax = 12000;
 
 
 
 export const CreateNoteBody = zod.object({
   "title": zod.string().nullish().describe('为空时由服务端从正文首行生成。'),
-  "content": zod.string().min(1),
+  "content": zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(createNoteBodyContentTextMax)
+}),
   "tags": zod.array(zod.string()).optional(),
   "project_id": zod.string().nullish(),
   "polish_action_id": zod.string().optional().describe('用户采用一键润色结果后回传的 AI Action ID。服务端校验归属与成功状态，\n并把它写入 Note 的字段来源；不传表示内容完全由用户填写。\n')
 })
+
+export const createNoteResponseDataContentOneTextMax = 12000;
+
+export const createNoteResponseDataContentTwoBlocksItemIdMax = 80;
+
+export const createNoteResponseDataContentTwoBlocksItemRunsItemTextMax = 12000;
+
+export const createNoteResponseDataContentTwoBlocksItemRunsItemMarksLinkRegExp = new RegExp('^https?:/');
+export const createNoteResponseDataContentTwoBlocksItemRunsMax = 200;
+
+export const createNoteResponseDataContentTwoBlocksMax = 500;
 
 export const createNoteResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
@@ -102,8 +149,29 @@ export const CreateNoteResponse = zod.object({
   "data": zod.object({
   "id": zod.string(),
   "type": zod.enum(['note']),
+  "note_kind": zod.enum(['general', 'mood_journal']),
   "title": zod.string(),
-  "content": zod.string().describe('MVP 保存为纯文本；富文本块结构在后续版本扩展。'),
+  "content": zod.union([zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(createNoteResponseDataContentOneTextMax)
+}),zod.object({
+  "format": zod.enum(['blocks_v1']),
+  "version": zod.literal(1),
+  "blocks": zod.array(zod.object({
+  "id": zod.string().min(1).max(createNoteResponseDataContentTwoBlocksItemIdMax),
+  "type": zod.enum(['paragraph', 'heading_2', 'heading_3', 'bullet_item', 'ordered_item', 'quote', 'divider']),
+  "runs": zod.array(zod.object({
+  "text": zod.string().max(createNoteResponseDataContentTwoBlocksItemRunsItemTextMax),
+  "marks": zod.object({
+  "bold": zod.boolean().optional(),
+  "italic": zod.boolean().optional(),
+  "strikethrough": zod.boolean().optional(),
+  "link": zod.string().url().regex(createNoteResponseDataContentTwoBlocksItemRunsItemMarksLinkRegExp).optional()
+}).optional()
+})).max(createNoteResponseDataContentTwoBlocksItemRunsMax)
+})).min(1).max(createNoteResponseDataContentTwoBlocksMax)
+})]),
+  "content_plaintext": zod.string().describe('服务端从权威正文确定性派生，用于摘要、搜索和降级只读展示。'),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "kind": zod.enum(['image']),
@@ -149,25 +217,31 @@ export const PolishNoteDraftHeader = zod.object({
 
 export const polishNoteDraftBodyTitleMax = 120;
 
-export const polishNoteDraftBodyContentMax = 6000;
+export const polishNoteDraftBodyContentTextMax = 12000;
 
 
 
 export const PolishNoteDraftBody = zod.object({
   "title": zod.string().max(polishNoteDraftBodyTitleMax).nullish().describe('为空时由 AI 生成；非空时润色结果必须保持原值。'),
-  "content": zod.string().min(1).max(polishNoteDraftBodyContentMax)
+  "content": zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(polishNoteDraftBodyContentTextMax)
+})
 })
 
 export const polishNoteDraftResponseDataTitleMax = 120;
 
-export const polishNoteDraftResponseDataContentMax = 12000;
+export const polishNoteDraftResponseDataContentTextMax = 12000;
 
 
 
 export const PolishNoteDraftResponse = zod.object({
   "data": zod.object({
   "title": zod.string().min(1).max(polishNoteDraftResponseDataTitleMax),
-  "content": zod.string().min(1).max(polishNoteDraftResponseDataContentMax),
+  "content": zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(polishNoteDraftResponseDataContentTextMax)
+}),
   "ai_action_id": zod.string().describe('本次润色的来源引用；保存笔记时原样回传。')
 }),
   "meta": zod.object({
@@ -182,14 +256,46 @@ export const GetNoteParams = zod.object({
   "note_id": zod.string()
 })
 
+export const getNoteResponseDataContentOneTextMax = 12000;
+
+export const getNoteResponseDataContentTwoBlocksItemIdMax = 80;
+
+export const getNoteResponseDataContentTwoBlocksItemRunsItemTextMax = 12000;
+
+export const getNoteResponseDataContentTwoBlocksItemRunsItemMarksLinkRegExp = new RegExp('^https?:/');
+export const getNoteResponseDataContentTwoBlocksItemRunsMax = 200;
+
+export const getNoteResponseDataContentTwoBlocksMax = 500;
+
 export const getNoteResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
 export const GetNoteResponse = zod.object({
   "data": zod.object({
   "id": zod.string(),
   "type": zod.enum(['note']),
+  "note_kind": zod.enum(['general', 'mood_journal']),
   "title": zod.string(),
-  "content": zod.string().describe('MVP 保存为纯文本；富文本块结构在后续版本扩展。'),
+  "content": zod.union([zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(getNoteResponseDataContentOneTextMax)
+}),zod.object({
+  "format": zod.enum(['blocks_v1']),
+  "version": zod.literal(1),
+  "blocks": zod.array(zod.object({
+  "id": zod.string().min(1).max(getNoteResponseDataContentTwoBlocksItemIdMax),
+  "type": zod.enum(['paragraph', 'heading_2', 'heading_3', 'bullet_item', 'ordered_item', 'quote', 'divider']),
+  "runs": zod.array(zod.object({
+  "text": zod.string().max(getNoteResponseDataContentTwoBlocksItemRunsItemTextMax),
+  "marks": zod.object({
+  "bold": zod.boolean().optional(),
+  "italic": zod.boolean().optional(),
+  "strikethrough": zod.boolean().optional(),
+  "link": zod.string().url().regex(getNoteResponseDataContentTwoBlocksItemRunsItemMarksLinkRegExp).optional()
+}).optional()
+})).max(getNoteResponseDataContentTwoBlocksItemRunsMax)
+})).min(1).max(getNoteResponseDataContentTwoBlocksMax)
+})]),
+  "content_plaintext": zod.string().describe('服务端从权威正文确定性派生，用于摘要、搜索和降级只读展示。'),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "kind": zod.enum(['image']),
@@ -230,17 +336,32 @@ export const UpdateNoteHeader = zod.object({
   "If-Match": zod.string().optional().describe('目标资源的 version。提供后与服务端当前版本不一致时返回 VERSION_CONFLICT。\n并发编辑场景应始终携带。\n')
 })
 
+export const updateNoteBodyContentTextMax = 12000;
 
 
 
 export const UpdateNoteBody = zod.object({
   "clear": zod.array(zod.enum(['project_id'])).optional().describe('需要清空的可空字段。'),
   "title": zod.string().optional(),
-  "content": zod.string().min(1).optional(),
+  "content": zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(updateNoteBodyContentTextMax)
+}).optional(),
   "tags": zod.array(zod.string()).optional(),
   "pinned": zod.boolean().optional(),
   "project_id": zod.string().nullish()
 }).describe('只提交需要修改的字段；不传表示保持原值。\n清空一个可空字段必须把字段名放进 clear 数组，\n因为生成的 Go 类型无法区分“不传”与“传 null”。\n')
+
+export const updateNoteResponseDataContentOneTextMax = 12000;
+
+export const updateNoteResponseDataContentTwoBlocksItemIdMax = 80;
+
+export const updateNoteResponseDataContentTwoBlocksItemRunsItemTextMax = 12000;
+
+export const updateNoteResponseDataContentTwoBlocksItemRunsItemMarksLinkRegExp = new RegExp('^https?:/');
+export const updateNoteResponseDataContentTwoBlocksItemRunsMax = 200;
+
+export const updateNoteResponseDataContentTwoBlocksMax = 500;
 
 export const updateNoteResponseDataProvenanceRefsItemSourceDeletedDefault = false;
 
@@ -248,8 +369,29 @@ export const UpdateNoteResponse = zod.object({
   "data": zod.object({
   "id": zod.string(),
   "type": zod.enum(['note']),
+  "note_kind": zod.enum(['general', 'mood_journal']),
   "title": zod.string(),
-  "content": zod.string().describe('MVP 保存为纯文本；富文本块结构在后续版本扩展。'),
+  "content": zod.union([zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(updateNoteResponseDataContentOneTextMax)
+}),zod.object({
+  "format": zod.enum(['blocks_v1']),
+  "version": zod.literal(1),
+  "blocks": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateNoteResponseDataContentTwoBlocksItemIdMax),
+  "type": zod.enum(['paragraph', 'heading_2', 'heading_3', 'bullet_item', 'ordered_item', 'quote', 'divider']),
+  "runs": zod.array(zod.object({
+  "text": zod.string().max(updateNoteResponseDataContentTwoBlocksItemRunsItemTextMax),
+  "marks": zod.object({
+  "bold": zod.boolean().optional(),
+  "italic": zod.boolean().optional(),
+  "strikethrough": zod.boolean().optional(),
+  "link": zod.string().url().regex(updateNoteResponseDataContentTwoBlocksItemRunsItemMarksLinkRegExp).optional()
+}).optional()
+})).max(updateNoteResponseDataContentTwoBlocksItemRunsMax)
+})).min(1).max(updateNoteResponseDataContentTwoBlocksMax)
+})]),
+  "content_plaintext": zod.string().describe('服务端从权威正文确定性派生，用于摘要、搜索和降级只读展示。'),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "kind": zod.enum(['image']),

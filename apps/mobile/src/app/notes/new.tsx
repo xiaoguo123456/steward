@@ -27,7 +27,7 @@ export default function NewNoteScreen() {
       const created = await createNote({
         // 标题留空时交给服务端从正文首行生成，不在这里替它编一个。
         title: draft.title || null,
-        content: draft.content,
+        content: { format: 'plain_text', text: draft.content },
         tags: draft.tags,
         polish_action_id: draft.polishActionId,
       });
@@ -44,9 +44,13 @@ export default function NewNoteScreen() {
     try {
       const response = await polishNoteDraft({
         title: draft.title || null,
-        content: draft.content,
+        content: { format: 'plain_text', text: draft.content },
       });
-      return response.data;
+      return {
+        title: response.data.title,
+        content: response.data.content.text,
+        ai_action_id: response.data.ai_action_id,
+      };
     } catch (error) {
       if (isApiError(error) && error.code === 'INTERNAL_ERROR') {
         throw new Error('润色暂时不可用，请稍后再试。');

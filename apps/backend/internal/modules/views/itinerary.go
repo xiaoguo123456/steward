@@ -154,7 +154,7 @@ func startOrder(event dbgen.Event) time.Time {
 }
 
 // MapItinerary 映射成契约 DTO。
-func MapItinerary(itinerary Itinerary) httpapi.ProjectItinerary {
+func MapItinerary(itinerary Itinerary) (httpapi.ProjectItinerary, error) {
 	out := httpapi.ProjectItinerary{
 		Project: objects.MapProject(objects.ProjectWithProgress{Row: itinerary.Project}),
 		Days:    make([]httpapi.ItineraryDay, 0, len(itinerary.Days)),
@@ -174,7 +174,11 @@ func MapItinerary(itinerary Itinerary) httpapi.ProjectItinerary {
 		out.Tasks = append(out.Tasks, objects.MapTask(task))
 	}
 	for _, note := range itinerary.Notes {
-		out.Notes = append(out.Notes, objects.MapNote(note))
+		mapped, err := objects.MapNote(note)
+		if err != nil {
+			return httpapi.ProjectItinerary{}, err
+		}
+		out.Notes = append(out.Notes, mapped)
 	}
 	if itinerary.Start != nil {
 		out.StartDate = &openapi_types.Date{Time: *itinerary.Start}
@@ -182,5 +186,5 @@ func MapItinerary(itinerary Itinerary) httpapi.ProjectItinerary {
 	if itinerary.End != nil {
 		out.EndDate = &openapi_types.Date{Time: *itinerary.End}
 	}
-	return out
+	return out, nil
 }

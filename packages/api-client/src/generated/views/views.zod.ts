@@ -301,6 +301,17 @@ export const getProjectItineraryResponseDataDaysItemEventsItemProvenanceRefsItem
 export const getProjectItineraryResponseDataTasksItemQuantityTextMax = 40;
 
 export const getProjectItineraryResponseDataTasksItemProvenanceRefsItemSourceDeletedDefault = false;
+export const getProjectItineraryResponseDataNotesItemContentOneTextMax = 12000;
+
+export const getProjectItineraryResponseDataNotesItemContentTwoBlocksItemIdMax = 80;
+
+export const getProjectItineraryResponseDataNotesItemContentTwoBlocksItemRunsItemTextMax = 12000;
+
+export const getProjectItineraryResponseDataNotesItemContentTwoBlocksItemRunsItemMarksLinkRegExp = new RegExp('^https?:/');
+export const getProjectItineraryResponseDataNotesItemContentTwoBlocksItemRunsMax = 200;
+
+export const getProjectItineraryResponseDataNotesItemContentTwoBlocksMax = 500;
+
 export const getProjectItineraryResponseDataNotesItemProvenanceRefsItemSourceDeletedDefault = false;
 
 export const GetProjectItineraryResponse = zod.object({
@@ -430,8 +441,29 @@ export const GetProjectItineraryResponse = zod.object({
   "notes": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['note']),
+  "note_kind": zod.enum(['general', 'mood_journal']),
   "title": zod.string(),
-  "content": zod.string().describe('MVP 保存为纯文本；富文本块结构在后续版本扩展。'),
+  "content": zod.union([zod.object({
+  "format": zod.enum(['plain_text']),
+  "text": zod.string().min(1).max(getProjectItineraryResponseDataNotesItemContentOneTextMax)
+}),zod.object({
+  "format": zod.enum(['blocks_v1']),
+  "version": zod.literal(1),
+  "blocks": zod.array(zod.object({
+  "id": zod.string().min(1).max(getProjectItineraryResponseDataNotesItemContentTwoBlocksItemIdMax),
+  "type": zod.enum(['paragraph', 'heading_2', 'heading_3', 'bullet_item', 'ordered_item', 'quote', 'divider']),
+  "runs": zod.array(zod.object({
+  "text": zod.string().max(getProjectItineraryResponseDataNotesItemContentTwoBlocksItemRunsItemTextMax),
+  "marks": zod.object({
+  "bold": zod.boolean().optional(),
+  "italic": zod.boolean().optional(),
+  "strikethrough": zod.boolean().optional(),
+  "link": zod.string().url().regex(getProjectItineraryResponseDataNotesItemContentTwoBlocksItemRunsItemMarksLinkRegExp).optional()
+}).optional()
+})).max(getProjectItineraryResponseDataNotesItemContentTwoBlocksItemRunsMax)
+})).min(1).max(getProjectItineraryResponseDataNotesItemContentTwoBlocksMax)
+})]),
+  "content_plaintext": zod.string().describe('服务端从权威正文确定性派生，用于摘要、搜索和降级只读展示。'),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "kind": zod.enum(['image']),

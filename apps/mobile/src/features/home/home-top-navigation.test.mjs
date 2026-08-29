@@ -20,5 +20,5 @@ test('未开放分区明确说明当前不读取或分析用户资料', () => {
   assert.match(HOME_FEATURE_PREVIEWS.memories.message, /不会读取相册/);
   assert.match(HOME_FEATURE_PREVIEWS.music.message, /不会播放或生成音频/);
   assert.match(HOME_FEATURE_PREVIEWS.footprints.message, /不会申请定位/);
-  assert.match(HOME_FEATURE_PREVIEWS.mood.message, /不会保存或分析心情内容/);
+  assert.equal('mood' in HOME_FEATURE_PREVIEWS, false);
 });

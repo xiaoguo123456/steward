@@ -18,7 +18,6 @@ const previewIcons: Record<
   memories: 'images-outline',
   music: 'radio',
   footprints: 'map-outline',
-  mood: 'leaf-outline',
 };
 
 export function HomeTopTabs({
@@ -34,6 +33,7 @@ export function HomeTopTabs({
         contentContainerStyle={styles.rail}
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.scroll}
       >
         {HOME_TOP_TABS.map((tab) => {
           const selected = value === tab.id;
@@ -73,6 +73,7 @@ export function HomeFeaturePreview({ tab }: { tab: PlannedHomeTopTabId }) {
 
 const styles = StyleSheet.create({
   shell: {
+    minHeight: 49,
     marginHorizontal: -16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
@@ -81,6 +82,9 @@ const styles = StyleSheet.create({
   rail: {
     minWidth: '100%',
     paddingHorizontal: 8,
+  },
+  scroll: {
+    height: 49,
   },
   tab: {
     minWidth: 64,

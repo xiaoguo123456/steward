@@ -125,7 +125,7 @@ export function useWeeklyReview(weekOf: string) {
       saveReflection.mutate({
         data: {
           title: `复盘补充 · ${data.period_start} 至 ${data.period_end}`,
-          content: text,
+          content: { format: 'plain_text', text },
           tags: ['复盘'],
         },
       });

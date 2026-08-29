@@ -15,15 +15,19 @@
  */
 import type { CreatedBy } from './createdBy';
 import type { NoteAttachment } from './noteAttachment';
+import type { NoteContent } from './noteContent';
+import type { NoteKind } from './noteKind';
 import type { NoteType } from './noteType';
 import type { ProvenanceRef } from './provenanceRef';
 
 export interface Note {
   id: string;
   type: NoteType;
+  note_kind: NoteKind;
   title: string;
-  /** MVP 保存为纯文本；富文本块结构在后续版本扩展。 */
-  content: string;
+  content: NoteContent;
+  /** 服务端从权威正文确定性派生，用于摘要、搜索和降级只读展示。 */
+  readonly content_plaintext: string;
   attachments?: NoteAttachment[];
   tags: string[];
   /** @nullable */

@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { NoteContentPlainText } from './noteContentPlainText';
 
 export interface CreateNoteRequest {
   /**
@@ -20,8 +21,7 @@ export interface CreateNoteRequest {
      * @nullable
      */
   title?: string | null;
-  /** @minLength 1 */
-  content: string;
+  content: NoteContentPlainText;
   tags?: string[];
   /** @nullable */
   project_id?: string | null;

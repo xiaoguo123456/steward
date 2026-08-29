@@ -23,6 +23,7 @@ func (q *Queries) ClearProjectFromNotes(ctx context.Context, projectID *string) 
 const countNotesCreatedBetween = `-- name: CountNotesCreatedBetween :one
 SELECT count(*)::int FROM notes
 WHERE deleted_at IS NULL
+  AND note_kind = 'general'
   AND created_at >= $1::timestamptz
   AND created_at < $2::timestamptz
 `
@@ -41,35 +42,40 @@ func (q *Queries) CountNotesCreatedBetween(ctx context.Context, arg CountNotesCr
 
 const createNote = `-- name: CreateNote :one
 INSERT INTO notes (
-    id, user_id, title, content, attachments, tags, pinned_at,
+    id, user_id, note_kind, title, content, content_document, attachments, tags, pinned_at,
     project_id, created_by, provenance_refs
 ) VALUES (
-    $1, $2, $3, $4,
-    $5, $6, $7,
-    $8, $9, $10
+    $1, $2, $3, $4, $5,
+    $6,
+    $7, $8, $9,
+    $10, $11, $12
 )
-RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version, note_kind, content_document
 `
 
 type CreateNoteParams struct {
-	ID             string
-	UserID         string
-	Title          string
-	Content        string
-	Attachments    []byte
-	Tags           []string
-	PinnedAt       *time.Time
-	ProjectID      *string
-	CreatedBy      string
-	ProvenanceRefs []byte
+	ID              string
+	UserID          string
+	NoteKind        string
+	Title           string
+	Content         string
+	ContentDocument []byte
+	Attachments     []byte
+	Tags            []string
+	PinnedAt        *time.Time
+	ProjectID       *string
+	CreatedBy       string
+	ProvenanceRefs  []byte
 }
 
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
 	row := q.db.QueryRow(ctx, createNote,
 		arg.ID,
 		arg.UserID,
+		arg.NoteKind,
 		arg.Title,
 		arg.Content,
+		arg.ContentDocument,
 		arg.Attachments,
 		arg.Tags,
 		arg.PinnedAt,
@@ -93,12 +99,14 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.NoteKind,
+		&i.ContentDocument,
 	)
 	return i, err
 }
 
 const getNote = `-- name: GetNote :one
-SELECT id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM notes WHERE id = $1 AND deleted_at IS NULL
+SELECT id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version, note_kind, content_document FROM notes WHERE id = $1 AND note_kind = 'general' AND deleted_at IS NULL
 `
 
 func (q *Queries) GetNote(ctx context.Context, id string) (Note, error) {
@@ -119,6 +127,8 @@ func (q *Queries) GetNote(ctx context.Context, id string) (Note, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.NoteKind,
+		&i.ContentDocument,
 	)
 	return i, err
 }
@@ -126,6 +136,7 @@ func (q *Queries) GetNote(ctx context.Context, id string) (Note, error) {
 const listNoteTags = `-- name: ListNoteTags :many
 SELECT DISTINCT unnest(tags)::text AS tag FROM notes
 WHERE deleted_at IS NULL
+  AND note_kind = 'general'
 ORDER BY tag
 `
 
@@ -151,8 +162,9 @@ func (q *Queries) ListNoteTags(ctx context.Context) ([]string, error) {
 
 const listNotes = `-- name: ListNotes :many
 
-SELECT id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM notes
+SELECT id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version, note_kind, content_document FROM notes
 WHERE deleted_at IS NULL
+  AND note_kind = 'general'
   AND ($1::text IS NULL OR $1::text = ANY (tags))
   AND ($2::text IS NULL OR project_id = $2::text)
   AND ($3::text IS NULL
@@ -205,6 +217,8 @@ func (q *Queries) ListNotes(ctx context.Context, arg ListNotesParams) ([]Note, e
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.Version,
+			&i.NoteKind,
+			&i.ContentDocument,
 		); err != nil {
 			return nil, err
 		}
@@ -219,7 +233,7 @@ func (q *Queries) ListNotes(ctx context.Context, arg ListNotesParams) ([]Note, e
 const restoreNote = `-- name: RestoreNote :one
 UPDATE notes SET deleted_at = NULL, updated_at = now(), version = version + 1
 WHERE id = $1
-RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version, note_kind, content_document
 `
 
 func (q *Queries) RestoreNote(ctx context.Context, id string) (Note, error) {
@@ -240,6 +254,8 @@ func (q *Queries) RestoreNote(ctx context.Context, id string) (Note, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.NoteKind,
+		&i.ContentDocument,
 	)
 	return i, err
 }
@@ -247,6 +263,7 @@ func (q *Queries) RestoreNote(ctx context.Context, id string) (Note, error) {
 const searchNotes = `-- name: SearchNotes :many
 SELECT id, title, content, updated_at FROM notes
 WHERE deleted_at IS NULL
+  AND note_kind = 'general'
   AND (title ILIKE '%' || $1::text || '%'
        OR content ILIKE '%' || $1::text || '%')
 ORDER BY updated_at DESC
@@ -292,8 +309,8 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Sea
 
 const softDeleteNote = `-- name: SoftDeleteNote :one
 UPDATE notes SET deleted_at = now(), updated_at = now(), version = version + 1
-WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+WHERE id = $1 AND note_kind = 'general' AND deleted_at IS NULL
+RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version, note_kind, content_document
 `
 
 func (q *Queries) SoftDeleteNote(ctx context.Context, id string) (Note, error) {
@@ -314,6 +331,8 @@ func (q *Queries) SoftDeleteNote(ctx context.Context, id string) (Note, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.NoteKind,
+		&i.ContentDocument,
 	)
 	return i, err
 }
@@ -322,32 +341,35 @@ const updateNote = `-- name: UpdateNote :one
 UPDATE notes SET
     title      = coalesce($1, title),
     content    = coalesce($2, content),
-    tags       = coalesce($3, tags),
-    pinned_at  = CASE WHEN $4::bool IS NULL THEN pinned_at
-                      WHEN $4::bool THEN coalesce(pinned_at, now())
+    content_document = coalesce($3, content_document),
+    tags       = coalesce($4, tags),
+    pinned_at  = CASE WHEN $5::bool IS NULL THEN pinned_at
+                      WHEN $5::bool THEN coalesce(pinned_at, now())
                       ELSE NULL END,
-    project_id = CASE WHEN $5::bool THEN NULL
-                      ELSE coalesce($6, project_id) END,
+    project_id = CASE WHEN $6::bool THEN NULL
+                      ELSE coalesce($7, project_id) END,
     updated_at = now(),
     version    = version + 1
-WHERE id = $7 AND deleted_at IS NULL
-RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version
+WHERE id = $8 AND note_kind = 'general' AND deleted_at IS NULL
+RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version, note_kind, content_document
 `
 
 type UpdateNoteParams struct {
-	Title          *string
-	Content        *string
-	Tags           []string
-	Pinned         *bool
-	ClearProjectID bool
-	ProjectID      *string
-	ID             string
+	Title           *string
+	Content         *string
+	ContentDocument []byte
+	Tags            []string
+	Pinned          *bool
+	ClearProjectID  bool
+	ProjectID       *string
+	ID              string
 }
 
 func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error) {
 	row := q.db.QueryRow(ctx, updateNote,
 		arg.Title,
 		arg.Content,
+		arg.ContentDocument,
 		arg.Tags,
 		arg.Pinned,
 		arg.ClearProjectID,
@@ -370,6 +392,8 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, e
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.Version,
+		&i.NoteKind,
+		&i.ContentDocument,
 	)
 	return i, err
 }

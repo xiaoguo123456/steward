@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { NoteContentPlainText } from './noteContentPlainText';
 
 export interface NotePolishRequest {
   /**
@@ -21,9 +22,6 @@ export interface NotePolishRequest {
      * @nullable
      */
   title?: string | null;
-  /**
-     * @minLength 1
-     * @maxLength 6000
-     */
-  content: string;
+  /** @maxLength 6000 */
+  content: NoteContentPlainText;
 }

@@ -1,0 +1,256 @@
+MoodLevel:
+  type: string
+  enum: [very_low, low, neutral, good, very_good]
+
+EnergyLevel:
+  type: string
+  enum: [low, medium, high]
+
+MoodJournalEntry:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - title
+    - content
+    - content_plaintext
+    - occurred_at
+    - emotion_words
+    - context_words
+    - exclude_from_ai
+    - include_in_memories
+    - visual_seed
+    - created_at
+    - updated_at
+    - version
+  properties:
+    id:
+      type: string
+    title:
+      type: string
+    content:
+      $ref: './objects.yaml#/NoteContentBlocksV1'
+    content_plaintext:
+      type: string
+      readOnly: true
+    occurred_at:
+      type: string
+      format: date-time
+    mood_level:
+      $ref: '#/MoodLevel'
+    energy_level:
+      $ref: '#/EnergyLevel'
+    emotion_words:
+      type: array
+      maxItems: 3
+      items:
+        type: string
+        maxLength: 20
+    context_words:
+      type: array
+      maxItems: 5
+      items:
+        type: string
+        maxLength: 20
+    exclude_from_ai:
+      type: boolean
+    include_in_memories:
+      type: boolean
+    visual_seed:
+      type: integer
+      minimum: 0
+      description: 服务端确定性投影的无符号 31 位视觉种子，不是第二份心情事实。
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    version:
+      type: integer
+
+CreateMoodJournalEntryRequest:
+  type: object
+  additionalProperties: false
+  required: [content, occurred_at]
+  properties:
+    title:
+      type: string
+      nullable: true
+      maxLength: 120
+    content:
+      $ref: './objects.yaml#/NoteContentBlocksV1'
+    occurred_at:
+      type: string
+      format: date-time
+    mood_level:
+      $ref: '#/MoodLevel'
+    energy_level:
+      $ref: '#/EnergyLevel'
+    emotion_words:
+      type: array
+      maxItems: 3
+      items:
+        type: string
+        maxLength: 20
+    context_words:
+      type: array
+      maxItems: 5
+      items:
+        type: string
+        maxLength: 20
+    exclude_from_ai:
+      type: boolean
+      default: false
+    include_in_memories:
+      type: boolean
+      default: true
+
+UpdateMoodJournalEntryRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    clear:
+      type: array
+      items:
+        type: string
+        enum: [title, mood_level, energy_level]
+        x-enum-varnames:
+          - UpdateMoodJournalEntryClearTitle
+          - UpdateMoodJournalEntryClearMoodLevel
+          - UpdateMoodJournalEntryClearEnergyLevel
+    title:
+      type: string
+      nullable: true
+      maxLength: 120
+    content:
+      $ref: './objects.yaml#/NoteContentBlocksV1'
+    occurred_at:
+      type: string
+      format: date-time
+    mood_level:
+      $ref: '#/MoodLevel'
+    energy_level:
+      $ref: '#/EnergyLevel'
+    emotion_words:
+      type: array
+      maxItems: 3
+      items:
+        type: string
+        maxLength: 20
+    context_words:
+      type: array
+      maxItems: 5
+      items:
+        type: string
+        maxLength: 20
+    exclude_from_ai:
+      type: boolean
+    include_in_memories:
+      type: boolean
+
+MoodJournalCalendarDay:
+  type: object
+  additionalProperties: false
+  required: [date, count]
+  properties:
+    date:
+      type: string
+      format: date
+    count:
+      type: integer
+      minimum: 1
+
+MoodCount:
+  type: object
+  additionalProperties: false
+  required: [mood_level, count]
+  properties:
+    mood_level:
+      $ref: '#/MoodLevel'
+    count:
+      type: integer
+      minimum: 0
+
+EmotionWordCount:
+  type: object
+  additionalProperties: false
+  required: [word, count]
+  properties:
+    word:
+      type: string
+    count:
+      type: integer
+      minimum: 1
+
+MoodJournalStatistics:
+  type: object
+  additionalProperties: false
+  required: [period_start, period_end, entry_count, writing_day_count, mood_distribution, emotion_words]
+  properties:
+    period_start:
+      type: string
+      format: date
+    period_end:
+      type: string
+      format: date
+    entry_count:
+      type: integer
+      minimum: 0
+    writing_day_count:
+      type: integer
+      minimum: 0
+    mood_distribution:
+      type: array
+      items:
+        $ref: '#/MoodCount'
+    emotion_words:
+      type: array
+      items:
+        $ref: '#/EmotionWordCount'
+
+MoodJournalEntryResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MoodJournalEntry'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+MoodJournalEntriesResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/MoodJournalEntry'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+MoodJournalCalendarResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/MoodJournalCalendarDay'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+MoodJournalStatisticsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MoodJournalStatistics'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

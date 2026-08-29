@@ -3,6 +3,7 @@
 -- name: ListNotes :many
 SELECT * FROM notes
 WHERE deleted_at IS NULL
+  AND note_kind = 'general'
   AND (sqlc.narg(tag)::text IS NULL OR sqlc.narg(tag)::text = ANY (tags))
   AND (sqlc.narg(project_id)::text IS NULL OR project_id = sqlc.narg(project_id)::text)
   AND (sqlc.narg(query)::text IS NULL
@@ -14,14 +15,15 @@ ORDER BY pinned_at DESC NULLS LAST, updated_at DESC, id DESC
 LIMIT sqlc.arg(row_limit);
 
 -- name: GetNote :one
-SELECT * FROM notes WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
+SELECT * FROM notes WHERE id = sqlc.arg(id) AND note_kind = 'general' AND deleted_at IS NULL;
 
 -- name: CreateNote :one
 INSERT INTO notes (
-    id, user_id, title, content, attachments, tags, pinned_at,
+    id, user_id, note_kind, title, content, content_document, attachments, tags, pinned_at,
     project_id, created_by, provenance_refs
 ) VALUES (
-    sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(title), sqlc.arg(content),
+    sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(note_kind), sqlc.arg(title), sqlc.arg(content),
+    sqlc.arg(content_document),
     sqlc.arg(attachments), sqlc.arg(tags), sqlc.narg(pinned_at),
     sqlc.narg(project_id), sqlc.arg(created_by), sqlc.arg(provenance_refs)
 )
@@ -31,6 +33,7 @@ RETURNING *;
 UPDATE notes SET
     title      = coalesce(sqlc.narg(title), title),
     content    = coalesce(sqlc.narg(content), content),
+    content_document = coalesce(sqlc.narg(content_document), content_document),
     tags       = coalesce(sqlc.narg(tags), tags),
     pinned_at  = CASE WHEN sqlc.narg(pinned)::bool IS NULL THEN pinned_at
                       WHEN sqlc.narg(pinned)::bool THEN coalesce(pinned_at, now())
@@ -39,12 +42,12 @@ UPDATE notes SET
                       ELSE coalesce(sqlc.narg(project_id), project_id) END,
     updated_at = now(),
     version    = version + 1
-WHERE id = sqlc.arg(id) AND deleted_at IS NULL
+WHERE id = sqlc.arg(id) AND note_kind = 'general' AND deleted_at IS NULL
 RETURNING *;
 
 -- name: SoftDeleteNote :one
 UPDATE notes SET deleted_at = now(), updated_at = now(), version = version + 1
-WHERE id = sqlc.arg(id) AND deleted_at IS NULL
+WHERE id = sqlc.arg(id) AND note_kind = 'general' AND deleted_at IS NULL
 RETURNING *;
 
 -- name: RestoreNote :one
@@ -59,11 +62,13 @@ WHERE project_id = sqlc.arg(project_id) AND deleted_at IS NULL;
 -- name: ListNoteTags :many
 SELECT DISTINCT unnest(tags)::text AS tag FROM notes
 WHERE deleted_at IS NULL
+  AND note_kind = 'general'
 ORDER BY tag;
 
 -- name: SearchNotes :many
 SELECT id, title, content, updated_at FROM notes
 WHERE deleted_at IS NULL
+  AND note_kind = 'general'
   AND (title ILIKE '%' || sqlc.arg(query)::text || '%'
        OR content ILIKE '%' || sqlc.arg(query)::text || '%')
 ORDER BY updated_at DESC
@@ -72,5 +77,6 @@ LIMIT sqlc.arg(row_limit);
 -- name: CountNotesCreatedBetween :one
 SELECT count(*)::int FROM notes
 WHERE deleted_at IS NULL
+  AND note_kind = 'general'
   AND created_at >= sqlc.arg(from_at)::timestamptz
   AND created_at < sqlc.arg(to_at)::timestamptz;

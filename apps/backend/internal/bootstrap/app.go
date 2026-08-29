@@ -20,6 +20,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/media"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memory"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/moodjournal"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/recipes"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
@@ -60,6 +61,7 @@ type Server struct {
 	*assistant.AssistantAPI
 	*memory.MemoryAPI
 	*recipes.RecipeAPI
+	*moodjournal.API
 }
 
 var _ httpapi.StrictServerInterface = (*Server)(nil)
@@ -124,6 +126,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	usersSvc := users.New(db, listsSvc)
 	mediaSvc := media.New(db, store)
 	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc, mediaSvc)
+	moodJournalSvc := moodjournal.New(db, objectsSvc, usersSvc, activitySvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
 	recipesSvc := recipes.New(db, usersSvc, listsSvc, objectsSvc)
@@ -217,6 +220,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 			AssistantAPI: assistant.NewAssistantAPI(assistantSvc, proposalSvc),
 			MemoryAPI:    memory.NewMemoryAPI(memorySvc),
 			RecipeAPI:    recipes.NewRecipeAPI(recipesSvc),
+			API:          moodjournal.NewAPI(moodJournalSvc),
 		},
 		Jobs:          runtime,
 		Parser:        parser,

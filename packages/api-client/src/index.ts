@@ -24,6 +24,7 @@ export * from './generated/tasks/tasks';
 export * from './generated/events/events';
 export * from './generated/projects/projects';
 export * from './generated/notes/notes';
+export * from './generated/mood-journal/mood-journal';
 export * from './generated/trackers/trackers';
 export * from './generated/views/views';
 export * from './generated/captures/captures';

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/domain/notecontent"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
@@ -262,17 +263,62 @@ func (s *Service) CreateNoteInTx(ctx context.Context, q *dbgen.Queries, userID s
 	if tags == nil {
 		tags = []string{}
 	}
+	contentDocument, _, err := notecontent.EncodePlainText(httpapi.NoteContentPlainText{
+		Format: httpapi.PlainText,
+		Text:   content,
+	})
+	if err != nil {
+		return dbgen.Note{}, err
+	}
 
 	row, err := q.CreateNote(ctx, dbgen.CreateNoteParams{
-		ID:             idgen.New(idgen.PrefixNote),
-		UserID:         userID,
-		Title:          deriveNoteTitle(cmd.Title, content),
-		Content:        content,
-		Attachments:    emptyJSONArray,
-		Tags:           tags,
-		ProjectID:      cmd.ProjectID,
-		CreatedBy:      createdBy,
-		ProvenanceRefs: provJSON,
+		ID:              idgen.New(idgen.PrefixNote),
+		UserID:          userID,
+		NoteKind:        "general",
+		Title:           deriveNoteTitle(cmd.Title, content),
+		Content:         content,
+		ContentDocument: contentDocument,
+		Attachments:     emptyJSONArray,
+		Tags:            tags,
+		ProjectID:       cmd.ProjectID,
+		CreatedBy:       createdBy,
+		ProvenanceRefs:  provJSON,
+	})
+	if err != nil {
+		return dbgen.Note{}, apperr.Internal(err)
+	}
+	return row, nil
+}
+
+// CreateMoodNoteCommand 是心情日记模块在事务内创建专用 Note 的输入。
+type CreateMoodNoteCommand struct {
+	Title   *string
+	Content httpapi.NoteContentBlocksV1
+}
+
+// CreateMoodNoteInTx 创建固定为 mood_journal 的 Note。结构字段仍由心情日记模块写入一对一扩展表。
+func (s *Service) CreateMoodNoteInTx(ctx context.Context, q *dbgen.Queries, userID string, cmd CreateMoodNoteCommand) (dbgen.Note, error) {
+	document, plaintext, err := notecontent.EncodeBlocksV1(cmd.Content)
+	if err != nil {
+		return dbgen.Note{}, err
+	}
+	title := ""
+	if cmd.Title != nil {
+		title = strings.TrimSpace(*cmd.Title)
+	}
+	row, err := q.CreateNote(ctx, dbgen.CreateNoteParams{
+		ID:       idgen.New(idgen.PrefixNote),
+		UserID:   userID,
+		NoteKind: "mood_journal",
+		// 日记标题是明确的可选用户输入。不能复用普通笔记的首行自动标题，
+		// 否则详情会把同一句话同时显示为标题和正文。
+		Title:           title,
+		Content:         plaintext,
+		ContentDocument: document,
+		Attachments:     emptyJSONArray,
+		Tags:            []string{},
+		CreatedBy:       "user",
+		ProvenanceRefs:  emptyJSONArray,
 	})
 	if err != nil {
 		return dbgen.Note{}, apperr.Internal(err)
