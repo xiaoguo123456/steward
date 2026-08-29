@@ -53,7 +53,7 @@ function NoteCard({ note }: { note: Note }) {
         </View>
       </View>
       <Text numberOfLines={2} style={styles.noteTitle}>{note.title}</Text>
-      <Text numberOfLines={3} style={styles.noteSummary}>{note.content}</Text>
+      <Text numberOfLines={3} style={styles.noteSummary}>{note.content_plaintext}</Text>
     </Pressable>
   );
 }

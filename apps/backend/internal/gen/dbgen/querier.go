@@ -84,6 +84,9 @@ type Querier interface {
 	CopyCapturePartsToRevision(ctx context.Context, arg CopyCapturePartsToRevisionParams) error
 	CountCompletedTasksBetween(ctx context.Context, arg CountCompletedTasksBetweenParams) (int32, error)
 	CountCreatedTasksBetween(ctx context.Context, arg CountCreatedTasksBetweenParams) (int32, error)
+	CountMoodJournalEmotionWords(ctx context.Context, arg CountMoodJournalEmotionWordsParams) ([]CountMoodJournalEmotionWordsRow, error)
+	CountMoodJournalEntries(ctx context.Context, arg CountMoodJournalEntriesParams) (CountMoodJournalEntriesRow, error)
+	CountMoodJournalMoods(ctx context.Context, arg CountMoodJournalMoodsParams) ([]CountMoodJournalMoodsRow, error)
 	CountNotesCreatedBetween(ctx context.Context, arg CountNotesCreatedBetweenParams) (int32, error)
 	CountOpenCaptureQuestions(ctx context.Context) (int32, error)
 	CountOverdueTasks(ctx context.Context, arg CountOverdueTasksParams) (int32, error)
@@ -121,6 +124,7 @@ type Querier interface {
 	CreateMemoryEvidence(ctx context.Context, arg CreateMemoryEvidenceParams) error
 	CreateMemoryRevision(ctx context.Context, arg CreateMemoryRevisionParams) error
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (AssistantMessage, error)
+	CreateMoodJournalExtension(ctx context.Context, arg CreateMoodJournalExtensionParams) (MoodJournalEntry, error)
 	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
 	// 异步 Operation、Activity、幂等与 AI 审计。
 	CreateOperation(ctx context.Context, arg CreateOperationParams) (AsyncOperation, error)
@@ -200,6 +204,7 @@ type Querier interface {
 	GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (MealPlan, error)
 	GetMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	GetMemory(ctx context.Context, id string) (MemoryItem, error)
+	GetMoodJournalEntry(ctx context.Context, noteID string) (GetMoodJournalEntryRow, error)
 	GetNextActiveTaskListForUpdate(ctx context.Context, arg GetNextActiveTaskListForUpdateParams) (TaskList, error)
 	GetNote(ctx context.Context, id string) (Note, error)
 	GetOperation(ctx context.Context, id string) (AsyncOperation, error)
@@ -266,6 +271,9 @@ type Querier interface {
 	ListMemoryEvidence(ctx context.Context, memoryID string) ([]MemoryEvidence, error)
 	ListMemoryRevisions(ctx context.Context, memoryID string) ([]MemoryRevision, error)
 	ListMessages(ctx context.Context, arg ListMessagesParams) ([]AssistantMessage, error)
+	ListMoodJournalCalendar(ctx context.Context, arg ListMoodJournalCalendarParams) ([]ListMoodJournalCalendarRow, error)
+	// 心情日记查询。正文权威文档来自 notes，结构字段来自一对一扩展表。
+	ListMoodJournalEntries(ctx context.Context, arg ListMoodJournalEntriesParams) ([]ListMoodJournalEntriesRow, error)
 	ListNoteTags(ctx context.Context) ([]string, error)
 	// Note 查询。Note 没有完成状态，列表按置顶优先、更新时间倒序。
 	ListNotes(ctx context.Context, arg ListNotesParams) ([]Note, error)
@@ -402,6 +410,7 @@ type Querier interface {
 	SoftDeleteExpiredArchivedTrackers(ctx context.Context) error
 	SoftDeleteMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	SoftDeleteMessagesByThread(ctx context.Context, threadID string) error
+	SoftDeleteMoodJournalNote(ctx context.Context, noteID string) (Note, error)
 	SoftDeleteNote(ctx context.Context, id string) (Note, error)
 	SoftDeleteProject(ctx context.Context, id string) (Project, error)
 	SoftDeleteRecord(ctx context.Context, id string) (Record, error)
@@ -441,6 +450,8 @@ type Querier interface {
 	UpdateCaptureStatus(ctx context.Context, arg UpdateCaptureStatusParams) (Capture, error)
 	UpdateEvent(ctx context.Context, arg UpdateEventParams) (Event, error)
 	UpdateMemoryValue(ctx context.Context, arg UpdateMemoryValueParams) (MemoryItem, error)
+	UpdateMoodJournalExtension(ctx context.Context, arg UpdateMoodJournalExtensionParams) (MoodJournalEntry, error)
+	UpdateMoodJournalNote(ctx context.Context, arg UpdateMoodJournalNoteParams) (Note, error)
 	UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error)
 	UpdateOperationStatus(ctx context.Context, arg UpdateOperationStatusParams) (AsyncOperation, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)

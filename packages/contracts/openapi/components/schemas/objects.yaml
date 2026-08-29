@@ -836,10 +836,99 @@ NoteAttachment:
       type: integer
       nullable: true
 
+NoteKind:
+  type: string
+  enum: [general, mood_journal]
+
+NoteTextMark:
+  type: object
+  additionalProperties: false
+  properties:
+    bold:
+      type: boolean
+    italic:
+      type: boolean
+    strikethrough:
+      type: boolean
+    link:
+      type: string
+      format: uri
+      pattern: '^https?://'
+
+NoteTextRun:
+  type: object
+  additionalProperties: false
+  required: [text]
+  properties:
+    text:
+      type: string
+      maxLength: 12000
+    marks:
+      $ref: '#/NoteTextMark'
+
+NoteBlock:
+  type: object
+  additionalProperties: false
+  required: [id, type, runs]
+  properties:
+    id:
+      type: string
+      minLength: 1
+      maxLength: 80
+    type:
+      type: string
+      enum: [paragraph, heading_2, heading_3, bullet_item, ordered_item, quote, divider]
+    runs:
+      type: array
+      maxItems: 200
+      items:
+        $ref: '#/NoteTextRun'
+
+NoteContentPlainText:
+  type: object
+  additionalProperties: false
+  required: [format, text]
+  properties:
+    format:
+      type: string
+      enum: [plain_text]
+    text:
+      type: string
+      minLength: 1
+      maxLength: 12000
+
+NoteContentBlocksV1:
+  type: object
+  additionalProperties: false
+  required: [format, version, blocks]
+  properties:
+    format:
+      type: string
+      enum: [blocks_v1]
+    version:
+      type: integer
+      enum: [1]
+    blocks:
+      type: array
+      minItems: 1
+      maxItems: 500
+      items:
+        $ref: '#/NoteBlock'
+
+NoteContent:
+  oneOf:
+    - $ref: '#/NoteContentPlainText'
+    - $ref: '#/NoteContentBlocksV1'
+  discriminator:
+    propertyName: format
+    mapping:
+      plain_text: '#/NoteContentPlainText'
+      blocks_v1: '#/NoteContentBlocksV1'
+
 Note:
   type: object
   additionalProperties: false
-  required: [id, type, title, content, tags, created_by, created_at, updated_at, version]
+  required: [id, type, note_kind, title, content, content_plaintext, tags, created_by, created_at, updated_at, version]
   properties:
     id:
       type: string
@@ -847,11 +936,16 @@ Note:
     type:
       type: string
       enum: [note]
+    note_kind:
+      $ref: '#/NoteKind'
     title:
       type: string
     content:
+      $ref: '#/NoteContent'
+    content_plaintext:
       type: string
-      description: MVP 保存为纯文本；富文本块结构在后续版本扩展。
+      readOnly: true
+      description: 服务端从权威正文确定性派生，用于摘要、搜索和降级只读展示。
     attachments:
       type: array
       items:
@@ -896,8 +990,7 @@ CreateNoteRequest:
       nullable: true
       description: 为空时由服务端从正文首行生成。
     content:
-      type: string
-      minLength: 1
+      $ref: '#/NoteContentPlainText'
     tags:
       type: array
       items:
@@ -922,8 +1015,7 @@ NotePolishRequest:
       maxLength: 120
       description: 为空时由 AI 生成；非空时润色结果必须保持原值。
     content:
-      type: string
-      minLength: 1
+      $ref: '#/NoteContentPlainText'
       maxLength: 6000
 
 NotePolishResult:
@@ -936,8 +1028,7 @@ NotePolishResult:
       minLength: 1
       maxLength: 120
     content:
-      type: string
-      minLength: 1
+      $ref: '#/NoteContentPlainText'
       maxLength: 12000
     ai_action_id:
       type: string
@@ -961,8 +1052,7 @@ UpdateNoteRequest:
     title:
       type: string
     content:
-      type: string
-      minLength: 1
+      $ref: '#/NoteContentPlainText'
     tags:
       type: array
       items:

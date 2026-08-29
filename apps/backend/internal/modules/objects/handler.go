@@ -449,7 +449,11 @@ func (h *ObjectAPI) ListNotes(ctx context.Context, req httpapi.ListNotesRequestO
 	}
 	data := make([]httpapi.Note, 0, len(rows))
 	for _, row := range rows {
-		data = append(data, MapNote(row))
+		mapped, err := MapNote(row)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, mapped)
 	}
 	next := ""
 	if hasMore && len(rows) > 0 {
@@ -471,7 +475,11 @@ func (h *ObjectAPI) CreateNote(ctx context.Context, req httpapi.CreateNoteReques
 	if err != nil {
 		return nil, err
 	}
-	return httpapi.CreateNote201JSONResponse{Data: MapNote(created), Meta: httpx.Meta(ctx)}, nil
+	mapped, err := MapNote(created)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.CreateNote201JSONResponse{Data: mapped, Meta: httpx.Meta(ctx)}, nil
 }
 
 // PolishNoteDraft 润色尚未保存的 Note 草稿，只返回待确认结果。
@@ -500,7 +508,11 @@ func (h *ObjectAPI) GetNote(ctx context.Context, req httpapi.GetNoteRequestObjec
 	if err != nil {
 		return nil, err
 	}
-	return httpapi.GetNote200JSONResponse{Data: MapNote(row), Meta: httpx.Meta(ctx)}, nil
+	mapped, err := MapNote(row)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.GetNote200JSONResponse{Data: mapped, Meta: httpx.Meta(ctx)}, nil
 }
 
 // UpdateNote 修改 Note。
@@ -516,7 +528,11 @@ func (h *ObjectAPI) UpdateNote(ctx context.Context, req httpapi.UpdateNoteReques
 	if err != nil {
 		return nil, err
 	}
-	return httpapi.UpdateNote200JSONResponse{Data: MapNote(updated), Meta: httpx.Meta(ctx)}, nil
+	mapped, err := MapNote(updated)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.UpdateNote200JSONResponse{Data: mapped, Meta: httpx.Meta(ctx)}, nil
 }
 
 // DeleteNote 删除 Note。

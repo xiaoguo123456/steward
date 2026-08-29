@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/domain/notecontent"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
@@ -77,13 +78,13 @@ func (s *Service) ListNoteTags(ctx context.Context, userID string) ([]string, er
 
 // CreateNote 新建 Note。
 func (s *Service) CreateNote(ctx context.Context, userID string, body httpapi.CreateNoteRequest) (dbgen.Note, error) {
-	content := strings.TrimSpace(body.Content)
-	if content == "" {
-		return dbgen.Note{}, apperr.Validation(apperr.Field("content", "笔记内容不能为空。"))
+	contentDocument, content, err := notecontent.EncodePlainText(body.Content)
+	if err != nil {
+		return dbgen.Note{}, err
 	}
 
 	var out dbgen.Note
-	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		if body.ProjectId != nil {
 			if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
 				return err
@@ -117,15 +118,17 @@ func (s *Service) CreateNote(ctx context.Context, userID string, body httpapi.Cr
 			return err
 		}
 		created, err := q.CreateNote(ctx, dbgen.CreateNoteParams{
-			ID:             idgen.New(idgen.PrefixNote),
-			UserID:         userID,
-			Title:          deriveNoteTitle(body.Title, content),
-			Content:        content,
-			Attachments:    emptyJSONArray,
-			Tags:           normalizeTags(body.Tags),
-			ProjectID:      body.ProjectId,
-			CreatedBy:      "user",
-			ProvenanceRefs: provenanceJSON,
+			ID:              idgen.New(idgen.PrefixNote),
+			UserID:          userID,
+			NoteKind:        "general",
+			Title:           deriveNoteTitle(body.Title, content),
+			Content:         content,
+			ContentDocument: contentDocument,
+			Attachments:     emptyJSONArray,
+			Tags:            normalizeTags(body.Tags),
+			ProjectID:       body.ProjectId,
+			CreatedBy:       "user",
+			ProvenanceRefs:  provenanceJSON,
 		})
 		if err != nil {
 			return apperr.Internal(err)
@@ -175,12 +178,14 @@ func (s *Service) UpdateNote(ctx context.Context, userID, noteID string, in Note
 		}
 
 		var content *string
+		var contentDocument []byte
 		if body.Content != nil {
-			trimmed := strings.TrimSpace(*body.Content)
-			if trimmed == "" {
-				return apperr.Validation(apperr.Field("content", "笔记内容不能为空。"))
+			document, plaintext, err := notecontent.EncodePlainText(*body.Content)
+			if err != nil {
+				return err
 			}
-			content = &trimmed
+			content = &plaintext
+			contentDocument = document
 		}
 
 		var tags []string
@@ -198,13 +203,14 @@ func (s *Service) UpdateNote(ctx context.Context, userID, noteID string, in Note
 		}
 
 		updated, err := q.UpdateNote(ctx, dbgen.UpdateNoteParams{
-			ID:             noteID,
-			Title:          trimmedOrNil(body.Title),
-			Content:        content,
-			Tags:           tags,
-			Pinned:         body.Pinned,
-			ProjectID:      body.ProjectId,
-			ClearProjectID: clearProject,
+			ID:              noteID,
+			Title:           trimmedOrNil(body.Title),
+			Content:         content,
+			ContentDocument: contentDocument,
+			Tags:            tags,
+			Pinned:          body.Pinned,
+			ProjectID:       body.ProjectId,
+			ClearProjectID:  clearProject,
 		})
 		if err != nil {
 			return apperr.Internal(err)

@@ -1,5 +1,5 @@
 import { errorMessage, useGetToday, type TodayTask } from '@steward/api-client';
-import { type Href, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -12,6 +12,7 @@ import { StatePanel } from '@/components/ui/state-panel';
 import type { HomeTopTabId } from '@/features/home/home-top-navigation';
 import { HomeFeaturePreview, HomeTopTabs } from '@/features/home/home-top-tabs';
 import { MemoriesHome } from '@/features/memories/memories-home';
+import { MoodJournalContent } from '@/features/mood-journal/mood-journal-content';
 import {
   describeReminder,
   usePendingReminders,
@@ -97,7 +98,9 @@ const groupLabels: Record<TodayTask['group'], string> = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [activeHomeTab, setActiveHomeTab] = useState<HomeTopTabId>('today');
+  const params = useLocalSearchParams<{ homeTab?: string; date?: string }>();
+  const initialHomeTab: HomeTopTabId = params.homeTab === 'mood' ? 'mood' : 'today';
+  const [activeHomeTab, setActiveHomeTab] = useState<HomeTopTabId>(initialHomeTab);
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const today = useGetToday();
   const toggleDone = useToggleTaskDone();
@@ -149,7 +152,7 @@ export default function HomeScreen() {
         />
 
         {activeHomeTab === 'today' ? (
-          <>
+          <View key="today-home-content">
             <PendingRemindersBlock />
 
             <View style={styles.shortcutPanel}>
@@ -282,11 +285,13 @@ export default function HomeScreen() {
                 <AppIcon color={colors.textTertiary} name="chevron-forward" size={18} />
               </View>
             </Pressable>
-          </>
+          </View>
         ) : activeHomeTab === 'memories' ? (
-          <MemoriesHome />
+          <MemoriesHome key="memories-home-content" />
+        ) : activeHomeTab === 'mood' ? (
+          <MoodJournalContent initialDate={params.date} key="mood-journal-content" />
         ) : (
-          <HomeFeaturePreview tab={activeHomeTab} />
+          <HomeFeaturePreview key={`home-preview-${activeHomeTab}`} tab={activeHomeTab} />
         )}
       </ScrollView>
       <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />

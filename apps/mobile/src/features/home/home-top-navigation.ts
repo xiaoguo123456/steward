@@ -1,6 +1,6 @@
 export type HomeTopTabId = 'today' | 'memories' | 'music' | 'footprints' | 'mood';
 
-export type PlannedHomeTopTabId = Exclude<HomeTopTabId, 'today' | 'memories'>;
+export type PlannedHomeTopTabId = Exclude<HomeTopTabId, 'today' | 'memories' | 'mood'>;
 
 export const HOME_TOP_TABS: readonly { id: HomeTopTabId; label: string }[] = [
   { id: 'today', label: '今天' },
@@ -21,9 +21,5 @@ export const HOME_FEATURE_PREVIEWS: Record<
   footprints: {
     title: '足迹正在准备',
     message: '以后可以在这里查看旅行地图与城市故事；当前不会申请定位或读取位置。',
-  },
-  mood: {
-    title: '心情正在准备',
-    message: '以后可以在这里记录每日心情并看见花园成长；当前不会保存或分析心情内容。',
   },
 };

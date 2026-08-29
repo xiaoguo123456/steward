@@ -1051,6 +1051,207 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/mood-journal/entries:
+    get:
+      operationId: listMoodJournalEntries
+      summary: 查询心情日记
+      tags:
+        - mood-journal
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 按实际发生时间倒序返回。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalEntriesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createMoodJournalEntry
+      summary: 新建心情日记
+      tags:
+        - mood-journal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMoodJournalEntryRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalEntryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/mood-journal/entries/{entry_id}:
+    parameters:
+      - name: entry_id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getMoodJournalEntry
+      summary: 读取心情日记
+      tags:
+        - mood-journal
+      responses:
+        '200':
+          description: 读取成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalEntryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateMoodJournalEntry
+      summary: 修改心情日记
+      tags:
+        - mood-journal
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMoodJournalEntryRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalEntryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteMoodJournalEntry
+      summary: 删除心情日记
+      tags:
+        - mood-journal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/mood-journal/calendar:
+    get:
+      operationId: getMoodJournalCalendar
+      summary: 查询心情日记日历
+      tags:
+        - mood-journal
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 返回有日记的日期与篇数。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalCalendarResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/mood-journal/statistics:
+    get:
+      operationId: getMoodJournalStatistics
+      summary: 查询心情日记确定性统计
+      tags:
+        - mood-journal
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 返回确定性篇数、书写天数、心情分布和常用感受词。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalStatisticsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/trackers:
     get:
       operationId: listTrackers
@@ -4510,6 +4711,109 @@ components:
             标记完成时若仍有未完成 Task，默认返回 PROJECT_HAS_OPEN_TASKS。
             用户在提示中确认继续后重发并置为 true。
           default: false
+    NoteKind:
+      type: string
+      enum:
+        - general
+        - mood_journal
+    NoteContentPlainText:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - text
+      properties:
+        format:
+          type: string
+          enum:
+            - plain_text
+        text:
+          type: string
+          minLength: 1
+          maxLength: 12000
+    NoteTextMark:
+      type: object
+      additionalProperties: false
+      properties:
+        bold:
+          type: boolean
+        italic:
+          type: boolean
+        strikethrough:
+          type: boolean
+        link:
+          type: string
+          format: uri
+          pattern: ^https?://
+    NoteTextRun:
+      type: object
+      additionalProperties: false
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          maxLength: 12000
+        marks:
+          $ref: '#/components/schemas/NoteTextMark'
+    NoteBlock:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - runs
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 80
+        type:
+          type: string
+          enum:
+            - paragraph
+            - heading_2
+            - heading_3
+            - bullet_item
+            - ordered_item
+            - quote
+            - divider
+        runs:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/NoteTextRun'
+    NoteContentBlocksV1:
+      type: object
+      additionalProperties: false
+      required:
+        - format
+        - version
+        - blocks
+      properties:
+        format:
+          type: string
+          enum:
+            - blocks_v1
+        version:
+          type: integer
+          enum:
+            - 1
+        blocks:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/NoteBlock'
+    NoteContent:
+      oneOf:
+        - $ref: '#/components/schemas/NoteContentPlainText'
+        - $ref: '#/components/schemas/NoteContentBlocksV1'
+      discriminator:
+        propertyName: format
+        mapping:
+          plain_text: '#/components/schemas/NoteContentPlainText'
+          blocks_v1: '#/components/schemas/NoteContentBlocksV1'
     NoteAttachment:
       type: object
       additionalProperties: false
@@ -4539,8 +4843,10 @@ components:
       required:
         - id
         - type
+        - note_kind
         - title
         - content
+        - content_plaintext
         - tags
         - created_by
         - created_at
@@ -4554,11 +4860,16 @@ components:
           type: string
           enum:
             - note
+        note_kind:
+          $ref: '#/components/schemas/NoteKind'
         title:
           type: string
         content:
+          $ref: '#/components/schemas/NoteContent'
+        content_plaintext:
           type: string
-          description: MVP 保存为纯文本；富文本块结构在后续版本扩展。
+          readOnly: true
+          description: 服务端从权威正文确定性派生，用于摘要、搜索和降级只读展示。
         attachments:
           type: array
           items:
@@ -4619,8 +4930,7 @@ components:
           nullable: true
           description: 为空时由服务端从正文首行生成。
         content:
-          type: string
-          minLength: 1
+          $ref: '#/components/schemas/NoteContentPlainText'
         tags:
           type: array
           items:
@@ -4656,8 +4966,7 @@ components:
           maxLength: 120
           description: 为空时由 AI 生成；非空时润色结果必须保持原值。
         content:
-          type: string
-          minLength: 1
+          $ref: '#/components/schemas/NoteContentPlainText'
           maxLength: 6000
     NotePolishResult:
       type: object
@@ -4672,8 +4981,7 @@ components:
           minLength: 1
           maxLength: 120
         content:
-          type: string
-          minLength: 1
+          $ref: '#/components/schemas/NoteContentPlainText'
           maxLength: 12000
         ai_action_id:
           type: string
@@ -4707,8 +5015,7 @@ components:
         title:
           type: string
         content:
-          type: string
-          minLength: 1
+          $ref: '#/components/schemas/NoteContentPlainText'
         tags:
           type: array
           items:
@@ -4718,6 +5025,284 @@ components:
         project_id:
           type: string
           nullable: true
+    MoodLevel:
+      type: string
+      enum:
+        - very_low
+        - low
+        - neutral
+        - good
+        - very_good
+    EnergyLevel:
+      type: string
+      enum:
+        - low
+        - medium
+        - high
+    MoodJournalEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - content
+        - content_plaintext
+        - occurred_at
+        - emotion_words
+        - context_words
+        - exclude_from_ai
+        - include_in_memories
+        - visual_seed
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          $ref: '#/components/schemas/NoteContentBlocksV1'
+        content_plaintext:
+          type: string
+          readOnly: true
+        occurred_at:
+          type: string
+          format: date-time
+        mood_level:
+          $ref: '#/components/schemas/MoodLevel'
+        energy_level:
+          $ref: '#/components/schemas/EnergyLevel'
+        emotion_words:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            maxLength: 20
+        context_words:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 20
+        exclude_from_ai:
+          type: boolean
+        include_in_memories:
+          type: boolean
+        visual_seed:
+          type: integer
+          minimum: 0
+          description: 服务端确定性投影的无符号 31 位视觉种子，不是第二份心情事实。
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    MoodJournalEntriesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MoodJournalEntry'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreateMoodJournalEntryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - content
+        - occurred_at
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+        content:
+          $ref: '#/components/schemas/NoteContentBlocksV1'
+        occurred_at:
+          type: string
+          format: date-time
+        mood_level:
+          $ref: '#/components/schemas/MoodLevel'
+        energy_level:
+          $ref: '#/components/schemas/EnergyLevel'
+        emotion_words:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            maxLength: 20
+        context_words:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 20
+        exclude_from_ai:
+          type: boolean
+          default: false
+        include_in_memories:
+          type: boolean
+          default: true
+    MoodJournalEntryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MoodJournalEntry'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdateMoodJournalEntryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        clear:
+          type: array
+          items:
+            type: string
+            enum:
+              - title
+              - mood_level
+              - energy_level
+            x-enum-varnames:
+              - UpdateMoodJournalEntryClearTitle
+              - UpdateMoodJournalEntryClearMoodLevel
+              - UpdateMoodJournalEntryClearEnergyLevel
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+        content:
+          $ref: '#/components/schemas/NoteContentBlocksV1'
+        occurred_at:
+          type: string
+          format: date-time
+        mood_level:
+          $ref: '#/components/schemas/MoodLevel'
+        energy_level:
+          $ref: '#/components/schemas/EnergyLevel'
+        emotion_words:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            maxLength: 20
+        context_words:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 20
+        exclude_from_ai:
+          type: boolean
+        include_in_memories:
+          type: boolean
+    MoodJournalCalendarDay:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - count
+      properties:
+        date:
+          type: string
+          format: date
+        count:
+          type: integer
+          minimum: 1
+    MoodJournalCalendarResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MoodJournalCalendarDay'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    MoodCount:
+      type: object
+      additionalProperties: false
+      required:
+        - mood_level
+        - count
+      properties:
+        mood_level:
+          $ref: '#/components/schemas/MoodLevel'
+        count:
+          type: integer
+          minimum: 0
+    EmotionWordCount:
+      type: object
+      additionalProperties: false
+      required:
+        - word
+        - count
+      properties:
+        word:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+    MoodJournalStatistics:
+      type: object
+      additionalProperties: false
+      required:
+        - period_start
+        - period_end
+        - entry_count
+        - writing_day_count
+        - mood_distribution
+        - emotion_words
+      properties:
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        entry_count:
+          type: integer
+          minimum: 0
+        writing_day_count:
+          type: integer
+          minimum: 0
+        mood_distribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/MoodCount'
+        emotion_words:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmotionWordCount'
+    MoodJournalStatisticsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MoodJournalStatistics'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
     TrackerStatus:
       type: string
       enum:

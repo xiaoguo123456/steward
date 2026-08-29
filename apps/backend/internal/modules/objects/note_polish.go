@@ -49,7 +49,11 @@ func (s *Service) PolishNoteDraft(
 	if body.Title != nil {
 		title = strings.TrimSpace(*body.Title)
 	}
-	content := strings.TrimSpace(body.Content)
+	if body.Content.Format != httpapi.PlainText {
+		return httpapi.NotePolishResult{}, apperr.Validation(
+			apperr.Field("content.format", "润色只支持普通纯文本笔记。"))
+	}
+	content := strings.TrimSpace(body.Content.Text)
 	if content == "" {
 		return httpapi.NotePolishResult{}, apperr.Validation(
 			apperr.Field("content", "请先写一点内容再润色。"))
@@ -120,8 +124,11 @@ func (s *Service) PolishNoteDraft(
 		return httpapi.NotePolishResult{}, apperr.Internal(err)
 	}
 	return httpapi.NotePolishResult{
-		Title:      polished.Title,
-		Content:    polished.Content,
+		Title: polished.Title,
+		Content: httpapi.NoteContentPlainText{
+			Format: httpapi.PlainText,
+			Text:   polished.Content,
+		},
 		AiActionId: actionID,
 	}, nil
 }

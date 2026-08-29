@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { NoteContentPlainText } from './noteContentPlainText';
 import type { UpdateNoteRequestClearItem } from './updateNoteRequestClearItem';
 
 /**
@@ -24,8 +25,7 @@ export interface UpdateNoteRequest {
   /** 需要清空的可空字段。 */
   clear?: UpdateNoteRequestClearItem[];
   title?: string;
-  /** @minLength 1 */
-  content?: string;
+  content?: NoteContentPlainText;
   tags?: string[];
   pinned?: boolean;
   /** @nullable */

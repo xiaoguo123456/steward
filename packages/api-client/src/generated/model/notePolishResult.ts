@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { NoteContentPlainText } from './noteContentPlainText';
 
 export interface NotePolishResult {
   /**
@@ -20,11 +21,8 @@ export interface NotePolishResult {
      * @maxLength 120
      */
   title: string;
-  /**
-     * @minLength 1
-     * @maxLength 12000
-     */
-  content: string;
+  /** @maxLength 12000 */
+  content: NoteContentPlainText;
   /** 本次润色的来源引用；保存笔记时原样回传。 */
   ai_action_id: string;
 }

@@ -98,6 +98,15 @@ paths:
   /v1/notes/{note_id}:
     $ref: './paths/notes.yaml#/Item'
 
+  /v1/mood-journal/entries:
+    $ref: './paths/mood-journal.yaml#/EntryCollection'
+  /v1/mood-journal/entries/{entry_id}:
+    $ref: './paths/mood-journal.yaml#/EntryItem'
+  /v1/mood-journal/calendar:
+    $ref: './paths/mood-journal.yaml#/Calendar'
+  /v1/mood-journal/statistics:
+    $ref: './paths/mood-journal.yaml#/Statistics'
+
   /v1/trackers:
     $ref: './paths/trackers.yaml#/Collection'
   /v1/trackers/{tracker_id}:

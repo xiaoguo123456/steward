@@ -96,6 +96,16 @@ export const glass = {
   captureBorder: 'rgba(255, 255, 255, 0.78)',
 } as const;
 
+// 心情日记使用局部冰川蓝；全局导航和 Capture 继续使用品牌绿。
+export const moodColors = {
+  accent: '#4F8FC9',
+  accentPressed: '#397DB9',
+  soft: '#EAF3FA',
+  atmosphere: '#DCECF7',
+  border: '#D7E8F5',
+  text: '#315F86',
+} as const;
+
 export const spacing = {
   xs: 4,
   sm: 8,

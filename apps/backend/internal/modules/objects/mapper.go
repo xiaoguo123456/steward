@@ -3,6 +3,7 @@ package objects
 import (
 	"time"
 
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/domain/notecontent"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
@@ -102,27 +103,34 @@ func MapProject(p ProjectWithProgress) httpapi.Project {
 }
 
 // MapNote 把存储行映射成契约 DTO。
-func MapNote(row dbgen.Note) httpapi.Note {
+func MapNote(row dbgen.Note) (httpapi.Note, error) {
 	tags := row.Tags
 	if tags == nil {
 		tags = []string{}
 	}
-	return httpapi.Note{
-		Id:             row.ID,
-		Type:           httpapi.NoteTypeNote,
-		Title:          row.Title,
-		Content:        row.Content,
-		Attachments:    &[]httpapi.NoteAttachment{},
-		Tags:           tags,
-		PinnedAt:       row.PinnedAt,
-		ProjectId:      row.ProjectID,
-		CreatedBy:      httpapi.CreatedBy(row.CreatedBy),
-		ProvenanceRefs: unmarshalProvenance(row.ProvenanceRefs),
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
-		DeletedAt:      row.DeletedAt,
-		Version:        int(row.Version),
+	content, err := notecontent.Decode(row.ContentDocument)
+	if err != nil {
+		return httpapi.Note{}, err
 	}
+	plaintext := row.Content
+	return httpapi.Note{
+		Id:               row.ID,
+		Type:             httpapi.NoteTypeNote,
+		Title:            row.Title,
+		Content:          content,
+		ContentPlaintext: &plaintext,
+		NoteKind:         httpapi.NoteKind(row.NoteKind),
+		Attachments:      &[]httpapi.NoteAttachment{},
+		Tags:             tags,
+		PinnedAt:         row.PinnedAt,
+		ProjectId:        row.ProjectID,
+		CreatedBy:        httpapi.CreatedBy(row.CreatedBy),
+		ProvenanceRefs:   unmarshalProvenance(row.ProvenanceRefs),
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
+		DeletedAt:        row.DeletedAt,
+		Version:          int(row.Version),
+	}, nil
 }
 
 // ProjectYearlyEvents 把按年重复的重要日投影到查询范围内的具体日期。

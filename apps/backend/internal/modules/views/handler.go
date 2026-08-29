@@ -114,9 +114,11 @@ func (h *ViewAPI) GetProjectItinerary(ctx context.Context, req httpapi.GetProjec
 	if err != nil {
 		return nil, err
 	}
-	return httpapi.GetProjectItinerary200JSONResponse{
-		Data: MapItinerary(itinerary), Meta: httpx.Meta(ctx),
-	}, nil
+	mapped, err := MapItinerary(itinerary)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.GetProjectItinerary200JSONResponse{Data: mapped, Meta: httpx.Meta(ctx)}, nil
 }
 
 // Search 跨实体关键词检索。

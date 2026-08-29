@@ -516,21 +516,39 @@ type MemoryRevision struct {
 	CreatedAt     time.Time
 }
 
+type MoodJournalEntry struct {
+	NoteID            string
+	UserID            string
+	OccurredAt        time.Time
+	MoodLevel         *string
+	EnergyLevel       *string
+	EmotionWords      []string
+	ContextWords      []string
+	ExcludeFromAi     bool
+	IncludeInMemories bool
+	VisualSeed        int32
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	Version           int32
+}
+
 type Note struct {
-	ID             string
-	UserID         string
-	Title          string
-	Content        string
-	Attachments    []byte
-	Tags           []string
-	PinnedAt       *time.Time
-	ProjectID      *string
-	CreatedBy      string
-	ProvenanceRefs []byte
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      *time.Time
-	Version        int32
+	ID              string
+	UserID          string
+	Title           string
+	Content         string
+	Attachments     []byte
+	Tags            []string
+	PinnedAt        *time.Time
+	ProjectID       *string
+	CreatedBy       string
+	ProvenanceRefs  []byte
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       *time.Time
+	Version         int32
+	NoteKind        string
+	ContentDocument []byte
 }
 
 type ProcessedJob struct {

@@ -1,0 +1,197 @@
+EntryCollection:
+  get:
+    operationId: listMoodJournalEntries
+    summary: 查询心情日记
+    tags: [mood-journal]
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+      - name: from
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: q
+        in: query
+        schema:
+          type: string
+    responses:
+      '200':
+        description: 按实际发生时间倒序返回。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/mood-journal.yaml#/MoodJournalEntriesResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createMoodJournalEntry
+    summary: 新建心情日记
+    tags: [mood-journal]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/mood-journal.yaml#/CreateMoodJournalEntryRequest'
+    responses:
+      '201':
+        description: 创建成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/mood-journal.yaml#/MoodJournalEntryResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+EntryItem:
+  parameters:
+    - name: entry_id
+      in: path
+      required: true
+      schema:
+        type: string
+  get:
+    operationId: getMoodJournalEntry
+    summary: 读取心情日记
+    tags: [mood-journal]
+    responses:
+      '200':
+        description: 读取成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/mood-journal.yaml#/MoodJournalEntryResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  patch:
+    operationId: updateMoodJournalEntry
+    summary: 修改心情日记
+    tags: [mood-journal]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/mood-journal.yaml#/UpdateMoodJournalEntryRequest'
+    responses:
+      '200':
+        description: 修改成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/mood-journal.yaml#/MoodJournalEntryResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deleteMoodJournalEntry
+    summary: 删除心情日记
+    tags: [mood-journal]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 删除成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Calendar:
+  get:
+    operationId: getMoodJournalCalendar
+    summary: 查询心情日记日历
+    tags: [mood-journal]
+    parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+    responses:
+      '200':
+        description: 返回有日记的日期与篇数。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/mood-journal.yaml#/MoodJournalCalendarResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Statistics:
+  get:
+    operationId: getMoodJournalStatistics
+    summary: 查询心情日记确定性统计
+    tags: [mood-journal]
+    parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+    responses:
+      '200':
+        description: 返回确定性篇数、书写天数、心情分布和常用感受词。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/mood-journal.yaml#/MoodJournalStatisticsResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

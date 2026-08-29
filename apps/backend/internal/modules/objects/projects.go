@@ -273,7 +273,7 @@ func projectClearFlagsOf(clear *[]httpapi.UpdateProjectRequestClear) projectClea
 
 // projectKindOr 把项目用途收敛到已知取值，未知一律当普通项目。
 func projectKindOr(kind *httpapi.ProjectKind) string {
-	if kind != nil && *kind == httpapi.Trip {
+	if kind != nil && *kind == httpapi.ProjectKindTrip {
 		return "trip"
 	}
 	return "general"
