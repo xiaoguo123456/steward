@@ -8,14 +8,25 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 type ToastContextValue = {
-  showToast: (message: string) => void;
+  showToast: (message: string, options?: ToastOptions) => void;
+};
+
+type ToastOptions = {
+  actionLabel?: string;
+  durationMs?: number;
+  onAction?: () => void | Promise<void>;
+};
+
+type ToastState = ToastOptions & {
+  id: number;
+  message: string;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -24,14 +35,14 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: PropsWithChildren) {
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
-  const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [opacity] = useState(() => new Animated.Value(0));
   const [translateY] = useState(() => new Animated.Value(8));
   const nextId = useRef(0);
 
-  const showToast = useCallback((message: string) => {
+  const showToast = useCallback((message: string, options: ToastOptions = {}) => {
     nextId.current += 1;
-    setToast({ id: nextId.current, message });
+    setToast({ id: nextId.current, message, ...options });
   }, []);
 
   useEffect(() => {
@@ -62,12 +73,19 @@ export function ToastProvider({ children }: PropsWithChildren) {
       }).start(({ finished }) => {
         if (finished) setToast((current) => current?.id === toast.id ? null : current);
       });
-    }, 2400);
+    }, toast.durationMs ?? 2400);
 
     return () => clearTimeout(timer);
   }, [opacity, reducedMotion, toast, translateY]);
 
   const value = useMemo(() => ({ showToast }), [showToast]);
+
+  const runAction = () => {
+    if (!toast?.onAction) return;
+    const action = toast.onAction;
+    setToast(null);
+    void action();
+  };
 
   return (
     <ToastContext.Provider value={value}>
@@ -77,13 +95,23 @@ export function ToastProvider({ children }: PropsWithChildren) {
           <Animated.View
             accessibilityLiveRegion="polite"
             accessibilityRole="alert"
-            pointerEvents="none"
+            pointerEvents={toast.onAction ? 'auto' : 'none'}
             style={[
               styles.toast,
               { bottom: insets.bottom + 84, opacity, transform: [{ translateY }] },
             ]}
           >
             <Text style={styles.message}>{toast.message}</Text>
+            {toast.actionLabel && toast.onAction ? (
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={6}
+                onPress={runAction}
+                style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+              >
+                <Text style={styles.actionLabel}>{toast.actionLabel}</Text>
+              </Pressable>
+            ) : null}
           </Animated.View>
         ) : null}
       </View>
@@ -112,6 +140,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 11,
     borderRadius: radius.md,
@@ -119,9 +149,26 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   message: {
+    flex: 1,
     color: colors.background,
     fontFamily,
     ...typography.label,
     textAlign: 'center',
+  },
+  action: {
+    minHeight: 44,
+    minWidth: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  actionPressed: {
+    opacity: 0.72,
+  },
+  actionLabel: {
+    color: colors.primaryTrack,
+    fontFamily,
+    ...typography.label,
+    fontWeight: '700',
   },
 });

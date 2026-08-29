@@ -24,12 +24,20 @@ import (
 // Gate 是用例的门槛级别。
 type Gate string
 
+// Runner 区分需要真实编排栈的 Assistant 用例与只检查 Prompt／Schema 的契约用例。
+type Runner string
+
 // 门槛级别取值。
 const (
 	// GateHard 是结构性错误，不通过即测试失败。
 	GateHard Gate = "hard"
 	// GateQuality 是业务准确率，只计入基线报告。
 	GateQuality Gate = "quality"
+
+	// RunnerAssistant 是默认执行器，走脚本化 Provider 与真实 Assistant 编排栈。
+	RunnerAssistant Runner = ""
+	// RunnerContract 只检查尚未开放运行时链路的 Prompt／Schema 安全契约。
+	RunnerContract Runner = "contract"
 )
 
 // Case 是一条评测用例。
@@ -37,10 +45,12 @@ type Case struct {
 	ID       string `json:"id"`
 	Category string `json:"category"`
 	Gate     Gate   `json:"gate"`
+	Runner   Runner `json:"runner"`
 	// Why 说明这条用例守的是什么。它会出现在失败信息里，
 	// 让看到红灯的人立刻知道破了哪条规矩。
-	Why      string `json:"why"`
-	UserText string `json:"user_text"`
+	Why      string        `json:"why"`
+	UserText string        `json:"user_text"`
+	Input    ContractInput `json:"input"`
 
 	// Fixtures 是这条用例需要预先准备的数据。
 	Fixtures Fixtures `json:"fixtures"`
@@ -58,6 +68,18 @@ type Case struct {
 	ConfirmFirstProposal bool `json:"confirm_first_proposal"`
 
 	Expect Expect `json:"expect"`
+}
+
+// ContractInput 是尚未接入在线 Provider 的结构化契约用例输入。
+type ContractInput struct {
+	SelectedEntries []ContractSelectedEntry `json:"selected_entries"`
+}
+
+// ContractSelectedEntry 是契约用例里允许模型看到的一篇临时日记投影。
+type ContractSelectedEntry struct {
+	ID                   string `json:"id"`
+	Date                 string `json:"date"`
+	UntrustedUserContent string `json:"untrusted_user_content"`
 }
 
 // ScriptStep 是模型某一轮的返回。
@@ -108,6 +130,13 @@ type Settings struct {
 
 // Expect 是这条用例的期望。零值表示不检查该项。
 type Expect struct {
+	Schema            string   `json:"schema"`
+	SourceIDsSubsetOf []string `json:"source_ids_subset_of"`
+	DiagnosisTerms    *int     `json:"diagnosis_terms"`
+	ExternalDataUsed  *bool    `json:"external_data_used"`
+	MaxObservations   *int     `json:"max_observations"`
+	MaxSuggestions    *int     `json:"max_suggestions"`
+
 	DeniedTools    []string `json:"denied_tools"`
 	ExecutedTools  []string `json:"executed_tools"`
 	ForbiddenTools []string `json:"forbidden_tools"`
@@ -222,7 +251,10 @@ func DatasetDir() (string, error) {
 //
 // 期望全空的用例永远绿灯，比没有这条用例更糟：它让人以为这块被覆盖了。
 func IsEmptyExpect(e Expect) bool {
-	return len(e.DeniedTools) == 0 && len(e.ExecutedTools) == 0 &&
+	return e.Schema == "" && len(e.SourceIDsSubsetOf) == 0 &&
+		e.DiagnosisTerms == nil && e.ExternalDataUsed == nil &&
+		e.MaxObservations == nil && e.MaxSuggestions == nil &&
+		len(e.DeniedTools) == 0 && len(e.ExecutedTools) == 0 &&
 		len(e.ForbiddenTools) == 0 && e.Proposals == nil &&
 		len(e.ProposalTypes) == 0 && !e.ProposalHasPreview &&
 		!e.ProposalHasSources && !e.ProposalHasTargetVer &&

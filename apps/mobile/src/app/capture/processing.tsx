@@ -101,7 +101,9 @@ export default function CaptureProcessingScreen() {
                 ? router.replace('/trips/new')
                 : params.intent === 'trip_item' && params.projectId
                   ? router.replace({ pathname: '/trips/[id]', params: { id: params.projectId } })
-                  : router.replace('/today')}
+                  : params.intent === 'ledger'
+                    ? router.replace({ pathname: '/features/[slug]', params: { slug: 'ledger' } })
+                    : router.replace('/today')}
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
             >
               <Text style={styles.secondaryButtonText}>稍后再说</Text>

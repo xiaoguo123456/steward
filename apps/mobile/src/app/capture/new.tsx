@@ -71,13 +71,14 @@ export default function CaptureInputScreen() {
   const params = useLocalSearchParams<{ intent?: string; projectId?: string }>();
   const isTripIntent = params.intent === 'trip';
   const isTripItemIntent = params.intent === 'trip_item';
-  const [mode, setMode] = useState<InputMode>('voice');
+  const isLedgerIntent = params.intent === 'ledger';
+  const [mode, setMode] = useState<InputMode>(isLedgerIntent ? 'text' : 'voice');
   const [text, setText] = useState('');
   // 图片与录音只保存在本地，用户明确发送后才上传。
   const [images, setImages] = useState<LocalMedia[]>([]);
   const [audio, setAudio] = useState<LocalMedia | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
-  const [showMediaMenu, setShowMediaMenu] = useState(false);
+  const [showMediaMenu, setShowMediaMenu] = useState(isLedgerIntent);
   const [showClosePrompt, setShowClosePrompt] = useState(false);
   const [showRerecordPrompt, setShowRerecordPrompt] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState<ReplaceTarget>(null);
@@ -243,6 +244,13 @@ export default function CaptureInputScreen() {
           kind: 'text',
           text: content ? `创建行程：${content}` : '创建行程。',
         });
+      } else if (isLedgerIntent) {
+        parts.push({
+          kind: 'text',
+          text: content
+            ? `请整理为记账记录：${content}`
+            : '请识别票据，并整理为需要我确认的记账记录。',
+        });
       } else if (content) {
         parts.push({ kind: 'text', text: content });
       }
@@ -251,7 +259,11 @@ export default function CaptureInputScreen() {
       }
 
       const response = await createCapture({
-        origin: isTripIntent || isTripItemIntent ? 'project_manager' : 'home',
+        origin: isTripIntent || isTripItemIntent
+          ? 'project_manager'
+          : isLedgerIntent
+            ? 'tracker'
+            : 'home',
         parts,
         suggested_project_id: isTripItemIntent ? params.projectId : undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -262,7 +274,13 @@ export default function CaptureInputScreen() {
           captureId: response.data.resource_id ?? '',
           operationId: response.data.operation_id,
           draft: draftSummary,
-          intent: isTripIntent ? 'trip' : isTripItemIntent ? 'trip_item' : undefined,
+          intent: isTripIntent
+            ? 'trip'
+            : isTripItemIntent
+              ? 'trip_item'
+              : isLedgerIntent
+                ? 'ledger'
+                : undefined,
           projectId: isTripItemIntent ? params.projectId : undefined,
         },
       });
@@ -277,7 +295,13 @@ export default function CaptureInputScreen() {
     <ModalSheet maxHeight="86%" onClose={() => void close()}>
       <View style={styles.header}>
         <Text accessibilityRole="header" style={styles.title}>
-          {isTripIntent ? 'AI 创建行程' : isTripItemIntent ? 'AI 添加行程安排' : '记一件事'}
+          {isTripIntent
+            ? 'AI 创建行程'
+            : isTripItemIntent
+              ? 'AI 添加行程安排'
+              : isLedgerIntent
+                ? '拍照记账'
+                : '记一件事'}
         </Text>
         <Pressable
           accessibilityLabel="关闭新增面板"
@@ -473,7 +497,7 @@ export default function CaptureInputScreen() {
           ) : null}
           <View style={styles.inputOptions}>
             <Pressable
-              accessibilityLabel={isTripItemIntent ? '添加票据图片' : '添加图片'}
+              accessibilityLabel={isTripItemIntent || isLedgerIntent ? '添加票据图片' : '添加图片'}
               accessibilityRole="button"
               accessibilityState={{ disabled: images.length >= 9 }}
               disabled={images.length >= 9}
@@ -481,7 +505,7 @@ export default function CaptureInputScreen() {
               style={({ pressed }) => [styles.inputOption, pressed && styles.optionPressed, images.length >= 9 && styles.optionDisabled]}
             >
               <AppIcon color={colors.primaryStrong} name="image-outline" size={20} />
-              <Text style={styles.inputOptionText}>{isTripItemIntent ? '票据' : '图片'}</Text>
+              <Text style={styles.inputOptionText}>{isTripItemIntent || isLedgerIntent ? '票据' : '图片'}</Text>
             </Pressable>
             <Pressable
               accessibilityLabel={mode === 'text' ? '切换到语音输入' : '切换到文字输入'}
@@ -492,7 +516,7 @@ export default function CaptureInputScreen() {
               <AppIcon color={colors.primaryStrong} name={mode === 'text' ? 'mic-outline' : 'keypad-outline'} size={20} />
               <Text style={styles.inputOptionText}>{mode === 'text' ? '语音' : '键盘'}</Text>
             </Pressable>
-            {!hasContent && !isTripIntent && !isTripItemIntent ? (
+            {!hasContent && !isTripIntent && !isTripItemIntent && !isLedgerIntent ? (
               <Pressable
                 accessibilityLabel="手动新建任务"
                 accessibilityRole="button"
@@ -518,17 +542,10 @@ export default function CaptureInputScreen() {
         <View style={styles.confirmOverlay}>
           <Pressable onPress={() => setShowClosePrompt(false)} style={styles.confirmBackdrop} />
           <View style={styles.confirmSheet}>
-            <Text style={styles.confirmTitle}>保留这次输入吗？</Text>
-            <Text style={styles.confirmCopy}>保存草稿后，可以从“最近输入”继续。</Text>
+            <Text style={styles.confirmTitle}>放弃这次输入？</Text>
+            <Text style={styles.confirmCopy}>返回后，尚未发送的文字、图片和录音不会保留。</Text>
             <AppButton
-              label="保存草稿"
-              onPress={() => {
-                if (recorder.active) void finishRecording();
-                router.back();
-              }}
-            />
-            <AppButton
-              label="放弃输入"
+              label="放弃并返回"
               onPress={() => {
                 if (recorder.active) void recorder.discard();
                 router.back();

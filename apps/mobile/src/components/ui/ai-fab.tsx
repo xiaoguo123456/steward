@@ -1,9 +1,11 @@
+import { useListCaptureQuestions, useListProposals } from '@steward/api-client';
 import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 
+import { useBootState } from '@/api/provider';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 import { AiAssistantAvatar } from './ai-assistant-avatar';
 import { AI_FAB_SIZE, useDraggableAiFab } from './use-draggable-ai-fab';
@@ -15,9 +17,25 @@ type AiFabProps = {
 
 export const AI_FAB_TAB_BAR_INSET = 76;
 
-export function AiFab({ bottomInset = 0, count = 0 }: AiFabProps) {
+export function AiFab({ bottomInset = 0, count }: AiFabProps) {
   const router = useRouter();
-  const openAssistant = useCallback(() => router.push('/ai'), [router]);
+  const boot = useBootState();
+  const enabled = boot === 'signed-in';
+  const questions = useListCaptureQuestions(
+    { status: 'open', limit: 100 },
+    { query: { enabled, staleTime: 15_000 } },
+  );
+  const proposals = useListProposals(
+    { status: ['pending'], limit: 100 },
+    { query: { enabled, staleTime: 15_000 } },
+  );
+  const questionCount = questions.data?.data.length ?? 0;
+  const proposalCount = proposals.data?.data.length ?? 0;
+  const visibleCount = count ?? questionCount + proposalCount;
+  const openAssistant = useCallback(
+    () => router.push(questionCount > 0 ? '/assistant/pending' : '/ai'),
+    [questionCount, router],
+  );
   const {
     animatedPosition,
     handleLayout,
@@ -25,10 +43,11 @@ export function AiFab({ bottomInset = 0, count = 0 }: AiFabProps) {
     layoutReady,
     panGesture,
   } = useDraggableAiFab({ bottomInset, onPress: openAssistant });
-  const badgeText = count > 9 ? '9+' : count.toString();
-  const accessibilityLabel = count > 0
-    ? `打开 AI 管家，${count} 项待处理`
-    : '打开 AI 管家';
+  const badgeText = visibleCount > 9 ? '9+' : visibleCount.toString();
+  const accessibilityLabel = `打开 AI 管家，${visibleCount} 项待处理`;
+
+  // 这是待答状态入口，不是常驻装饰或第二个“新增”按钮。
+  if (!enabled || visibleCount === 0) return null;
 
   return (
     <View
@@ -50,11 +69,9 @@ export function AiFab({ bottomInset = 0, count = 0 }: AiFabProps) {
             testID="ai-assistant-fab"
           >
             <AiAssistantAvatar size={AI_FAB_SIZE} />
-            {count > 0 ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{badgeText}</Text>
-              </View>
-            ) : null}
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badgeText}</Text>
+            </View>
           </Pressable>
         </Animated.View>
       </GestureDetector>

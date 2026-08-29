@@ -41,6 +41,12 @@ script_dir="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 repo_root="$(CDPATH='' cd -- "$script_dir/.." && pwd)"
 mobile_dir="$repo_root/apps/mobile"
 
+h5_release_mode="staging"
+if [ "$variant" = "production" ]; then
+  h5_release_mode="production"
+fi
+node "$mobile_dir/scripts/check-public-h5.mjs" --mode="$h5_release_mode"
+
 case "$output_apk" in
   /*) ;;
   *) output_apk="$repo_root/$output_apk" ;;

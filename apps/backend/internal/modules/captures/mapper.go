@@ -16,7 +16,7 @@ import (
 // buildPayload 把 Provider 的中立候选转换成契约的判别联合快照，
 // 并返回仍然缺失的必填字段。
 func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
-	sourceMedia map[string]string) ([]byte, []string, error) {
+	sourceMedia map[string]string, trackers []ai.TrackerRef) ([]byte, []string, error) {
 	var payload httpapi.CaptureDraftPayload
 	missing := append([]string(nil), c.Missing...)
 
@@ -210,8 +210,16 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
 			}
 			draft.Values = append(draft.Values, value)
 		}
-		if len(draft.Values) == 0 {
-			missing = append(missing, "values")
+		tracker := findTrackerRef(trackers, c.TrackerID)
+		if tracker != nil {
+			for _, field := range tracker.Fields {
+				if field.Required && !recordDraftValuePresent(c.RecordValues, field) {
+					missing = appendMissing(missing, field.Key)
+				}
+			}
+		}
+		if len(draft.Values) == 0 && tracker == nil {
+			missing = appendMissing(missing, "values")
 		}
 		payload.Record = &draft
 
@@ -231,6 +239,28 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
 		return nil, nil, apperr.Internal(err)
 	}
 	return raw, missing, nil
+}
+
+func findTrackerRef(trackers []ai.TrackerRef, trackerID string) *ai.TrackerRef {
+	for i := range trackers {
+		if trackers[i].ID == trackerID {
+			return &trackers[i]
+		}
+	}
+	return nil
+}
+
+func recordDraftValuePresent(values []ai.RecordValueDraft, field ai.TrackerFieldRef) bool {
+	for _, value := range values {
+		if value.Key != field.Key {
+			continue
+		}
+		if field.Type == "text" {
+			return strings.TrimSpace(value.Text) != ""
+		}
+		return value.Number != nil
+	}
+	return false
 }
 
 func optionalText(value string) *string {

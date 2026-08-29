@@ -327,6 +327,7 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 				}
 				ref.Fields = append(ref.Fields, ai.TrackerFieldRef{
 					Key: f.Key, Label: f.Label, Type: string(f.Type), Unit: unit,
+					Required: f.Required,
 				})
 			}
 			trackers = append(trackers, ref)
@@ -409,7 +410,7 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 			return s.finishOperation(ctx, q, args, "failed", errBody, nil)
 		}
 
-		if err := s.saveParseResult(ctx, q, args, capture, parts, result); err != nil {
+		if err := s.saveParseResult(ctx, q, args, capture, parts, trackers, result); err != nil {
 			return err
 		}
 		return nil
@@ -448,7 +449,7 @@ func (s *Service) finishWithoutParse(ctx context.Context, args CaptureParseArgs,
 // saveParseResult 把解析结果落库并推进 Capture 状态。
 func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 	args CaptureParseArgs, capture dbgen.Capture, parts []dbgen.CapturePart,
-	result ai.CaptureParseResult) error {
+	trackers []ai.TrackerRef, result ai.CaptureParseResult) error {
 
 	loc := timeutil.LoadLocation(capture.Timezone)
 	defaultListID := ""
@@ -463,7 +464,7 @@ func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 	}
 
 	for i, c := range result.Candidates {
-		payload, missing, err := buildPayload(c, defaultListID, loc, sourceMedia)
+		payload, missing, err := buildPayload(c, defaultListID, loc, sourceMedia, trackers)
 		if err != nil {
 			return err
 		}

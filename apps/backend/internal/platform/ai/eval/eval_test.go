@@ -53,6 +53,9 @@ func TestEvalSuite(t *testing.T) {
 
 	for _, c := range cases {
 		c := c
+		if c.Runner == eval.RunnerContract {
+			continue
+		}
 		t.Run(c.ID, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 			defer cancel()
@@ -110,6 +113,37 @@ func TestEvalSuite(t *testing.T) {
 	checkDrift(t, eval.CompareBaseline(baseline, results))
 }
 
+// TestContractEvalSuite 在敏感正文尚未获准发送给 Provider 时，先固定 Prompt／Schema
+// 的输入边界与来源要求。它不冒充真实模型质量 Eval；运行时开放后仍需新增专用执行器。
+func TestContractEvalSuite(t *testing.T) {
+	dir, err := eval.DatasetDir()
+	if err != nil {
+		t.Fatalf("定位数据集失败：%v", err)
+	}
+	cases, err := eval.LoadDatasets(dir)
+	if err != nil {
+		t.Fatalf("加载数据集失败：%v", err)
+	}
+
+	count := 0
+	for _, c := range cases {
+		if c.Runner != eval.RunnerContract {
+			continue
+		}
+		count++
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			failures := eval.CheckContractCase(dir, c)
+			if len(failures) > 0 {
+				t.Fatalf("【%s】%s\n守的规矩：%s\n%s", c.Gate, c.ID, c.Why, join(failures))
+			}
+		})
+	}
+	if count == 0 {
+		t.Fatal("没有契约安全用例")
+	}
+}
+
 // checkDrift 判定本次结果相对基线的变化。
 //
 // 只有退化判失败。变好、新增、删除都只提示——它们都需要人确认一次
@@ -165,7 +199,16 @@ func TestEvalDatasetShape(t *testing.T) {
 		if c.Why == "" {
 			t.Errorf("用例 %s 缺少 why：看到红灯的人需要知道破了哪条规矩", c.ID)
 		}
-		if c.UserText == "" {
+		switch c.Runner {
+		case eval.RunnerAssistant:
+		case eval.RunnerContract:
+			if c.Expect.Schema == "" || len(c.Input.SelectedEntries) == 0 {
+				t.Errorf("契约用例 %s 缺少 schema 或 selected_entries", c.ID)
+			}
+		default:
+			t.Errorf("用例 %s 的 runner 非法：%q", c.ID, c.Runner)
+		}
+		if c.Runner == eval.RunnerAssistant && c.UserText == "" {
 			t.Errorf("用例 %s 缺少 user_text", c.ID)
 		}
 		// 期望全空的用例永远通过，等于没有这条用例。

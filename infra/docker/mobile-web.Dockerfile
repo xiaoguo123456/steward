@@ -10,6 +10,8 @@ RUN pnpm install --frozen-lockfile --filter mobile...
 
 COPY apps/mobile apps/mobile
 COPY packages/api-client packages/api-client
+ARG STEWARD_H5_RELEASE_MODE=staging
+RUN node apps/mobile/scripts/check-public-h5.mjs --mode="$STEWARD_H5_RELEASE_MODE"
 RUN pnpm --filter mobile run export:web
 
 FROM node:22-alpine
