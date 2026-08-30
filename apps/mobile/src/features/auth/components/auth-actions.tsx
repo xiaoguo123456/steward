@@ -1,27 +1,42 @@
 import type { PropsWithChildren } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type PrimaryButtonProps = PropsWithChildren<{
   onPress: () => void;
   disabled?: boolean;
+  loading?: boolean;
+  accessibilityHint?: string;
 }>;
 
-export function PrimaryButton({ children, onPress, disabled = false }: PrimaryButtonProps) {
+export function PrimaryButton({
+  accessibilityHint,
+  children,
+  onPress,
+  disabled = false,
+  loading = false,
+}: PrimaryButtonProps) {
+  const unavailable = disabled || loading;
+
   return (
     <Pressable
+      accessibilityHint={accessibilityHint}
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+      accessibilityState={{ busy: loading, disabled: unavailable }}
+      disabled={unavailable}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
+        disabled && !loading && styles.disabled,
+        pressed && !unavailable && styles.pressed,
       ]}
     >
-      <Text style={styles.text}>{children}</Text>
+      {loading ? (
+        <ActivityIndicator color={colors.background} size="small" />
+      ) : (
+        <Text style={styles.text}>{children}</Text>
+      )}
     </Pressable>
   );
 }

@@ -23,6 +23,9 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "unrs-resolver"
-    ]
+    ],
+    "patchedDependencies": {
+      "expo-router@57.0.12": "patches/expo-router@57.0.12.patch"
+    }
   }
 }

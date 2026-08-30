@@ -1,4 +1,4 @@
-import { errorMessage, login, requestPhoneCode } from '@steward/api-client';
+import { login, requestPhoneCode } from '@steward/api-client';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -20,7 +20,11 @@ import {
   phoneValidationMessage,
   PHONE_PATTERN,
 } from '@/features/auth/login-input';
-import { resolvePhoneCodeDelivery } from '@/features/auth/phone-code';
+import {
+  loginErrorMessage,
+  phoneCodeErrorMessage,
+  resolvePhoneCodeDelivery,
+} from '@/features/auth/phone-code';
 import { openPublicPage } from '@/features/legal/open-public-page';
 import { publicPagePaths } from '@/features/legal/public-pages';
 import { colors, fontFamily, typography } from '@/theme/tokens';
@@ -29,7 +33,10 @@ export default function LoginScreen() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [codeRequested, setCodeRequested] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [legalError, setLegalError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,14 +44,23 @@ export default function LoginScreen() {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mounted = useRef(true);
   const phoneRef = useRef('');
   const codeInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
+    mounted.current = true;
     return () => {
+      mounted.current = false;
       if (timer.current) clearInterval(timer.current);
     };
   }, []);
+
+  const clearCooldown = () => {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = null;
+    setCooldown(0);
+  };
 
   const startCooldown = (seconds: number) => {
     setCooldown(seconds);
@@ -64,12 +80,15 @@ export default function LoginScreen() {
   const phoneError = phoneValidationMessage(phone, phoneTouched);
   const canRequestCode = agreementAccepted && phoneValid && cooldown === 0 && !sending && !submitting;
   const canSubmit = agreementAccepted && phoneValid && code.length === 6 && !sending && !submitting;
+  const primaryDisabled = codeRequested ? !canSubmit : !canRequestCode;
 
   const openLegalPage = async (path: typeof publicPagePaths.privacy | typeof publicPagePaths.terms) => {
     try {
       await openPublicPage(path);
     } catch {
-      setError('暂时无法打开公开页面，手机号和勾选状态已为你保留，请稍后重试。');
+      if (mounted.current) {
+        setLegalError('暂时无法打开协议页面，请稍后重试。');
+      }
     }
   };
 
@@ -77,28 +96,33 @@ export default function LoginScreen() {
     setPhoneTouched(true);
     if (!canRequestCode) return;
     const requestedPhone = phone;
-    setError(null);
+    setRequestError(null);
+    setLoginError(null);
     setSending(true);
     try {
       const response = await requestPhoneCode({ phone: requestedPhone });
       // 请求期间若改了手机号，旧号码的验证码不能填进新号码表单。
-      if (phoneRef.current !== requestedPhone) return;
+      if (!mounted.current || phoneRef.current !== requestedPhone) return;
       startCooldown(response.data.resend_after_seconds);
       const delivery = resolvePhoneCodeDelivery(response.data);
       setCode(delivery.code);
       setHint(delivery.hint);
+      setCodeRequested(true);
       if (!delivery.code) codeInputRef.current?.focus();
     } catch (err) {
-      setError(errorMessage(err, '验证码发送失败，请稍后重试。'));
+      if (mounted.current && phoneRef.current === requestedPhone) {
+        setRequestError(phoneCodeErrorMessage(err));
+      }
     } finally {
-      setSending(false);
+      if (mounted.current) setSending(false);
     }
   };
 
   const handleLogin = async () => {
     if (!canSubmit) return;
-    setError(null);
+    setLoginError(null);
     setSubmitting(true);
+    let signedIn = false;
     try {
       const response = await login({
         phone,
@@ -106,12 +130,15 @@ export default function LoginScreen() {
         timezone: deviceTimezone(),
       });
       await session.signIn(response.data.tokens, response.data.user.id);
+      signedIn = true;
       router.replace('/today');
     } catch (err) {
-      setError(errorMessage(err, '登录失败，请检查手机号与验证码。'));
-      codeInputRef.current?.focus();
+      if (mounted.current) {
+        setLoginError(loginErrorMessage(err));
+        codeInputRef.current?.focus();
+      }
     } finally {
-      setSubmitting(false);
+      if (!signedIn && mounted.current) setSubmitting(false);
     }
   };
 
@@ -128,11 +155,18 @@ export default function LoginScreen() {
         onBlur={() => setPhoneTouched(true)}
         onChangeText={(value) => {
           const normalized = normalizePhoneInput(value);
+          const phoneChanged = normalized !== phoneRef.current;
           phoneRef.current = normalized;
           setPhone(normalized);
           setCode('');
-          setError(null);
+          setRequestError(null);
+          setLoginError(null);
+          setLegalError(null);
           setHint(null);
+          if (phoneChanged && codeRequested) {
+            setCodeRequested(false);
+            clearCooldown();
+          }
         }}
         placeholder="请输入手机号"
         textContentType="telephoneNumber"
@@ -144,7 +178,71 @@ export default function LoginScreen() {
         </Text>
       ) : null}
 
-      <View style={styles.agreementRow}>
+      {codeRequested ? (
+        <>
+          <View style={styles.codeRow}>
+            <View style={styles.codeInput}>
+              <AuthInput
+                accessibilityLabel="短信验证码"
+                autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+                containerStyle={styles.codeInputShell}
+                editable={!submitting}
+                icon="keypad-outline"
+                importantForAutofill="yes"
+                inputRef={codeInputRef}
+                keyboardType="number-pad"
+                maxLength={6}
+                onChangeText={(value) => {
+                  setCode(value.replace(/\D/g, ''));
+                  setLoginError(null);
+                }}
+                placeholder="6 位验证码"
+                textContentType="oneTimeCode"
+                value={code}
+              />
+            </View>
+            <Pressable
+              accessibilityLabel={
+                cooldown > 0 ? `${cooldown} 秒后可重新获取验证码` : '重新获取验证码'
+              }
+              accessibilityRole="button"
+              accessibilityState={{ busy: sending, disabled: !canRequestCode }}
+              disabled={!canRequestCode}
+              onPress={handleSendCode}
+              style={({ pressed }) => [
+                styles.codeButton,
+                !canRequestCode && styles.codeButtonDisabled,
+                pressed && styles.codeButtonPressed,
+              ]}
+            >
+              {sending ? (
+                <ActivityIndicator color={colors.primaryStrong} size="small" />
+              ) : (
+                <Text
+                  style={[
+                    styles.codeButtonText,
+                    !canRequestCode && styles.codeButtonTextDisabled,
+                  ]}
+                >
+                  {cooldown > 0 ? `${cooldown}s` : '重新获取'}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+          {requestError ? (
+            <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+              {requestError}
+            </Text>
+          ) : null}
+          {!requestError && hint ? (
+            <Text accessibilityLiveRegion="polite" style={styles.hint}>
+              {hint}
+            </Text>
+          ) : null}
+        </>
+      ) : null}
+
+      <View style={[styles.agreementRow, codeRequested && styles.agreementAfterCode]}>
         <Pressable
           accessibilityLabel={agreementAccepted ? '取消同意用户协议与隐私政策' : '同意用户协议与隐私政策'}
           accessibilityRole="checkbox"
@@ -152,7 +250,9 @@ export default function LoginScreen() {
           hitSlop={6}
           onPress={() => {
             setAgreementAccepted((current) => !current);
-            setError(null);
+            setLegalError(null);
+            setRequestError(null);
+            setLoginError(null);
           }}
           style={({ pressed }) => [
             styles.checkbox,
@@ -181,81 +281,34 @@ export default function LoginScreen() {
           </Text>
         </Text>
       </View>
-      {!agreementAccepted ? (
-        <Text accessibilityLiveRegion="polite" style={styles.agreementHint}>
-          勾选后才能获取验证码；手机号会在发送验证码时开始处理。
-        </Text>
-      ) : null}
-
-      <View style={styles.codeRow}>
-        <View style={styles.codeInput}>
-          <AuthInput
-            accessibilityLabel="短信验证码"
-            autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-            containerStyle={styles.codeInputShell}
-            editable={!submitting}
-            icon="keypad-outline"
-            importantForAutofill="yes"
-            inputRef={codeInputRef}
-            keyboardType="number-pad"
-            maxLength={6}
-            onChangeText={(value) => {
-              setCode(value.replace(/\D/g, ''));
-              setError(null);
-            }}
-            placeholder="6 位验证码"
-            textContentType="oneTimeCode"
-            value={code}
-          />
-        </View>
-        <Pressable
-          accessibilityHint={!agreementAccepted ? '请先阅读并同意用户协议与隐私政策' : undefined}
-          accessibilityLabel={
-            !agreementAccepted
-              ? '获取验证码，当前不可用，请先同意协议'
-              : cooldown > 0
-                ? `${cooldown} 秒后可重新获取验证码`
-                : '获取验证码'
-          }
-          accessibilityRole="button"
-          accessibilityState={{
-            busy: sending,
-            disabled: !canRequestCode,
-          }}
-          disabled={!canRequestCode}
-          onPress={handleSendCode}
-          style={({ pressed }) => [
-            styles.codeButton,
-            !canRequestCode && styles.codeButtonDisabled,
-            pressed && styles.codeButtonPressed,
-          ]}
-        >
-          {sending ? (
-            <ActivityIndicator color={colors.primaryStrong} size="small" />
-          ) : (
-            <Text style={styles.codeButtonText}>
-              {cooldown > 0 ? `${cooldown}s` : '获取验证码'}
-            </Text>
-          )}
-        </Pressable>
-      </View>
-
-      {error ? (
-        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      ) : null}
-      {!error && hint ? (
-        <Text accessibilityLiveRegion="polite" style={styles.hint}>
-          {hint}
+      {legalError ? (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.legalError}>
+          {legalError}
         </Text>
       ) : null}
 
       <View style={styles.buttonWrap}>
-        <PrimaryButton disabled={!canSubmit} onPress={handleLogin}>
-          {submitting ? '登录中…' : '登录'}
+        <PrimaryButton
+          accessibilityHint={!agreementAccepted ? '请先阅读并同意用户协议与隐私政策' : undefined}
+          disabled={primaryDisabled}
+          loading={codeRequested ? submitting : sending}
+          onPress={codeRequested ? handleLogin : handleSendCode}
+        >
+          {codeRequested ? '登录' : '获取验证码'}
         </PrimaryButton>
       </View>
+
+      {!codeRequested && requestError ? (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+          {requestError}
+        </Text>
+      ) : null}
+      {loginError ? (
+        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>
+          {loginError}
+        </Text>
+      ) : null}
+
       <Text style={styles.muted}>首次登录将自动创建账号</Text>
     </AuthShell>
   );
@@ -266,6 +319,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     flexDirection: 'row',
     alignItems: 'flex-start',
+  },
+  agreementAfterCode: {
+    marginTop: 14,
   },
   checkbox: {
     width: 24,
@@ -304,15 +360,14 @@ const styles = StyleSheet.create({
     color: colors.primaryStrong,
     fontWeight: '600',
   },
-  agreementHint: {
-    marginBottom: 12,
+  legalError: {
+    marginTop: 4,
     marginLeft: 33,
-    color: colors.textTertiary,
+    color: colors.danger,
     fontFamily,
-    ...typography.caption,
+    ...typography.meta,
   },
   codeRow: {
-    marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 10,
@@ -345,8 +400,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  codeButtonTextDisabled: {
+    color: colors.textTertiary,
+  },
   buttonWrap: {
-    marginTop: 18,
+    marginTop: 14,
   },
   error: {
     marginTop: 12,

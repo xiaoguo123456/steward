@@ -7,7 +7,7 @@
 | 文档类型 | 移动端工程说明 |
 | 适用范围 | `apps/mobile` |
 | 当前状态 | 维护中 |
-| 更新日期 | 2026-08-29 |
+| 更新日期 | 2026-08-30 |
 
 本目录是基于 Expo SDK 57、React Native 0.86、React 19 与 Expo Router 的移动端应用。全局功能进度只在 [实现状态](../../docs/实现状态.md) 维护；本页说明移动端工程边界和开发方式，不重复逐页需求。
 
@@ -70,6 +70,11 @@ pnpm --filter mobile test:h5
 - OTA 只允许发布与已安装原生 runtime 兼容的 JavaScript、样式和专用资源，且只能经仓库工作流执行；runtime、频道、签名、灰度与回滚规则见 [ADR-028：移动端 OTA 更新](../../docs/ADR-028-移动端OTA更新.md)。
 - 新增原生依赖、权限、App Config、图标、启动图或普通原生资源时必须提升 App 版本并重新构建 APK。
 - Expo Project、验签证书、Secrets、首个原生包和回滚演练完成前，不得声称 OTA 已对用户生效。
+
+## 依赖补丁
+
+- `expo-router@57.0.12` 当前在 Android 冷启动解析初始链接时，可能在导航容器挂载前更新 `lastUnhandledLink`，触发 React 的未挂载组件状态更新警告。仓库通过根目录 `patches/expo-router@57.0.12.patch` 暂存修复：挂载前先缓存链接，挂载后再提交状态。
+- 升级 Expo Router 时必须先复测 Android 冷启动和深链；确认上游版本已修复后，删除补丁及根 `package.json`、`pnpm-lock.yaml` 中的 `patchedDependencies` 配置，避免长期维护重复修复。
 
 ## 相关文档
 

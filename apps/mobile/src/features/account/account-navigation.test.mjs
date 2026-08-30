@@ -27,15 +27,19 @@ test('根导航不再登记“全部设置”、资料和账号中转页', async
   assert.match(source, /Stack\.Protected guard=\{boot === 'signed-in'\}/);
 });
 
-test('短信登录声明系统号码与验证码自动填充且不伪造一键登录按钮', async () => {
+test('短信登录采用两阶段流程并保留系统自动填充语义', async () => {
   const source = await readFile(new URL('../../app/(auth)/login.tsx', import.meta.url), 'utf8');
 
   assert.match(source, /autoComplete="tel"/);
   assert.match(source, /textContentType="oneTimeCode"/);
+  assert.match(source, /const \[codeRequested, setCodeRequested\] = useState\(false\)/);
+  assert.match(source, /\{codeRequested \? '登录' : '获取验证码'\}/);
+  assert.match(source, /codeRequested \? \(/);
   assert.match(source, /useState\(false\).*agreementAccepted|agreementAccepted.*useState\(false\)/s);
   assert.match(source, /agreementAccepted && phoneValid/);
   assert.match(source, /publicPagePaths\.terms/);
   assert.match(source, /publicPagePaths\.privacy/);
+  assert.doesNotMatch(source, /手机号会在发送验证码时开始处理/);
   assert.doesNotMatch(source, /本机号码一键登录/);
 });
 
