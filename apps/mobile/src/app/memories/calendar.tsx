@@ -128,10 +128,24 @@ export default function MemoriesCalendarScreen() {
 
         <View style={styles.daySection}>
           <View style={styles.dayHeading}>
-            <Text accessibilityRole="header" style={styles.dayTitle}>{selectedLabel}</Text>
-            {selectedMoments.length > 0 ? (
-              <Text style={styles.dayCount}>{selectedMoments.length} 段</Text>
-            ) : null}
+            <View style={styles.dayHeadingCopy}>
+              <Text accessibilityRole="header" style={styles.dayTitle}>{selectedLabel}</Text>
+              <Text style={styles.dayCount}>
+                {selectedMoments.length > 0 ? `${selectedMoments.length} 段时光` : '暂无时光'}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityLabel={`为 ${selectedLabel} 添加照片`}
+              accessibilityRole="button"
+              onPress={() => router.push({
+                pathname: '/memories/new',
+                params: { date: selectedDate, pick: '1' },
+              })}
+              style={({ pressed }) => [styles.dayAddAction, pressed && styles.pressed]}
+            >
+              <AppIcon color={colors.primaryStrong} name="images-outline" size={17} />
+              <Text style={styles.dayAddActionText}>添加照片</Text>
+            </Pressable>
           </View>
           {selectedMoments.length > 0 ? (
             <View style={styles.dayMoments}>
@@ -150,7 +164,7 @@ export default function MemoriesCalendarScreen() {
           ) : (
             <View style={styles.emptyDay}>
               <Text style={styles.emptyDayTitle}>这一天还没有时光</Text>
-              <Text style={styles.emptyDayMessage}>选择其他日期，或返回首页添加照片。</Text>
+              <Text style={styles.emptyDayMessage}>可以选择其他日期，也可以为这一天添加照片。</Text>
             </View>
           )}
         </View>
@@ -329,6 +343,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 10,
+  },
+  dayHeadingCopy: {
+    flex: 1,
   },
   dayTitle: {
     color: colors.text,
@@ -338,6 +356,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   dayCount: {
+    marginTop: 2,
+    color: colors.primaryStrong,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  dayAddAction: {
+    minHeight: 44,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
+  },
+  dayAddActionText: {
     color: colors.primaryStrong,
     fontFamily,
     fontSize: 13,

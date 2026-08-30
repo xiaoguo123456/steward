@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -34,34 +34,48 @@ import { colors, fontFamily, radius } from '@/theme/tokens';
 
 export default function MemoryEditorScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    date?: string | string[];
+    pick?: string | string[];
+  }>();
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const rawDate = Array.isArray(params.date) ? params.date[0] : params.date;
+  const rawPick = Array.isArray(params.pick) ? params.pick[0] : params.pick;
   const { moments, addMoment, updateMoment } = useMemoriesPrototype();
   const existing = moments.find((moment) => moment.id === rawId);
   const [photos, setPhotos] = useState<MemoryPhoto[]>(existing?.photos ?? []);
-  const [date, setDate] = useState(existing?.date ?? todayMemoryDateKey());
+  const [date, setDate] = useState(
+    existing?.date ?? (isMemoryDateKey(rawDate ?? '') ? rawDate! : todayMemoryDateKey()),
+  );
   const [title, setTitle] = useState(existing?.title ?? '');
   const [story, setStory] = useState(existing?.story ?? '');
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [candidate, setCandidate] = useState<MemoryWritingCandidate | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [pendingResultChecked, setPendingResultChecked] = useState(false);
+  const initialPickerOpened = useRef(false);
   const dateValid = isMemoryDateKey(date);
   const saveDisabled = photos.length === 0 || !dateValid;
 
   useEffect(() => {
     if (existing || photos.length > 0) return;
     let mounted = true;
-    void ImagePicker.getPendingResultAsync().then((pending) => {
-      if (!mounted || !pending || 'code' in pending || pending.canceled) return;
-      setPhotos((current) => mergeMemoryPhotos(
-        current,
-        imagePickerAssetsToMemoryPhotos(pending.assets),
-      ));
-    });
+    void ImagePicker.getPendingResultAsync()
+      .then((pending) => {
+        if (!mounted || !pending || 'code' in pending || pending.canceled) return;
+        setPhotos((current) => mergeMemoryPhotos(
+          current,
+          imagePickerAssetsToMemoryPhotos(pending.assets),
+        ));
+      })
+      .finally(() => {
+        if (mounted) setPendingResultChecked(true);
+      });
     return () => { mounted = false; };
   }, [existing, photos.length]);
 
-  const pickImages = async () => {
+  const pickImages = useCallback(async () => {
     const remaining = MEMORY_PHOTO_LIMIT - photos.length;
     if (remaining <= 0) return;
     setPickerError(null);
@@ -80,7 +94,19 @@ export default function MemoryEditorScreen() {
     } catch {
       setPickerError('没有打开照片选择器。请稍后重试，已填写的内容仍会保留。');
     }
-  };
+  }, [photos.length]);
+
+  useEffect(() => {
+    if (
+      existing
+      || !pendingResultChecked
+      || photos.length > 0
+      || rawPick !== '1'
+      || initialPickerOpened.current
+    ) return;
+    initialPickerOpened.current = true;
+    void pickImages();
+  }, [existing, pendingResultChecked, photos.length, pickImages, rawPick]);
 
   const generateCandidate = async () => {
     if (photos.length === 0 || generating) return;

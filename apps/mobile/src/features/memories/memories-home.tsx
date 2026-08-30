@@ -13,6 +13,10 @@ export function MemoriesHome() {
   const { moments } = useMemoriesPrototype();
   const groups = groupMemoryMoments(moments);
   const currentYear = groups[0]?.year ?? new Date().getFullYear();
+  const addMemory = () => router.push({
+    pathname: '/memories/new',
+    params: { pick: '1' },
+  });
 
   return (
     <View style={styles.root}>
@@ -28,17 +32,19 @@ export function MemoriesHome() {
             accessibilityLabel="按日期查找时光"
             accessibilityRole="button"
             onPress={() => router.push('/memories/calendar')}
-            style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+            style={({ pressed }) => [styles.dateAction, pressed && styles.actionPressed]}
           >
-            <AppIcon color={colors.text} name="calendar-outline" size={21} />
+            <AppIcon color={colors.textSecondary} name="calendar-outline" size={18} />
+            <Text style={styles.dateActionText}>按日期</Text>
           </Pressable>
           <Pressable
-            accessibilityLabel="添加时光"
+            accessibilityLabel="选择照片添加时光"
             accessibilityRole="button"
-            onPress={() => router.push('/memories/new')}
-            style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+            onPress={addMemory}
+            style={({ pressed }) => [styles.photoAction, pressed && styles.actionPressed]}
           >
-            <AppIcon color={colors.background} name="add" size={21} />
+            <AppIcon color={colors.primaryStrong} name="images-outline" size={18} />
+            <Text style={styles.photoActionText}>选照片</Text>
           </Pressable>
         </View>
       </View>
@@ -53,7 +59,7 @@ export function MemoriesHome() {
           <AppButton
             icon="image-outline"
             label="添加照片"
-            onPress={() => router.push('/memories/new')}
+            onPress={addMemory}
             style={styles.emptyAction}
           />
         </View>
@@ -123,28 +129,44 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
-  iconButton: {
-    width: 48,
-    height: 48,
+  dateAction: {
+    minHeight: 44,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.pill,
+    gap: 6,
+    borderRadius: radius.sm,
   },
-  iconButtonPressed: {
+  dateActionText: {
+    color: colors.textSecondary,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+  },
+  photoAction: {
+    minHeight: 44,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
+  },
+  photoActionText: {
+    color: colors.primaryStrong,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+  },
+  actionPressed: {
+    opacity: 0.72,
     backgroundColor: colors.surface,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-  },
-  addButtonPressed: {
-    backgroundColor: colors.primaryStrong,
   },
   timeline: {
     paddingBottom: 20,

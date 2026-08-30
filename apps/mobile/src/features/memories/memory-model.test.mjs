@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -66,4 +67,19 @@ test('原型文案只生成候选并保留可追溯的输入摘要', () => {
     story: '翻到这 4 张照片，才发现普通的一天也有值得记住的光。',
     sourceSummary: '4 张已选照片 · 2026-08-24',
   });
+});
+
+test('时光首页使用明确的上下文动作并直接进入系统选图', async () => {
+  const home = await readFile(new URL('./memories-home.tsx', import.meta.url), 'utf8');
+  const editor = await readFile(new URL('../../app/memories/new.tsx', import.meta.url), 'utf8');
+  const calendar = await readFile(new URL('../../app/memories/calendar.tsx', import.meta.url), 'utf8');
+
+  assert.match(home, />按日期<\/Text>/);
+  assert.match(home, />选照片<\/Text>/);
+  assert.match(home, /params: \{ pick: '1' \}/);
+  assert.doesNotMatch(home, /name="add"/);
+  assert.match(editor, /rawPick !== '1'/);
+  assert.match(editor, /void pickImages\(\)/);
+  assert.match(calendar, /params: \{ date: selectedDate, pick: '1' \}/);
+  assert.match(calendar, />添加照片<\/Text>/);
 });
