@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { HOME_FEATURE_PREVIEWS, HOME_TOP_TABS } from './home-top-navigation.ts';
+import { HOME_TOP_TABS } from './home-top-navigation.ts';
 
 test('首页顶部导航保持固定顺序和短标签', () => {
   assert.deepEqual(
@@ -9,16 +10,22 @@ test('首页顶部导航保持固定顺序和短标签', () => {
     [
       ['today', '今天'],
       ['memories', '时光'],
-      ['music', '音乐'],
+      ['relationships', '亲友'],
       ['inspiration', '灵感'],
       ['mood', '心情'],
     ],
   );
 });
 
-test('仍未开放的分区明确说明当前不读取或分析用户资料', () => {
-  assert.equal('memories' in HOME_FEATURE_PREVIEWS, false);
-  assert.match(HOME_FEATURE_PREVIEWS.music.message, /不会播放或生成音频/);
-  assert.equal('inspiration' in HOME_FEATURE_PREVIEWS, false);
-  assert.equal('mood' in HOME_FEATURE_PREVIEWS, false);
+test('亲友回到首页分区且正式构建不展示示例人物', async () => {
+  const home = await readFile(new URL('../../app/(tabs)/today.tsx', import.meta.url), 'utf8');
+  const relationships = await readFile(
+    new URL('../relationships/relationships-content.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(home, /activeHomeTab === 'relationships'/);
+  assert.match(home, /<RelationshipsContent \/>/);
+  assert.match(relationships, /if \(!__DEV__\)/);
+  assert.match(relationships, /当前不会读取通讯录、保存人物资料或调用 AI/);
 });

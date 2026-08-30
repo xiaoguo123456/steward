@@ -13,6 +13,7 @@ import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { StatePanel } from '@/components/ui/state-panel';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { relationshipColors } from './theme';
 
 type RelationshipGroup = 'family' | 'friends' | 'colleagues';
 type RelationshipFilter = 'all' | RelationshipGroup;
@@ -28,14 +29,6 @@ type RelationshipPerson = {
   action?: string;
   avatar: number;
 };
-
-const relationshipColors = {
-  primary: '#3A86D8',
-  strong: '#236DB8',
-  soft: '#EAF4FF',
-  surface: '#F7F9FC',
-  birthday: '#B84A70',
-} as const;
 
 const filters: readonly { id: RelationshipFilter; label: string }[] = [
   { id: 'all', label: '全部' },

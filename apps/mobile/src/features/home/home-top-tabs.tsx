@@ -1,22 +1,8 @@
-import type { ComponentProps } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppIcon } from '@/components/ui/icon';
-import { StatePanel } from '@/components/ui/state-panel';
+import { relationshipColors } from '@/features/relationships/theme';
 import { colors, fontFamily, radius } from '@/theme/tokens';
-import {
-  HOME_FEATURE_PREVIEWS,
-  HOME_TOP_TABS,
-  type HomeTopTabId,
-  type PlannedHomeTopTabId,
-} from './home-top-navigation';
-
-const previewIcons: Record<
-  PlannedHomeTopTabId,
-  ComponentProps<typeof AppIcon>['name']
-> = {
-  music: 'radio',
-};
+import { HOME_TOP_TABS, type HomeTopTabId } from './home-top-navigation';
 
 export function HomeTopTabs({
   value,
@@ -35,6 +21,7 @@ export function HomeTopTabs({
       >
         {HOME_TOP_TABS.map((tab) => {
           const selected = value === tab.id;
+          const relationshipsSelected = selected && tab.id === 'relationships';
           const inspirationSelected = selected && tab.id === 'inspiration';
           return (
             <Pressable
@@ -49,6 +36,7 @@ export function HomeTopTabs({
               <Text style={[
                 styles.label,
                 selected && styles.labelSelected,
+                relationshipsSelected && styles.labelRelationshipsSelected,
                 inspirationSelected && styles.labelInspirationSelected,
               ]}>
                 {tab.label}
@@ -56,26 +44,13 @@ export function HomeTopTabs({
               <View style={[
                 styles.indicator,
                 selected && styles.indicatorSelected,
+                relationshipsSelected && styles.indicatorRelationshipsSelected,
                 inspirationSelected && styles.indicatorInspirationSelected,
               ]} />
             </Pressable>
           );
         })}
       </ScrollView>
-    </View>
-  );
-}
-
-export function HomeFeaturePreview({ tab }: { tab: PlannedHomeTopTabId }) {
-  const preview = HOME_FEATURE_PREVIEWS[tab];
-
-  return (
-    <View style={styles.preview}>
-      <StatePanel
-        icon={previewIcons[tab]}
-        message={preview.message}
-        title={preview.title}
-      />
     </View>
   );
 }
@@ -116,6 +91,9 @@ const styles = StyleSheet.create({
     color: colors.primaryStrong,
     fontWeight: '700',
   },
+  labelRelationshipsSelected: {
+    color: relationshipColors.strong,
+  },
   labelInspirationSelected: {
     color: colors.inspiration,
   },
@@ -131,10 +109,10 @@ const styles = StyleSheet.create({
   indicatorSelected: {
     backgroundColor: colors.primary,
   },
+  indicatorRelationshipsSelected: {
+    backgroundColor: relationshipColors.primary,
+  },
   indicatorInspirationSelected: {
     backgroundColor: colors.inspiration,
-  },
-  preview: {
-    paddingTop: 24,
   },
 });
