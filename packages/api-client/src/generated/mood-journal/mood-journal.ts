@@ -173,6 +173,12 @@ export function useListMoodJournalEntries<TData = Awaited<ReturnType<typeof list
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
 export const getCreateMoodJournalEntryUrl = () => {
 
 
@@ -337,6 +343,12 @@ export function useGetMoodJournalEntry<TData = Awaited<ReturnType<typeof getMood
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
 export const getUpdateMoodJournalEntryUrl = (entryId: string,) => {
 
 
@@ -686,3 +698,9 @@ export function useGetMoodJournalStatistics<TData = Awaited<ReturnType<typeof ge
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
