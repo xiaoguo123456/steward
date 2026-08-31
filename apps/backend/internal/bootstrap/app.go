@@ -106,6 +106,10 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	if err != nil {
 		return nil, err
 	}
+	if err := db.VerifyRuntimePrivileges(ctx); err != nil {
+		db.Close()
+		return nil, err
+	}
 
 	tokens := authpkg.NewTokenService(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	codeSender, err := newCodeSender(cfg, logger)

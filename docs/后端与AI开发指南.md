@@ -2171,6 +2171,7 @@ contract_owner
 - `POST /v1/me/account-deletion/reauth` 使用独立验证码用途并以用户、幂等键和服务端密钥稳定派生单用途凭证；数据库只保存摘要，响应丢失后同键重放不再消费验证码。
 - `POST /v1/me/account-deletion` 在同一事务内消费 reauth、写入无内容状态镜像、把账号置为 `deletion_pending`、撤销 Refresh Token、取消未完成 Operation 并登记 River Job。
 - Worker 参数只含 `deletion_request_id`；对象键和用户 ID 只在固定 `SECURITY DEFINER` 函数内部短暂解析。所有此类函数必须固定 `search_path`、撤销 `PUBLIC EXECUTE` 并只授权应用角色。
+- 测试与生产分别使用 `steward_t_app`、`steward_p_app`。新增或通过 `DROP/CREATE` 重建运行时函数时，同一条向前迁移必须同时授权 `steward_app` 与当前环境应用账号；API／Worker 启动会校验登录、聚合和删除函数的执行权限，缺失时直接退出并让部署回滚，不能等到用户登录后才暴露 500。
 
 ## 20.7 加密
 

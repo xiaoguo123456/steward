@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -20,6 +21,16 @@ import (
 // DB 包装连接池。
 type DB struct {
 	Pool *pgxpool.Pool
+}
+
+var requiredRuntimeFunctions = []string{
+	"public.auth_find_user_by_phone(text)",
+	"public.auth_create_user(text,text,text,text)",
+	"public.auth_find_refresh_token(bytea)",
+	"public.auth_account_is_active(text)",
+	"public.admin_list_users_for_aggregation(integer,text)",
+	"public.account_deletion_worker_media_keys(text)",
+	"public.account_deletion_worker_purge_primary(text)",
 }
 
 // Open 建立连接池并验证可用性。
@@ -61,6 +72,48 @@ func (db *DB) Healthy(ctx context.Context) bool {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	return db.Pool.Ping(ctx) == nil
+}
+
+// VerifyRuntimePrivileges 确认当前运行账号具备登录、聚合和账号删除所需的最小函数权限。
+//
+// 测试与生产使用独立的环境账号。迁移若 DROP/CREATE SECURITY DEFINER 函数却只给
+// 本地 steward_app 授权，数据库仍然可以 Ping，但所有登录都会在运行时失败。因此
+// API 与 Worker 必须在启动阶段执行本检查，让部署直接失败并回滚。
+func (db *DB) VerifyRuntimePrivileges(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := db.Pool.Query(ctx, `
+		WITH required(signature) AS (
+			SELECT unnest($1::text[])
+		)
+		SELECT required.signature
+		FROM required
+		LEFT JOIN pg_proc ON pg_proc.oid = to_regprocedure(required.signature)
+		WHERE pg_proc.oid IS NULL
+		   OR NOT has_function_privilege(current_user, pg_proc.oid, 'EXECUTE')
+		ORDER BY required.signature
+	`, requiredRuntimeFunctions)
+	if err != nil {
+		return fmt.Errorf("读取数据库运行权限失败：%w", err)
+	}
+	defer rows.Close()
+
+	missing := make([]string, 0)
+	for rows.Next() {
+		var signature string
+		if err := rows.Scan(&signature); err != nil {
+			return fmt.Errorf("解析数据库运行权限失败：%w", err)
+		}
+		missing = append(missing, signature)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("读取数据库运行权限失败：%w", err)
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("数据库运行账号缺少必需函数执行权限：%s", strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 // InTx 在设置了 app.user_id 的短事务内执行 fn。

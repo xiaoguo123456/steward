@@ -44,6 +44,13 @@ func openTestDB(t *testing.T) *database.DB {
 	return db
 }
 
+func TestRuntimeRoleHasRequiredFunctionPrivileges(t *testing.T) {
+	db := openTestDB(t)
+	if err := db.VerifyRuntimePrivileges(context.Background()); err != nil {
+		t.Fatalf("运行数据库账号权限不完整：%v", err)
+	}
+}
+
 // seedUser 创建一个用户和一条属于他的任务，返回两者的 ID。
 //
 // 用户表本身也受 RLS 约束，因此创建用户要走 SECURITY DEFINER 函数，
@@ -485,7 +492,11 @@ func TestSecurityDefinerPoliciesStayNarrow(t *testing.T) {
 			WHERE p.proname IN (
 			    'auth_find_user_by_phone',
 			    'auth_create_user',
-			    'auth_find_refresh_token'
+			    'auth_find_refresh_token',
+			    'auth_account_is_active',
+			    'admin_list_users_for_aggregation',
+			    'account_deletion_worker_media_keys',
+			    'account_deletion_worker_purge_primary'
 			)
 			  AND acl.grantee = 0
 			  AND acl.privilege_type = 'EXECUTE'
@@ -493,7 +504,7 @@ func TestSecurityDefinerPoliciesStayNarrow(t *testing.T) {
 			return err
 		}
 		if publicExecute != 0 {
-			t.Errorf("登录前 SECURITY DEFINER 函数仍有 %d 条 PUBLIC 执行授权", publicExecute)
+			t.Errorf("运行时 SECURITY DEFINER 函数仍有 %d 条 PUBLIC 执行授权", publicExecute)
 		}
 		return nil
 	})
