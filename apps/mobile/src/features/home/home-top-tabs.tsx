@@ -22,7 +22,6 @@ export function HomeTopTabs({
         {HOME_TOP_TABS.map((tab) => {
           const selected = value === tab.id;
           const relationshipsSelected = selected && tab.id === 'relationships';
-          const inspirationSelected = selected && tab.id === 'inspiration';
           return (
             <Pressable
               accessibilityLabel={`${tab.label}首页分区`}
@@ -37,7 +36,6 @@ export function HomeTopTabs({
                 styles.label,
                 selected && styles.labelSelected,
                 relationshipsSelected && styles.labelRelationshipsSelected,
-                inspirationSelected && styles.labelInspirationSelected,
               ]}>
                 {tab.label}
               </Text>
@@ -45,7 +43,6 @@ export function HomeTopTabs({
                 styles.indicator,
                 selected && styles.indicatorSelected,
                 relationshipsSelected && styles.indicatorRelationshipsSelected,
-                inspirationSelected && styles.indicatorInspirationSelected,
               ]} />
             </Pressable>
           );
@@ -71,6 +68,7 @@ const styles = StyleSheet.create({
     height: 49,
   },
   tab: {
+    flexGrow: 1,
     minWidth: 64,
     minHeight: 48,
     paddingHorizontal: 8,
@@ -94,9 +92,6 @@ const styles = StyleSheet.create({
   labelRelationshipsSelected: {
     color: relationshipColors.strong,
   },
-  labelInspirationSelected: {
-    color: colors.inspiration,
-  },
   indicator: {
     position: 'absolute',
     right: 14,
@@ -111,8 +106,5 @@ const styles = StyleSheet.create({
   },
   indicatorRelationshipsSelected: {
     backgroundColor: relationshipColors.primary,
-  },
-  indicatorInspirationSelected: {
-    backgroundColor: colors.inspiration,
   },
 });

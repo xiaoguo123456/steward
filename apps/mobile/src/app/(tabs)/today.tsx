@@ -11,7 +11,6 @@ import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import type { HomeTopTabId } from '@/features/home/home-top-navigation';
 import { HomeTopTabs } from '@/features/home/home-top-tabs';
-import { InspirationContent } from '@/features/inspiration/inspiration-content';
 import { MemoriesHome } from '@/features/memories/memories-home';
 import { MoodJournalContent } from '@/features/mood-journal/mood-journal-content';
 import { RelationshipsContent } from '@/features/relationships/relationships-content';
@@ -293,15 +292,11 @@ export default function HomeScreen() {
           <MemoriesHome key="memories-home-content" />
         ) : activeHomeTab === 'relationships' ? (
           <RelationshipsContent />
-        ) : activeHomeTab === 'inspiration' ? (
-          <InspirationContent active />
         ) : (
           <MoodJournalContent initialDate={params.date} key="mood-journal-content" />
         )}
       </ScrollView>
-      {activeHomeTab === 'inspiration' ? null : (
-        <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />
-      )}
+      <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />
     </AppScreen>
   );
 }

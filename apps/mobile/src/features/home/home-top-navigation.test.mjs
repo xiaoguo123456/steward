@@ -11,7 +11,6 @@ test('首页顶部导航保持固定顺序和短标签', () => {
       ['today', '今天'],
       ['memories', '时光'],
       ['relationships', '亲友'],
-      ['inspiration', '灵感'],
       ['mood', '心情'],
     ],
   );
@@ -51,10 +50,9 @@ test('时光与心情首页不展示重复标题或研发提示', async () => {
 test('首页分区已开放的紧凑操作复用统一按钮及全局操作色', async () => {
   const memories = await readFile(new URL('../memories/memories-home.tsx', import.meta.url), 'utf8');
   const relationships = await readFile(new URL('../relationships/relationships-content.tsx', import.meta.url), 'utf8');
-  const inspiration = await readFile(new URL('../inspiration/inspiration-content.tsx', import.meta.url), 'utf8');
   const mood = await readFile(new URL('../mood-journal/mood-journal-content.tsx', import.meta.url), 'utf8');
 
-  for (const source of [memories, inspiration, mood]) {
+  for (const source of [memories, mood]) {
     assert.match(source, /<AppButton/);
     assert.match(source, /compact/);
   }
@@ -63,25 +61,13 @@ test('首页分区已开放的紧凑操作复用统一按钮及全局操作色',
   assert.match(relationships, /toolbarRow:\s*\{[^}]*minHeight:\s*44,/s);
   assert.match(relationships, /searchField:\s*\{[^}]*minHeight:\s*44,/s);
   assert.equal((mood.match(/variant="neutral"/g) ?? []).length, 2);
-  assert.match(inspiration, /label="开始聊聊"[\s\S]*variant="text"/);
-  assert.match(inspiration, /label="打开原文"[\s\S]*variant="textMuted"/);
 });
 
-test('灵感页用编辑式层级突出主问题与真实来源', async () => {
-  const inspiration = await readFile(
-    new URL('../inspiration/inspiration-content.tsx', import.meta.url),
-    'utf8',
-  );
+test('首页不再保留灵感分区或专属页面入口', async () => {
+  const home = await readFile(new URL('../../app/(tabs)/today.tsx', import.meta.url), 'utf8');
+  const tabs = await readFile(new URL('./home-top-tabs.tsx', import.meta.url), 'utf8');
 
-  assert.match(inspiration, /style=\{styles\.leadMarker\}/);
-  assert.match(
-    inspiration,
-    /leadQuestion:\s*\{[^}]*fontSize:\s*28,[^}]*lineHeight:\s*40,/s,
-  );
-  assert.match(inspiration, /promptRow:\s*\{[^}]*flexDirection:\s*'row',/s);
-  assert.match(
-    inspiration,
-    /noteActions:\s*\{[^}]*justifyContent:\s*'space-between',/s,
-  );
-  assert.doesNotMatch(inspiration, /AppIcon|LinearGradient/);
+  assert.doesNotMatch(home, /InspirationContent|activeHomeTab === 'inspiration'/);
+  assert.equal(HOME_TOP_TABS.some(({ id }) => id === 'inspiration'), false);
+  assert.match(tabs, /tab:\s*\{[^}]*flexGrow:\s*1,/s);
 });
