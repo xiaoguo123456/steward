@@ -13,11 +13,9 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { type PropsWithChildren, useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,12 +25,9 @@ import {
 } from 'react-native';
 
 import { AiAssistantAvatar } from '@/components/ui/ai-assistant-avatar';
-import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
-import { NavHeader } from '@/components/ui/nav-header';
 import { AssistantMarkdown } from '@/features/assistant/assistant-markdown';
-import { takeAssistantDraft } from '@/features/assistant/assistant-draft-store';
 import {
   assistantCaptureDraftSummary,
   buildAssistantCaptureParts,
@@ -45,12 +40,6 @@ import { ProposalCard } from '@/features/assistant/proposal-card';
 import { useTurnStream } from '@/features/assistant/use-turn-stream';
 import { useImagePicker } from '@/features/capture/use-media-picker';
 import { useMediaUpload, type LocalMedia } from '@/features/capture/use-media-upload';
-import {
-  buildInspirationNoteCaptureText,
-  buildInspirationTaskProposalRequest,
-  buildInspirationTurnText,
-  visibleInspirationUserText,
-} from '@/features/inspiration/inspiration-conversation';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 
 /**
@@ -69,22 +58,14 @@ export default function AiConversationScreen() {
   const listRef = useRef<ScrollView>(null);
 
   const params = useLocalSearchParams<{ threadId?: string }>();
-  const [initialDraft] = useState(() => takeAssistantDraft());
-  const inspirationMode = initialDraft?.surface === 'inspiration';
   const [threadSession, dispatchThread] = useReducer(
     assistantThreadSessionReducer,
-    createAssistantThreadSession(params.threadId, inspirationMode),
+    createAssistantThreadSession(params.threadId),
   );
   const threadId = threadSession.threadId;
   const [turnId, setTurnId] = useState('');
   const [operationId, setOperationId] = useState('');
-  const [input, setInput] = useState(initialDraft?.text ?? '');
-  const [draftContextLabel, setDraftContextLabel] = useState<string | null>(
-    inspirationMode ? null : initialDraft?.contextLabel ?? null,
-  );
-  const [needsInspirationContext, setNeedsInspirationContext] = useState(
-    inspirationMode && Boolean(initialDraft?.firstTurnContext),
-  );
+  const [input, setInput] = useState('');
   const [images, setImages] = useState<LocalMedia[]>([]);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [submittingCapture, setSubmittingCapture] = useState(false);
@@ -187,8 +168,8 @@ export default function AiConversationScreen() {
     },
   });
 
-  const sendText = async (overrideText?: string) => {
-    const text = (overrideText ?? input).trim();
+  const send = async () => {
+    const text = input.trim();
     if (
       (!text && images.length === 0)
       || thinking
@@ -201,7 +182,7 @@ export default function AiConversationScreen() {
     setFailure(null);
     setShowMediaMenu(false);
 
-    if (images.length > 0 && overrideText === undefined) {
+    if (images.length > 0) {
       setSubmittingCapture(true);
       try {
         const uploaded = await media.upload(images);
@@ -212,7 +193,6 @@ export default function AiConversationScreen() {
         });
         const draft = assistantCaptureDraftSummary(text, images.length);
         setInput('');
-        setDraftContextLabel(null);
         setImages([]);
         router.replace({
           pathname: '/capture/processing',
@@ -230,7 +210,7 @@ export default function AiConversationScreen() {
       return;
     }
 
-    if (overrideText === undefined) setInput('');
+    setInput('');
     try {
       // 服务端按用户时区复用当天 Thread；只有用户点过“新对话”才强制新建。
       const id = threadId || (
@@ -239,15 +219,10 @@ export default function AiConversationScreen() {
         })
       ).data.id;
       dispatchThread({ type: 'attach_thread', threadId: id });
-      const turnText = needsInspirationContext && initialDraft?.firstTurnContext
-        ? buildInspirationTurnText(initialDraft.firstTurnContext, text)
-        : text;
-      await createTurn.mutateAsync({ threadId: id, data: { text: turnText } });
-      setNeedsInspirationContext(false);
-      setDraftContextLabel(null);
+      await createTurn.mutateAsync({ threadId: id, data: { text } });
     } catch {
       // onError 已经写过提示；没有新输入时把发送失败的正文还给用户。
-      if (overrideText === undefined) setInput((current) => current || text);
+      setInput((current) => current || text);
     }
   };
 
@@ -269,139 +244,84 @@ export default function AiConversationScreen() {
   const sending = createThread.isPending || createTurn.isPending || submittingCapture || media.uploading;
   const canSend = Boolean(input.trim() || images.length) && !thinking && !restoring && !sending;
   const canStartFresh = Boolean(threadId) && !thinking && !sending;
-  const hasInspirationExchange = inspirationMode
-    && ordered.some((message) => message.role === 'user')
-    && ordered.some((message) => message.role === 'assistant');
-  const showInspirationActions = hasInspirationExchange
-    && pending.length === 0
-    && !thinking
-    && !sending
-    && !input.trim();
   const restoreFailure = threadSession.mode === 'default' && !threadId && currentThread.isError
     ? errorMessage(currentThread.error, '没能恢复今天的对话，发送时会再试。')
     : null;
   const visibleFailure = failure ?? picker.error ?? turnFailure ?? restoreFailure;
 
-  const organizeAsNote = async () => {
-    if (!showInspirationActions) return;
-    setFailure(null);
-    setSubmittingCapture(true);
-    try {
-      const text = buildInspirationNoteCaptureText(
-        initialDraft?.openingPrompt ?? '这次灵感对话',
-        ordered,
-      );
-      const response = await createCapture({
-        origin: 'assistant',
-        parts: buildAssistantCaptureParts(text, []),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
-      router.replace({
-        pathname: '/capture/processing',
-        params: {
-          captureId: response.data.resource_id ?? '',
-          operationId: response.data.operation_id,
-          draft: '整理这次灵感对话',
-        },
-      });
-    } catch (error) {
-      setFailure(errorMessage(error, '这次对话暂时没能整理成笔记。'));
-    } finally {
-      setSubmittingCapture(false);
-    }
-  };
-
   return (
-    <ConversationFrame fullScreen={inspirationMode} onClose={() => router.back()}>
-      {inspirationMode ? (
-        <NavHeader title="灵感" />
-      ) : (
-        <View style={styles.header}>
-          <View style={styles.headerIcon}>
-            <AiAssistantAvatar size={36} />
-          </View>
-          <View style={styles.headerCopy}>
-            <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
-            <Text numberOfLines={1} style={styles.headerStatus}>
-              {thinking
-                ? stream.label || '正在查你的数据…'
-                : restoring
-                  ? '正在恢复今天的对话…'
-                  : threadSession.mode === 'fresh'
-                    ? '新对话'
-                    : threadSession.mode === 'default'
-                      ? '今天的对话'
-                      : '历史对话'}
-            </Text>
-          </View>
-          <Pressable
-            accessibilityLabel="开始新对话"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canStartFresh }}
-            disabled={!canStartFresh}
-            onPress={() => {
-              dispatchThread({ type: 'start_fresh' });
-              setTurnId('');
-              setOperationId('');
-              setInput('');
-              setDraftContextLabel(null);
-              setImages([]);
-              setShowMediaMenu(false);
-              setFailure(null);
-            }}
-            style={({ pressed }) => [
-              styles.closeButton,
-              !canStartFresh && styles.headerButtonDisabled,
-              pressed && canStartFresh && styles.iconPressed,
-            ]}
-          >
-            <AppIcon
-              color={canStartFresh ? colors.text : colors.textTertiary}
-              name="create-outline"
-              size={21}
-            />
-          </Pressable>
-          <Pressable
-            accessibilityLabel="历史对话"
-            accessibilityRole="button"
-            onPress={() => router.push('/assistant/threads')}
-            style={({ pressed }) => [styles.closeButton, pressed && styles.iconPressed]}
-          >
-            <AppIcon name="time-outline" size={21} />
-          </Pressable>
-          <Pressable
-            accessibilityLabel="关闭 AI 管家"
-            accessibilityRole="button"
-            onPress={() => router.back()}
-            style={({ pressed }) => [styles.closeButton, pressed && styles.iconPressed]}
-          >
-            <AppIcon name="close" size={23} />
-          </Pressable>
+    <ModalSheet maxHeight="84%" onClose={() => router.back()}>
+      <View style={styles.header}>
+        <View style={styles.headerIcon}>
+          <AiAssistantAvatar size={36} />
         </View>
-      )}
+        <View style={styles.headerCopy}>
+          <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
+          <Text numberOfLines={1} style={styles.headerStatus}>
+            {thinking
+              ? stream.label || '正在查你的数据…'
+              : restoring
+                ? '正在恢复今天的对话…'
+                : threadSession.mode === 'fresh'
+                  ? '新对话'
+                  : threadSession.mode === 'default'
+                    ? '今天的对话'
+                    : '历史对话'}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityLabel="开始新对话"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canStartFresh }}
+          disabled={!canStartFresh}
+          onPress={() => {
+            dispatchThread({ type: 'start_fresh' });
+            setTurnId('');
+            setOperationId('');
+            setInput('');
+            setImages([]);
+            setShowMediaMenu(false);
+            setFailure(null);
+          }}
+          style={({ pressed }) => [
+            styles.closeButton,
+            !canStartFresh && styles.headerButtonDisabled,
+            pressed && canStartFresh && styles.iconPressed,
+          ]}
+        >
+          <AppIcon
+            color={canStartFresh ? colors.text : colors.textTertiary}
+            name="create-outline"
+            size={21}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityLabel="历史对话"
+          accessibilityRole="button"
+          onPress={() => router.push('/assistant/threads')}
+          style={({ pressed }) => [styles.closeButton, pressed && styles.iconPressed]}
+        >
+          <AppIcon name="time-outline" size={21} />
+        </Pressable>
+        <Pressable
+          accessibilityLabel="关闭 AI 管家"
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.closeButton, pressed && styles.iconPressed]}
+        >
+          <AppIcon name="close" size={23} />
+        </Pressable>
+      </View>
 
       <ScrollView
         ref={listRef}
-        accessibilityLabel={inspirationMode ? '灵感对话' : '与 AI 管家的对话'}
+        accessibilityLabel="与 AI 管家的对话"
         accessibilityLiveRegion="polite"
-        contentContainerStyle={[
-          styles.messages,
-          inspirationMode && styles.inspirationMessages,
-        ]}
+        contentContainerStyle={styles.messages}
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={scrollToLatest}
         showsVerticalScrollIndicator={false}
-        style={styles.messageList}
       >
-        {inspirationMode && initialDraft?.openingPrompt ? (
-          <View style={styles.inspirationOpening}>
-            <Text style={styles.inspirationOpeningQuestion}>{initialDraft.openingPrompt}</Text>
-            {initialDraft.contextLabel ? (
-              <Text style={styles.inspirationOpeningContext}>{initialDraft.contextLabel}</Text>
-            ) : null}
-          </View>
-        ) : null}
-
         {restoring ? (
           <View accessibilityLabel="正在恢复今天的对话" style={styles.restoreState}>
             <ActivityIndicator color={colors.textSecondary} size="small" />
@@ -409,7 +329,7 @@ export default function AiConversationScreen() {
           </View>
         ) : null}
 
-        {!inspirationMode && !restoring && ordered.length === 0 && !messages.isLoading ? (
+        {!restoring && ordered.length === 0 && !messages.isLoading ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>我能帮你看你自己的内容</Text>
             <Text style={styles.emptyCopy}>
@@ -421,7 +341,6 @@ export default function AiConversationScreen() {
 
         {ordered.map((message) => (
           <MessageRow
-            inspiration={inspirationMode}
             key={message.id}
             message={message}
             proposals={pending.filter((p) => message.proposal_ids?.includes(p.id))}
@@ -434,17 +353,11 @@ export default function AiConversationScreen() {
         ))}
 
         {thinking ? (
-          <View style={[styles.thinkingRow, inspirationMode && styles.inspirationThinkingRow]}>
-            {inspirationMode ? null : (
-              <View style={styles.assistantMark}>
-                <AiAssistantAvatar size={30} />
-              </View>
-            )}
-            <View style={[
-              styles.bubble,
-              styles.assistantBubble,
-              inspirationMode && styles.inspirationAssistantBubble,
-            ]}>
+          <View style={styles.thinkingRow}>
+            <View style={styles.assistantMark}>
+              <AiAssistantAvatar size={30} />
+            </View>
+            <View style={[styles.bubble, styles.assistantBubble]}>
               {stream.text ? (
                 <>
                   <Text style={styles.messageText}>{stream.text}</Text>
@@ -455,48 +368,20 @@ export default function AiConversationScreen() {
               ) : (
                 <View style={styles.thinkingBubble}>
                   <ActivityIndicator color={colors.textSecondary} size="small" />
-                  <Text style={styles.thinkingText}>{stream.label || '正在想…'}</Text>
+                  <Text style={styles.thinkingText}>{stream.label || '正在查…'}</Text>
                 </View>
               )}
             </View>
           </View>
         ) : null}
 
-        {showInspirationActions ? (
-          <View style={styles.inspirationActions}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void organizeAsNote()}
-              style={({ pressed }) => [styles.inspirationAction, pressed && styles.actionPressed]}
-            >
-              <Text style={styles.inspirationActionPrimary}>整理成笔记</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void sendText(buildInspirationTaskProposalRequest())}
-              style={({ pressed }) => [styles.inspirationAction, pressed && styles.actionPressed]}
-            >
-              <Text style={styles.inspirationActionSecondary}>生成待办建议</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         {visibleFailure ? (
-          <Text style={[styles.failure, inspirationMode && styles.inspirationFailure]}>
-            {visibleFailure}
-          </Text>
+          <Text style={styles.failure}>{visibleFailure}</Text>
         ) : null}
       </ScrollView>
 
-      <View style={[styles.composerWrap, inspirationMode && styles.inspirationComposerWrap]}>
-        {draftContextLabel ? (
-          <View style={styles.draftContext}>
-            <AppIcon color={colors.primaryStrong} name="bulb-outline" size={17} />
-            <Text numberOfLines={1} style={styles.draftContextText}>{draftContextLabel}</Text>
-            <Text style={styles.draftContextHint}>确认后发送</Text>
-          </View>
-        ) : null}
-        {!inspirationMode && images.length > 0 ? (
+      <View style={styles.composerWrap}>
+        {images.length > 0 ? (
           <ScrollView
             contentContainerStyle={styles.imagePreviews}
             horizontal
@@ -519,7 +404,7 @@ export default function AiConversationScreen() {
           </ScrollView>
         ) : null}
 
-        {!inspirationMode && showMediaMenu ? (
+        {showMediaMenu ? (
           <View style={styles.mediaMenu}>
             <Pressable
               accessibilityLabel="拍照"
@@ -543,28 +428,26 @@ export default function AiConversationScreen() {
         ) : null}
 
         <View style={styles.composer}>
-          {inspirationMode ? null : (
-            <Pressable
-              accessibilityLabel="添加图片"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: thinking || restoring || sending }}
-              disabled={thinking || restoring || sending}
-              onPress={() => setShowMediaMenu((current) => !current)}
-              style={({ pressed }) => [
-                styles.imageButton,
-                showMediaMenu && styles.imageButtonActive,
-                pressed && styles.mediaActionPressed,
-              ]}
-            >
-              <AppIcon
-                color={showMediaMenu ? colors.primaryStrong : colors.textSecondary}
-                name="image-outline"
-                size={21}
-              />
-            </Pressable>
-          )}
+          <Pressable
+            accessibilityLabel="添加图片"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: thinking || restoring || sending }}
+            disabled={thinking || restoring || sending}
+            onPress={() => setShowMediaMenu((current) => !current)}
+            style={({ pressed }) => [
+              styles.imageButton,
+              showMediaMenu && styles.imageButtonActive,
+              pressed && styles.mediaActionPressed,
+            ]}
+          >
+            <AppIcon
+              color={showMediaMenu ? colors.primaryStrong : colors.textSecondary}
+              name="image-outline"
+              size={21}
+            />
+          </Pressable>
           <TextInput
-            accessibilityLabel={inspirationMode ? '写下你的想法' : '输入给 AI 管家的消息'}
+            accessibilityLabel="输入给 AI 管家的消息"
             editable
             multiline
             onChangeText={setInput}
@@ -574,14 +457,12 @@ export default function AiConversationScreen() {
                 ? '正在处理…'
                 : restoring
                   ? '正在恢复对话…'
-                  : inspirationMode
-                    ? '写下你的想法…'
-                    : images.length
-                      ? '补一句想怎么处理…'
-                      : '说点什么…'
+                  : images.length
+                    ? '补一句想怎么处理…'
+                    : '说点什么…'
             }
             placeholderTextColor={colors.textTertiary}
-            style={[styles.input, inspirationMode && styles.inspirationInput]}
+            style={styles.input}
             value={input}
           />
           <Pressable
@@ -589,10 +470,9 @@ export default function AiConversationScreen() {
             accessibilityRole="button"
             accessibilityState={{ disabled: !canSend }}
             disabled={!canSend}
-            onPress={() => void sendText()}
+            onPress={send}
             style={({ pressed }) => [
               styles.sendButton,
-              inspirationMode && styles.inspirationSendButton,
               !canSend && styles.sendDisabled,
               pressed && canSend && styles.sendPressed,
             ]}
@@ -605,79 +485,34 @@ export default function AiConversationScreen() {
           </Pressable>
         </View>
       </View>
-    </ConversationFrame>
-  );
-}
-
-function ConversationFrame({
-  children,
-  fullScreen,
-  onClose,
-}: PropsWithChildren<{ fullScreen: boolean; onClose: () => void }>) {
-  if (!fullScreen) {
-    return (
-      <ModalSheet maxHeight="84%" onClose={onClose}>
-        {children}
-      </ModalSheet>
-    );
-  }
-
-  return (
-    <AppScreen includeBottomInset>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.fullScreenKeyboard}
-      >
-        {children}
-      </KeyboardAvoidingView>
-    </AppScreen>
+    </ModalSheet>
   );
 }
 
 function MessageRow({
-  inspiration,
   message,
   proposals,
   onProposalResolved,
 }: {
-  inspiration: boolean;
   message: AssistantMessage;
   proposals: ActionProposal[];
   onProposalResolved: () => void;
 }) {
   const isUser = message.role === 'user';
-  const visibleContent = isUser
-    ? visibleInspirationUserText(message.content)
-    : message.content;
 
   return (
     <View style={styles.messageGroup}>
-      <View style={[
-        styles.messageRow,
-        isUser && styles.userRow,
-        inspiration && !isUser && styles.inspirationAssistantRow,
-      ]}>
-        {isUser || inspiration ? null : (
+      <View style={[styles.messageRow, isUser && styles.userRow]}>
+        {isUser ? null : (
           <View style={styles.assistantMark}>
             <AiAssistantAvatar size={30} />
           </View>
         )}
-        <View style={[
-          styles.bubble,
-          isUser ? styles.userBubble : styles.assistantBubble,
-          inspiration && isUser && styles.inspirationUserBubble,
-          inspiration && !isUser && styles.inspirationAssistantBubble,
-        ]}>
+        <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
           {isUser ? (
-            <Text style={[
-              styles.messageText,
-              styles.userText,
-              inspiration && styles.inspirationUserText,
-            ]}>
-              {visibleContent}
-            </Text>
+            <Text style={[styles.messageText, styles.userText]}>{message.content}</Text>
           ) : (
-            <AssistantMarkdown content={visibleContent} />
+            <AssistantMarkdown content={message.content} />
           )}
         </View>
       </View>
@@ -690,9 +525,6 @@ function MessageRow({
 }
 
 const styles = StyleSheet.create({
-  fullScreenKeyboard: {
-    flex: 1,
-  },
   header: {
     minHeight: 66,
     paddingHorizontal: 16,
@@ -700,29 +532,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
-  },
-  draftContext: {
-    minHeight: 38,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    backgroundColor: colors.primarySoft,
-  },
-  draftContextText: {
-    minWidth: 0,
-    flex: 1,
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.meta,
-    fontWeight: '600',
-  },
-  draftContextHint: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.caption,
   },
   headerIcon: {
     width: 38,
@@ -763,35 +572,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 22,
     gap: 16,
-  },
-  messageList: {
-    flex: 1,
-  },
-  inspirationMessages: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 30,
-    gap: 20,
-  },
-  inspirationOpening: {
-    paddingTop: 8,
-    paddingBottom: 18,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  inspirationOpeningQuestion: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 19,
-    lineHeight: 29,
-    fontWeight: '500',
-    letterSpacing: -0.15,
-  },
-  inspirationOpeningContext: {
-    marginTop: 9,
-    color: colors.inspiration,
-    fontFamily,
-    ...typography.meta,
   },
   emptyCard: {
     padding: 14,
@@ -834,9 +614,6 @@ const styles = StyleSheet.create({
   userRow: {
     justifyContent: 'flex-end',
   },
-  inspirationAssistantRow: {
-    gap: 0,
-  },
   assistantMark: {
     width: 30,
     height: 30,
@@ -858,18 +635,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 7,
     backgroundColor: colors.primary,
   },
-  inspirationAssistantBubble: {
-    maxWidth: '100%',
-    paddingHorizontal: 0,
-    paddingVertical: 2,
-    borderRadius: 0,
-    backgroundColor: 'transparent',
-  },
-  inspirationUserBubble: {
-    maxWidth: '86%',
-    borderTopRightRadius: 7,
-    backgroundColor: colors.surface,
-  },
   messageText: {
     color: colors.text,
     fontFamily,
@@ -878,17 +643,11 @@ const styles = StyleSheet.create({
   userText: {
     color: colors.background,
   },
-  inspirationUserText: {
-    color: colors.text,
-  },
   thinkingRow: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 9,
-  },
-  inspirationThinkingRow: {
-    gap: 0,
   },
   thinkingBubble: {
     flexDirection: 'row',
@@ -912,47 +671,11 @@ const styles = StyleSheet.create({
     fontFamily,
     ...typography.meta,
   },
-  inspirationFailure: {
-    marginLeft: 0,
-  },
-  inspirationActions: {
-    paddingTop: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  inspirationAction: {
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  inspirationActionPrimary: {
-    color: colors.inspiration,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
-  inspirationActionSecondary: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
-  actionPressed: {
-    opacity: 0.58,
-  },
   composerWrap: {
     padding: 12,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-  },
-  inspirationComposerWrap: {
-    backgroundColor: colors.background,
-  },
-  inspirationSendButton: {
-    backgroundColor: colors.text,
   },
   imagePreviews: {
     paddingBottom: 8,
@@ -1030,9 +753,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily,
     ...typography.input,
-  },
-  inspirationInput: {
-    paddingLeft: 11,
   },
   sendButton: {
     width: 42,

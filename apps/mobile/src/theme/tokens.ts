@@ -20,7 +20,6 @@ export const colors = {
   dangerSoft: '#FFF0F2',
   success: '#10B981',
   warning: '#F59E0B',
-  inspiration: '#3579A1',
   blue: '#3B82F6',
   purple: '#8B5CF6',
   pink: '#EC4899',
