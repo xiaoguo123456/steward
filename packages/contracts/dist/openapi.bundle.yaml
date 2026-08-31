@@ -39,6 +39,8 @@ tags:
     x-displayName: 统一输入
   - name: media
     x-displayName: 媒体上传
+  - name: memory-moments
+    x-displayName: 时光
   - name: assistant
     x-displayName: AI 助手
   - name: memory
@@ -1763,6 +1765,112 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/memory-moments:
+    get:
+      operationId: listMemoryMoments
+      summary: 查询时光
+      description: 按发生日期和创建时间由新到旧返回当前用户的时光。
+      tags:
+        - memory-moments
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 查询成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryMomentsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createMemoryMoment
+      summary: 发布时光
+      description: |
+        引用 1～9 个已由当前用户完成上传的图片媒体。发布成功后不提供更新接口；
+        用户若要更改内容，需要删除整段时光后重新发布。
+      tags:
+        - memory-moments
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMemoryMomentRequest'
+      responses:
+        '201':
+          description: 发布成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryMomentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/memory-moments/{moment_id}:
+    parameters:
+      - $ref: '#/components/parameters/MemoryMomentId'
+    get:
+      operationId: getMemoryMoment
+      summary: 读取时光详情
+      tags:
+        - memory-moments
+      responses:
+        '200':
+          description: 读取成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryMomentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteMemoryMoment
+      summary: 删除时光
+      description: 删除整段时光及其服务端媒体副本，不影响用户系统相册中的原文件。
+      tags:
+        - memory-moments
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功；同一个幂等键重放仍返回成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/captures:
@@ -3980,6 +4088,7 @@ components:
             - assistant_thread
             - action_proposal
             - memory
+            - memory_moment
             - recipe
             - meal_plan
             - diet_profile
@@ -6152,6 +6261,121 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/UploadGrant'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    MemoryMomentPhoto:
+      type: object
+      additionalProperties: false
+      required:
+        - media_id
+        - read_url
+        - description
+        - position
+      properties:
+        media_id:
+          type: string
+        read_url:
+          type: string
+          description: 短期私有读取地址，不得写入日志或长期缓存。
+        description:
+          type: string
+        position:
+          type: integer
+          minimum: 0
+          maximum: 8
+    MemoryMoment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - occurred_on
+        - title
+        - story
+        - photos
+        - created_by
+        - created_at
+      properties:
+        id:
+          type: string
+        occurred_on:
+          type: string
+          format: date
+          description: 用户选择的当地自然日，不做时区换算。
+        title:
+          type: string
+        story:
+          type: string
+        photos:
+          type: array
+          minItems: 1
+          maxItems: 9
+          items:
+            $ref: '#/components/schemas/MemoryMomentPhoto'
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        created_at:
+          type: string
+          format: date-time
+    MemoryMomentsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryMoment'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    MemoryMomentPhotoInput:
+      type: object
+      additionalProperties: false
+      required:
+        - media_id
+      properties:
+        media_id:
+          type: string
+          description: 当前用户已完成上传的图片媒体 ID。
+        description:
+          type: string
+          maxLength: 200
+          description: 无障碍描述；为空时客户端使用“第 N 张照片”。
+    CreateMemoryMomentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - occurred_on
+        - photos
+      properties:
+        occurred_on:
+          type: string
+          format: date
+        title:
+          type: string
+          maxLength: 32
+        story:
+          type: string
+          maxLength: 300
+        photos:
+          type: array
+          minItems: 1
+          maxItems: 9
+          items:
+            $ref: '#/components/schemas/MemoryMomentPhotoInput'
+    MemoryMomentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MemoryMoment'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     CaptureOrigin:
@@ -9210,6 +9434,12 @@ components:
         type: string
     MediaId:
       name: media_id
+      in: path
+      required: true
+      schema:
+        type: string
+    MemoryMomentId:
+      name: moment_id
       in: path
       required: true
       schema:

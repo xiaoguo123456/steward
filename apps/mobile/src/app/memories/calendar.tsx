@@ -1,22 +1,24 @@
+import { errorMessage, useListMemoryMoments } from '@steward/api-client';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { NavHeader } from '@/components/ui/nav-header';
+import { StatePanel } from '@/components/ui/state-panel';
 import {
   buildCalendarMonthCells,
   dateKeyForSelectedMonth,
   formatCalendarMonthTitle,
   monthAnchorFromDateKey,
 } from '@/features/calendar/calendar-month';
-import { useMemoriesPrototype } from '@/features/memories/memories-context';
 import {
   formatMemoryDateParts,
   memoriesForDate,
   memoryDatesWithCounts,
+  toMemoryMoment,
 } from '@/features/memories/memory-model';
 import { MemoryMomentRow } from '@/features/memories/memory-moment-row';
 import { colors, fontFamily, radius } from '@/theme/tokens';
@@ -27,17 +29,35 @@ const months = Array.from({ length: 12 }, (_, index) => index);
 
 export default function MemoriesCalendarScreen() {
   const router = useRouter();
-  const { moments } = useMemoriesPrototype();
-  const latestDate = moments[0]?.date ?? formatDateParam(new Date());
-  const [selectedDate, setSelectedDate] = useState(latestDate);
-  const [monthAnchor, setMonthAnchor] = useState(() => monthAnchorFromDateKey(latestDate));
+  const initialDate = formatDateParam(new Date());
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [monthAnchor, setMonthAnchor] = useState(() => monthAnchorFromDateKey(initialDate));
   const [monthPickerVisible, setMonthPickerVisible] = useState(false);
   const [pickerYear, setPickerYear] = useState(() => monthAnchor.getFullYear());
+  const initializedFromData = useRef(false);
   const cells = useMemo(() => buildCalendarMonthCells(monthAnchor), [monthAnchor]);
+  const query = useListMemoryMoments({
+    from: cells[0].date,
+    to: cells[cells.length - 1].date,
+    limit: 100,
+  }, {
+    query: { staleTime: 3 * 60 * 1000 },
+  });
+  const moments = useMemo(
+    () => (query.data?.data ?? []).map(toMemoryMoment),
+    [query.data?.data],
+  );
   const counts = useMemo(() => memoryDatesWithCounts(moments), [moments]);
   const selectedMoments = memoriesForDate(moments, selectedDate);
   const selectedLabel = formatMemoryDateParts(selectedDate).full;
   const todayKey = formatDateParam(new Date());
+
+  useEffect(() => {
+    if (initializedFromData.current || moments.length === 0) return;
+    initializedFromData.current = true;
+    setSelectedDate(moments[0].date);
+    setMonthAnchor(monthAnchorFromDateKey(moments[0].date));
+  }, [moments]);
 
   const shiftMonth = (offset: number) => {
     const next = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + offset, 1);
@@ -60,6 +80,21 @@ export default function MemoriesCalendarScreen() {
   return (
     <AppScreen includeBottomInset>
       <NavHeader title="按日期查找" />
+      {query.isPending ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : query.isError ? (
+        <View style={styles.stateWrap}>
+          <StatePanel
+            actionLabel="重试"
+            icon="cloud-offline-outline"
+            message={errorMessage(query.error, '服务出现问题，请稍后重试。')}
+            onAction={() => void query.refetch()}
+            title="时光没有加载出来"
+          />
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.monthBar}>
           <Pressable
@@ -169,6 +204,7 @@ export default function MemoriesCalendarScreen() {
           )}
         </View>
       </ScrollView>
+      )}
 
       <Modal
         animationType="fade"
@@ -235,6 +271,16 @@ export default function MemoriesCalendarScreen() {
 }
 
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stateWrap: {
+    flex: 1,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+  },
   content: {
     paddingHorizontal: 16,
     paddingBottom: 32,

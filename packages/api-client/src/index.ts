@@ -29,6 +29,7 @@ export * from './generated/trackers/trackers';
 export * from './generated/views/views';
 export * from './generated/captures/captures';
 export * from './generated/media/media';
+export * from './generated/memory-moments/memory-moments';
 export * from './generated/assistant/assistant';
 export * from './generated/memory/memory';
 export * from './generated/recipes/recipes';

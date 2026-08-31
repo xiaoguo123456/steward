@@ -1,0 +1,103 @@
+# 用户主动发布的私人照片时光。它与 AI 长期记忆 memory_items 是两个独立领域。
+
+MemoryMomentPhotoInput:
+  type: object
+  additionalProperties: false
+  required: [media_id]
+  properties:
+    media_id:
+      type: string
+      description: 当前用户已完成上传的图片媒体 ID。
+    description:
+      type: string
+      maxLength: 200
+      description: 无障碍描述；为空时客户端使用“第 N 张照片”。
+
+MemoryMomentPhoto:
+  type: object
+  additionalProperties: false
+  required: [media_id, read_url, description, position]
+  properties:
+    media_id:
+      type: string
+    read_url:
+      type: string
+      description: 短期私有读取地址，不得写入日志或长期缓存。
+    description:
+      type: string
+    position:
+      type: integer
+      minimum: 0
+      maximum: 8
+
+MemoryMoment:
+  type: object
+  additionalProperties: false
+  required: [id, occurred_on, title, story, photos, created_by, created_at]
+  properties:
+    id:
+      type: string
+    occurred_on:
+      type: string
+      format: date
+      description: 用户选择的当地自然日，不做时区换算。
+    title:
+      type: string
+    story:
+      type: string
+    photos:
+      type: array
+      minItems: 1
+      maxItems: 9
+      items:
+        $ref: '#/MemoryMomentPhoto'
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    created_at:
+      type: string
+      format: date-time
+
+CreateMemoryMomentRequest:
+  type: object
+  additionalProperties: false
+  required: [occurred_on, photos]
+  properties:
+    occurred_on:
+      type: string
+      format: date
+    title:
+      type: string
+      maxLength: 32
+    story:
+      type: string
+      maxLength: 300
+    photos:
+      type: array
+      minItems: 1
+      maxItems: 9
+      items:
+        $ref: '#/MemoryMomentPhotoInput'
+
+MemoryMomentResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MemoryMoment'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+MemoryMomentsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/MemoryMoment'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

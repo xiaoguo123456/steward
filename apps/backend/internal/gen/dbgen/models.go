@@ -528,6 +528,26 @@ type MemoryItem struct {
 	Version            int32
 }
 
+type MemoryMoment struct {
+	ID         string
+	UserID     string
+	OccurredOn time.Time
+	Title      string
+	Story      string
+	CreatedBy  string
+	CreatedAt  time.Time
+	DeletedAt  *time.Time
+}
+
+type MemoryMomentPhoto struct {
+	MomentID    string
+	UserID      string
+	MediaID     string
+	Position    int32
+	Description string
+	CreatedAt   time.Time
+}
+
 type MemoryRelearnBlock struct {
 	ID                    string
 	UserID                string

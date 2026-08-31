@@ -97,6 +97,13 @@ MediaId:
   schema:
     type: string
 
+MemoryMomentId:
+  name: moment_id
+  in: path
+  required: true
+  schema:
+    type: string
+
 DeletionRequestId:
   name: deletion_request_id
   in: path

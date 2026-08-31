@@ -1,9 +1,17 @@
+import {
+  createMemoryMoment,
+  errorMessage,
+  getGetMemoryMomentQueryKey,
+  getListMemoryMomentsQueryKey,
+  newIdempotencyKey,
+  type MemoryMomentPhotoInput,
+} from '@steward/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,13 +24,11 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
-import { useMemoriesPrototype } from '@/features/memories/memories-context';
+import { useMediaUpload, type UploadedMedia } from '@/features/capture/use-media-upload';
 import {
-  buildPrototypeWritingCandidate,
   isMemoryDateKey,
   todayMemoryDateKey,
   type MemoryPhoto,
-  type MemoryWritingCandidate,
 } from '@/features/memories/memory-model';
 import {
   imagePickerAssetsToMemoryPhotos,
@@ -32,34 +38,44 @@ import {
 } from '@/features/memories/memory-picker';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
+type UploadedSelection = {
+  signature: string;
+  media: UploadedMedia[];
+};
+
+type SubmissionKey = {
+  signature: string;
+  key: string;
+};
+
 export default function MemoryEditorScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useLocalSearchParams<{
-    id?: string | string[];
     date?: string | string[];
     pick?: string | string[];
   }>();
-  const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
   const rawDate = Array.isArray(params.date) ? params.date[0] : params.date;
   const rawPick = Array.isArray(params.pick) ? params.pick[0] : params.pick;
-  const { moments, addMoment, updateMoment } = useMemoriesPrototype();
-  const existing = moments.find((moment) => moment.id === rawId);
-  const [photos, setPhotos] = useState<MemoryPhoto[]>(existing?.photos ?? []);
+  const [photos, setPhotos] = useState<MemoryPhoto[]>([]);
   const [date, setDate] = useState(
-    existing?.date ?? (isMemoryDateKey(rawDate ?? '') ? rawDate! : todayMemoryDateKey()),
+    isMemoryDateKey(rawDate ?? '') ? rawDate! : todayMemoryDateKey(),
   );
-  const [title, setTitle] = useState(existing?.title ?? '');
-  const [story, setStory] = useState(existing?.story ?? '');
+  const [title, setTitle] = useState('');
+  const [story, setStory] = useState('');
   const [pickerError, setPickerError] = useState<string | null>(null);
-  const [candidate, setCandidate] = useState<MemoryWritingCandidate | null>(null);
-  const [generating, setGenerating] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const [pendingResultChecked, setPendingResultChecked] = useState(false);
   const initialPickerOpened = useRef(false);
+  const uploadedRef = useRef<UploadedSelection | null>(null);
+  const submissionKeyRef = useRef<SubmissionKey | null>(null);
+  const { upload, uploading } = useMediaUpload();
   const dateValid = isMemoryDateKey(date);
-  const saveDisabled = photos.length === 0 || !dateValid;
+  const publishDisabled = photos.length === 0 || !dateValid || publishing || uploading;
 
   useEffect(() => {
-    if (existing || photos.length > 0) return;
+    if (photos.length > 0) return;
     let mounted = true;
     void ImagePicker.getPendingResultAsync()
       .then((pending) => {
@@ -73,7 +89,7 @@ export default function MemoryEditorScreen() {
         if (mounted) setPendingResultChecked(true);
       });
     return () => { mounted = false; };
-  }, [existing, photos.length]);
+  }, [photos.length]);
 
   const pickImages = useCallback(async () => {
     const remaining = MEMORY_PHOTO_LIMIT - photos.length;
@@ -98,61 +114,83 @@ export default function MemoryEditorScreen() {
 
   useEffect(() => {
     if (
-      existing
-      || !pendingResultChecked
+      !pendingResultChecked
       || photos.length > 0
       || rawPick !== '1'
       || initialPickerOpened.current
     ) return;
     initialPickerOpened.current = true;
     void pickImages();
-  }, [existing, pendingResultChecked, photos.length, pickImages, rawPick]);
+  }, [pendingResultChecked, photos.length, pickImages, rawPick]);
 
-  const generateCandidate = async () => {
-    if (photos.length === 0 || generating) return;
-    setGenerating(true);
-    setCandidate(null);
-    await new Promise((resolve) => setTimeout(resolve, 650));
-    setCandidate(buildPrototypeWritingCandidate({
-      date,
-      photoCount: photos.length,
-      title,
-      story,
-    }));
-    setGenerating(false);
-  };
-
-  const save = () => {
-    if (saveDisabled) return;
-    const input = { date, title: title.trim(), story: story.trim(), photos };
-    if (existing) {
-      updateMoment(existing.id, input);
-      router.replace({ pathname: '/memories/[id]', params: { id: existing.id } });
+  const publish = async () => {
+    if (publishDisabled) return;
+    const localPhotos = photos.map((photo) => photo.local).filter((photo) => photo !== undefined);
+    if (localPhotos.length !== photos.length) {
+      setFailure('有照片已经失效，请重新选择后再发布。');
       return;
     }
-    const id = addMoment(input);
-    router.replace({ pathname: '/memories/[id]', params: { id } });
+
+    setPublishing(true);
+    setFailure(null);
+    try {
+      const photoSignature = JSON.stringify(localPhotos.map((photo) => [
+        photo.uri, photo.contentType, photo.byteSize ?? null,
+      ]));
+      let uploaded = uploadedRef.current;
+      if (!uploaded || uploaded.signature !== photoSignature) {
+        uploaded = {
+          signature: photoSignature,
+          media: await upload(localPhotos.map((photo) => ({ ...photo, kind: 'image' }))),
+        };
+        uploadedRef.current = uploaded;
+      }
+
+      const photoInputs: MemoryMomentPhotoInput[] = uploaded.media.map((media, index) => ({
+        media_id: media.mediaId,
+        description: photos[index].description,
+      }));
+      const body = {
+        occurred_on: date,
+        title: title.trim() || undefined,
+        story: story.trim() || undefined,
+        photos: photoInputs,
+      };
+      const submissionSignature = JSON.stringify(body);
+      let submission = submissionKeyRef.current;
+      if (!submission || submission.signature !== submissionSignature) {
+        submission = { signature: submissionSignature, key: newIdempotencyKey() };
+        submissionKeyRef.current = submission;
+      }
+      const response = await createMemoryMoment(body, {
+        headers: { 'Idempotency-Key': submission.key },
+      });
+      queryClient.setQueryData(getGetMemoryMomentQueryKey(response.data.id), response);
+      await queryClient.invalidateQueries({ queryKey: getListMemoryMomentsQueryKey() });
+      router.replace({ pathname: '/memories/[id]', params: { id: response.data.id } });
+    } catch (error) {
+      setFailure(errorMessage(error, '发布没有完成，请检查网络后重试。'));
+    } finally {
+      setPublishing(false);
+    }
   };
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader title={existing ? '编辑时光' : '添加时光'} />
+      <NavHeader title="添加时光" />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.privacyNote}>
-          <AppIcon color={colors.primaryStrong} name="shield-checkmark-outline" size={17} />
-          <Text style={styles.privacyText}>当前是本地交互原型，不会上传图片或写入云端。</Text>
-        </View>
-
         <View style={styles.sectionHeading}>
           <View>
             <Text accessibilityRole="header" style={styles.sectionTitle}>照片</Text>
             <Text style={styles.sectionMeta}>至少 1 张，最多 {MEMORY_PHOTO_LIMIT} 张</Text>
           </View>
-          {photos.length > 0 ? <Text style={styles.photoCount}>{photos.length}/{MEMORY_PHOTO_LIMIT}</Text> : null}
+          {photos.length > 0 ? (
+            <Text style={styles.photoCount}>{photos.length}/{MEMORY_PHOTO_LIMIT}</Text>
+          ) : null}
         </View>
 
         {photos.length === 0 ? (
@@ -166,7 +204,7 @@ export default function MemoryEditorScreen() {
               <AppIcon color={colors.primaryStrong} name="images-outline" size={25} />
             </View>
             <Text style={styles.photoEmptyTitle}>先选择照片</Text>
-            <Text style={styles.photoEmptyMessage}>有照片才能创建时光，文字可以稍后再写。</Text>
+            <Text style={styles.photoEmptyMessage}>有照片才能发布时光，文字可以留空。</Text>
           </Pressable>
         ) : (
           <ScrollView
@@ -198,16 +236,36 @@ export default function MemoryEditorScreen() {
                     accessibilityState={{ disabled: index === 0 }}
                     disabled={index === 0}
                     onPress={() => setPhotos((current) => moveMemoryPhoto(current, index, -1))}
-                    style={({ pressed }) => [styles.orderButton, index === 0 && styles.orderButtonDisabled, pressed && styles.orderButtonPressed]}
-                  ><AppIcon color={index === 0 ? colors.textTertiary : colors.textSecondary} name="arrow-back" size={16} /></Pressable>
+                    style={({ pressed }) => [
+                      styles.orderButton,
+                      index === 0 && styles.orderButtonDisabled,
+                      pressed && styles.orderButtonPressed,
+                    ]}
+                  >
+                    <AppIcon
+                      color={index === 0 ? colors.textTertiary : colors.textSecondary}
+                      name="arrow-back"
+                      size={16}
+                    />
+                  </Pressable>
                   <Pressable
                     accessibilityLabel={`第 ${index + 1} 张照片向后移动`}
                     accessibilityRole="button"
                     accessibilityState={{ disabled: index === photos.length - 1 }}
                     disabled={index === photos.length - 1}
                     onPress={() => setPhotos((current) => moveMemoryPhoto(current, index, 1))}
-                    style={({ pressed }) => [styles.orderButton, index === photos.length - 1 && styles.orderButtonDisabled, pressed && styles.orderButtonPressed]}
-                  ><AppIcon color={index === photos.length - 1 ? colors.textTertiary : colors.textSecondary} name="arrow-forward" size={16} /></Pressable>
+                    style={({ pressed }) => [
+                      styles.orderButton,
+                      index === photos.length - 1 && styles.orderButtonDisabled,
+                      pressed && styles.orderButtonPressed,
+                    ]}
+                  >
+                    <AppIcon
+                      color={index === photos.length - 1 ? colors.textTertiary : colors.textSecondary}
+                      name="arrow-forward"
+                      size={16}
+                    />
+                  </Pressable>
                 </View>
               </View>
             ))}
@@ -265,60 +323,18 @@ export default function MemoryEditorScreen() {
           </Field>
         </View>
 
-        <View style={styles.aiSection}>
-          <View style={styles.aiHeading}>
-            <View style={styles.aiIcon}>
-              <AppIcon color={colors.primaryStrong} name="sparkles-outline" size={18} />
-            </View>
-            <View style={styles.aiHeadingCopy}>
-              <Text accessibilityRole="header" style={styles.aiTitle}>整理成一段回忆</Text>
-              <Text style={styles.aiMeta}>AI Candidate 交互演示 · 不发送图片</Text>
-            </View>
-          </View>
-          {candidate ? (
-            <View style={styles.candidate}>
-              <Text style={styles.candidateSource}>来源：{candidate.sourceSummary}</Text>
-              <Text style={styles.candidateTitle}>{candidate.title}</Text>
-              <Text style={styles.candidateStory}>{candidate.story}</Text>
-              <View style={styles.candidateActions}>
-                <AppButton
-                  compact
-                  label="采用这段文案"
-                  onPress={() => {
-                    setTitle(candidate.title);
-                    setStory(candidate.story);
-                    setCandidate(null);
-                  }}
-                  style={styles.candidateAction}
-                />
-                <AppButton
-                  compact
-                  label="忽略建议"
-                  onPress={() => setCandidate(null)}
-                  style={styles.candidateAction}
-                  variant="text"
-                />
-              </View>
-            </View>
-          ) : (
-            <AppButton
-              disabled={photos.length === 0 || generating || !dateValid}
-              icon="sparkles-outline"
-              label={generating ? '正在整理…' : '帮我整理这段时光'}
-              onPress={() => void generateCandidate()}
-              variant="secondary"
-            />
-          )}
-          {generating ? <ActivityIndicator color={colors.primary} style={styles.aiLoading} /> : null}
-        </View>
-
+        {failure ? <Text accessibilityRole="alert" style={styles.publishError}>{failure}</Text> : null}
         <AppButton
-          disabled={saveDisabled}
-          label={existing ? '保存修改' : '保存这段时光'}
-          onPress={save}
-          style={styles.saveButton}
+          disabled={publishDisabled}
+          label={uploading ? '正在上传照片…' : publishing ? '正在发布…' : '发布这段时光'}
+          onPress={() => void publish()}
+          style={styles.publishButton}
         />
-        {photos.length === 0 ? <Text style={styles.saveHint}>选择至少 1 张照片后才能保存。</Text> : null}
+        <Text style={styles.publishHint}>
+          {photos.length === 0
+            ? '选择至少 1 张照片后才能发布。'
+            : '发布后不可编辑，只能删除整段时光。'}
+        </Text>
       </ScrollView>
     </AppScreen>
   );
@@ -346,25 +362,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 32,
   },
-  privacyNote: {
-    minHeight: 42,
-    marginTop: 4,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-  },
-  privacyText: {
-    flex: 1,
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-  },
   sectionHeading: {
-    marginTop: 24,
+    marginTop: 16,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -554,82 +553,18 @@ const styles = StyleSheet.create({
     paddingTop: 13,
     paddingBottom: 13,
   },
-  aiSection: {
-    marginTop: 28,
-    padding: 14,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
-  },
-  aiHeading: {
-    marginBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  aiIcon: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-    backgroundColor: colors.background,
-  },
-  aiHeadingCopy: {
-    flex: 1,
-  },
-  aiTitle: {
-    color: colors.text,
+  publishError: {
+    marginTop: 24,
+    color: colors.danger,
     fontFamily,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '600',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
   },
-  aiMeta: {
-    marginTop: 1,
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  aiLoading: {
-    marginTop: 12,
-  },
-  candidate: {
-    paddingTop: 2,
-  },
-  candidateSource: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  candidateTitle: {
-    marginTop: 8,
-    color: colors.text,
-    fontFamily,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: '600',
-  },
-  candidateStory: {
-    marginTop: 5,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  candidateActions: {
-    marginTop: 14,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  candidateAction: {
-    flex: 1,
-  },
-  saveButton: {
+  publishButton: {
     marginTop: 28,
   },
-  saveHint: {
+  publishHint: {
     marginTop: 8,
     color: colors.textSecondary,
     fontFamily,

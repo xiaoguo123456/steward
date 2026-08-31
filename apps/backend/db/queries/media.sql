@@ -42,6 +42,11 @@ UPDATE media_assets SET status = 'deleted', deleted_at = now()
 WHERE id = sqlc.arg(id) AND deleted_at IS NULL
 RETURNING *;
 
+-- name: GetDeletedMediaAssetForCleanup :one
+-- 清理 Worker 只读取当前用户已经不可见的资产，不允许借此读取有效媒体。
+SELECT * FROM media_assets
+WHERE id = sqlc.arg(id) AND deleted_at IS NOT NULL;
+
 -- name: ListPendingMediaBefore :many
 -- 长期停留在 pending 的资产说明客户端放弃了上传，交给清理任务回收。
 SELECT * FROM media_assets

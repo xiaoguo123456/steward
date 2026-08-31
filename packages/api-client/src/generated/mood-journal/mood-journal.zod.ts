@@ -31,7 +31,6 @@ export const ListMoodJournalEntriesQueryParams = zod.object({
   "to": zod.string().date().optional(),
   "q": zod.string().optional()
 })
-
 export const listMoodJournalEntriesResponseDataItemContentBlocksItemIdMax = 80;
 
 export const listMoodJournalEntriesResponseDataItemContentBlocksItemRunsItemTextMax = 12000;
@@ -95,6 +94,7 @@ export const ListMoodJournalEntriesResponse = zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
 }).describe('所有成功响应共有的元信息。')
 })
+
 /**
  * @summary 新建心情日记
  */
@@ -424,7 +424,7 @@ export const DeleteMoodJournalEntryHeader = zod.object({
 export const DeleteMoodJournalEntryResponse = zod.object({
   "data": zod.object({
   "affected_resources": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })),
   "activity_batch_id": zod.string().nullish()

@@ -1,0 +1,105 @@
+# 时光是用户主动发布的私人照片记录。发布后内容不可编辑，只能整段删除。
+
+Collection:
+  get:
+    operationId: listMemoryMoments
+    summary: 查询时光
+    description: 按发生日期和创建时间由新到旧返回当前用户的时光。
+    tags: [memory-moments]
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+      - name: from
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        schema:
+          type: string
+          format: date
+    responses:
+      '200':
+        description: 查询成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/memory-moments.yaml#/MemoryMomentsResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createMemoryMoment
+    summary: 发布时光
+    description: |
+      引用 1～9 个已由当前用户完成上传的图片媒体。发布成功后不提供更新接口；
+      用户若要更改内容，需要删除整段时光后重新发布。
+    tags: [memory-moments]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/memory-moments.yaml#/CreateMemoryMomentRequest'
+    responses:
+      '201':
+        description: 发布成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/memory-moments.yaml#/MemoryMomentResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Item:
+  parameters:
+    - $ref: '../components/parameters.yaml#/MemoryMomentId'
+  get:
+    operationId: getMemoryMoment
+    summary: 读取时光详情
+    tags: [memory-moments]
+    responses:
+      '200':
+        description: 读取成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/memory-moments.yaml#/MemoryMomentResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deleteMemoryMoment
+    summary: 删除时光
+    description: 删除整段时光及其服务端媒体副本，不影响用户系统相册中的原文件。
+    tags: [memory-moments]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 删除成功；同一个幂等键重放仍返回成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

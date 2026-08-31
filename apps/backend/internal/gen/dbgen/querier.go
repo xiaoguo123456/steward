@@ -130,6 +130,9 @@ type Querier interface {
 	// 长期记忆。只有用户确认过的条目才是 active，Context Builder 只读 active。
 	CreateMemory(ctx context.Context, arg CreateMemoryParams) (MemoryItem, error)
 	CreateMemoryEvidence(ctx context.Context, arg CreateMemoryEvidenceParams) error
+	// 时光查询。发布后没有 UPDATE：只允许创建、读取和整段软删除。
+	CreateMemoryMoment(ctx context.Context, arg CreateMemoryMomentParams) (MemoryMoment, error)
+	CreateMemoryMomentPhoto(ctx context.Context, arg CreateMemoryMomentPhotoParams) (MemoryMomentPhoto, error)
 	CreateMemoryRevision(ctx context.Context, arg CreateMemoryRevisionParams) error
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (AssistantMessage, error)
 	CreateMoodJournalExtension(ctx context.Context, arg CreateMoodJournalExtensionParams) (MoodJournalEntry, error)
@@ -206,6 +209,8 @@ type Querier interface {
 	GetCurrentDayThread(ctx context.Context, arg GetCurrentDayThreadParams) (AssistantThread, error)
 	GetDefaultTaskList(ctx context.Context) (TaskList, error)
 	GetDefaultTaskListForUpdate(ctx context.Context) (TaskList, error)
+	// 清理 Worker 只读取当前用户已经不可见的资产，不允许借此读取有效媒体。
+	GetDeletedMediaAssetForCleanup(ctx context.Context, id string) (MediaAsset, error)
 	// ---- 用户自己的食谱数据 ----
 	//
 	// 下面这些表都带 user_id 并受 RLS 约束，查询里不需要也不应该再写 user_id 条件：
@@ -217,6 +222,7 @@ type Querier interface {
 	GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (MealPlan, error)
 	GetMediaAsset(ctx context.Context, id string) (MediaAsset, error)
 	GetMemory(ctx context.Context, id string) (MemoryItem, error)
+	GetMemoryMoment(ctx context.Context, id string) (MemoryMoment, error)
 	GetMoodJournalEntry(ctx context.Context, noteID string) (GetMoodJournalEntryRow, error)
 	GetNextActiveTaskListForUpdate(ctx context.Context, arg GetNextActiveTaskListForUpdateParams) (TaskList, error)
 	GetNote(ctx context.Context, id string) (Note, error)
@@ -250,6 +256,7 @@ type Querier interface {
 	// 匹配不到价格时 amount_usd 为 NULL、状态 pricing_missing——
 	// **不写 0**。「不知道多少钱」和「不花钱」是完全不同的两件事。
 	InsertCostItem(ctx context.Context, arg InsertCostItemParams) error
+	IsMediaReferencedByActiveMemoryMoment(ctx context.Context, mediaID string) (bool, error)
 	IsRelearnBlocked(ctx context.Context, arg IsRelearnBlockedParams) (bool, error)
 	// 后台每个响应都要说出「这份数据算到什么时候」。
 	LatestAggregation(ctx context.Context, kind string) (AdminAggregationRun, error)
@@ -282,6 +289,9 @@ type Querier interface {
 	ListMealPlanEntries(ctx context.Context, mealPlanID string) ([]ListMealPlanEntriesRow, error)
 	ListMemories(ctx context.Context, arg ListMemoriesParams) ([]MemoryItem, error)
 	ListMemoryEvidence(ctx context.Context, memoryID string) ([]MemoryEvidence, error)
+	ListMemoryMomentPhotos(ctx context.Context, momentID string) ([]ListMemoryMomentPhotosRow, error)
+	ListMemoryMomentPhotosForMoments(ctx context.Context, momentIds []string) ([]ListMemoryMomentPhotosForMomentsRow, error)
+	ListMemoryMoments(ctx context.Context, arg ListMemoryMomentsParams) ([]MemoryMoment, error)
 	ListMemoryRevisions(ctx context.Context, memoryID string) ([]MemoryRevision, error)
 	ListMessages(ctx context.Context, arg ListMessagesParams) ([]AssistantMessage, error)
 	ListMoodJournalCalendar(ctx context.Context, arg ListMoodJournalCalendarParams) ([]ListMoodJournalCalendarRow, error)
@@ -423,6 +433,7 @@ type Querier interface {
 	// 也防止延时任务长期失败后数据一直残留。
 	SoftDeleteExpiredArchivedTrackers(ctx context.Context) error
 	SoftDeleteMediaAsset(ctx context.Context, id string) (MediaAsset, error)
+	SoftDeleteMemoryMoment(ctx context.Context, id string) (MemoryMoment, error)
 	SoftDeleteMessagesByThread(ctx context.Context, threadID string) error
 	SoftDeleteMoodJournalNote(ctx context.Context, noteID string) (Note, error)
 	SoftDeleteNote(ctx context.Context, id string) (Note, error)

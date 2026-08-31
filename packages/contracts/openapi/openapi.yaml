@@ -43,6 +43,8 @@ tags:
     x-displayName: 统一输入
   - name: media
     x-displayName: 媒体上传
+  - name: memory-moments
+    x-displayName: 时光
   - name: assistant
     x-displayName: AI 助手
   - name: memory
@@ -132,6 +134,11 @@ paths:
     $ref: './paths/media.yaml#/Complete'
   /v1/media/{media_id}/upload-grant:
     $ref: './paths/media.yaml#/Regrant'
+
+  /v1/memory-moments:
+    $ref: './paths/memory-moments.yaml#/Collection'
+  /v1/memory-moments/{moment_id}:
+    $ref: './paths/memory-moments.yaml#/Item'
 
   /v1/captures:
     $ref: './paths/captures.yaml#/Collection'

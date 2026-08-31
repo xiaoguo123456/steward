@@ -25,6 +25,7 @@ const (
 	PrefixRelation         = "rel"
 	PrefixCapture          = "cap"
 	PrefixMedia            = "med"
+	PrefixMemoryMoment     = "mom"
 	PrefixCapturePart      = "cpt"
 	PrefixCandidate        = "cnd"
 	PrefixCaptureQuestion  = "cq"

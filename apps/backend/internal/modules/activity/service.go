@@ -62,6 +62,33 @@ func (s *Service) Record(
 	sourceID *string,
 	entries []EntryInput,
 ) (string, error) {
+	return s.record(ctx, q, userID, source, sourceID, entries, true)
+}
+
+// RecordNonUndoable 记录不可撤销的用户可见写入。
+//
+// 时光发布后不可编辑，删除还会同步清理对象存储，因此不能通过通用 Activity
+// 撤销器恢复；但这类写入仍需出现在变更历史中，不能静默绕过审计。
+func (s *Service) RecordNonUndoable(
+	ctx context.Context,
+	q *dbgen.Queries,
+	userID string,
+	source Source,
+	sourceID *string,
+	entries []EntryInput,
+) (string, error) {
+	return s.record(ctx, q, userID, source, sourceID, entries, false)
+}
+
+func (s *Service) record(
+	ctx context.Context,
+	q *dbgen.Queries,
+	userID string,
+	source Source,
+	sourceID *string,
+	entries []EntryInput,
+	undoable bool,
+) (string, error) {
 	if len(entries) == 0 {
 		return "", nil
 	}
@@ -72,7 +99,7 @@ func (s *Service) Record(
 		UserID:   userID,
 		Source:   string(source),
 		SourceID: sourceID,
-		Undoable: true,
+		Undoable: undoable,
 	}); err != nil {
 		return "", apperr.Internal(err)
 	}

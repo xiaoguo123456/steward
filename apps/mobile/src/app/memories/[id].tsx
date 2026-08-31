@@ -1,7 +1,17 @@
+import {
+  deleteMemoryMoment,
+  errorMessage,
+  getGetMemoryMomentQueryKey,
+  getListMemoryMomentsQueryKey,
+  newIdempotencyKey,
+  useGetMemoryMoment,
+} from '@steward/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -16,21 +26,38 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
-import { useMemoriesPrototype } from '@/features/memories/memories-context';
-import { formatMemoryDateParts } from '@/features/memories/memory-model';
+import { useToast } from '@/components/ui/toast';
+import { formatMemoryDateParts, toMemoryMoment } from '@/features/memories/memory-model';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 
 export default function MemoryDetailScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const { moments, deleteMoment } = useMemoriesPrototype();
-  const moment = moments.find((item) => item.id === rawId);
+  const query = useGetMemoryMoment(rawId ?? '', {
+    query: { enabled: Boolean(rawId), staleTime: 3 * 60 * 1000 },
+  });
+  const moment = query.data?.data ? toMemoryMoment(query.data.data) : null;
   const [activePhoto, setActivePhoto] = useState(0);
+  const [deleting, setDeleting] = useState(false);
   const heroScrollRef = useRef<ScrollView>(null);
+  const deleteKeyRef = useRef<string | null>(null);
 
-  if (!moment) {
+  if (query.isPending) {
+    return (
+      <AppScreen includeBottomInset>
+        <NavHeader title="时光详情" />
+        <View style={styles.loading}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </AppScreen>
+    );
+  }
+
+  if (query.isError || !moment) {
     return (
       <AppScreen includeBottomInset>
         <NavHeader title="时光详情" />
@@ -38,7 +65,7 @@ export default function MemoryDetailScreen() {
           <StatePanel
             actionLabel="返回时光"
             icon="images-outline"
-            message="这段时光可能已经被删除。"
+            message={errorMessage(query.error, '这段时光可能已经被删除。')}
             onAction={() => router.back()}
             title="没有找到"
           />
@@ -53,15 +80,33 @@ export default function MemoryDetailScreen() {
   const confirmDelete = () => {
     Alert.alert(
       '删除这段时光？',
-      `${date.full}的 ${moment.photos.length} 张照片将从当前本地原型中移除。此操作不会删除系统相册中的照片。`,
+      `${date.full}的 ${moment.photos.length} 张服务端照片副本将一并删除，不会影响系统相册中的原文件。删除后无法恢复。`,
       [
         { text: '保留时光', style: 'cancel' },
         {
           text: '删除这段时光',
           style: 'destructive',
           onPress: () => {
-            deleteMoment(moment.id);
-            router.back();
+            setDeleting(true);
+            deleteKeyRef.current ??= newIdempotencyKey();
+            void deleteMemoryMoment(moment.id, {
+              headers: { 'Idempotency-Key': deleteKeyRef.current },
+            })
+              .then(async () => {
+                queryClient.removeQueries({
+                  queryKey: getGetMemoryMomentQueryKey(moment.id),
+                  exact: true,
+                });
+                await queryClient.invalidateQueries({
+                  queryKey: getListMemoryMomentsQueryKey(),
+                });
+              })
+              .then(() => {
+                showToast('时光已删除');
+                router.back();
+              })
+              .catch((error) => showToast(errorMessage(error, '删除没有完成，请稍后重试。')))
+              .finally(() => setDeleting(false));
           },
         },
       ],
@@ -70,19 +115,7 @@ export default function MemoryDetailScreen() {
 
   return (
     <AppScreen includeBottomInset>
-      <NavHeader
-        right={(
-          <Pressable
-            accessibilityLabel="编辑这段时光"
-            accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/memories/new', params: { id: moment.id } })}
-            style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
-          >
-            <AppIcon color={colors.primaryStrong} name="create-outline" size={21} />
-          </Pressable>
-        )}
-        title="时光详情"
-      />
+      <NavHeader title="时光详情" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScrollView
           contentContainerStyle={styles.photoRail}
@@ -142,23 +175,18 @@ export default function MemoryDetailScreen() {
           {moment.title ? <Text accessibilityRole="header" style={styles.title}>{moment.title}</Text> : null}
           {moment.story ? <Text style={styles.story}>{moment.story}</Text> : null}
           <View style={styles.sourceRow}>
-            <AppIcon color={colors.textTertiary} name="image-outline" size={15} />
+            <AppIcon color={colors.textTertiary} name="lock-closed-outline" size={15} />
             <Text style={styles.sourceText}>
-              {moment.origin === 'demo' ? '本地演示内容' : '本次运行中添加'} · {moment.photos.length} 张照片
+              仅你可见 · {moment.photos.length} 张照片
             </Text>
           </View>
         </View>
 
         <View style={styles.actions}>
           <AppButton
-            icon="create-outline"
-            label="编辑照片与文字"
-            onPress={() => router.push({ pathname: '/memories/new', params: { id: moment.id } })}
-            variant="secondary"
-          />
-          <AppButton
+            disabled={deleting}
             icon="trash-outline"
-            label="删除这段时光"
+            label={deleting ? '正在删除…' : '删除这段时光'}
             onPress={confirmDelete}
             variant="danger"
           />
@@ -177,12 +205,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: 'center',
   },
-  headerAction: {
-    width: 48,
-    height: 48,
+  loading: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.pill,
   },
   photoRail: {
     paddingHorizontal: 16,
@@ -270,8 +296,5 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingHorizontal: 16,
     gap: 8,
-  },
-  pressed: {
-    backgroundColor: colors.primarySoft,
   },
 });

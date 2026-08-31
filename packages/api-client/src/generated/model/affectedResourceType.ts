@@ -35,6 +35,7 @@ export const AffectedResourceType = {
   assistant_thread: 'assistant_thread',
   action_proposal: 'action_proposal',
   memory: 'memory',
+  memory_moment: 'memory_moment',
   recipe: 'recipe',
   meal_plan: 'meal_plan',
   diet_profile: 'diet_profile',

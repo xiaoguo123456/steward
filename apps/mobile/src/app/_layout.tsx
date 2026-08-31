@@ -9,7 +9,6 @@ import { ApiProvider, useBootState } from '@/api/provider';
 import { ToastProvider } from '@/components/ui/toast';
 import { FocusPrototypeProvider } from '@/features/focus/focus-context';
 import { CaptureQueueProvider } from '@/features/capture/capture-queue-provider';
-import { MemoriesPrototypeProvider } from '@/features/memories/memories-context';
 import { colors } from '@/theme/tokens';
 
 export default function RootLayout() {
@@ -20,9 +19,7 @@ export default function RootLayout() {
           <ToastProvider>
             <CaptureQueueProvider>
               <FocusPrototypeProvider>
-                <MemoriesPrototypeProvider>
-                  <RootNavigator />
-                </MemoriesPrototypeProvider>
+                <RootNavigator />
               </FocusPrototypeProvider>
             </CaptureQueueProvider>
           </ToastProvider>

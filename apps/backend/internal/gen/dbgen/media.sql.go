@@ -85,6 +85,32 @@ func (q *Queries) FindUploadedMediaByHash(ctx context.Context, contentHash *stri
 	return i, err
 }
 
+const getDeletedMediaAssetForCleanup = `-- name: GetDeletedMediaAssetForCleanup :one
+SELECT id, user_id, object_key, kind, content_type, byte_size, content_hash, status, error, created_at, uploaded_at, deleted_at FROM media_assets
+WHERE id = $1 AND deleted_at IS NOT NULL
+`
+
+// 清理 Worker 只读取当前用户已经不可见的资产，不允许借此读取有效媒体。
+func (q *Queries) GetDeletedMediaAssetForCleanup(ctx context.Context, id string) (MediaAsset, error) {
+	row := q.db.QueryRow(ctx, getDeletedMediaAssetForCleanup, id)
+	var i MediaAsset
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ObjectKey,
+		&i.Kind,
+		&i.ContentType,
+		&i.ByteSize,
+		&i.ContentHash,
+		&i.Status,
+		&i.Error,
+		&i.CreatedAt,
+		&i.UploadedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getMediaAsset = `-- name: GetMediaAsset :one
 SELECT id, user_id, object_key, kind, content_type, byte_size, content_hash, status, error, created_at, uploaded_at, deleted_at FROM media_assets
 WHERE id = $1 AND deleted_at IS NULL

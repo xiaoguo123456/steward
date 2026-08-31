@@ -1,9 +1,16 @@
+import type { MemoryMoment as ApiMemoryMoment } from '@steward/api-client';
+
 export type MemoryPhotoSource = number | { uri: string };
 
 export type MemoryPhoto = {
   id: string;
   source: MemoryPhotoSource;
   description: string;
+  local?: {
+    uri: string;
+    contentType: string;
+    byteSize?: number;
+  };
 };
 
 export type MemoryMoment = {
@@ -12,7 +19,6 @@ export type MemoryMoment = {
   title: string;
   story: string;
   photos: MemoryPhoto[];
-  origin: 'demo' | 'local';
 };
 
 export type MemoryMonthGroup = {
@@ -23,11 +29,22 @@ export type MemoryMonthGroup = {
   moments: MemoryMoment[];
 };
 
-export type MemoryWritingCandidate = {
-  title: string;
-  story: string;
-  sourceSummary: string;
-};
+/** 把生成的网络 DTO 映射为只负责展示的移动端视图模型。 */
+export function toMemoryMoment(moment: ApiMemoryMoment): MemoryMoment {
+  return {
+    id: moment.id,
+    date: moment.occurred_on,
+    title: moment.title,
+    story: moment.story,
+    photos: [...moment.photos]
+      .sort((left, right) => left.position - right.position)
+      .map((photo) => ({
+        id: photo.media_id,
+        source: { uri: photo.read_url },
+        description: photo.description,
+      })),
+  };
+}
 
 /** 时光首页以月份分组；同一天允许多条，组内保持由新到旧。 */
 export function groupMemoryMoments(moments: readonly MemoryMoment[]): MemoryMonthGroup[] {
@@ -85,29 +102,6 @@ export function formatMemoryDateParts(date: string): {
     weekday: weekdays[target.getDay()],
     month,
     full: `${target.getFullYear()}年${month}${target.getDate()}日 · ${weekdays[target.getDay()]}`,
-  };
-}
-
-/**
- * 当前原型的确定性文案 Candidate。
- * 它只验证“建议—采用—保存”的产品路径，不把图片发送给模型，也不冒充正式 AI。
- */
-export function buildPrototypeWritingCandidate(input: {
-  date: string;
-  photoCount: number;
-  title: string;
-  story: string;
-}): MemoryWritingCandidate {
-  const date = formatMemoryDateParts(input.date);
-  const title = input.title.trim() || `${date.month}${Number(date.day)}日的片段`;
-  const story = input.story.trim()
-    ? `${input.story.trim()} 这 ${input.photoCount} 张照片，把那天的光和心情留了下来。`
-    : `翻到这 ${input.photoCount} 张照片，才发现普通的一天也有值得记住的光。`;
-
-  return {
-    title,
-    story,
-    sourceSummary: `${input.photoCount} 张已选照片 · ${input.date}`,
   };
 }
 

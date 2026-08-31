@@ -52,12 +52,24 @@ func (s *Service) ValidateImageReferences(
 	userID string,
 	mediaIDs []string,
 ) error {
+	return s.ValidateImageReferencesFor(ctx, q, userID, mediaIDs, "itinerary_details.attachment_media_ids")
+}
+
+// ValidateImageReferencesFor 校验某个业务字段准备长期引用的图片。
+// field 只用于返回准确的字段级错误，不参与数据库或对象键计算。
+func (s *Service) ValidateImageReferencesFor(
+	ctx context.Context,
+	q *dbgen.Queries,
+	userID string,
+	mediaIDs []string,
+	field string,
+) error {
 	for index, mediaID := range mediaIDs {
 		row, err := q.GetMediaAsset(ctx, mediaID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.Validation(apperr.Field(
-					fmt.Sprintf("itinerary_details.attachment_media_ids[%d]", index),
+					fmt.Sprintf("%s[%d]", field, index),
 					"票据图片不存在或无权访问。",
 				))
 			}
@@ -68,7 +80,7 @@ func (s *Service) ValidateImageReferences(
 		}
 		if row.Status != "uploaded" || row.Kind != "image" {
 			return apperr.Validation(apperr.Field(
-				fmt.Sprintf("itinerary_details.attachment_media_ids[%d]", index),
+				fmt.Sprintf("%s[%d]", field, index),
 				"票据图片尚未上传完成或格式不受支持。",
 			))
 		}
@@ -401,6 +413,14 @@ func (s *Service) Complete(ctx context.Context, userID, mediaID string,
 func (s *Service) Delete(ctx context.Context, userID, mediaID string) error {
 	var row dbgen.MediaAsset
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		referenced, err := q.IsMediaReferencedByActiveMemoryMoment(ctx, mediaID)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		if referenced {
+			return apperr.Newf(apperr.CodeVersionConflict,
+				"这张照片已发布到时光，请删除对应时光后再试。")
+		}
 		deleted, err := q.SoftDeleteMediaAsset(ctx, mediaID)
 		if err != nil {
 			if database.IsNoRows(err) {
@@ -419,6 +439,30 @@ func (s *Service) Delete(ctx context.Context, userID, mediaID string) error {
 	// 残留对象由保留任务重试清理，比让删除动作整体失败更符合预期。
 	if err := s.store.Delete(ctx, row.ObjectKey); err != nil {
 		return nil
+	}
+	return nil
+}
+
+// PurgeDeleted 清理一个已经软删除的媒体对象，供 Retention Worker 幂等重试。
+// 有效媒体不会通过该入口读取或删除；数据库行已随账号清理消失时也视为完成。
+func (s *Service) PurgeDeleted(ctx context.Context, userID, mediaID string) error {
+	var objectKey string
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		row, err := q.GetDeletedMediaAssetForCleanup(ctx, mediaID)
+		if database.IsNoRows(err) {
+			return nil
+		}
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		objectKey = row.ObjectKey
+		return nil
+	})
+	if err != nil || objectKey == "" {
+		return err
+	}
+	if err := s.store.Delete(ctx, objectKey); err != nil && !errors.Is(err, storage.ErrNotFound) {
+		return fmt.Errorf("清理媒体对象失败：%w", err)
 	}
 	return nil
 }

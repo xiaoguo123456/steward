@@ -22,6 +22,8 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/media"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memorymoments"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/retention"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/views"
@@ -133,6 +135,22 @@ func (AccountDeletionArgs) Kind() string { return "account.deletion" }
 
 // InsertOpts 让账号删除进入单并发 retention 队列。
 func (AccountDeletionArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueRetention, MaxAttempts: 8}
+}
+
+// MemoryMomentMediaDeletionArgs 清理已随时光删除而不可见的媒体对象。
+// 任务只保存用户与媒体引用，不复制对象键或签名地址。
+type MemoryMomentMediaDeletionArgs struct {
+	SchemaVersion int    `json:"schema_version"`
+	UserID        string `json:"user_id"`
+	MediaID       string `json:"resource_id"`
+}
+
+// Kind 返回任务类型名。
+func (MemoryMomentMediaDeletionArgs) Kind() string { return "memory_moment.media_deletion" }
+
+// InsertOpts 让媒体物理清理进入单并发 retention 队列。
+func (MemoryMomentMediaDeletionArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: QueueRetention, MaxAttempts: 8}
 }
 
@@ -272,6 +290,23 @@ func (e *Enqueuer) EnqueueAccountDeletion(
 	return nil
 }
 
+// EnqueueMemoryMomentMediaDeletion 在时光删除事务内登记媒体物理清理。
+func (e *Enqueuer) EnqueueMemoryMomentMediaDeletion(
+	ctx context.Context, _ *dbgen.Queries, args memorymoments.MediaDeletionArgs,
+) error {
+	tx, err := database.TxFrom(ctx)
+	if err != nil {
+		return apperr.Internal(err)
+	}
+	_, err = e.client.InsertTx(ctx, tx, MemoryMomentMediaDeletionArgs{
+		SchemaVersion: 1, UserID: args.UserID, MediaID: args.MediaID,
+	}, nil)
+	if err != nil {
+		return apperr.Internal(fmt.Errorf("登记时光媒体清理任务失败：%w", err))
+	}
+	return nil
+}
+
 // CaptureParseWorker 执行解析任务。
 type CaptureParseWorker struct {
 	river.WorkerDefaults[CaptureParseArgs]
@@ -377,6 +412,13 @@ type AccountDeletionWorker struct {
 	logger *slog.Logger
 }
 
+// MemoryMomentMediaDeletionWorker 物理清理已经不可见的时光媒体对象。
+type MemoryMomentMediaDeletionWorker struct {
+	river.WorkerDefaults[MemoryMomentMediaDeletionArgs]
+	svc    *media.Service
+	logger *slog.Logger
+}
+
 // Work 执行删除；只有重试耗尽后才公开 failed。
 func (w *AccountDeletionWorker) Work(ctx context.Context, job *river.Job[AccountDeletionArgs]) error {
 	err := w.svc.RunDeletion(ctx, job.Args.RequestID)
@@ -390,6 +432,18 @@ func (w *AccountDeletionWorker) Work(ctx context.Context, job *river.Job[Account
 			w.logger.Error("标记账号删除失败时出错", "request_id", job.Args.RequestID,
 				"error", markErr)
 		}
+	}
+	return err
+}
+
+// Work 执行可重试且幂等的媒体对象清理。
+func (w *MemoryMomentMediaDeletionWorker) Work(
+	ctx context.Context, job *river.Job[MemoryMomentMediaDeletionArgs],
+) error {
+	err := w.svc.PurgeDeleted(ctx, job.Args.UserID, job.Args.MediaID)
+	if err != nil {
+		w.logger.Error("清理时光媒体对象失败", "media_id", job.Args.MediaID,
+			"attempt", job.Attempt, "error", err)
 	}
 	return err
 }
@@ -449,6 +503,7 @@ type Deps struct {
 	Views     *views.Service
 	Trackers  *trackers.Service
 	Lists     *lists.Service
+	Media     *media.Service
 	Retention *retention.Service
 	// Aggregate 生成后台读模型。为空时不注册周期任务，
 	// 后台会看到 aggregation_status=pending 而不是一份看起来正常的空数据。
@@ -484,6 +539,10 @@ func New(pool *pgxpool.Pool, deps Deps, logger *slog.Logger, runWorkers bool) (*
 		if err := river.AddWorkerSafely(workers,
 			&AccountDeletionWorker{svc: deps.Retention, logger: logger}); err != nil {
 			return nil, fmt.Errorf("注册账号删除 Worker 失败：%w", err)
+		}
+		if err := river.AddWorkerSafely(workers,
+			&MemoryMomentMediaDeletionWorker{svc: deps.Media, logger: logger}); err != nil {
+			return nil, fmt.Errorf("注册时光媒体清理 Worker 失败：%w", err)
 		}
 		logger.Info("注册周期任务", "aggregate_enabled", deps.Aggregate != nil)
 		if deps.Aggregate != nil {

@@ -235,10 +235,13 @@ apps/backend/internal/
 | Memory | Learned Memory、Evidence、Revision、Embedding、Relearn Block | 提议、确认、修改、查询、删除记忆 |
 | Users | 显式设置、初始化、同意记录 | 读取／修改显式偏好和 AI 设置 |
 | Captures | Capture、Revision、Part、Candidate Snapshot、Question | 多模态输入、解析、追问和确认 |
+| MemoryMoments | 用户主动发布的私人照片时光、照片顺序与删除状态 | 发布、按日期查询、读取详情和整段删除；发布后不提供更新 |
 | Search | Search Document、Search Embedding、Answer Snapshot | 用户隔离的混合检索与有来源回答 |
 | Reviews | 指标、Snapshot、Source | Daily／Weekly／Project／Data 总结 |
 | 各业务模块 | 自己的 Task、Event、Project、Note、Tracker、Record 等 | 稳定 Query 和 Command |
 | Platform AI | Provider Client、Runtime Adapter、Schema 编译、模型策略 | 实现模块定义的 AI Port，不拥有业务事实 |
+
+`MemoryMoments` 与 AI 长期记忆 `memory_items` 是两个独立领域，不能因中文名称相近而共享表、DTO 或删除状态。当前时光只提供确定性手工发布；第三方图片处理者、单独同意、Candidate Schema、来源审计和 Eval 完成前，不得调用 Provider 或返回本地伪造候选。
 
 `ai_actions` 是跨 AI 功能的运行审计记录。建议由一个窄的 `AIRunRecorder` Port 统一写入，表可以由 Assistant 模块托管，但 Capture、Search 和 Review 只能调用公开 Recorder，不能直接写 Assistant 私表。
 

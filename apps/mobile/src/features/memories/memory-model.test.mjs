@@ -3,12 +3,12 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
-  buildPrototypeWritingCandidate,
   formatMemoryDateParts,
   groupMemoryMoments,
   isMemoryDateKey,
   memoriesForDate,
   memoryDatesWithCounts,
+  toMemoryMoment,
 } from './memory-model.ts';
 import { MEMORY_PHOTO_LIMIT, mergeMemoryPhotos, moveMemoryPhoto } from './memory-picker.ts';
 
@@ -19,7 +19,6 @@ const moment = (id, date) => ({
   title: id,
   story: '',
   photos: [photo(`${id}-photo`)],
-  origin: 'local',
 });
 
 test('时光按月份和日期由新到旧分组，同一天可以保留多条', () => {
@@ -56,30 +55,43 @@ test('选图去重并严格限制为九张，排序不会越界', () => {
   assert.deepEqual(moveMemoryPhoto(merged, 0, -1), merged);
 });
 
-test('原型文案只生成候选并保留可追溯的输入摘要', () => {
-  assert.deepEqual(buildPrototypeWritingCandidate({
-    date: '2026-08-24',
-    photoCount: 4,
-    title: '',
-    story: '',
-  }), {
-    title: '8月24日的片段',
-    story: '翻到这 4 张照片，才发现普通的一天也有值得记住的光。',
-    sourceSummary: '4 张已选照片 · 2026-08-24',
+test('正式接口结果按 position 映射为短期网络图片', () => {
+  const mapped = toMemoryMoment({
+    id: 'mom_1',
+    occurred_on: '2026-08-24',
+    title: '海边散步',
+    story: '傍晚的风很轻。',
+    created_by: 'user',
+    created_at: '2026-08-24T12:00:00Z',
+    photos: [
+      { media_id: 'med_2', read_url: 'https://example.test/2', description: '第二张', position: 1 },
+      { media_id: 'med_1', read_url: 'https://example.test/1', description: '第一张', position: 0 },
+    ],
   });
+  assert.deepEqual(mapped.photos.map((item) => item.id), ['med_1', 'med_2']);
+  assert.deepEqual(mapped.photos[0].source, { uri: 'https://example.test/1' });
 });
 
-test('时光首页使用明确的上下文动作并直接进入系统选图', async () => {
+test('时光使用正式查询与上传，发布后只保留整段删除', async () => {
   const home = await readFile(new URL('./memories-home.tsx', import.meta.url), 'utf8');
   const editor = await readFile(new URL('../../app/memories/new.tsx', import.meta.url), 'utf8');
   const calendar = await readFile(new URL('../../app/memories/calendar.tsx', import.meta.url), 'utf8');
+  const detail = await readFile(new URL('../../app/memories/[id].tsx', import.meta.url), 'utf8');
 
+  assert.match(home, /useListMemoryMoments/);
   assert.match(home, /label="按日期"/);
   assert.match(home, /label="选照片"/);
   assert.match(home, /params: \{ pick: '1' \}/);
   assert.doesNotMatch(home, /name="add"/);
   assert.match(editor, /rawPick !== '1'/);
   assert.match(editor, /void pickImages\(\)/);
+  assert.match(editor, /createMemoryMoment/);
+  assert.match(editor, /useMediaUpload/);
+  assert.match(editor, /发布后不可编辑，只能删除整段时光/);
+  assert.doesNotMatch(editor, /AI Candidate|本地交互原型|updateMoment|保存修改/);
   assert.match(calendar, /params: \{ date: selectedDate, pick: '1' \}/);
   assert.match(calendar, />添加照片<\/Text>/);
+  assert.match(detail, /deleteMemoryMoment/);
+  assert.doesNotMatch(detail, /编辑照片与文字|create-outline|memories\/new/);
+  assert.doesNotMatch(detail, /本地演示内容|本次运行中添加/);
 });

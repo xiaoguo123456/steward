@@ -1,16 +1,24 @@
+import { errorMessage, useListMemoryMoments } from '@steward/api-client';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
+import { StatePanel } from '@/components/ui/state-panel';
 import { colors, fontFamily, radius } from '@/theme/tokens';
-import { useMemoriesPrototype } from './memories-context';
-import { groupMemoryMoments } from './memory-model';
+import { groupMemoryMoments, toMemoryMoment } from './memory-model';
 import { MemoryMomentRow } from './memory-moment-row';
 
 export function MemoriesHome() {
   const router = useRouter();
-  const { moments } = useMemoriesPrototype();
+  const query = useListMemoryMoments({ limit: 100 }, {
+    query: { staleTime: 3 * 60 * 1000 },
+  });
+  const moments = useMemo(
+    () => (query.data?.data ?? []).map(toMemoryMoment),
+    [query.data?.data],
+  );
   const groups = groupMemoryMoments(moments);
   const currentYear = groups[0]?.year ?? new Date().getFullYear();
   const addMemory = () => router.push({
@@ -42,7 +50,20 @@ export function MemoriesHome() {
         </View>
       </View>
 
-      {groups.length === 0 ? (
+      {query.isPending ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : query.isError ? (
+        <StatePanel
+          actionLabel="重试"
+          compact
+          icon="cloud-offline-outline"
+          message={errorMessage(query.error, '服务出现问题，请稍后重试。')}
+          onAction={() => void query.refetch()}
+          title="时光没有加载出来"
+        />
+      ) : groups.length === 0 ? (
         <View style={styles.empty}>
           <View style={styles.emptyIcon}>
             <AppIcon color={colors.primaryStrong} name="images-outline" size={26} />
@@ -109,6 +130,11 @@ const styles = StyleSheet.create({
   },
   timeline: {
     paddingBottom: 20,
+  },
+  loading: {
+    minHeight: 260,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   monthGroup: {
     marginTop: 36,

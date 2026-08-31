@@ -20,6 +20,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/media"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memory"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memorymoments"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/moodjournal"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/recipes"
@@ -62,6 +63,7 @@ type Server struct {
 	*activity.ActivityAPI
 	*assistant.AssistantAPI
 	*memory.MemoryAPI
+	*memorymoments.MemoryMomentAPI
 	*recipes.RecipeAPI
 	*moodjournal.API
 }
@@ -125,20 +127,21 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	}
 
 	// 构造顺序遵循依赖方向：被依赖的模块先于依赖它们的模块。
+	// Capture、归档、时光媒体清理与账号删除都需要队列；用延迟绑定打破
+	// Service 与 Worker Runtime 的组装环，绑定发生在任何请求到达之前。
+	enqueuer := &lazyEnqueuer{}
+	retentionEnqueuer := &lazyRetentionEnqueuer{}
 	activitySvc := activity.New(db)
 	listsSvc := lists.New(db).WithArchiveRetention(cfg.TaskListArchiveRetention)
 	usersSvc := users.New(db, listsSvc)
 	mediaSvc := media.New(db, store)
+	memoryMomentsSvc := memorymoments.New(db, mediaSvc, activitySvc, enqueuer)
 	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc, mediaSvc)
 	moodJournalSvc := moodjournal.New(db, objectsSvc, usersSvc, activitySvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
 	recipesSvc := recipes.New(db, usersSvc, listsSvc, objectsSvc)
 
-	// Capture 需要队列才能入队，而队列的 Worker 又需要 Capture 服务。
-	// 用一个延迟绑定的入队器打破这个循环，绑定发生在任何请求到达之前。
-	enqueuer := &lazyEnqueuer{}
-	retentionEnqueuer := &lazyRetentionEnqueuer{}
 	trackersSvc.WithJobs(enqueuer)
 	listsSvc.WithJobs(enqueuer)
 	// Provider 同时实现解析与媒体处理时把它接上；fake 只做解析，媒体处理为空，
@@ -198,6 +201,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 		Views:     viewsSvc,
 		Trackers:  trackersSvc,
 		Lists:     listsSvc,
+		Media:     mediaSvc,
 		Retention: retentionSvc,
 		Aggregate: aggregateSvc,
 	}, logger, opts.RunWorkers)
@@ -226,11 +230,12 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 			CaptureAPI:         captures.NewCaptureAPI(capturesSvc),
 			MediaAPI:           media.NewMediaAPI(mediaSvc),
 			// 撤销必须回到拥有资源的模块执行，Activity 自己不改别人的表。
-			ActivityAPI:  activity.NewActivityAPI(activitySvc, objectsSvc, trackersSvc),
-			AssistantAPI: assistant.NewAssistantAPI(assistantSvc, proposalSvc),
-			MemoryAPI:    memory.NewMemoryAPI(memorySvc),
-			RecipeAPI:    recipes.NewRecipeAPI(recipesSvc),
-			API:          moodjournal.NewAPI(moodJournalSvc),
+			ActivityAPI:     activity.NewActivityAPI(activitySvc, objectsSvc, trackersSvc),
+			AssistantAPI:    assistant.NewAssistantAPI(assistantSvc, proposalSvc),
+			MemoryAPI:       memory.NewMemoryAPI(memorySvc),
+			MemoryMomentAPI: memorymoments.NewAPI(memoryMomentsSvc),
+			RecipeAPI:       recipes.NewRecipeAPI(recipesSvc),
+			API:             moodjournal.NewAPI(moodJournalSvc),
 		},
 		Jobs:          runtime,
 		Parser:        parser,
@@ -406,6 +411,15 @@ func (l *lazyEnqueuer) EnqueueTaskListArchiveCleanup(
 		return fmt.Errorf("任务队列尚未初始化，无法登记清单归档清理任务")
 	}
 	return l.inner.EnqueueTaskListArchiveCleanup(ctx, q, args)
+}
+
+func (l *lazyEnqueuer) EnqueueMemoryMomentMediaDeletion(
+	ctx context.Context, q *dbgen.Queries, args memorymoments.MediaDeletionArgs,
+) error {
+	if l.inner == nil {
+		return fmt.Errorf("任务队列尚未初始化，无法登记时光媒体清理任务")
+	}
+	return l.inner.EnqueueMemoryMomentMediaDeletion(ctx, q, args)
 }
 
 // newChatProvider 从解析器里取出对话能力。
