@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { StatePanel } from '@/components/ui/state-panel';
 import { colors, fontFamily, moodColors, radius, typography } from '@/theme/tokens';
@@ -44,17 +45,21 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
   return (
     <View style={styles.root}>
       <View style={styles.toolsRow}>
-        <UtilityButton
-          label="打开日记日历"
-          name="calendar-outline"
+        <AppButton
+          accessibilityLabel="打开日记日历"
+          compact
+          icon="calendar-outline"
+          label="日历"
           onPress={() => router.push('/mood-journal/calendar')}
-          text="日历"
+          variant="neutral"
         />
-        <UtilityButton
-          label="搜索心情日记"
-          name="search-outline"
+        <AppButton
+          accessibilityLabel="搜索心情日记"
+          compact
+          icon="search-outline"
+          label="搜索"
           onPress={() => router.push('/mood-journal/search')}
-          text="搜索"
+          variant="neutral"
         />
       </View>
 
@@ -175,25 +180,6 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
   );
 }
 
-function UtilityButton({ label, name, onPress, text }: {
-  label: string;
-  name: 'calendar-outline' | 'search-outline';
-  onPress: () => void;
-  text: string;
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.utilityButton, pressed && styles.pressed]}
-    >
-      <AppIcon color={colors.textSecondary} name={name} size={18} />
-      <Text style={styles.utilityButtonText}>{text}</Text>
-    </Pressable>
-  );
-}
-
 function TimelineEntry({ entry, showDivider }: { entry: MoodJournalEntry; showDivider: boolean }) {
   const router = useRouter();
   const moodText = entryMoodText(entry);
@@ -221,12 +207,7 @@ function TimelineEntry({ entry, showDivider }: { entry: MoodJournalEntry; showDi
 
 const styles = StyleSheet.create({
   root: { paddingTop: 12, paddingBottom: 16 },
-  toolsRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 2 },
-  utilityButton: {
-    minHeight: 44, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, borderRadius: radius.sm,
-  },
-  utilityButtonText: { color: colors.textSecondary, fontFamily, ...typography.label },
+  toolsRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
   prompt: {
     marginTop: 6, minHeight: 86, paddingHorizontal: 16, paddingVertical: 14,
     flexDirection: 'row', alignItems: 'center', gap: 12,

@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -182,15 +183,14 @@ function RelationshipsPreview() {
             </Pressable>
           ) : null}
         </View>
-        <Pressable
+        <AppButton
           accessibilityLabel="添加亲友"
-          accessibilityRole="button"
+          compact
+          icon="person-outline"
+          label="添加亲友"
           onPress={() => setShowPreviewNotice(true)}
-          style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-        >
-          <AppIcon color={relationshipColors.strong} name="person-outline" size={18} />
-          <Text style={styles.addButtonText}>添加亲友</Text>
-        </Pressable>
+          variant="secondary"
+        />
       </View>
 
       <View accessibilityRole="tablist" style={styles.filters}>
@@ -444,26 +444,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   toolbarRow: {
-    minHeight: 46,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  addButton: {
-    minHeight: 46,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: radius.sm,
-    backgroundColor: relationshipColors.soft,
-  },
-  addButtonText: {
-    color: relationshipColors.strong,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
   },
   pressed: {
     opacity: 0.56,
@@ -471,7 +455,7 @@ const styles = StyleSheet.create({
   searchField: {
     flex: 1,
     minWidth: 0,
-    minHeight: 46,
+    minHeight: 44,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',

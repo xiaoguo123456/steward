@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppButton } from '@/components/ui/app-button';
 import { stageAssistantDraft } from '@/features/assistant/assistant-draft-store';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 import { formatRelativeTime } from '@/utils/format';
@@ -60,14 +61,14 @@ export function InspirationContent({ active }: { active: boolean }) {
         <View style={styles.lead}>
           <Text style={styles.theme}>{leadPrompt.theme}</Text>
           <Text style={styles.leadQuestion}>{leadPrompt.question}</Text>
-          <Pressable
+          <AppButton
             accessibilityLabel={`开始聊聊：${leadPrompt.question}`}
-            accessibilityRole="button"
+            compact
+            label="开始聊聊"
             onPress={() => openPrompt(leadPrompt)}
-            style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.textButtonLabel}>开始聊聊</Text>
-          </Pressable>
+            style={styles.textButton}
+            variant="text"
+          />
         </View>
       ) : null}
 
@@ -116,23 +117,23 @@ export function InspirationContent({ active }: { active: boolean }) {
             <Text style={styles.noteTitle}>{selectedNote.title}</Text>
             <Text numberOfLines={4} style={styles.noteText}>{selectedNote.content_plaintext}</Text>
             <View style={styles.noteActions}>
-              <Pressable
-                accessibilityRole="button"
+              <AppButton
+                compact
+                label="打开原文"
                 onPress={() => router.push({
                   pathname: '/notes/[id]',
                   params: { id: selectedNote.id },
                 })}
-                style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.secondaryActionLabel}>打开原文</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
+                style={styles.textButton}
+                variant="textMuted"
+              />
+              <AppButton
+                compact
+                label="继续想想"
                 onPress={() => continueThinking(selectedNote)}
-                style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.textButtonLabel}>继续想想</Text>
-              </Pressable>
+                style={styles.textButton}
+                variant="text"
+              />
             </View>
           </View>
         </View>
@@ -193,15 +194,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   textButton: {
-    minHeight: 44,
     alignSelf: 'flex-start',
-    justifyContent: 'center',
-  },
-  textButtonLabel: {
-    color: colors.inspiration,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
+    paddingHorizontal: 0,
   },
   section: {
     marginTop: 22,
@@ -273,12 +267,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 22,
   },
-  secondaryActionLabel: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
   sourceError: {
     minHeight: 58,
     marginTop: 22,
@@ -303,7 +291,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   retryLabel: {
-    color: colors.inspiration,
+    color: colors.primaryStrong,
     fontFamily,
     ...typography.label,
     fontWeight: '600',

@@ -7,15 +7,17 @@ import { AppIcon } from './icon';
 
 type AppButtonProps = {
   label: string;
+  accessibilityLabel?: string;
   onPress?: () => void;
   disabled?: boolean;
   icon?: ComponentProps<typeof AppIcon>['name'];
-  variant?: 'primary' | 'secondary' | 'text' | 'danger';
+  variant?: 'primary' | 'secondary' | 'neutral' | 'text' | 'textMuted' | 'danger';
   compact?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
 export function AppButton({
+  accessibilityLabel,
   label,
   onPress,
   disabled = false,
@@ -25,9 +27,20 @@ export function AppButton({
   style,
 }: AppButtonProps) {
   const isPrimary = variant === 'primary';
+  const isMuted = variant === 'neutral' || variant === 'textMuted';
+  const iconColor = disabled
+    ? colors.textSecondary
+    : isPrimary
+      ? colors.background
+      : variant === 'danger'
+        ? colors.danger
+        : isMuted
+          ? colors.textSecondary
+          : colors.primaryStrong;
 
   return (
     <Pressable
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
@@ -43,7 +56,7 @@ export function AppButton({
     >
       {icon ? (
         <AppIcon
-          color={isPrimary ? colors.background : variant === 'danger' ? colors.danger : colors.primaryStrong}
+          color={iconColor}
           name={icon}
           size={18}
         />
@@ -52,6 +65,7 @@ export function AppButton({
         style={[
           styles.label,
           isPrimary && styles.primaryLabel,
+          isMuted && styles.mutedLabel,
           variant === 'danger' && styles.dangerLabel,
           disabled && styles.disabledLabel,
         ]}
@@ -82,7 +96,13 @@ const styles = StyleSheet.create({
   secondary: {
     backgroundColor: colors.primarySoft,
   },
+  neutral: {
+    backgroundColor: colors.surfaceSubtle,
+  },
   text: {
+    backgroundColor: 'transparent',
+  },
+  textMuted: {
     backgroundColor: 'transparent',
   },
   danger: {
@@ -103,6 +123,9 @@ const styles = StyleSheet.create({
   },
   primaryLabel: {
     color: colors.background,
+  },
+  mutedLabel: {
+    color: colors.textSecondary,
   },
   dangerLabel: {
     color: colors.danger,

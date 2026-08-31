@@ -20,3 +20,13 @@ test('Capture 图片删除入口通过 hitSlop 扩展到 44dp', async () => {
   assert.match(removeButton, /hitSlop=\{9\}/);
   assert.match(source, /removeImage:\s*{[^}]*width:\s*26,[^}]*height:\s*26,/s);
 });
+
+test('公共紧凑按钮统一尺寸、图标和中性操作色', async () => {
+  const source = await readFile(new URL('./app-button.tsx', import.meta.url), 'utf8');
+
+  assert.match(source, /compact:\s*{[^}]*minHeight:\s*44,[^}]*paddingHorizontal:\s*16,/s);
+  assert.match(source, /borderRadius:\s*radius\.md/);
+  assert.match(source, /size=\{18\}/);
+  assert.match(source, /neutral:\s*{[^}]*backgroundColor:\s*colors\.surfaceSubtle,/s);
+  assert.match(source, /mutedLabel:\s*{[^}]*color:\s*colors\.textSecondary,/s);
+});

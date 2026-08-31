@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
@@ -23,24 +23,22 @@ export function MemoriesHome() {
       <View style={styles.header}>
         <Text accessibilityRole="header" style={styles.year}>{currentYear}</Text>
         <View style={styles.headerActions}>
-          <Pressable
+          <AppButton
             accessibilityLabel="按日期查找时光"
-            accessibilityRole="button"
+            compact
+            icon="calendar-outline"
+            label="按日期"
             onPress={() => router.push('/memories/calendar')}
-            style={({ pressed }) => [styles.dateAction, pressed && styles.actionPressed]}
-          >
-            <AppIcon color={colors.textSecondary} name="calendar-outline" size={18} />
-            <Text style={styles.dateActionText}>按日期</Text>
-          </Pressable>
-          <Pressable
+            variant="neutral"
+          />
+          <AppButton
             accessibilityLabel="选择照片添加时光"
-            accessibilityRole="button"
+            compact
+            icon="images-outline"
+            label="选照片"
             onPress={addMemory}
-            style={({ pressed }) => [styles.photoAction, pressed && styles.actionPressed]}
-          >
-            <AppIcon color={colors.primaryStrong} name="images-outline" size={18} />
-            <Text style={styles.photoActionText}>选照片</Text>
-          </Pressable>
+            variant="secondary"
+          />
         </View>
       </View>
 
@@ -107,44 +105,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-  },
-  dateAction: {
-    minHeight: 44,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: radius.sm,
-  },
-  dateActionText: {
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '600',
-  },
-  photoAction: {
-    minHeight: 44,
-    paddingHorizontal: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-  },
-  photoActionText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '600',
-  },
-  actionPressed: {
-    opacity: 0.72,
-    backgroundColor: colors.surface,
+    gap: 8,
   },
   timeline: {
     paddingBottom: 20,

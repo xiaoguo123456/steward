@@ -74,8 +74,8 @@ test('时光首页使用明确的上下文动作并直接进入系统选图', as
   const editor = await readFile(new URL('../../app/memories/new.tsx', import.meta.url), 'utf8');
   const calendar = await readFile(new URL('../../app/memories/calendar.tsx', import.meta.url), 'utf8');
 
-  assert.match(home, />按日期<\/Text>/);
-  assert.match(home, />选照片<\/Text>/);
+  assert.match(home, /label="按日期"/);
+  assert.match(home, /label="选照片"/);
   assert.match(home, /params: \{ pick: '1' \}/);
   assert.doesNotMatch(home, /name="add"/);
   assert.match(editor, /rawPick !== '1'/);
