@@ -33,17 +33,15 @@ MemoryMomentPhoto:
 MemoryMoment:
   type: object
   additionalProperties: false
-  required: [id, occurred_on, title, story, photos, created_by, created_at]
+  required: [id, occurred_on, description, photos, created_by, created_at]
   properties:
     id:
       type: string
     occurred_on:
       type: string
       format: date
-      description: 用户选择的当地自然日，不做时区换算。
-    title:
-      type: string
-    story:
+      description: 服务端按账号时区从发布时间派生的当地自然日。
+    description:
       type: string
     photos:
       type: array
@@ -60,17 +58,11 @@ MemoryMoment:
 CreateMemoryMomentRequest:
   type: object
   additionalProperties: false
-  required: [occurred_on, photos]
+  required: [photos]
   properties:
-    occurred_on:
+    description:
       type: string
-      format: date
-    title:
-      type: string
-      maxLength: 32
-    story:
-      type: string
-      maxLength: 300
+      maxLength: 500
     photos:
       type: array
       minItems: 1

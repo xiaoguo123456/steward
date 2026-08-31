@@ -3,8 +3,7 @@
     {
       "id": "mom_01example",
       "occurred_on": "2026-08-24",
-      "title": "海边的风比想象中温柔",
-      "story": "沿着海边慢慢走，回来时天刚好暗下来。",
+      "description": "海边的风比想象中温柔\n沿着海边慢慢走，回来时天刚好暗下来。",
       "photos": [
         {
           "media_id": "med_01cover",

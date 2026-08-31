@@ -20,6 +20,7 @@ import (
 	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
 
 const (
@@ -56,12 +57,13 @@ type Service struct {
 	media    MediaResolver
 	activity ActivityRecorder
 	jobs     MediaDeletionEnqueuer
+	now      func() time.Time
 }
 
 // New 构造时光服务。
 func New(db *database.DB, media MediaResolver, activity ActivityRecorder,
 	jobs MediaDeletionEnqueuer) *Service {
-	return &Service{db: db, media: media, activity: activity, jobs: jobs}
+	return &Service{db: db, media: media, activity: activity, jobs: jobs, now: time.Now}
 }
 
 // Photo 是已完成上传的图片及其短期读取地址。
@@ -204,6 +206,12 @@ func (s *Service) Create(ctx context.Context, userID, idempotencyKey string,
 		if !database.IsNoRows(err) {
 			return apperr.Internal(err)
 		}
+		user, err := q.GetUser(ctx, userID)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		publishedAt := s.now().UTC()
+		publishedDate := publicationDate(publishedAt, user.Timezone)
 
 		mediaIDs := make([]string, 0, len(prepared.Photos))
 		for _, photo := range prepared.Photos {
@@ -224,8 +232,8 @@ func (s *Service) Create(ctx context.Context, userID, idempotencyKey string,
 			}
 		}
 		if _, err := q.CreateMemoryMoment(ctx, dbgen.CreateMemoryMomentParams{
-			ID: momentID, UserID: userID, OccurredOn: prepared.OccurredOn,
-			Title: prepared.Title, Story: prepared.Story, CreatedBy: "user",
+			ID: momentID, UserID: userID, OccurredOn: publishedDate,
+			Description: prepared.Description, CreatedBy: "user",
 		}); err != nil {
 			return apperr.Internal(err)
 		}
@@ -240,7 +248,7 @@ func (s *Service) Create(ctx context.Context, userID, idempotencyKey string,
 		if _, err := s.activity.RecordNonUndoable(ctx, q, userID, activity.SourceUserForm, nil,
 			[]activity.EntryInput{{
 				Action: "created", ResourceType: "memory_moment", ResourceID: momentID,
-				Title: prepared.Title, Summary: "发布了照片时光",
+				Title: "照片时光", Summary: "发布了照片时光",
 			}}); err != nil {
 			return err
 		}
@@ -251,7 +259,7 @@ func (s *Service) Create(ctx context.Context, userID, idempotencyKey string,
 		return q.SaveIdempotencyRecord(ctx, dbgen.SaveIdempotencyRecordParams{
 			UserID: userID, Endpoint: createEndpoint, Key: idempotencyKey,
 			RequestHash: hash, StatusCode: 201, ResponseBody: snapshot,
-			ResourceID: &momentID, ExpiresAt: time.Now().Add(24 * time.Hour),
+			ResourceID: &momentID, ExpiresAt: publishedAt.Add(24 * time.Hour),
 		})
 	})
 	if err != nil {
@@ -291,7 +299,7 @@ func (s *Service) Delete(ctx context.Context, userID, momentID, idempotencyKey s
 			return apperr.Internal(err)
 		}
 
-		moment, err := q.GetMemoryMoment(ctx, momentID)
+		_, err = q.GetMemoryMoment(ctx, momentID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("时光")
@@ -321,7 +329,7 @@ func (s *Service) Delete(ctx context.Context, userID, momentID, idempotencyKey s
 		batchID, err = s.activity.RecordNonUndoable(ctx, q, userID, activity.SourceUserForm, nil,
 			[]activity.EntryInput{{
 				Action: "deleted", ResourceType: "memory_moment", ResourceID: momentID,
-				Title: moment.Title, Summary: "删除了照片时光",
+				Title: "照片时光", Summary: "删除了照片时光",
 			}})
 		if err != nil {
 			return err
@@ -343,10 +351,8 @@ func (s *Service) Delete(ctx context.Context, userID, momentID, idempotencyKey s
 }
 
 type normalizedCreate struct {
-	OccurredOn time.Time
-	Title      string
-	Story      string
-	Photos     []normalizedPhoto
+	Description string
+	Photos      []normalizedPhoto
 }
 
 type normalizedPhoto struct {
@@ -359,15 +365,10 @@ func normalizeCreate(body httpapi.CreateMemoryMomentRequest) (normalizedCreate, 
 		return normalizedCreate{}, apperr.Validation(
 			apperr.Field("photos", "请选择 1～9 张照片。"))
 	}
-	title := trimmed(body.Title)
-	story := trimmed(body.Story)
-	if utf8.RuneCountInString(title) > 32 {
+	description := trimmed(body.Description)
+	if utf8.RuneCountInString(description) > 500 {
 		return normalizedCreate{}, apperr.Validation(
-			apperr.Field("title", "标题最多 32 个字。"))
-	}
-	if utf8.RuneCountInString(story) > 300 {
-		return normalizedCreate{}, apperr.Validation(
-			apperr.Field("story", "故事最多 300 个字。"))
+			apperr.Field("description", "描述最多 500 个字。"))
 	}
 	photos := make([]normalizedPhoto, 0, len(body.Photos))
 	seen := make(map[string]struct{}, len(body.Photos))
@@ -393,7 +394,7 @@ func normalizeCreate(body httpapi.CreateMemoryMomentRequest) (normalizedCreate, 
 		photos = append(photos, normalizedPhoto{MediaID: mediaID, Description: description})
 	}
 	return normalizedCreate{
-		OccurredOn: body.OccurredOn.Time, Title: title, Story: story, Photos: photos,
+		Description: description, Photos: photos,
 	}, nil
 }
 
@@ -402,6 +403,10 @@ func trimmed(value *string) string {
 		return ""
 	}
 	return strings.TrimSpace(*value)
+}
+
+func publicationDate(now time.Time, timezone string) time.Time {
+	return timeutil.DateOf(now, timeutil.LoadLocation(timezone))
 }
 
 func (s *Service) attachPhotos(ctx context.Context, rows []dbgen.MemoryMoment,

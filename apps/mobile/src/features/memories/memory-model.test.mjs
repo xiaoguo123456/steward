@@ -16,8 +16,7 @@ const photo = (id) => ({ id, source: { uri: `file://${id}.jpg` }, description: i
 const moment = (id, date) => ({
   id,
   date,
-  title: id,
-  story: '',
+  description: id,
   photos: [photo(`${id}-photo`)],
 });
 
@@ -59,8 +58,7 @@ test('正式接口结果按 position 映射为短期网络图片', () => {
   const mapped = toMemoryMoment({
     id: 'mom_1',
     occurred_on: '2026-08-24',
-    title: '海边散步',
-    story: '傍晚的风很轻。',
+    description: '傍晚的风很轻。',
     created_by: 'user',
     created_at: '2026-08-24T12:00:00Z',
     photos: [
@@ -87,10 +85,12 @@ test('时光使用正式查询与上传，发布后只保留整段删除', async
   assert.match(editor, /void pickImages\(\)/);
   assert.match(editor, /createMemoryMoment/);
   assert.match(editor, /useMediaUpload/);
-  assert.match(editor, /发布后不可编辑，只能删除整段时光/);
+  assert.match(editor, /<Field label="描述">/);
+  assert.doesNotMatch(editor, /<Field label="日期"|<Field label="标题|故事（选填）|发布后不可编辑/);
   assert.doesNotMatch(editor, /AI Candidate|本地交互原型|updateMoment|保存修改/);
-  assert.match(calendar, /params: \{ date: selectedDate, pick: '1' \}/);
-  assert.match(calendar, />添加照片<\/Text>/);
+  assert.match(calendar, /params: \{ pick: '1' \}/);
+  assert.doesNotMatch(calendar, /params: \{ date: selectedDate/);
+  assert.match(calendar, />选照片<\/Text>/);
   assert.match(detail, /deleteMemoryMoment/);
   assert.doesNotMatch(detail, /编辑照片与文字|create-outline|memories\/new/);
   assert.doesNotMatch(detail, /本地演示内容|本次运行中添加/);

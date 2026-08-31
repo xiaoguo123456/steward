@@ -19,7 +19,7 @@ export function MemoryMomentRow({
   if (compact) {
     return (
       <Pressable
-        accessibilityLabel={`${date.full}，${moment.title || '照片时光'}，${moment.photos.length} 张照片`}
+        accessibilityLabel={`${date.full}，${moment.description || '照片时光'}，${moment.photos.length} 张照片`}
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [styles.compactRow, pressed && styles.pressed]}
@@ -30,10 +30,10 @@ export function MemoryMomentRow({
         </View>
         <View style={styles.compactCopy}>
           <Text numberOfLines={1} style={styles.compactTitle}>
-            {moment.title || '这一天的照片'}
+            {moment.description || '照片时光'}
           </Text>
           <Text numberOfLines={1} style={styles.compactStory}>
-            {moment.story || `${moment.photos.length} 张照片`}
+            {moment.photos.length} 张照片
           </Text>
         </View>
         <View
@@ -60,15 +60,14 @@ export function MemoryMomentRow({
       <View style={styles.content}>
         <MemoryPhotoGrid dateLabel={date.full} onPress={onPress} photos={moment.photos} />
         <Pressable
-          accessibilityLabel={`${date.full}，打开${moment.title || '这段时光'}`}
+          accessibilityLabel={`${date.full}，打开${moment.description || '这段时光'}`}
           accessibilityRole="button"
           onPress={onPress}
           style={({ pressed }) => [styles.copyButton, pressed && styles.pressed]}
         >
-          {moment.title ? <Text style={styles.title}>{moment.title}</Text> : null}
-          {moment.story ? (
-            <Text numberOfLines={2} style={styles.story}>
-              {moment.story}
+          {moment.description ? (
+            <Text numberOfLines={3} style={styles.description}>
+              {moment.description}
             </Text>
           ) : null}
           <Text style={styles.photoCount}>{moment.photos.length} 张照片</Text>
@@ -114,19 +113,11 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
     justifyContent: 'center',
   },
-  title: {
+  description: {
     color: colors.text,
     fontFamily,
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 23,
-    fontWeight: '600',
-  },
-  story: {
-    marginTop: 3,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
   },
   photoCount: {
     marginTop: 5,

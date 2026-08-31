@@ -16,11 +16,8 @@
 import type { MemoryMomentPhotoInput } from './memoryMomentPhotoInput';
 
 export interface CreateMemoryMomentRequest {
-  occurred_on: string;
-  /** @maxLength 32 */
-  title?: string;
-  /** @maxLength 300 */
-  story?: string;
+  /** @maxLength 500 */
+  description?: string;
   /**
      * @minItems 1
      * @maxItems 9

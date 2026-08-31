@@ -115,9 +115,9 @@ func mapMoment(moment Moment) httpapi.MemoryMoment {
 		})
 	}
 	return httpapi.MemoryMoment{
-		Id:         moment.Row.ID,
-		OccurredOn: openapi_types.Date{Time: moment.Row.OccurredOn},
-		Title:      moment.Row.Title, Story: moment.Row.Story, Photos: photos,
+		Id:          moment.Row.ID,
+		OccurredOn:  openapi_types.Date{Time: moment.Row.OccurredOn},
+		Description: moment.Row.Description, Photos: photos,
 		CreatedBy: httpapi.CreatedBy(moment.Row.CreatedBy), CreatedAt: moment.Row.CreatedAt,
 	}
 }

@@ -12,21 +12,20 @@ import (
 
 const createMemoryMoment = `-- name: CreateMemoryMoment :one
 
-INSERT INTO memory_moments (id, user_id, occurred_on, title, story, created_by)
+INSERT INTO memory_moments (id, user_id, occurred_on, description, created_by)
 VALUES (
     $1, $2, $3,
-    $4, $5, $6
+    $4, $5
 )
-RETURNING id, user_id, occurred_on, title, story, created_by, created_at, deleted_at
+RETURNING id, user_id, occurred_on, description, created_by, created_at, deleted_at
 `
 
 type CreateMemoryMomentParams struct {
-	ID         string
-	UserID     string
-	OccurredOn time.Time
-	Title      string
-	Story      string
-	CreatedBy  string
+	ID          string
+	UserID      string
+	OccurredOn  time.Time
+	Description string
+	CreatedBy   string
 }
 
 // 时光查询。发布后没有 UPDATE：只允许创建、读取和整段软删除。
@@ -35,8 +34,7 @@ func (q *Queries) CreateMemoryMoment(ctx context.Context, arg CreateMemoryMoment
 		arg.ID,
 		arg.UserID,
 		arg.OccurredOn,
-		arg.Title,
-		arg.Story,
+		arg.Description,
 		arg.CreatedBy,
 	)
 	var i MemoryMoment
@@ -44,8 +42,7 @@ func (q *Queries) CreateMemoryMoment(ctx context.Context, arg CreateMemoryMoment
 		&i.ID,
 		&i.UserID,
 		&i.OccurredOn,
-		&i.Title,
-		&i.Story,
+		&i.Description,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DeletedAt,
@@ -92,7 +89,7 @@ func (q *Queries) CreateMemoryMomentPhoto(ctx context.Context, arg CreateMemoryM
 }
 
 const getMemoryMoment = `-- name: GetMemoryMoment :one
-SELECT id, user_id, occurred_on, title, story, created_by, created_at, deleted_at FROM memory_moments
+SELECT id, user_id, occurred_on, description, created_by, created_at, deleted_at FROM memory_moments
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -103,8 +100,7 @@ func (q *Queries) GetMemoryMoment(ctx context.Context, id string) (MemoryMoment,
 		&i.ID,
 		&i.UserID,
 		&i.OccurredOn,
-		&i.Title,
-		&i.Story,
+		&i.Description,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DeletedAt,
@@ -230,7 +226,7 @@ func (q *Queries) ListMemoryMomentPhotosForMoments(ctx context.Context, momentId
 }
 
 const listMemoryMoments = `-- name: ListMemoryMoments :many
-SELECT id, user_id, occurred_on, title, story, created_by, created_at, deleted_at FROM memory_moments
+SELECT id, user_id, occurred_on, description, created_by, created_at, deleted_at FROM memory_moments
 WHERE deleted_at IS NULL
   AND ($1::date IS NULL OR occurred_on >= $1::date)
   AND ($2::date IS NULL OR occurred_on <= $2::date)
@@ -267,8 +263,7 @@ func (q *Queries) ListMemoryMoments(ctx context.Context, arg ListMemoryMomentsPa
 			&i.ID,
 			&i.UserID,
 			&i.OccurredOn,
-			&i.Title,
-			&i.Story,
+			&i.Description,
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.DeletedAt,
@@ -287,7 +282,7 @@ const softDeleteMemoryMoment = `-- name: SoftDeleteMemoryMoment :one
 UPDATE memory_moments
 SET deleted_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, occurred_on, title, story, created_by, created_at, deleted_at
+RETURNING id, user_id, occurred_on, description, created_by, created_at, deleted_at
 `
 
 func (q *Queries) SoftDeleteMemoryMoment(ctx context.Context, id string) (MemoryMoment, error) {
@@ -297,8 +292,7 @@ func (q *Queries) SoftDeleteMemoryMoment(ctx context.Context, id string) (Memory
 		&i.ID,
 		&i.UserID,
 		&i.OccurredOn,
-		&i.Title,
-		&i.Story,
+		&i.Description,
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DeletedAt,

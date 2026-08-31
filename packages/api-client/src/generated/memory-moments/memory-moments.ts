@@ -83,7 +83,7 @@ export const getListMemoryMomentsUrl = (params?: ListMemoryMomentsParams,) => {
 }
 
 /**
- * 按发生日期和创建时间由新到旧返回当前用户的时光。
+ * 按发布日期和创建时间由新到旧返回当前用户的时光。
  * @summary 查询时光
  */
 export const listMemoryMoments = async (params?: ListMemoryMomentsParams, options?: Parameters<typeof stewardFetch>[1]): Promise<MemoryMomentsResponse> => {
@@ -185,7 +185,7 @@ export const getCreateMemoryMomentUrl = () => {
 
 /**
  * 引用 1～9 个已由当前用户完成上传的图片媒体。发布成功后不提供更新接口；
- * 用户若要更改内容，需要删除整段时光后重新发布。
+ * 发布日期由服务端按账号时区生成，用户若要更改内容，需要删除整段时光后重新发布。
  * @summary 发布时光
  */
 export const createMemoryMoment = async (createMemoryMomentRequest: CreateMemoryMomentRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<MemoryMomentResponse> => {

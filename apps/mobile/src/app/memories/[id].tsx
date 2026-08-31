@@ -23,7 +23,6 @@ import {
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
-import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { useToast } from '@/components/ui/toast';
@@ -172,14 +171,7 @@ export default function MemoryDetailScreen() {
 
         <View style={styles.copy}>
           <Text style={styles.date}>{date.full}</Text>
-          {moment.title ? <Text accessibilityRole="header" style={styles.title}>{moment.title}</Text> : null}
-          {moment.story ? <Text style={styles.story}>{moment.story}</Text> : null}
-          <View style={styles.sourceRow}>
-            <AppIcon color={colors.textTertiary} name="lock-closed-outline" size={15} />
-            <Text style={styles.sourceText}>
-              仅你可见 · {moment.photos.length} 张照片
-            </Text>
-          </View>
+          {moment.description ? <Text style={styles.description}>{moment.description}</Text> : null}
         </View>
 
         <View style={styles.actions}>
@@ -263,34 +255,12 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '600',
   },
-  title: {
-    marginTop: 9,
-    color: colors.text,
-    fontFamily,
-    fontSize: 24,
-    lineHeight: 33,
-    fontWeight: '600',
-    letterSpacing: -0.35,
-  },
-  story: {
+  description: {
     marginTop: 10,
-    color: colors.textSecondary,
+    color: colors.text,
     fontFamily,
     fontSize: 16,
     lineHeight: 26,
-  },
-  sourceRow: {
-    minHeight: 42,
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  sourceText: {
-    color: colors.textTertiary,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
   },
   actions: {
     marginTop: 24,

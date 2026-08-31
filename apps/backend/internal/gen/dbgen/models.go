@@ -529,14 +529,13 @@ type MemoryItem struct {
 }
 
 type MemoryMoment struct {
-	ID         string
-	UserID     string
-	OccurredOn time.Time
-	Title      string
-	Story      string
-	CreatedBy  string
-	CreatedAt  time.Time
-	DeletedAt  *time.Time
+	ID          string
+	UserID      string
+	OccurredOn  time.Time
+	Description string
+	CreatedBy   string
+	CreatedAt   time.Time
+	DeletedAt   *time.Time
 }
 
 type MemoryMomentPhoto struct {

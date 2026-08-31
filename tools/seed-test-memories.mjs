@@ -40,9 +40,7 @@ configureApiClient({
 
 const specs = [
   {
-    occurred_on: '2026-08-24',
-    title: '海边的风比想象中温柔',
-    story: '沿着海边慢慢走，回来时天刚好暗下来。',
+    description: '海边的风比想象中温柔\n沿着海边慢慢走，回来时天刚好暗下来。',
     photos: [
       ['seaside-bike.jpg', '树荫下靠着海岸栏杆的自行车'],
       ['seaside-reading.jpg', '海边窗前摊开的书'],
@@ -51,18 +49,14 @@ const specs = [
     ],
   },
   {
-    occurred_on: '2026-08-17',
-    title: '久违地坐在一起',
-    story: '没有特别安排，只是一起吃饭聊天，就已经很开心。',
+    description: '久违地坐在一起\n没有特别安排，只是一起吃饭聊天，就已经很开心。',
     photos: [
       ['friends-dinner.jpg', '朋友围坐在桌边一起吃饭'],
       ['city-sunset.jpg', '晚餐前城市上空的落日'],
     ],
   },
   {
-    occurred_on: '2026-07-30',
-    title: '退潮以后',
-    story: '沿着潮水留下的痕迹走了很久，脚步也慢了下来。',
+    description: '退潮以后\n沿着潮水留下的痕迹走了很久，脚步也慢了下来。',
     photos: [
       ['beach-footprints.jpg', '退潮沙滩上延伸向远处的脚印'],
     ],
@@ -77,6 +71,7 @@ const existing = await listMemoryMoments({ limit: 100 });
 const existingKeys = new Set(existing.data.map((moment) => memoryKey(moment)));
 let created = 0;
 let skipped = 0;
+const newlyCreatedDescriptions = new Set();
 
 for (const spec of specs) {
   if (existingKeys.has(memoryKey(spec))) {
@@ -115,12 +110,11 @@ for (const spec of specs) {
   }
 
   await createMemoryMoment({
-    occurred_on: spec.occurred_on,
-    title: spec.title,
-    story: spec.story,
+    description: spec.description,
     photos,
   }, { headers: { 'Idempotency-Key': newIdempotencyKey() } });
   created += 1;
+  newlyCreatedDescriptions.add(spec.description);
 }
 
 const verified = await listMemoryMoments({ limit: 100 });
@@ -133,12 +127,15 @@ for (const [specIndex, spec] of specs.entries()) {
 
   const response = await getMemoryMoment(summary.id);
   const moment = response.data;
-  if (moment.occurred_on !== spec.occurred_on
-      || moment.title !== spec.title
-      || moment.story !== spec.story
+  if (moment.description !== spec.description
       || moment.created_by !== 'user'
       || moment.photos.length !== spec.photos.length) {
     throw new Error(`第 ${specIndex + 1} 段测试时光的正式详情与写入内容不一致`);
+  }
+
+  if (newlyCreatedDescriptions.has(spec.description)
+      && moment.occurred_on !== dateInTimezone(new Date(), 'Asia/Shanghai')) {
+    throw new Error(`第 ${specIndex + 1} 段测试时光没有使用账号当地发布日期`);
   }
 
   for (const [photoIndex, photo] of moment.photos.entries()) {
@@ -161,7 +158,18 @@ console.log(
 );
 
 function memoryKey(moment) {
-  return `${moment.occurred_on}|${moment.title}`;
+  return moment.description;
+}
+
+function dateInTimezone(date, timezone) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 function assertTestTarget(value) {

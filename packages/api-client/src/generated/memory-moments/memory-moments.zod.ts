@@ -17,7 +17,7 @@ import * as zod from 'zod';
 
 
 /**
- * 按发生日期和创建时间由新到旧返回当前用户的时光。
+ * 按发布日期和创建时间由新到旧返回当前用户的时光。
  * @summary 查询时光
  */
 export const listMemoryMomentsQueryLimitDefault = 20;
@@ -42,9 +42,8 @@ export const listMemoryMomentsResponseDataItemPhotosMax = 9;
 export const ListMemoryMomentsResponse = zod.object({
   "data": zod.array(zod.object({
   "id": zod.string(),
-  "occurred_on": zod.string().date().describe('用户选择的当地自然日，不做时区换算。'),
-  "title": zod.string(),
-  "story": zod.string(),
+  "occurred_on": zod.string().date().describe('服务端按账号时区从发布时间派生的当地自然日。'),
+  "description": zod.string(),
   "photos": zod.array(zod.object({
   "media_id": zod.string(),
   "read_url": zod.string().describe('短期私有读取地址，不得写入日志或长期缓存。'),
@@ -65,7 +64,7 @@ export const ListMemoryMomentsResponse = zod.object({
 
 /**
  * 引用 1～9 个已由当前用户完成上传的图片媒体。发布成功后不提供更新接口；
- * 用户若要更改内容，需要删除整段时光后重新发布。
+ * 发布日期由服务端按账号时区生成，用户若要更改内容，需要删除整段时光后重新发布。
  * @summary 发布时光
  */
 export const createMemoryMomentHeaderIdempotencyKeyMin = 8;
@@ -77,9 +76,7 @@ export const CreateMemoryMomentHeader = zod.object({
   "Idempotency-Key": zod.string().min(createMemoryMomentHeaderIdempotencyKeyMin).max(createMemoryMomentHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
 })
 
-export const createMemoryMomentBodyTitleMax = 32;
-
-export const createMemoryMomentBodyStoryMax = 300;
+export const createMemoryMomentBodyDescriptionMax = 500;
 
 export const createMemoryMomentBodyPhotosItemDescriptionMax = 200;
 
@@ -88,9 +85,7 @@ export const createMemoryMomentBodyPhotosMax = 9;
 
 
 export const CreateMemoryMomentBody = zod.object({
-  "occurred_on": zod.string().date(),
-  "title": zod.string().max(createMemoryMomentBodyTitleMax).optional(),
-  "story": zod.string().max(createMemoryMomentBodyStoryMax).optional(),
+  "description": zod.string().max(createMemoryMomentBodyDescriptionMax).optional(),
   "photos": zod.array(zod.object({
   "media_id": zod.string().describe('当前用户已完成上传的图片媒体 ID。'),
   "description": zod.string().max(createMemoryMomentBodyPhotosItemDescriptionMax).optional().describe('无障碍描述；为空时客户端使用“第 N 张照片”。')
@@ -107,9 +102,8 @@ export const createMemoryMomentResponseDataPhotosMax = 9;
 export const CreateMemoryMomentResponse = zod.object({
   "data": zod.object({
   "id": zod.string(),
-  "occurred_on": zod.string().date().describe('用户选择的当地自然日，不做时区换算。'),
-  "title": zod.string(),
-  "story": zod.string(),
+  "occurred_on": zod.string().date().describe('服务端按账号时区从发布时间派生的当地自然日。'),
+  "description": zod.string(),
   "photos": zod.array(zod.object({
   "media_id": zod.string(),
   "read_url": zod.string().describe('短期私有读取地址，不得写入日志或长期缓存。'),
@@ -141,9 +135,8 @@ export const getMemoryMomentResponseDataPhotosMax = 9;
 export const GetMemoryMomentResponse = zod.object({
   "data": zod.object({
   "id": zod.string(),
-  "occurred_on": zod.string().date().describe('用户选择的当地自然日，不做时区换算。'),
-  "title": zod.string(),
-  "story": zod.string(),
+  "occurred_on": zod.string().date().describe('服务端按账号时区从发布时间派生的当地自然日。'),
+  "description": zod.string(),
   "photos": zod.array(zod.object({
   "media_id": zod.string(),
   "read_url": zod.string().describe('短期私有读取地址，不得写入日志或长期缓存。'),

@@ -1,10 +1,10 @@
 -- 时光查询。发布后没有 UPDATE：只允许创建、读取和整段软删除。
 
 -- name: CreateMemoryMoment :one
-INSERT INTO memory_moments (id, user_id, occurred_on, title, story, created_by)
+INSERT INTO memory_moments (id, user_id, occurred_on, description, created_by)
 VALUES (
     sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(occurred_on),
-    sqlc.arg(title), sqlc.arg(story), sqlc.arg(created_by)
+    sqlc.arg(description), sqlc.arg(created_by)
 )
 RETURNING *;
 

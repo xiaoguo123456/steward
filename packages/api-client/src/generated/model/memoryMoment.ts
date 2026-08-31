@@ -18,10 +18,9 @@ import type { MemoryMomentPhoto } from './memoryMomentPhoto';
 
 export interface MemoryMoment {
   id: string;
-  /** 用户选择的当地自然日，不做时区换算。 */
+  /** 服务端按账号时区从发布时间派生的当地自然日。 */
   occurred_on: string;
-  title: string;
-  story: string;
+  description: string;
   /**
      * @minItems 1
      * @maxItems 9

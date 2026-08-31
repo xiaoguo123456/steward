@@ -25,11 +25,7 @@ import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { useMediaUpload, type UploadedMedia } from '@/features/capture/use-media-upload';
-import {
-  isMemoryDateKey,
-  todayMemoryDateKey,
-  type MemoryPhoto,
-} from '@/features/memories/memory-model';
+import type { MemoryPhoto } from '@/features/memories/memory-model';
 import {
   imagePickerAssetsToMemoryPhotos,
   MEMORY_PHOTO_LIMIT,
@@ -52,17 +48,11 @@ export default function MemoryEditorScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{
-    date?: string | string[];
     pick?: string | string[];
   }>();
-  const rawDate = Array.isArray(params.date) ? params.date[0] : params.date;
   const rawPick = Array.isArray(params.pick) ? params.pick[0] : params.pick;
   const [photos, setPhotos] = useState<MemoryPhoto[]>([]);
-  const [date, setDate] = useState(
-    isMemoryDateKey(rawDate ?? '') ? rawDate! : todayMemoryDateKey(),
-  );
-  const [title, setTitle] = useState('');
-  const [story, setStory] = useState('');
+  const [description, setDescription] = useState('');
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -71,8 +61,7 @@ export default function MemoryEditorScreen() {
   const uploadedRef = useRef<UploadedSelection | null>(null);
   const submissionKeyRef = useRef<SubmissionKey | null>(null);
   const { upload, uploading } = useMediaUpload();
-  const dateValid = isMemoryDateKey(date);
-  const publishDisabled = photos.length === 0 || !dateValid || publishing || uploading;
+  const publishDisabled = photos.length === 0 || publishing || uploading;
 
   useEffect(() => {
     if (photos.length > 0) return;
@@ -151,9 +140,7 @@ export default function MemoryEditorScreen() {
         description: photos[index].description,
       }));
       const body = {
-        occurred_on: date,
-        title: title.trim() || undefined,
-        story: story.trim() || undefined,
+        description: description.trim() || undefined,
         photos: photoInputs,
       };
       const submissionSignature = JSON.stringify(body);
@@ -184,10 +171,7 @@ export default function MemoryEditorScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.sectionHeading}>
-          <View>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>照片</Text>
-            <Text style={styles.sectionMeta}>至少 1 张，最多 {MEMORY_PHOTO_LIMIT} 张</Text>
-          </View>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>照片</Text>
           {photos.length > 0 ? (
             <Text style={styles.photoCount}>{photos.length}/{MEMORY_PHOTO_LIMIT}</Text>
           ) : null}
@@ -204,7 +188,6 @@ export default function MemoryEditorScreen() {
               <AppIcon color={colors.primaryStrong} name="images-outline" size={25} />
             </View>
             <Text style={styles.photoEmptyTitle}>先选择照片</Text>
-            <Text style={styles.photoEmptyMessage}>有照片才能发布时光，文字可以留空。</Text>
           </Pressable>
         ) : (
           <ScrollView
@@ -285,40 +268,17 @@ export default function MemoryEditorScreen() {
         {pickerError ? <Text accessibilityRole="alert" style={styles.errorText}>{pickerError}</Text> : null}
 
         <View style={styles.fields}>
-          <Field label="日期" required>
+          <Field label="描述">
             <TextInput
-              accessibilityLabel="时光日期，格式为年横线月横线日"
-              autoCapitalize="none"
-              inputMode="numeric"
-              maxLength={10}
-              onChangeText={setDate}
-              placeholder="2026-08-28"
-              placeholderTextColor={colors.textSecondary}
-              style={[styles.input, !dateValid && styles.inputError]}
-              value={date}
-            />
-            {!dateValid ? <Text style={styles.fieldError}>请输入有效日期，例如 2026-08-28。</Text> : null}
-          </Field>
-          <Field label="标题（选填）">
-            <TextInput
-              maxLength={32}
-              onChangeText={setTitle}
-              placeholder="给这段时光起个名字"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-              value={title}
-            />
-          </Field>
-          <Field label="故事（选填）">
-            <TextInput
-              maxLength={300}
+              accessibilityLabel="时光描述"
+              maxLength={500}
               multiline
-              onChangeText={setStory}
-              placeholder="那天发生了什么？"
+              onChangeText={setDescription}
+              placeholder="这一刻…"
               placeholderTextColor={colors.textSecondary}
-              style={[styles.input, styles.storyInput]}
+              style={[styles.input, styles.descriptionInput]}
               textAlignVertical="top"
-              value={story}
+              value={description}
             />
           </Field>
         </View>
@@ -330,11 +290,6 @@ export default function MemoryEditorScreen() {
           onPress={() => void publish()}
           style={styles.publishButton}
         />
-        <Text style={styles.publishHint}>
-          {photos.length === 0
-            ? '选择至少 1 张照片后才能发布。'
-            : '发布后不可编辑，只能删除整段时光。'}
-        </Text>
       </ScrollView>
     </AppScreen>
   );
@@ -342,16 +297,14 @@ export default function MemoryEditorScreen() {
 
 function Field({
   label,
-  required = false,
   children,
 }: {
   label: string;
-  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}{required ? ' *' : ''}</Text>
+      <Text style={styles.fieldLabel}>{label}</Text>
       {children}
     </View>
   );
@@ -375,13 +328,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '600',
-  },
-  sectionMeta: {
-    marginTop: 2,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
   },
   photoCount: {
     color: colors.primaryStrong,
@@ -416,15 +362,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 23,
     fontWeight: '600',
-  },
-  photoEmptyMessage: {
-    maxWidth: 240,
-    marginTop: 5,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 20,
-    textAlign: 'center',
   },
   photoRail: {
     paddingRight: 8,
@@ -538,17 +475,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.surfaceSubtle,
   },
-  inputError: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  fieldError: {
-    color: colors.danger,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  storyInput: {
+  descriptionInput: {
     minHeight: 112,
     paddingTop: 13,
     paddingBottom: 13,
@@ -563,13 +490,5 @@ const styles = StyleSheet.create({
   },
   publishButton: {
     marginTop: 28,
-  },
-  publishHint: {
-    marginTop: 8,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
   },
 });

@@ -69,7 +69,6 @@ export function MemoriesHome() {
             <AppIcon color={colors.primaryStrong} name="images-outline" size={26} />
           </View>
           <Text accessibilityRole="header" style={styles.emptyTitle}>留下第一段时光</Text>
-          <Text style={styles.emptyMessage}>选择照片，按日期整理值得回看的生活片段。</Text>
           <AppButton
             icon="image-outline"
             label="添加照片"
@@ -182,15 +181,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '600',
-  },
-  emptyMessage: {
-    maxWidth: 260,
-    marginTop: 7,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
   },
   emptyAction: {
     alignSelf: 'stretch',

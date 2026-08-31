@@ -16,8 +16,7 @@ export type MemoryPhoto = {
 export type MemoryMoment = {
   id: string;
   date: string;
-  title: string;
-  story: string;
+  description: string;
   photos: MemoryPhoto[];
 };
 
@@ -34,8 +33,7 @@ export function toMemoryMoment(moment: ApiMemoryMoment): MemoryMoment {
   return {
     id: moment.id,
     date: moment.occurred_on,
-    title: moment.title,
-    story: moment.story,
+    description: moment.description,
     photos: [...moment.photos]
       .sort((left, right) => left.position - right.position)
       .map((photo) => ({
@@ -109,10 +107,6 @@ export function isMemoryDateKey(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = parseDateKey(value);
   return formatDateKey(parsed) === value;
-}
-
-export function todayMemoryDateKey(): string {
-  return formatDateKey(new Date());
 }
 
 function parseDateKey(date: string): Date {

@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	openapi_types "github.com/oapi-codegen/runtime/types"
-
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
@@ -111,12 +109,10 @@ func TestPublishedMemoryMomentIsUserIsolatedIdempotentAndDeleteOnly(t *testing.T
 	mediaSvc := media.New(db, store)
 	deletionQueue := &memoryDeletionQueue{}
 	svc := memorymoments.New(db, mediaSvc, activity.New(db), deletionQueue)
-	title := "海边散步"
-	story := "傍晚的风很轻。"
+	description := "傍晚的风很轻。"
 	body := httpapi.CreateMemoryMomentRequest{
-		OccurredOn: openapi_types.Date{Time: time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC)},
-		Title:      &title, Story: &story,
-		Photos: []httpapi.MemoryMomentPhotoInput{{MediaId: mediaID}},
+		Description: &description,
+		Photos:      []httpapi.MemoryMomentPhotoInput{{MediaId: mediaID}},
 	}
 	first, err := svc.Create(ctx, userA, "memory-create-key", body)
 	if err != nil {
@@ -128,6 +124,13 @@ func TestPublishedMemoryMomentIsUserIsolatedIdempotentAndDeleteOnly(t *testing.T
 	}
 	if len(first.Photos) != 1 || !strings.HasPrefix(first.Photos[0].ReadURL, "https://read.invalid/") {
 		t.Fatalf("没有生成私有读取地址：%+v", first.Photos)
+	}
+	if first.Row.Description != description {
+		t.Fatalf("描述没有保存：%q", first.Row.Description)
+	}
+	expectedDate := time.Now().In(time.FixedZone("Asia/Shanghai", 8*60*60)).Format("2006-01-02")
+	if first.Row.OccurredOn.Format("2006-01-02") != expectedDate {
+		t.Fatalf("发布日期没有按账号时区生成：%s", first.Row.OccurredOn)
 	}
 
 	_, err = svc.Get(ctx, userB, first.Row.ID)

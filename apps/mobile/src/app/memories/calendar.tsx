@@ -170,16 +170,16 @@ export default function MemoriesCalendarScreen() {
               </Text>
             </View>
             <Pressable
-              accessibilityLabel={`为 ${selectedLabel} 添加照片`}
+              accessibilityLabel="选择照片发布新时光"
               accessibilityRole="button"
               onPress={() => router.push({
                 pathname: '/memories/new',
-                params: { date: selectedDate, pick: '1' },
+                params: { pick: '1' },
               })}
               style={({ pressed }) => [styles.dayAddAction, pressed && styles.pressed]}
             >
               <AppIcon color={colors.primaryStrong} name="images-outline" size={17} />
-              <Text style={styles.dayAddActionText}>添加照片</Text>
+              <Text style={styles.dayAddActionText}>选照片</Text>
             </Pressable>
           </View>
           {selectedMoments.length > 0 ? (
@@ -199,7 +199,6 @@ export default function MemoriesCalendarScreen() {
           ) : (
             <View style={styles.emptyDay}>
               <Text style={styles.emptyDayTitle}>这一天还没有时光</Text>
-              <Text style={styles.emptyDayMessage}>可以选择其他日期，也可以为这一天添加照片。</Text>
             </View>
           )}
         </View>
@@ -440,13 +439,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: '600',
-  },
-  emptyDayMessage: {
-    marginTop: 5,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 20,
   },
   pressed: {
     opacity: 0.58,
