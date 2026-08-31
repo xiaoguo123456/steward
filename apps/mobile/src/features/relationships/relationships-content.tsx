@@ -157,7 +157,31 @@ function RelationshipsPreview() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.actionRow}>
+      <View style={styles.toolbarRow}>
+        <View style={styles.searchField}>
+          <AppIcon color={colors.textTertiary} name="search" size={19} />
+          <TextInput
+            accessibilityLabel="搜索亲友"
+            autoCorrect={false}
+            onChangeText={setQuery}
+            placeholder="搜索姓名或近况"
+            placeholderTextColor={colors.textSecondary}
+            returnKeyType="search"
+            style={styles.searchInput}
+            value={query}
+          />
+          {query ? (
+            <Pressable
+              accessibilityLabel="清空搜索"
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => setQuery('')}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <AppIcon color={colors.textTertiary} name="close-circle" size={18} />
+            </Pressable>
+          ) : null}
+        </View>
         <Pressable
           accessibilityLabel="添加亲友"
           accessibilityRole="button"
@@ -167,31 +191,6 @@ function RelationshipsPreview() {
           <AppIcon color={relationshipColors.strong} name="person-outline" size={18} />
           <Text style={styles.addButtonText}>添加亲友</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.searchField}>
-        <AppIcon color={colors.textTertiary} name="search" size={19} />
-        <TextInput
-          accessibilityLabel="搜索亲友"
-          autoCorrect={false}
-          onChangeText={setQuery}
-          placeholder="搜索姓名、近况或共同经历"
-          placeholderTextColor={colors.textSecondary}
-          returnKeyType="search"
-          style={styles.searchInput}
-          value={query}
-        />
-        {query ? (
-          <Pressable
-            accessibilityLabel="清空搜索"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={() => setQuery('')}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <AppIcon color={colors.textTertiary} name="close-circle" size={18} />
-          </Pressable>
-        ) : null}
       </View>
 
       <View accessibilityRole="tablist" style={styles.filters}>
@@ -444,14 +443,14 @@ const styles = StyleSheet.create({
   page: {
     paddingTop: 12,
   },
-  actionRow: {
-    minHeight: 44,
+  toolbarRow: {
+    minHeight: 46,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    gap: 8,
   },
   addButton: {
-    minHeight: 44,
+    minHeight: 46,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,8 +469,9 @@ const styles = StyleSheet.create({
     opacity: 0.56,
   },
   searchField: {
+    flex: 1,
+    minWidth: 0,
     minHeight: 46,
-    marginTop: 6,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',

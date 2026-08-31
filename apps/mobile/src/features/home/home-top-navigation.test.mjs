@@ -32,6 +32,8 @@ test('亲友回到首页分区且正式构建不展示示例人物', async () =>
   assert.doesNotMatch(relationships, /style=\{styles\.pageTitle\}>亲友/);
   assert.match(relationships, />添加亲友<\/Text>/);
   assert.doesNotMatch(relationships, /name="add"/);
+  assert.match(relationships, /style=\{styles\.toolbarRow\}/);
+  assert.doesNotMatch(relationships, /style=\{styles\.actionRow\}/);
 });
 
 test('时光与心情首页不展示重复标题或研发提示', async () => {
