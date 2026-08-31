@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 
-import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -147,7 +146,6 @@ function RelationshipsPreview() {
   const [filter, setFilter] = useState<RelationshipFilter>('all');
   const [query, setQuery] = useState('');
   const [selectedPerson, setSelectedPerson] = useState<RelationshipPerson | null>(null);
-  const [showPreviewNotice, setShowPreviewNotice] = useState(false);
 
   const matchingPeople = useMemo(
     () => previewPeople.filter((person) => matchesPerson(person, filter, query)),
@@ -183,14 +181,6 @@ function RelationshipsPreview() {
             </Pressable>
           ) : null}
         </View>
-        <AppButton
-          accessibilityLabel="添加亲友"
-          compact
-          icon="person-outline"
-          label="添加亲友"
-          onPress={() => setShowPreviewNotice(true)}
-          variant="secondary"
-        />
       </View>
 
       <View accessibilityRole="tablist" style={styles.filters}>
@@ -267,10 +257,6 @@ function RelationshipsPreview() {
       )}
 
       <PersonPreviewSheet onClose={() => setSelectedPerson(null)} person={selectedPerson} />
-      <PreviewNoticeSheet
-        onClose={() => setShowPreviewNotice(false)}
-        visible={showPreviewNotice}
-      />
     </View>
   );
 }
@@ -402,37 +388,6 @@ function DetailFact({
         <Text style={styles.detailFactValue}>{value}</Text>
       </View>
     </View>
-  );
-}
-
-function PreviewNoticeSheet({ onClose, visible }: { onClose: () => void; visible: boolean }) {
-  return (
-    <Modal
-      animationType="fade"
-      onRequestClose={onClose}
-      statusBarTranslucent
-      transparent
-      visible={visible}
-    >
-      <ModalSheet maxHeight="60%" onClose={onClose}>
-        <View style={styles.noticeSheet}>
-          <View style={styles.noticeIcon}>
-            <AppIcon color={relationshipColors.strong} name="person-outline" size={24} />
-          </View>
-          <Text accessibilityRole="header" style={styles.noticeTitle}>新增亲友将在正式版开放</Text>
-          <Text style={styles.noticeCopy}>
-            第一版会优先支持手动添加。只有用户主动选择时才调用系统联系人选择器，不申请整本通讯录访问。
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onClose}
-            style={({ pressed }) => [styles.noticeButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.noticeButtonText}>知道了</Text>
-          </Pressable>
-        </View>
-      </ModalSheet>
-    </Modal>
   );
 }
 
@@ -675,50 +630,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily,
     ...typography.body,
-  },
-  noticeSheet: {
-    paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 28,
-    alignItems: 'center',
-  },
-  noticeIcon: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: relationshipColors.soft,
-  },
-  noticeTitle: {
-    marginTop: 14,
-    color: colors.text,
-    fontFamily,
-    ...typography.section,
-    textAlign: 'center',
-  },
-  noticeCopy: {
-    maxWidth: 320,
-    marginTop: 8,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-    textAlign: 'center',
-  },
-  noticeButton: {
-    minWidth: 132,
-    minHeight: 44,
-    marginTop: 22,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: relationshipColors.primary,
-  },
-  noticeButtonText: {
-    color: colors.background,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
   },
 });
