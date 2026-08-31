@@ -41,6 +41,8 @@ tags:
     x-displayName: 媒体上传
   - name: memory-moments
     x-displayName: 时光
+  - name: people
+    x-displayName: 亲友
   - name: assistant
     x-displayName: AI 助手
   - name: memory
@@ -1871,6 +1873,249 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/people:
+    get:
+      operationId: listPeople
+      summary: 查询当前用户的亲友档案
+      tags:
+        - people
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 80
+        - name: relationship_group
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/RelationshipGroup'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeopleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createPerson
+      summary: 手动添加亲友
+      tags:
+        - people
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePersonRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/people/{person_id}:
+    get:
+      operationId: getPerson
+      summary: 读取亲友详情
+      tags:
+        - people
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updatePerson
+      summary: 修改亲友资料
+      tags:
+        - people
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePersonRequest'
+      responses:
+        '200':
+          description: 修改成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deletePerson
+      summary: 删除亲友档案
+      description: 删除人物、互动与事件关联，不删除已有 Event。
+      tags:
+        - people
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 删除成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/people/{person_id}/interactions:
+    get:
+      operationId: listPersonInteractions
+      summary: 查询某人的历史互动
+      tags:
+        - people
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonInteractionsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createPersonInteraction
+      summary: 记录一次已经发生的互动
+      tags:
+        - people
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePersonInteractionRequest'
+      responses:
+        '201':
+          description: 创建成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonInteractionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/people/{person_id}/events:
+    get:
+      operationId: listPersonEvents
+      summary: 查询与某人关联的事件
+      tags:
+        - people
+        - events
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createPersonEvent
+      summary: 为某人创建并关联 Event
+      tags:
+        - people
+        - events
+      parameters:
+        - $ref: '#/components/parameters/PersonId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '201':
+          description: 创建并关联成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
   /v1/captures:
@@ -4089,6 +4334,8 @@ components:
             - action_proposal
             - memory
             - memory_moment
+            - person
+            - person_interaction
             - recipe
             - meal_plan
             - diet_profile
@@ -6366,6 +6613,225 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/MemoryMoment'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    RelationshipGroup:
+      type: string
+      enum:
+        - family
+        - friend
+        - colleague
+        - other
+    Person:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - relationship_group
+        - created_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: per_01J8Z3
+        name:
+          type: string
+        relationship_group:
+          $ref: '#/components/schemas/RelationshipGroup'
+        relationship_label:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        provenance_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    PeopleResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreatePersonRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - relationship_group
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        relationship_group:
+          $ref: '#/components/schemas/RelationshipGroup'
+        relationship_label:
+          type: string
+          nullable: true
+          maxLength: 40
+        note:
+          type: string
+          nullable: true
+          maxLength: 500
+    PersonResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Person'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    UpdatePersonRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        clear:
+          type: array
+          items:
+            type: string
+            enum:
+              - relationship_label
+              - note
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        relationship_group:
+          $ref: '#/components/schemas/RelationshipGroup'
+        relationship_label:
+          type: string
+          nullable: true
+          maxLength: 40
+        note:
+          type: string
+          nullable: true
+          maxLength: 500
+    PersonInteractionType:
+      type: string
+      enum:
+        - met
+        - call
+        - message
+        - meal
+        - gift
+        - other
+    PersonInteraction:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - person_id
+        - interaction_type
+        - occurred_at
+        - summary
+        - created_by
+        - created_at
+        - updated_at
+        - version
+      properties:
+        id:
+          type: string
+          example: pin_01J8Z3
+        person_id:
+          type: string
+        interaction_type:
+          $ref: '#/components/schemas/PersonInteractionType'
+        occurred_at:
+          type: string
+          format: date-time
+        summary:
+          type: string
+        note:
+          type: string
+          nullable: true
+        created_by:
+          $ref: '#/components/schemas/CreatedBy'
+        provenance_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProvenanceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        version:
+          type: integer
+    PersonInteractionsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonInteraction'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    CreatePersonInteractionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - interaction_type
+        - occurred_at
+        - summary
+      properties:
+        interaction_type:
+          $ref: '#/components/schemas/PersonInteractionType'
+        occurred_at:
+          type: string
+          format: date-time
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 160
+        note:
+          type: string
+          nullable: true
+          maxLength: 1000
+    PersonInteractionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/PersonInteraction'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     CaptureOrigin:
@@ -9430,6 +9896,12 @@ components:
         type: string
     MemoryMomentId:
       name: moment_id
+      in: path
+      required: true
+      schema:
+        type: string
+    PersonId:
+      name: person_id
       in: path
       required: true
       schema:

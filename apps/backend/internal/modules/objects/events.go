@@ -89,6 +89,37 @@ func (s *Service) GetEvent(ctx context.Context, userID, eventID string) (dbgen.E
 
 // CreateEvent 新建 Event。
 func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.CreateEventRequest) (dbgen.Event, error) {
+	var out dbgen.Event
+	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		created, err := s.CreateUserEventInTx(ctx, q, userID, body)
+		if err != nil {
+			return err
+		}
+
+		if _, err := s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,
+			[]activity.EntryInput{{
+				Action:       "created",
+				ResourceType: "event",
+				ResourceID:   created.ID,
+				Title:        created.Title,
+				Summary:      "创建了日程",
+			}}); err != nil {
+			return err
+		}
+		out = created
+		return nil
+	})
+	return out, err
+}
+
+// CreateUserEventInTx 供其他领域在同一事务内创建由用户表单提交的 Event。
+// 关联关系必须由调用方在本事务中写入，避免出现事件已创建但人物关联失败的半状态。
+func (s *Service) CreateUserEventInTx(
+	ctx context.Context,
+	q *dbgen.Queries,
+	userID string,
+	body httpapi.CreateEventRequest,
+) (dbgen.Event, error) {
 	title := strings.TrimSpace(body.Title)
 	if title == "" {
 		return dbgen.Event{}, apperr.Validation(apperr.Field("title", "标题不能为空。"))
@@ -106,7 +137,6 @@ func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.C
 	if body.Recurrence != nil {
 		recurrence = string(*body.Recurrence)
 	}
-	// 只有重要日可以按年重复。
 	if recurrence == "yearly" && kind != "important_date" {
 		return dbgen.Event{}, apperr.New(apperr.CodeEventRecurrenceDenied)
 	}
@@ -115,98 +145,64 @@ func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.C
 			"按年重复的重要日必须是全天事件。")
 	}
 
-	var out dbgen.Event
-	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		tz, err := s.users.Timezone(ctx, q, userID)
-		if err != nil {
-			return err
+	tz, err := s.users.Timezone(ctx, q, userID)
+	if err != nil {
+		return dbgen.Event{}, err
+	}
+	if body.Timezone != nil && strings.TrimSpace(*body.Timezone) != "" {
+		tz = *body.Timezone
+	}
+	if err := timeutil.ValidateLocation(tz); err != nil {
+		return dbgen.Event{}, apperr.Validation(apperr.Field("timezone", "时区名称不合法。"))
+	}
+	if body.ProjectId != nil {
+		if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
+			return dbgen.Event{}, err
 		}
-		if body.Timezone != nil && strings.TrimSpace(*body.Timezone) != "" {
-			tz = *body.Timezone
-		}
-		if err := timeutil.ValidateLocation(tz); err != nil {
-			return apperr.Validation(apperr.Field("timezone", "时区名称不合法。"))
-		}
+	}
 
-		if body.ProjectId != nil {
-			if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
-				return err
-			}
-		}
-
-		// 全天事件必须使用明确的当地提醒时间。
-		reminders, err := buildReminders(body.Reminders, !body.AllDay)
-		if err != nil {
-			return err
-		}
-		remindersJSON, err := marshalJSON(reminders)
-		if err != nil {
-			return err
-		}
-		participantsJSON, err := marshalJSON(body.Participants)
-		if err != nil {
-			return err
-		}
-		itineraryJSON, err := s.normalizeItineraryDetails(ctx, q, userID, body.ItineraryDetails, itineraryState{
-			ProjectID: body.ProjectId,
-			AllDay:    body.AllDay,
-			StartAt:   body.StartAt,
-			EndAt:     body.EndAt,
-			Location:  body.Location,
-		})
-		if err != nil {
-			return err
-		}
-
-		var originalMonthDay *string
-		if recurrence == "yearly" && body.StartDate != nil {
-			// 保留原始月日，2 月 29 日在非闰年展示为 2 月 28 日但详情仍显示原值。
-			md := timeutil.MonthDay(body.StartDate.Time)
-			originalMonthDay = &md
-		}
-
-		created, err := q.CreateEvent(ctx, dbgen.CreateEventParams{
-			ID:               idgen.New(idgen.PrefixEvent),
-			UserID:           userID,
-			Title:            title,
-			EventKind:        kind,
-			AllDay:           body.AllDay,
-			StartAt:          body.StartAt,
-			EndAt:            body.EndAt,
-			StartDate:        timePtrOfDate(body.StartDate),
-			EndDate:          timePtrOfDate(body.EndDate),
-			Timezone:         tz,
-			Location:         body.Location,
-			ItineraryDetails: itineraryJSON,
-			Participants:     participantsJSON,
-			ProjectID:        body.ProjectId,
-			Note:             body.Note,
-			Reminders:        remindersJSON,
-			Recurrence:       recurrence,
-			OriginalMonthDay: originalMonthDay,
-			// 预设只在重要日上有意义；普通日程带上它会被数据库约束挡住。
-			ImportantDateKind: importantDateKindOf(body.EventKind, body.ImportantDateKind),
-			CreatedBy:         "user",
-			ProvenanceRefs:    emptyJSONArray,
-		})
-		if err != nil {
-			return apperr.Internal(err)
-		}
-
-		if _, err := s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,
-			[]activity.EntryInput{{
-				Action:       "created",
-				ResourceType: "event",
-				ResourceID:   created.ID,
-				Title:        created.Title,
-				Summary:      "创建了日程",
-			}}); err != nil {
-			return err
-		}
-		out = created
-		return nil
+	reminders, err := buildReminders(body.Reminders, !body.AllDay)
+	if err != nil {
+		return dbgen.Event{}, err
+	}
+	remindersJSON, err := marshalJSON(reminders)
+	if err != nil {
+		return dbgen.Event{}, err
+	}
+	participantsJSON, err := marshalJSON(body.Participants)
+	if err != nil {
+		return dbgen.Event{}, err
+	}
+	itineraryJSON, err := s.normalizeItineraryDetails(ctx, q, userID, body.ItineraryDetails, itineraryState{
+		ProjectID: body.ProjectId,
+		AllDay:    body.AllDay,
+		StartAt:   body.StartAt,
+		EndAt:     body.EndAt,
+		Location:  body.Location,
 	})
-	return out, err
+	if err != nil {
+		return dbgen.Event{}, err
+	}
+
+	var originalMonthDay *string
+	if recurrence == "yearly" && body.StartDate != nil {
+		md := timeutil.MonthDay(body.StartDate.Time)
+		originalMonthDay = &md
+	}
+	created, err := q.CreateEvent(ctx, dbgen.CreateEventParams{
+		ID: idgen.New(idgen.PrefixEvent), UserID: userID, Title: title,
+		EventKind: kind, AllDay: body.AllDay, StartAt: body.StartAt, EndAt: body.EndAt,
+		StartDate: timePtrOfDate(body.StartDate), EndDate: timePtrOfDate(body.EndDate),
+		Timezone: tz, Location: body.Location, ItineraryDetails: itineraryJSON,
+		Participants: participantsJSON, ProjectID: body.ProjectId, Note: body.Note,
+		Reminders: remindersJSON, Recurrence: recurrence, OriginalMonthDay: originalMonthDay,
+		ImportantDateKind: importantDateKindOf(body.EventKind, body.ImportantDateKind),
+		CreatedBy:         "user", ProvenanceRefs: emptyJSONArray,
+	})
+	if err != nil {
+		return dbgen.Event{}, apperr.Internal(err)
+	}
+	return created, nil
 }
 
 // EventUpdate 是 Event 的修改意图。

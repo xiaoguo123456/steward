@@ -104,6 +104,13 @@ MemoryMomentId:
   schema:
     type: string
 
+PersonId:
+  name: person_id
+  in: path
+  required: true
+  schema:
+    type: string
+
 DeletionRequestId:
   name: deletion_request_id
   in: path

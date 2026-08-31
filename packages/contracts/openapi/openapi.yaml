@@ -45,6 +45,8 @@ tags:
     x-displayName: 媒体上传
   - name: memory-moments
     x-displayName: 时光
+  - name: people
+    x-displayName: 亲友
   - name: assistant
     x-displayName: AI 助手
   - name: memory
@@ -139,6 +141,15 @@ paths:
     $ref: './paths/memory-moments.yaml#/Collection'
   /v1/memory-moments/{moment_id}:
     $ref: './paths/memory-moments.yaml#/Item'
+
+  /v1/people:
+    $ref: './paths/people.yaml#/Collection'
+  /v1/people/{person_id}:
+    $ref: './paths/people.yaml#/Item'
+  /v1/people/{person_id}/interactions:
+    $ref: './paths/people.yaml#/Interactions'
+  /v1/people/{person_id}/events:
+    $ref: './paths/people.yaml#/Events'
 
   /v1/captures:
     $ref: './paths/captures.yaml#/Collection'

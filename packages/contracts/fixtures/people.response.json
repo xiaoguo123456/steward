@@ -1,0 +1,23 @@
+{
+  "data": [
+    {
+      "id": "per_01example",
+      "name": "小林",
+      "relationship_group": "friend",
+      "relationship_label": "大学同学",
+      "note": "最近在准备搬家",
+      "created_by": "user",
+      "provenance_refs": [],
+      "created_at": "2026-08-31T10:00:00Z",
+      "updated_at": "2026-08-31T10:00:00Z",
+      "version": 1
+    }
+  ],
+  "page": {
+    "has_more": false,
+    "next_cursor": null
+  },
+  "meta": {
+    "request_id": "req_01example"
+  }
+}

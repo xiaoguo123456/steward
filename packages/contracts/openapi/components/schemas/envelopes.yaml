@@ -71,6 +71,54 @@ EventsResponse:
     meta:
       $ref: './common.yaml#/ResponseMeta'
 
+PersonResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './relationships.yaml#/Person'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+PeopleResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './relationships.yaml#/Person'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+PersonInteractionResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: './relationships.yaml#/PersonInteraction'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+PersonInteractionsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: './relationships.yaml#/PersonInteraction'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
 ProjectResponse:
   type: object
   additionalProperties: false

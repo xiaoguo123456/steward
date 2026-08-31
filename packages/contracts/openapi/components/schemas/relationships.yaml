@@ -1,0 +1,140 @@
+RelationshipGroup:
+  type: string
+  enum: [family, friend, colleague, other]
+
+PersonInteractionType:
+  type: string
+  enum: [met, call, message, meal, gift, other]
+
+Person:
+  type: object
+  additionalProperties: false
+  required:
+    [id, name, relationship_group, created_by, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: per_01J8Z3
+    name:
+      type: string
+    relationship_group:
+      $ref: '#/RelationshipGroup'
+    relationship_label:
+      type: string
+      nullable: true
+    note:
+      type: string
+      nullable: true
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    version:
+      type: integer
+
+CreatePersonRequest:
+  type: object
+  additionalProperties: false
+  required: [name, relationship_group]
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    relationship_group:
+      $ref: '#/RelationshipGroup'
+    relationship_label:
+      type: string
+      nullable: true
+      maxLength: 40
+    note:
+      type: string
+      nullable: true
+      maxLength: 500
+
+UpdatePersonRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    clear:
+      type: array
+      items:
+        type: string
+        enum: [relationship_label, note]
+    name:
+      type: string
+      minLength: 1
+      maxLength: 80
+    relationship_group:
+      $ref: '#/RelationshipGroup'
+    relationship_label:
+      type: string
+      nullable: true
+      maxLength: 40
+    note:
+      type: string
+      nullable: true
+      maxLength: 500
+
+PersonInteraction:
+  type: object
+  additionalProperties: false
+  required:
+    [id, person_id, interaction_type, occurred_at, summary, created_by, created_at, updated_at, version]
+  properties:
+    id:
+      type: string
+      example: pin_01J8Z3
+    person_id:
+      type: string
+    interaction_type:
+      $ref: '#/PersonInteractionType'
+    occurred_at:
+      type: string
+      format: date-time
+    summary:
+      type: string
+    note:
+      type: string
+      nullable: true
+    created_by:
+      $ref: './common.yaml#/CreatedBy'
+    provenance_refs:
+      type: array
+      items:
+        $ref: './common.yaml#/ProvenanceRef'
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    version:
+      type: integer
+
+CreatePersonInteractionRequest:
+  type: object
+  additionalProperties: false
+  required: [interaction_type, occurred_at, summary]
+  properties:
+    interaction_type:
+      $ref: '#/PersonInteractionType'
+    occurred_at:
+      type: string
+      format: date-time
+    summary:
+      type: string
+      minLength: 1
+      maxLength: 160
+    note:
+      type: string
+      nullable: true
+      maxLength: 1000
