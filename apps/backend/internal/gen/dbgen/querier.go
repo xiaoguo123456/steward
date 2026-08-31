@@ -139,6 +139,8 @@ type Querier interface {
 	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
 	// 异步 Operation、Activity、幂等与 AI 审计。
 	CreateOperation(ctx context.Context, arg CreateOperationParams) (AsyncOperation, error)
+	CreatePerson(ctx context.Context, arg CreatePersonParams) (Person, error)
+	CreatePersonInteraction(ctx context.Context, arg CreatePersonInteractionParams) (PersonInteraction, error)
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	// Action Proposal。模型只产建议，用户确认后才由 Domain Command 写入。
 	CreateProposal(ctx context.Context, arg CreateProposalParams) (ActionProposal, error)
@@ -166,6 +168,7 @@ type Querier interface {
 	// 重算之前先清掉旧明细。**重算必须幂等**：同一次调用重算多少遍，
 	// 结果都应当一样，而不是把成本累加两遍。
 	DeleteCostItems(ctx context.Context, aiActionID string) error
+	DeleteEventPeopleForPerson(ctx context.Context, personID string) error
 	DeleteExpiredIdempotencyRecords(ctx context.Context) error
 	DeleteMealPlanEntries(ctx context.Context, mealPlanID string) error
 	// 同步标记删除，查询立即不可见；派生数据由清理任务处理。
@@ -227,6 +230,8 @@ type Querier interface {
 	GetNextActiveTaskListForUpdate(ctx context.Context, arg GetNextActiveTaskListForUpdateParams) (TaskList, error)
 	GetNote(ctx context.Context, id string) (Note, error)
 	GetOperation(ctx context.Context, id string) (AsyncOperation, error)
+	GetPerson(ctx context.Context, id string) (Person, error)
+	GetPersonInteraction(ctx context.Context, id string) (PersonInteraction, error)
 	GetProcessedJob(ctx context.Context, idempotencyKey string) (ProcessedJob, error)
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProposal(ctx context.Context, id string) (ActionProposal, error)
@@ -260,6 +265,7 @@ type Querier interface {
 	IsRelearnBlocked(ctx context.Context, arg IsRelearnBlockedParams) (bool, error)
 	// 后台每个响应都要说出「这份数据算到什么时候」。
 	LatestAggregation(ctx context.Context, kind string) (AdminAggregationRun, error)
+	LinkEventToPerson(ctx context.Context, arg LinkEventToPersonParams) error
 	ListAIPrices(ctx context.Context) ([]ListAIPricesRow, error)
 	ListActivityBatches(ctx context.Context, arg ListActivityBatchesParams) ([]ActivityBatch, error)
 	ListActivityEntries(ctx context.Context, batchID string) ([]ActivityEntry, error)
@@ -304,6 +310,10 @@ type Querier interface {
 	ListPendingCostActions(ctx context.Context, rowLimit int32) ([]ListPendingCostActionsRow, error)
 	// 长期停留在 pending 的资产说明客户端放弃了上传，交给清理任务回收。
 	ListPendingMediaBefore(ctx context.Context, arg ListPendingMediaBeforeParams) ([]MediaAsset, error)
+	// 亲友档案、互动与人物关联事件。
+	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
+	ListPersonEvents(ctx context.Context, arg ListPersonEventsParams) ([]Event, error)
+	ListPersonInteractions(ctx context.Context, arg ListPersonInteractionsParams) ([]PersonInteraction, error)
 	// Project 查询。progress 由 Task 计数在应用层计算，不落库。
 	ListProjects(ctx context.Context, arg ListProjectsParams) ([]Project, error)
 	ListProposals(ctx context.Context, arg ListProposalsParams) ([]ActionProposal, error)
@@ -437,6 +447,8 @@ type Querier interface {
 	SoftDeleteMessagesByThread(ctx context.Context, threadID string) error
 	SoftDeleteMoodJournalNote(ctx context.Context, noteID string) (Note, error)
 	SoftDeleteNote(ctx context.Context, id string) (Note, error)
+	SoftDeletePerson(ctx context.Context, id string) (Person, error)
+	SoftDeletePersonInteractions(ctx context.Context, personID string) error
 	SoftDeleteProject(ctx context.Context, id string) (Project, error)
 	SoftDeleteRecord(ctx context.Context, id string) (Record, error)
 	SoftDeleteRecordsByTracker(ctx context.Context, trackerID string) error
@@ -480,6 +492,7 @@ type Querier interface {
 	UpdateMoodJournalNote(ctx context.Context, arg UpdateMoodJournalNoteParams) (Note, error)
 	UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error)
 	UpdateOperationStatus(ctx context.Context, arg UpdateOperationStatusParams) (AsyncOperation, error)
+	UpdatePerson(ctx context.Context, arg UpdatePersonParams) (Person, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateRecord(ctx context.Context, arg UpdateRecordParams) (Record, error)
 	UpdateShoppingTaskDetails(ctx context.Context, arg UpdateShoppingTaskDetailsParams) (Task, error)

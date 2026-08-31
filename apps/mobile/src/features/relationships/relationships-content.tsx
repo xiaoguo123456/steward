@@ -1,7 +1,13 @@
+import {
+  errorMessage,
+  type Person,
+  type RelationshipGroup,
+  useListPeople,
+} from '@steward/api-client';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
-  Image,
-  Modal,
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -9,150 +15,40 @@ import {
   View,
 } from 'react-native';
 
+import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
-import { ModalSheet } from '@/components/ui/modal-sheet';
 import { StatePanel } from '@/components/ui/state-panel';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
-import { relationshipColors } from './theme';
 
-type RelationshipGroup = 'family' | 'friends' | 'colleagues';
 type RelationshipFilter = 'all' | RelationshipGroup;
-
-type RelationshipPerson = {
-  id: string;
-  name: string;
-  relation: string;
-  group: RelationshipGroup;
-  context: string;
-  lastContact: string;
-  nextStep: string;
-  action?: string;
-  avatar: number;
-};
 
 const filters: readonly { id: RelationshipFilter; label: string }[] = [
   { id: 'all', label: '全部' },
   { id: 'family', label: '家人' },
-  { id: 'friends', label: '朋友' },
-  { id: 'colleagues', label: '同事' },
+  { id: 'friend', label: '朋友' },
+  { id: 'colleague', label: '同事' },
+  { id: 'other', label: '其他' },
 ];
 
-const previewPeople: readonly RelationshipPerson[] = [
-  {
-    id: 'mother',
-    name: '妈妈',
-    relation: '家人',
-    group: 'family',
-    context: '生日还有 7 天',
-    lastContact: '昨天联系',
-    nextStep: '提前准备生日礼物',
-    action: '准备',
-    avatar: require('../../../assets/relationship-demo/mother.png'),
-  },
-  {
-    id: 'xiaolin',
-    name: '小林',
-    relation: '朋友',
-    group: 'friends',
-    context: '明天面试，上次聊到准备材料',
-    lastContact: '昨天联系',
-    nextStep: '面试结束后问问结果',
-    action: '提醒',
-    avatar: require('../../../assets/relationship-demo/xiaolin.png'),
-  },
-  {
-    id: 'teacher-wang',
-    name: '王老师',
-    relation: '老师',
-    group: 'colleagues',
-    context: '周日一起吃饭',
-    lastContact: '前天联系',
-    nextStep: '确认餐厅和时间',
-    action: '查看',
-    avatar: require('../../../assets/relationship-demo/teacher-wang.png'),
-  },
-  {
-    id: 'azhe',
-    name: '阿哲',
-    relation: '朋友',
-    group: 'friends',
-    context: '一起去过青岛',
-    lastContact: '昨天',
-    nextStep: '下次见面带上旅行照片',
-    avatar: require('../../../assets/relationship-demo/azhe.png'),
-  },
-  {
-    id: 'xiaxia',
-    name: '小夏',
-    relation: '朋友',
-    group: 'friends',
-    context: '最近在准备搬家',
-    lastContact: '3 天前',
-    nextStep: '问问搬家是否需要帮忙',
-    avatar: require('../../../assets/relationship-demo/xiaxia.png'),
-  },
-  {
-    id: 'uncle-chen',
-    name: '陈叔',
-    relation: '长辈',
-    group: 'family',
-    context: '答应推荐一本书',
-    lastContact: '上周',
-    nextStep: '把书名发给陈叔',
-    avatar: require('../../../assets/relationship-demo/uncle-chen.png'),
-  },
-] as const;
+const groupLabels: Record<RelationshipGroup, string> = {
+  family: '家人',
+  friend: '朋友',
+  colleague: '同事',
+  other: '其他',
+};
 
-const todayIds = new Set(['mother', 'xiaolin', 'teacher-wang']);
-const recentIds = new Set(['azhe', 'xiaxia', 'uncle-chen']);
-
-function matchesPerson(
-  person: RelationshipPerson,
-  filter: RelationshipFilter,
-  query: string,
-) {
-  if (filter !== 'all' && person.group !== filter) return false;
-  const keyword = query.trim().toLocaleLowerCase('zh-CN');
-  if (!keyword) return true;
-  return [person.name, person.relation, person.context, person.lastContact, person.nextStep]
-    .join(' ')
-    .toLocaleLowerCase('zh-CN')
-    .includes(keyword);
-}
-
-/**
- * 亲友分区的开发期视觉预览。
- *
- * 正式构建不会展示示例人物；后续必须先引入 Person 契约、用户隔离、删除保留和
- * AI Candidate 确认链路，才能把本组件替换为真实 Query。
- */
 export function RelationshipsContent() {
-  if (!__DEV__) {
-    return (
-      <View style={styles.productionState}>
-        <StatePanel
-          icon="person-outline"
-          message="以后可以在这里整理重要的人、共同经历与关心提醒；当前不会读取通讯录、保存人物资料或调用 AI。"
-          title="亲友正在准备"
-        />
-      </View>
-    );
-  }
-
-  return <RelationshipsPreview />;
-}
-
-function RelationshipsPreview() {
+  const router = useRouter();
   const [filter, setFilter] = useState<RelationshipFilter>('all');
   const [query, setQuery] = useState('');
-  const [selectedPerson, setSelectedPerson] = useState<RelationshipPerson | null>(null);
-
-  const matchingPeople = useMemo(
-    () => previewPeople.filter((person) => matchesPerson(person, filter, query)),
-    [filter, query],
-  );
-  const todayPeople = matchingPeople.filter((person) => todayIds.has(person.id));
-  const recentPeople = matchingPeople.filter((person) => recentIds.has(person.id));
+  const normalizedQuery = query.trim();
+  const params = useMemo(() => ({
+    limit: 100,
+    q: normalizedQuery || undefined,
+    relationship_group: filter === 'all' ? undefined : filter,
+  }), [filter, normalizedQuery]);
+  const peopleQuery = useListPeople(params, { query: { staleTime: 30_000 } });
+  const people = peopleQuery.data?.data ?? [];
 
   return (
     <View style={styles.page}>
@@ -163,7 +59,7 @@ function RelationshipsPreview() {
             accessibilityLabel="搜索亲友"
             autoCorrect={false}
             onChangeText={setQuery}
-            placeholder="搜索姓名或近况"
+            placeholder="搜索姓名或关系"
             placeholderTextColor={colors.textSecondary}
             returnKeyType="search"
             style={styles.searchInput}
@@ -175,12 +71,18 @@ function RelationshipsPreview() {
               accessibilityRole="button"
               hitSlop={8}
               onPress={() => setQuery('')}
-              style={({ pressed }) => pressed && styles.pressed}
             >
               <AppIcon color={colors.textTertiary} name="close-circle" size={18} />
             </Pressable>
           ) : null}
         </View>
+        <AppButton
+          compact
+          icon="person-add-outline"
+          label="添加"
+          onPress={() => router.push('/people/new')}
+          variant="secondary"
+        />
       </View>
 
       <View accessibilityRole="tablist" style={styles.filters}>
@@ -206,429 +108,93 @@ function RelationshipsPreview() {
         })}
       </View>
 
-      {matchingPeople.length === 0 ? (
-        <View style={styles.emptyState}>
-          <AppIcon color={relationshipColors.primary} name="search" size={24} />
-          <Text style={styles.emptyTitle}>没有找到相关亲友</Text>
-          <Text style={styles.emptyCopy}>换一个姓名、近况或关系试试。</Text>
-        </View>
+      {peopleQuery.isPending ? (
+        <View style={styles.loading}><ActivityIndicator color={colors.primary} /></View>
+      ) : peopleQuery.isError ? (
+        <StatePanel
+          actionLabel="重试"
+          icon="cloud-offline-outline"
+          message={errorMessage(peopleQuery.error, '亲友没有加载出来。')}
+          onAction={() => void peopleQuery.refetch()}
+          title="加载失败"
+        />
+      ) : people.length === 0 ? (
+        <StatePanel
+          actionLabel={normalizedQuery || filter !== 'all' ? undefined : '添加亲友'}
+          icon="people-outline"
+          message={normalizedQuery || filter !== 'all' ? '换个姓名或关系试试。' : undefined}
+          onAction={normalizedQuery || filter !== 'all' ? undefined : () => router.push('/people/new')}
+          title={normalizedQuery || filter !== 'all' ? '没有找到' : '还没有亲友'}
+        />
       ) : (
-        <>
-          {todayPeople.length > 0 ? (
-            <RelationshipSection title="今天要关心">
-              {todayPeople.map((person, index) => (
-                <PersonRow
-                  compact
-                  divider={index < todayPeople.length - 1}
-                  key={person.id}
-                  onPress={() => setSelectedPerson(person)}
-                  person={person}
-                  showAction
-                />
-              ))}
-            </RelationshipSection>
-          ) : null}
-
-          {recentPeople.length > 0 ? (
-            <RelationshipSection title="最近联系">
-              {recentPeople.map((person, index) => (
-                <PersonRow
-                  divider={index < recentPeople.length - 1}
-                  key={person.id}
-                  onPress={() => setSelectedPerson(person)}
-                  person={person}
-                />
-              ))}
-            </RelationshipSection>
-          ) : null}
-
-          <RelationshipSection count={`${matchingPeople.length} 人`} title="全部亲友">
-            {matchingPeople.map((person, index) => (
-              <PersonRow
-                divider={index < matchingPeople.length - 1}
-                key={person.id}
-                onPress={() => setSelectedPerson(person)}
-                person={person}
-                showRelation
-              />
-            ))}
-          </RelationshipSection>
-        </>
+        <View style={styles.list}>
+          {people.map((person, index) => (
+            <PersonRow
+              divider={index < people.length - 1}
+              key={person.id}
+              onPress={() => router.push({ pathname: '/people/[id]', params: { id: person.id } })}
+              person={person}
+            />
+          ))}
+        </View>
       )}
-
-      <PersonPreviewSheet onClose={() => setSelectedPerson(null)} person={selectedPerson} />
     </View>
   );
 }
 
-function RelationshipSection({
-  children,
-  count,
-  title,
-}: {
-  children: React.ReactNode;
-  count?: string;
-  title: string;
-}) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
-        {count ? <Text style={styles.sectionCount}>{count}</Text> : null}
-      </View>
-      <View>{children}</View>
-    </View>
-  );
-}
-
-function PersonRow({
-  compact = false,
-  divider,
-  onPress,
-  person,
-  showAction = false,
-  showRelation = false,
-}: {
-  compact?: boolean;
-  divider: boolean;
-  onPress: () => void;
-  person: RelationshipPerson;
-  showAction?: boolean;
-  showRelation?: boolean;
-}) {
+function PersonRow({ divider, onPress, person }: { divider: boolean; onPress: () => void; person: Person }) {
+  const relation = person.relationship_label || groupLabels[person.relationship_group];
   return (
     <Pressable
-      accessibilityLabel={`${person.name}，${person.relation}，${person.context}`}
+      accessibilityLabel={`${person.name}，${relation}`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.personRow, pressed && styles.rowPressed]}
     >
-      <Image resizeMode="cover" source={person.avatar} style={styles.personAvatar} />
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{person.name.trim().slice(0, 1)}</Text>
+      </View>
       <View style={[styles.personBody, divider && styles.personDivider]}>
         <View style={styles.personCopy}>
-          <View style={styles.personTitleLine}>
-            <Text numberOfLines={1} style={styles.personName}>{person.name}</Text>
-            {compact || showRelation ? (
-              <Text numberOfLines={1} style={styles.personRelation}>· {person.relation}</Text>
-            ) : (
-              <Text style={styles.personTime}>{person.lastContact}</Text>
-            )}
-          </View>
-          <Text numberOfLines={1} style={styles.personContext}>{person.context}</Text>
+          <Text numberOfLines={1} style={styles.personName}>{person.name}</Text>
+          <Text numberOfLines={1} style={styles.personRelation}>{relation}</Text>
         </View>
-        {showAction && person.action ? (
-          <Text style={styles.rowAction}>{person.action}</Text>
-        ) : (
-          <AppIcon color={colors.textTertiary} name="chevron-forward" size={17} />
-        )}
+        <AppIcon color={colors.textTertiary} name="chevron-forward" size={18} />
       </View>
     </Pressable>
   );
 }
 
-function PersonPreviewSheet({
-  onClose,
-  person,
-}: {
-  onClose: () => void;
-  person: RelationshipPerson | null;
-}) {
-  return (
-    <Modal
-      animationType="fade"
-      onRequestClose={onClose}
-      statusBarTranslucent
-      transparent
-      visible={person !== null}
-    >
-      <ModalSheet maxHeight="78%" onClose={onClose}>
-        {person ? (
-          <View style={styles.detailSheet}>
-            <View style={styles.detailHeader}>
-              <Image resizeMode="cover" source={person.avatar} style={styles.detailAvatar} />
-              <View style={styles.detailHeaderCopy}>
-                <Text accessibilityRole="header" style={styles.detailName}>{person.name}</Text>
-                <Text style={styles.detailRelation}>{person.relation}</Text>
-              </View>
-              <Pressable
-                accessibilityLabel="关闭亲友详情"
-                accessibilityRole="button"
-                onPress={onClose}
-                style={({ pressed }) => [styles.detailClose, pressed && styles.pressed]}
-              >
-                <AppIcon color={colors.textSecondary} name="close" size={21} />
-              </Pressable>
-            </View>
-            <DetailFact icon="time-outline" label="最近联系" value={person.lastContact} />
-            <DetailFact icon="heart-outline" label="记住的事" value={person.context} />
-            <DetailFact icon="notifications-outline" label="接下来" value={person.nextStep} />
-          </View>
-        ) : null}
-      </ModalSheet>
-    </Modal>
-  );
-}
-
-function DetailFact({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentProps<typeof AppIcon>['name'];
-  label: string;
-  value: string;
-}) {
-  return (
-    <View style={styles.detailFact}>
-      <View style={styles.detailFactIcon}>
-        <AppIcon color={relationshipColors.strong} name={icon} size={18} />
-      </View>
-      <View style={styles.detailFactCopy}>
-        <Text style={styles.detailFactLabel}>{label}</Text>
-        <Text style={styles.detailFactValue}>{value}</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  productionState: {
-    paddingTop: 24,
-  },
-  page: {
-    paddingTop: 12,
-  },
-  toolbarRow: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pressed: {
-    opacity: 0.56,
-  },
+  page: { gap: 18 },
+  toolbarRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchField: {
-    flex: 1,
-    minWidth: 0,
     minHeight: 44,
+    minWidth: 0,
+    flex: 1,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    borderRadius: radius.md,
-    backgroundColor: relationshipColors.surface,
-  },
-  searchInput: {
-    flex: 1,
-    minWidth: 0,
-    paddingVertical: 0,
-    color: colors.text,
-    fontFamily,
-    ...typography.input,
-  },
-  filters: {
-    marginTop: 12,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  filter: {
-    minHeight: 40,
-    paddingHorizontal: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-  },
-  filterSelected: {
-    backgroundColor: relationshipColors.soft,
-  },
-  filterText: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.label,
-  },
-  filterTextSelected: {
-    color: relationshipColors.strong,
-    fontWeight: '600',
-  },
-  section: {
-    marginTop: 22,
-  },
-  sectionHeader: {
-    minHeight: 31,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 8,
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 18,
-    lineHeight: 25,
-    fontWeight: '600',
-  },
-  sectionCount: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  personRow: {
-    minHeight: 66,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rowPressed: {
-    backgroundColor: relationshipColors.surface,
-  },
-  personAvatar: {
-    width: 44,
-    height: 44,
-    marginLeft: 4,
-    marginRight: 12,
-    borderRadius: 22,
-    backgroundColor: relationshipColors.soft,
-  },
-  personBody: {
-    minHeight: 66,
-    flex: 1,
-    minWidth: 0,
-    paddingRight: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 10,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
   },
-  personDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  personCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  personTitleLine: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 5,
-  },
-  personName: {
-    maxWidth: '56%',
-    color: colors.text,
-    fontFamily,
-    ...typography.bodyStrong,
-  },
-  personRelation: {
-    flexShrink: 1,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  personTime: {
-    flexShrink: 1,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  personContext: {
-    marginTop: 1,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  rowAction: {
-    minWidth: 44,
-    color: relationshipColors.strong,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-    textAlign: 'right',
-  },
-  emptyState: {
-    marginTop: 24,
-    paddingVertical: 36,
-    alignItems: 'center',
-    borderRadius: radius.lg,
-    backgroundColor: relationshipColors.surface,
-  },
-  emptyTitle: {
-    marginTop: 10,
-    color: colors.text,
-    fontFamily,
-    ...typography.section,
-  },
-  emptyCopy: {
-    marginTop: 4,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  detailSheet: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 28,
-  },
-  detailHeader: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: relationshipColors.soft,
-  },
-  detailHeaderCopy: {
-    flex: 1,
-    minWidth: 0,
-    marginLeft: 14,
-  },
-  detailName: {
-    color: colors.text,
-    fontFamily,
-    ...typography.detail,
-  },
-  detailRelation: {
-    marginTop: 1,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  detailClose: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailFact: {
-    minHeight: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  detailFactIcon: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-    backgroundColor: relationshipColors.soft,
-  },
-  detailFactCopy: {
-    flex: 1,
-    minWidth: 0,
-    marginLeft: 12,
-  },
-  detailFactLabel: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-  },
-  detailFactValue: {
-    marginTop: 2,
-    color: colors.text,
-    fontFamily,
-    ...typography.body,
-  },
+  searchInput: { minWidth: 0, flex: 1, paddingVertical: 0, color: colors.text, fontFamily, ...typography.input },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filter: { minHeight: 38, paddingHorizontal: 15, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: colors.surfaceSubtle },
+  filterSelected: { backgroundColor: colors.primarySoft },
+  filterText: { color: colors.textSecondary, fontFamily, ...typography.label },
+  filterTextSelected: { color: colors.primaryStrong, fontWeight: '700' },
+  list: { overflow: 'hidden', borderRadius: radius.lg, backgroundColor: colors.background },
+  personRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rowPressed: { opacity: 0.65 },
+  avatar: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24, backgroundColor: colors.primarySoft },
+  avatarText: { color: colors.primaryStrong, fontFamily, fontSize: 18, lineHeight: 24, fontWeight: '700' },
+  personBody: { minWidth: 0, minHeight: 72, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  personDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  personCopy: { minWidth: 0, flex: 1, gap: 2 },
+  personName: { color: colors.text, fontFamily, ...typography.bodyStrong },
+  personRelation: { color: colors.textSecondary, fontFamily, ...typography.meta },
+  loading: { minHeight: 180, alignItems: 'center', justifyContent: 'center' },
+  pressed: { opacity: 0.72 },
 });

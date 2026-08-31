@@ -258,7 +258,7 @@ export const GetCaptureResponse = zod.object({
 })).optional().describe('字段级校验明细，仅在 VALIDATION_FAILED 等场景出现。')
 }).optional(),
   "created_objects": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'person', 'person_interaction', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })).optional().describe('确认后本次实际创建或更新的实体引用。'),
   "activity_batch_id": zod.string().nullish().describe('确认成功后生成的 Activity 批次，用于即时撤销。'),
@@ -290,7 +290,7 @@ export const DiscardCaptureHeader = zod.object({
 export const DiscardCaptureResponse = zod.object({
   "data": zod.object({
   "affected_resources": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'person', 'person_interaction', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })),
   "activity_batch_id": zod.string().nullish()
@@ -616,7 +616,7 @@ export const ConfirmCaptureResponse = zod.object({
 })).optional().describe('字段级校验明细，仅在 VALIDATION_FAILED 等场景出现。')
 }).optional(),
   "created_objects": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'person', 'person_interaction', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 })).optional().describe('确认后本次实际创建或更新的实体引用。'),
   "activity_batch_id": zod.string().nullish().describe('确认成功后生成的 Activity 批次，用于即时撤销。'),
@@ -625,7 +625,7 @@ export const ConfirmCaptureResponse = zod.object({
   "confirmed_at": zod.string().datetime({"offset":true}).nullish()
 }),
   "affected_resources": zod.array(zod.object({
-  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
+  "type": zod.enum(['task', 'event', 'project', 'note', 'record', 'tracker', 'task_list', 'capture', 'today', 'calendar', 'activity', 'assistant_thread', 'action_proposal', 'memory', 'memory_moment', 'person', 'person_interaction', 'recipe', 'meal_plan', 'diet_profile']).describe('受影响资源类型，App 据此精确失效缓存。'),
   "id": zod.string().nullable().describe('为空表示该类型的集合查询整体失效。')
 }))
 }),

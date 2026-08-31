@@ -36,6 +36,8 @@ export const AffectedResourceType = {
   action_proposal: 'action_proposal',
   memory: 'memory',
   memory_moment: 'memory_moment',
+  person: 'person',
+  person_interaction: 'person_interaction',
   recipe: 'recipe',
   meal_plan: 'meal_plan',
   diet_profile: 'diet_profile',

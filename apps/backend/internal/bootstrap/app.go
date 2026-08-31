@@ -24,6 +24,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/moodjournal"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/recipes"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/relationships"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/retention"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/users"
@@ -66,6 +67,7 @@ type Server struct {
 	*memorymoments.MemoryMomentAPI
 	*recipes.RecipeAPI
 	*moodjournal.API
+	*relationships.RelationshipAPI
 }
 
 var _ httpapi.StrictServerInterface = (*Server)(nil)
@@ -141,6 +143,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	mediaSvc := media.New(db, store)
 	memoryMomentsSvc := memorymoments.New(db, mediaSvc, activitySvc, enqueuer)
 	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc, mediaSvc)
+	relationshipsSvc := relationships.New(db, objectsSvc, activitySvc)
 	moodJournalSvc := moodjournal.New(db, objectsSvc, usersSvc, activitySvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
@@ -240,6 +243,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 			MemoryMomentAPI: memorymoments.NewAPI(memoryMomentsSvc),
 			RecipeAPI:       recipes.NewRecipeAPI(recipesSvc),
 			API:             moodjournal.NewAPI(moodJournalSvc),
+			RelationshipAPI: relationships.NewAPI(relationshipsSvc, objects.MapEvent),
 		},
 		Jobs:          runtime,
 		Parser:        parser,

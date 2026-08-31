@@ -446,6 +446,13 @@ type Event struct {
 	ItineraryDetails  []byte
 }
 
+type EventPerson struct {
+	EventID   string
+	PersonID  string
+	UserID    string
+	CreatedAt time.Time
+}
+
 type IdempotencyKey struct {
 	UserID       string
 	Endpoint     string
@@ -604,6 +611,37 @@ type Note struct {
 	Version         int32
 	NoteKind        string
 	ContentDocument []byte
+}
+
+type Person struct {
+	ID                string
+	UserID            string
+	Name              string
+	RelationshipGroup string
+	RelationshipLabel *string
+	Note              *string
+	CreatedBy         string
+	ProvenanceRefs    []byte
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         *time.Time
+	Version           int32
+}
+
+type PersonInteraction struct {
+	ID              string
+	UserID          string
+	PersonID        string
+	InteractionType string
+	OccurredAt      time.Time
+	Summary         string
+	Note            *string
+	CreatedBy       string
+	ProvenanceRefs  []byte
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       *time.Time
+	Version         int32
 }
 
 type ProcessedJob struct {

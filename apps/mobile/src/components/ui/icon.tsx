@@ -20,6 +20,7 @@ import BookOpen01Icon from '@hugeicons/core-free-icons/BookOpen01Icon';
 import Bookmark01Icon from '@hugeicons/core-free-icons/Bookmark01Icon';
 import Briefcase03Icon from '@hugeicons/core-free-icons/Briefcase03Icon';
 import BulbIcon from '@hugeicons/core-free-icons/BulbIcon';
+import BubbleChatIcon from '@hugeicons/core-free-icons/BubbleChatIcon';
 import Bus01Icon from '@hugeicons/core-free-icons/Bus01Icon';
 import Calendar04Icon from '@hugeicons/core-free-icons/Calendar04Icon';
 import Camera01Icon from '@hugeicons/core-free-icons/Camera01Icon';
@@ -108,6 +109,8 @@ import TrendingUpIcon from '@hugeicons/core-free-icons/TrendingUpIcon';
 import Undo02Icon from '@hugeicons/core-free-icons/Undo02Icon';
 import UserCircleIcon from '@hugeicons/core-free-icons/UserCircleIcon';
 import UserIcon from '@hugeicons/core-free-icons/UserIcon';
+import UserPlusIcon from '@hugeicons/core-free-icons/UserPlusIcon';
+import UsersIcon from '@hugeicons/core-free-icons/UsersIcon';
 import VolumeHighIcon from '@hugeicons/core-free-icons/VolumeHighIcon';
 import WalkingIcon from '@hugeicons/core-free-icons/WalkingIcon';
 import Wallet01Icon from '@hugeicons/core-free-icons/Wallet01Icon';
@@ -150,6 +153,8 @@ const appIcons = {
   'bookmark-outline': Bookmark01Icon,
   'briefcase-outline': Briefcase03Icon,
   'bulb-outline': BulbIcon,
+  'chatbubble-ellipses-outline': BubbleChatIcon,
+  'chatbubble-outline': BubbleChatIcon,
   'bus-outline': Bus01Icon,
   'cafe-outline': Coffee01Icon,
   calendar: Calendar04Icon,
@@ -222,6 +227,8 @@ const appIcons = {
   'pause-outline': PauseIcon,
   pencil: PencilEdit01Icon,
   person: UserIcon,
+  'people-outline': UsersIcon,
+  'person-add-outline': UserPlusIcon,
   'person-circle-outline': UserCircleIcon,
   'person-outline': UserIcon,
   'phone-portrait-outline': SmartPhone01Icon,

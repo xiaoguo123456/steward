@@ -1,0 +1,235 @@
+Collection:
+  get:
+    operationId: listPeople
+    summary: 查询当前用户的亲友档案
+    tags: [people]
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 80
+      - name: relationship_group
+        in: query
+        required: false
+        schema:
+          $ref: '../components/schemas/relationships.yaml#/RelationshipGroup'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/PeopleResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createPerson
+    summary: 手动添加亲友
+    tags: [people]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/relationships.yaml#/CreatePersonRequest'
+    responses:
+      '201':
+        description: 创建成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/PersonResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Item:
+  get:
+    operationId: getPerson
+    summary: 读取亲友详情
+    tags: [people]
+    parameters:
+      - $ref: '../components/parameters.yaml#/PersonId'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/PersonResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  patch:
+    operationId: updatePerson
+    summary: 修改亲友资料
+    tags: [people]
+    parameters:
+      - $ref: '../components/parameters.yaml#/PersonId'
+      - $ref: '../components/parameters.yaml#/IfMatch'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/relationships.yaml#/UpdatePersonRequest'
+    responses:
+      '200':
+        description: 修改成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/PersonResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  delete:
+    operationId: deletePerson
+    summary: 删除亲友档案
+    description: 删除人物、互动与事件关联，不删除已有 Event。
+    tags: [people]
+    parameters:
+      - $ref: '../components/parameters.yaml#/PersonId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 删除成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/MutationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Interactions:
+  get:
+    operationId: listPersonInteractions
+    summary: 查询某人的历史互动
+    tags: [people]
+    parameters:
+      - $ref: '../components/parameters.yaml#/PersonId'
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/PersonInteractionsResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createPersonInteraction
+    summary: 记录一次已经发生的互动
+    tags: [people]
+    parameters:
+      - $ref: '../components/parameters.yaml#/PersonId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/relationships.yaml#/CreatePersonInteractionRequest'
+    responses:
+      '201':
+        description: 创建成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/PersonInteractionResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Events:
+  get:
+    operationId: listPersonEvents
+    summary: 查询与某人关联的事件
+    tags: [people, events]
+    parameters:
+      - $ref: '../components/parameters.yaml#/PersonId'
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/EventsResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+  post:
+    operationId: createPersonEvent
+    summary: 为某人创建并关联 Event
+    tags: [people, events]
+    parameters:
+      - $ref: '../components/parameters.yaml#/PersonId'
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/objects.yaml#/CreateEventRequest'
+    responses:
+      '201':
+        description: 创建并关联成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/envelopes.yaml#/EventResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '409':
+        $ref: '../components/responses.yaml#/Conflict'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

@@ -16,7 +16,7 @@ test('首页顶部导航保持固定顺序和短标签', () => {
   );
 });
 
-test('亲友回到首页分区且正式构建不展示示例人物', async () => {
+test('亲友首页使用正式人物查询和添加入口', async () => {
   const home = await readFile(new URL('../../app/(tabs)/today.tsx', import.meta.url), 'utf8');
   const relationships = await readFile(
     new URL('../relationships/relationships-content.tsx', import.meta.url),
@@ -25,15 +25,30 @@ test('亲友回到首页分区且正式构建不展示示例人物', async () =>
 
   assert.match(home, /activeHomeTab === 'relationships'/);
   assert.match(home, /<RelationshipsContent \/>/);
-  assert.match(relationships, /if \(!__DEV__\)/);
-  assert.match(relationships, /当前不会读取通讯录、保存人物资料或调用 AI/);
-  assert.doesNotMatch(relationships, /界面预览 · 未读取通讯录/);
+  assert.match(relationships, /useListPeople/);
+  assert.match(relationships, /router\.push\('\/people\/new'\)/);
+  assert.match(relationships, /label="添加"/);
+  assert.doesNotMatch(relationships, /previewPeople|__DEV__/);
   assert.doesNotMatch(relationships, /style=\{styles\.pageTitle\}>亲友/);
-  assert.doesNotMatch(relationships, /label="添加亲友"/);
   assert.doesNotMatch(relationships, /PreviewNoticeSheet|showPreviewNotice|新增亲友将在正式版开放/);
-  assert.doesNotMatch(relationships, /name="add"/);
   assert.match(relationships, /style=\{styles\.toolbarRow\}/);
   assert.doesNotMatch(relationships, /style=\{styles\.actionRow\}/);
+});
+
+test('亲友详情提供人物互动和关联事件闭环', async () => {
+  const detail = await readFile(new URL('../../app/people/[id].tsx', import.meta.url), 'utf8');
+  const eventForm = await readFile(new URL('../../app/people/[id]/event/new.tsx', import.meta.url), 'utf8');
+  const editForm = await readFile(new URL('../../app/people/[id]/edit.tsx', import.meta.url), 'utf8');
+
+  assert.match(detail, /useGetPerson/);
+  assert.match(detail, /useListPersonInteractions/);
+  assert.match(detail, /useListPersonEvents/);
+  assert.match(detail, /label="记互动"/);
+  assert.match(detail, /label="加事件"/);
+  assert.match(detail, /title="接下来"/);
+  assert.match(detail, /title="最近互动"/);
+  assert.match(eventForm, /kind === 'important_date' \? 1900/);
+  assert.match(editForm, /homeTab: 'relationships'/);
 });
 
 test('时光与心情首页不展示重复标题或研发提示', async () => {
@@ -60,6 +75,7 @@ test('首页分区已开放的紧凑操作复用统一按钮及全局操作色',
   assert.match(memories, /label="选照片"[\s\S]*variant="secondary"/);
   assert.match(relationships, /toolbarRow:\s*\{[^}]*minHeight:\s*44,/s);
   assert.match(relationships, /searchField:\s*\{[^}]*minHeight:\s*44,/s);
+  assert.match(relationships, /<AppButton[\s\S]*compact[\s\S]*label="添加"[\s\S]*variant="secondary"/);
   assert.equal((mood.match(/variant="neutral"/g) ?? []).length, 2);
 });
 

@@ -100,7 +100,7 @@ const groupLabels: Record<TodayTask['group'], string> = {
 export default function HomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ homeTab?: string; date?: string }>();
-  const initialHomeTab: HomeTopTabId = params.homeTab === 'mood' ? 'mood' : 'today';
+  const initialHomeTab: HomeTopTabId = isHomeTopTabId(params.homeTab) ? params.homeTab : 'today';
   const [activeHomeTab, setActiveHomeTab] = useState<HomeTopTabId>(initialHomeTab);
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const today = useGetToday();
@@ -299,6 +299,13 @@ export default function HomeScreen() {
       <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />
     </AppScreen>
   );
+}
+
+function isHomeTopTabId(value: string | undefined): value is HomeTopTabId {
+  return value === 'today'
+    || value === 'memories'
+    || value === 'relationships'
+    || value === 'mood';
 }
 
 /** 只在分组发生变化时显示一次分组标题。 */
