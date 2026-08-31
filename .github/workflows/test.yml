@@ -8,6 +8,12 @@ on:
       - "docs/**"
       - ".env.*.example"
   workflow_dispatch:
+    inputs:
+      diagnostic_request_id:
+        description: "可选：只读取该请求 ID 的测试 API 脱敏错误日志，不执行部署"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -18,6 +24,7 @@ concurrency:
 
 jobs:
   checks:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.diagnostic_request_id == '' }}
     name: 生成、迁移与全量检查
     runs-on: ubuntu-latest
     services:
@@ -78,6 +85,7 @@ jobs:
         run: make check
 
   build-and-deploy:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.diagnostic_request_id == '' }}
     name: 构建镜像并部署测试环境
     runs-on: ubuntu-latest
     needs: checks
@@ -223,3 +231,39 @@ jobs:
             $compose ps
             $compose logs --no-color --tail=100 api admin-api worker migrate nginx
             exit 1
+
+  diagnose-request:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.diagnostic_request_id != '' }}
+    name: 查询测试 API 请求日志
+    runs-on: ubuntu-latest
+    steps:
+      - name: 校验请求 ID
+        env:
+          REQUEST_ID: ${{ inputs.diagnostic_request_id }}
+        run: |
+          if [[ ! "$REQUEST_ID" =~ ^req_[a-z0-9]+$ ]]; then
+            echo "请求 ID 格式不合法。"
+            exit 1
+          fi
+
+      - name: 读取对应脱敏日志
+        uses: appleboy/ssh-action@v1
+        env:
+          REQUEST_ID: ${{ inputs.diagnostic_request_id }}
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          command_timeout: 2m
+          envs: REQUEST_ID
+          script: |
+            set -eu
+            cd /opt/steward-test
+            compose="docker compose --project-name steward-test -f docker-compose.test.yml"
+            matches="$($compose logs --no-color --since=6h api | grep -F "$REQUEST_ID" | tail -20)"
+            if [ -z "$matches" ]; then
+              echo "最近 6 小时没有找到该请求 ID。"
+              exit 1
+            fi
+            printf '%s\n' "$matches"
