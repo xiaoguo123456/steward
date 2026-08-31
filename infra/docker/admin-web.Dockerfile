@@ -4,6 +4,7 @@ RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /workspace
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches patches
 COPY apps/admin/package.json apps/admin/package.json
 COPY packages/admin-api-client/package.json packages/admin-api-client/package.json
 RUN pnpm install --frozen-lockfile --filter @steward/admin...

@@ -4,6 +4,7 @@ RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /workspace
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches patches
 COPY apps/mobile/package.json apps/mobile/package.json
 COPY packages/api-client/package.json packages/api-client/package.json
 RUN pnpm install --frozen-lockfile --filter mobile...
