@@ -454,7 +454,7 @@ func (s *Service) ReauthenticateAccountDeletion(
 		if err := consumeCode(ctx, q, row.Phone, purposeAccountDeleteReauth, code, now); err != nil {
 			return err
 		}
-		_, err = q.CreateAccountDeletionReauthToken(ctx, dbgen.CreateAccountDeletionReauthTokenParams{
+		created, err := q.CreateAccountDeletionReauthToken(ctx, dbgen.CreateAccountDeletionReauthTokenParams{
 			ID: idgen.New(idgen.PrefixDeletionReauth), UserID: userID,
 			IdempotencyKey: idempotencyKey, RequestHash: requestHash,
 			TokenHash: hash, ExpiresAt: expiresAt,
@@ -462,6 +462,7 @@ func (s *Service) ReauthenticateAccountDeletion(
 		if err != nil {
 			return apperr.Internal(err)
 		}
+		expiresAt = created.ExpiresAt
 		return nil
 	})
 	if err != nil {
