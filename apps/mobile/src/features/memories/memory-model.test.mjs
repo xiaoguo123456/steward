@@ -86,6 +86,8 @@ test('时光使用正式查询与上传，发布后只保留整段删除', async
   assert.match(editor, /useMediaUpload/);
   assert.match(editor, /<Field label="描述">/);
   assert.match(editor, /styles\.photoGrid/);
+  assert.match(editor, /width: photoTileSize, height: photoTileSize/);
+  assert.doesNotMatch(editor, /aspectRatio: 1/);
   assert.doesNotMatch(editor, /moveMemoryPhoto|orderBadge|orderActions|向前移动|向后移动|photoCount/);
   assert.doesNotMatch(editor, /<Field label="日期"|<Field label="标题|故事（选填）|发布后不可编辑/);
   assert.doesNotMatch(editor, /AI Candidate|本地交互原型|updateMoment|保存修改/);

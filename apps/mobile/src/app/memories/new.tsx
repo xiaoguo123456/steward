@@ -17,6 +17,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -43,9 +44,13 @@ type SubmissionKey = {
   key: string;
 };
 
+const PHOTO_GRID_COLUMNS = 3;
+const PHOTO_TILE_MAX_SIZE = 132;
+
 export default function MemoryEditorScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{
     pick?: string | string[];
   }>();
@@ -61,6 +66,13 @@ export default function MemoryEditorScreen() {
   const submissionKeyRef = useRef<SubmissionKey | null>(null);
   const { upload, uploading } = useMediaUpload();
   const publishDisabled = photos.length === 0 || publishing || uploading;
+  const photoTileSize = Math.min(
+    PHOTO_TILE_MAX_SIZE,
+    Math.floor(
+      (width - spacing.lg * 2 - spacing.sm * (PHOTO_GRID_COLUMNS - 1))
+      / PHOTO_GRID_COLUMNS,
+    ),
+  );
 
   useEffect(() => {
     if (photos.length > 0) return;
@@ -172,7 +184,10 @@ export default function MemoryEditorScreen() {
         <Text accessibilityRole="header" style={styles.sectionTitle}>照片</Text>
         <View style={styles.photoGrid}>
           {photos.map((photo, index) => (
-            <View key={photo.id} style={styles.photoFrame}>
+            <View
+              key={photo.id}
+              style={[styles.photoFrame, { width: photoTileSize, height: photoTileSize }]}
+            >
               <Image contentFit="cover" source={photo.source} style={StyleSheet.absoluteFill} />
               <Pressable
                 accessibilityLabel={`移除第 ${index + 1} 张照片`}
@@ -193,9 +208,15 @@ export default function MemoryEditorScreen() {
               accessibilityLabel={photos.length === 0 ? '从相册选择照片' : '继续选择照片'}
               accessibilityRole="button"
               onPress={() => void pickImages()}
-              style={({ pressed }) => [styles.addPhoto, pressed && styles.addPhotoPressed]}
+              style={({ pressed }) => [
+                styles.addPhoto,
+                { width: photoTileSize, height: photoTileSize },
+                pressed && styles.addPhotoPressed,
+              ]}
             >
-              <AppIcon color={colors.textSecondary} name="add" size={27} />
+              <View pointerEvents="none" style={styles.addPhotoIcon}>
+                <AppIcon color={colors.textSecondary} name="add" size={27} />
+              </View>
             </Pressable>
           ) : null}
         </View>
@@ -264,9 +285,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   photoFrame: {
-    width: '31%',
-    maxWidth: 132,
-    aspectRatio: 1,
     overflow: 'hidden',
     borderRadius: radius.sm,
     backgroundColor: colors.surface,
@@ -293,13 +311,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
   },
   addPhoto: {
-    width: '31%',
-    maxWidth: 132,
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceSubtle,
+  },
+  addPhotoIcon: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addPhotoPressed: {
     opacity: 0.62,
