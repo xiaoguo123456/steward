@@ -59,6 +59,7 @@ export function InspirationContent({ active }: { active: boolean }) {
 
       {leadPrompt ? (
         <View style={styles.lead}>
+          <View style={styles.leadMarker} />
           <Text style={styles.theme}>{leadPrompt.theme}</Text>
           <Text style={styles.leadQuestion}>{leadPrompt.question}</Text>
           <AppButton
@@ -66,7 +67,7 @@ export function InspirationContent({ active }: { active: boolean }) {
             compact
             label="开始聊聊"
             onPress={() => openPrompt(leadPrompt)}
-            style={styles.textButton}
+            style={styles.leadAction}
             variant="text"
           />
         </View>
@@ -74,10 +75,11 @@ export function InspirationContent({ active }: { active: boolean }) {
 
       {otherPrompts.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>换个话题</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>换个话题</Text>
           <View style={styles.promptList}>
             {otherPrompts.map((prompt) => (
               <Pressable
+                accessibilityHint="打开全屏灵感对话"
                 accessibilityLabel={`聊聊：${prompt.question}`}
                 accessibilityRole="button"
                 key={prompt.id}
@@ -100,6 +102,7 @@ export function InspirationContent({ active }: { active: boolean }) {
             {errorMessage(notesQuery.error, '笔记暂时没有加载出来。')}
           </Text>
           <Pressable
+            accessibilityLabel="重新加载旧笔记"
             accessibilityRole="button"
             onPress={() => void notesQuery.refetch()}
             style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
@@ -108,9 +111,9 @@ export function InspirationContent({ active }: { active: boolean }) {
           </Pressable>
         </View>
       ) : selectedNote ? (
-        <View style={styles.section}>
+        <View style={styles.sourceSection}>
           <View style={styles.sourceHeading}>
-            <Text style={styles.sectionTitle}>重新遇见</Text>
+            <Text accessibilityRole="header" style={styles.sourceTitle}>重新遇见</Text>
             <Text style={styles.sourceAge}>{formatRelativeTime(selectedNote.updated_at)}</Text>
           </View>
           <View style={styles.noteBody}>
@@ -118,6 +121,7 @@ export function InspirationContent({ active }: { active: boolean }) {
             <Text numberOfLines={4} style={styles.noteText}>{selectedNote.content_plaintext}</Text>
             <View style={styles.noteActions}>
               <AppButton
+                accessibilityLabel={`打开笔记：${selectedNote.title}`}
                 compact
                 label="打开原文"
                 onPress={() => router.push({
@@ -128,6 +132,7 @@ export function InspirationContent({ active }: { active: boolean }) {
                 variant="textMuted"
               />
               <AppButton
+                accessibilityLabel={`继续思考：${selectedNote.title}`}
                 compact
                 label="继续想想"
                 onPress={() => continueThinking(selectedNote)}
@@ -144,7 +149,7 @@ export function InspirationContent({ active }: { active: boolean }) {
 
 function InspirationNoteSkeleton() {
   return (
-    <View accessibilityLabel="正在加载旧笔记" style={styles.section}>
+    <View accessibilityLabel="正在加载旧笔记" style={styles.sourceSection}>
       <View style={styles.skeletonHeading} />
       <View style={styles.skeletonTitle} />
       <View style={styles.skeletonLine} />
@@ -163,71 +168,95 @@ function formatLocalDate(date: Date): string {
 
 const styles = StyleSheet.create({
   content: {
-    paddingTop: 26,
-    paddingBottom: 24,
+    paddingTop: 24,
+    paddingBottom: 28,
   },
   title: {
     color: colors.text,
     fontFamily,
-    fontSize: 22,
-    lineHeight: 31,
+    fontSize: 19,
+    lineHeight: 28,
     fontWeight: '600',
   },
   lead: {
-    paddingTop: 28,
-    paddingBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 2,
+  },
+  leadMarker: {
+    width: 36,
+    height: 3,
+    marginBottom: 18,
+    borderRadius: radius.pill,
+    backgroundColor: colors.text,
   },
   theme: {
-    color: colors.textSecondary,
+    color: colors.inspiration,
     fontFamily,
     ...typography.meta,
     fontWeight: '600',
   },
   leadQuestion: {
-    maxWidth: 560,
-    marginTop: 8,
+    maxWidth: 540,
+    marginTop: 10,
     color: colors.text,
     fontFamily,
-    fontSize: 21,
-    lineHeight: 32,
-    fontWeight: '500',
-    letterSpacing: -0.2,
+    fontSize: 28,
+    lineHeight: 40,
+    fontWeight: '600',
+    letterSpacing: -0.4,
   },
   textButton: {
     alignSelf: 'flex-start',
     paddingHorizontal: 0,
   },
+  leadAction: {
+    alignSelf: 'flex-end',
+    marginTop: 5,
+    paddingHorizontal: 0,
+  },
   section: {
-    marginTop: 22,
+    marginTop: 28,
+  },
+  sourceSection: {
+    marginTop: 34,
   },
   sectionTitle: {
     color: colors.text,
     fontFamily,
-    ...typography.section,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600',
   },
   promptList: {
-    marginTop: 10,
+    marginTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
   promptRow: {
-    minHeight: 76,
-    paddingVertical: 13,
-    justifyContent: 'center',
+    minHeight: 72,
+    paddingVertical: 15,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   promptTheme: {
+    width: 70,
+    paddingTop: 2,
     color: colors.textSecondary,
     fontFamily,
     ...typography.meta,
     fontWeight: '600',
   },
   promptQuestion: {
-    marginTop: 3,
+    flex: 1,
+    minWidth: 0,
     color: colors.text,
     fontFamily,
-    ...typography.body,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '500',
   },
   rowPressed: {
     backgroundColor: colors.surfaceSubtle,
@@ -238,38 +267,49 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  sourceTitle: {
+    color: colors.inspiration,
+    fontFamily,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
   sourceAge: {
     color: colors.textTertiary,
     fontFamily,
     ...typography.meta,
   },
   noteBody: {
-    marginTop: 10,
-    paddingTop: 15,
+    marginTop: 8,
+    paddingTop: 18,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
   noteTitle: {
     color: colors.text,
     fontFamily,
-    fontSize: 17,
-    lineHeight: 25,
+    fontSize: 19,
+    lineHeight: 28,
     fontWeight: '600',
   },
   noteText: {
-    marginTop: 6,
+    marginTop: 10,
     color: colors.textSecondary,
     fontFamily,
-    ...typography.body,
+    fontSize: 16,
+    lineHeight: 26,
+    fontWeight: '400',
   },
   noteActions: {
-    marginTop: 5,
+    marginTop: 10,
     flexDirection: 'row',
-    gap: 22,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    columnGap: 22,
   },
   sourceError: {
     minHeight: 58,
-    marginTop: 22,
+    marginTop: 34,
     paddingVertical: 7,
     flexDirection: 'row',
     alignItems: 'center',
@@ -304,7 +344,7 @@ const styles = StyleSheet.create({
   },
   skeletonTitle: {
     width: '58%',
-    height: 19,
+    height: 22,
     marginTop: 20,
     borderRadius: radius.sm,
     backgroundColor: colors.surface,

@@ -66,3 +66,22 @@ test('首页分区已开放的紧凑操作复用统一按钮及全局操作色',
   assert.match(inspiration, /label="开始聊聊"[\s\S]*variant="text"/);
   assert.match(inspiration, /label="打开原文"[\s\S]*variant="textMuted"/);
 });
+
+test('灵感页用编辑式层级突出主问题与真实来源', async () => {
+  const inspiration = await readFile(
+    new URL('../inspiration/inspiration-content.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(inspiration, /style=\{styles\.leadMarker\}/);
+  assert.match(
+    inspiration,
+    /leadQuestion:\s*\{[^}]*fontSize:\s*28,[^}]*lineHeight:\s*40,/s,
+  );
+  assert.match(inspiration, /promptRow:\s*\{[^}]*flexDirection:\s*'row',/s);
+  assert.match(
+    inspiration,
+    /noteActions:\s*\{[^}]*justifyContent:\s*'space-between',/s,
+  );
+  assert.doesNotMatch(inspiration, /AppIcon|LinearGradient/);
+});
