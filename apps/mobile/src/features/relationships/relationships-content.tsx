@@ -157,18 +157,15 @@ function RelationshipsPreview() {
 
   return (
     <View style={styles.page}>
-      <View style={styles.titleRow}>
-        <View>
-          <Text accessibilityRole="header" style={styles.pageTitle}>亲友</Text>
-          <Text style={styles.previewLabel}>界面预览 · 未读取通讯录</Text>
-        </View>
+      <View style={styles.actionRow}>
         <Pressable
-          accessibilityLabel="新增亲友预览"
+          accessibilityLabel="添加亲友"
           accessibilityRole="button"
           onPress={() => setShowPreviewNotice(true)}
           style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
         >
-          <AppIcon color={relationshipColors.primary} name="add" size={27} />
+          <AppIcon color={relationshipColors.strong} name="person-outline" size={18} />
+          <Text style={styles.addButtonText}>添加亲友</Text>
         </Pressable>
       </View>
 
@@ -380,12 +377,6 @@ function PersonPreviewSheet({
             <DetailFact icon="time-outline" label="最近联系" value={person.lastContact} />
             <DetailFact icon="heart-outline" label="记住的事" value={person.context} />
             <DetailFact icon="notifications-outline" label="接下来" value={person.nextStep} />
-            <View style={styles.previewNotice}>
-              <Text style={styles.previewNoticeTitle}>人物详情预览</Text>
-              <Text style={styles.previewNoticeCopy}>
-                正式版会聚合经用户确认的日记、行程、照片和重要日，不会自动读取聊天记录。
-              </Text>
-            </View>
           </View>
         ) : null}
       </ModalSheet>
@@ -451,37 +442,36 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   page: {
-    paddingTop: 24,
+    paddingTop: 12,
   },
-  titleRow: {
-    minHeight: 52,
+  actionRow: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pageTitle: {
-    color: colors.text,
-    fontFamily,
-    ...typography.page,
-  },
-  previewLabel: {
-    marginTop: -1,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
+    justifyContent: 'flex-end',
   },
   addButton: {
-    width: 44,
-    height: 44,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    borderRadius: radius.sm,
+    backgroundColor: relationshipColors.soft,
+  },
+  addButtonText: {
+    color: relationshipColors.strong,
+    fontFamily,
+    ...typography.label,
+    fontWeight: '600',
   },
   pressed: {
     opacity: 0.56,
   },
   searchField: {
     minHeight: 46,
-    marginTop: 14,
+    marginTop: 6,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -701,24 +691,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily,
     ...typography.body,
-  },
-  previewNotice: {
-    marginTop: 18,
-    padding: 14,
-    borderRadius: radius.md,
-    backgroundColor: relationshipColors.soft,
-  },
-  previewNoticeTitle: {
-    color: relationshipColors.strong,
-    fontFamily,
-    ...typography.label,
-    fontWeight: '600',
-  },
-  previewNoticeCopy: {
-    marginTop: 4,
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
   },
   noticeSheet: {
     paddingHorizontal: 24,

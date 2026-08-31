@@ -20,11 +20,6 @@ export function MemoriesHome() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.previewNote}>
-        <AppIcon color={colors.primaryStrong} name="shield-checkmark-outline" size={16} />
-        <Text style={styles.previewNoteText}>本地交互预览，不会上传这些照片</Text>
-      </View>
-
       <View style={styles.header}>
         <Text accessibilityRole="header" style={styles.year}>{currentYear}</Text>
         <View style={styles.headerActions}>
@@ -94,23 +89,6 @@ export function MemoriesHome() {
 const styles = StyleSheet.create({
   root: {
     paddingTop: 12,
-  },
-  previewNote: {
-    minHeight: 36,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-  },
-  previewNoteText: {
-    flex: 1,
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '500',
   },
   header: {
     minHeight: 72,

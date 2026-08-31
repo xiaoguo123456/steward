@@ -43,25 +43,19 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
 
   return (
     <View style={styles.root}>
-      <View style={styles.headingRow}>
-        <View style={styles.headingCopy}>
-          <Text accessibilityRole="header" style={styles.heading}>心情日记</Text>
-          <Text style={styles.headingMeta}>
-            {selectedDate === today ? `今天已写 ${todayCount} 篇` : formatMoodDate(selectedDate)}
-          </Text>
-        </View>
-        <View style={styles.headingActions}>
-          <IconButton
-            label="打开日记日历"
-            name="calendar-outline"
-            onPress={() => router.push('/mood-journal/calendar')}
-          />
-          <IconButton
-            label="搜索心情日记"
-            name="search-outline"
-            onPress={() => router.push('/mood-journal/search')}
-          />
-        </View>
+      <View style={styles.toolsRow}>
+        <UtilityButton
+          label="打开日记日历"
+          name="calendar-outline"
+          onPress={() => router.push('/mood-journal/calendar')}
+          text="日历"
+        />
+        <UtilityButton
+          label="搜索心情日记"
+          name="search-outline"
+          onPress={() => router.push('/mood-journal/search')}
+          text="搜索"
+        />
       </View>
 
       <Pressable
@@ -181,19 +175,21 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
   );
 }
 
-function IconButton({ label, name, onPress }: {
+function UtilityButton({ label, name, onPress, text }: {
   label: string;
   name: 'calendar-outline' | 'search-outline';
   onPress: () => void;
+  text: string;
 }) {
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.utilityButton, pressed && styles.pressed]}
     >
-      <AppIcon color={colors.text} name={name} size={20} />
+      <AppIcon color={colors.textSecondary} name={name} size={18} />
+      <Text style={styles.utilityButtonText}>{text}</Text>
     </Pressable>
   );
 }
@@ -224,18 +220,15 @@ function TimelineEntry({ entry, showDivider }: { entry: MoodJournalEntry; showDi
 }
 
 const styles = StyleSheet.create({
-  root: { paddingTop: 22, paddingBottom: 16 },
-  headingRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headingCopy: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
-  heading: { color: colors.text, fontFamily, ...typography.detail },
-  headingMeta: { color: colors.textSecondary, fontFamily, ...typography.meta },
-  headingActions: { flexDirection: 'row', gap: 6 },
-  iconButton: {
-    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: radius.md,
+  root: { paddingTop: 12, paddingBottom: 16 },
+  toolsRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 2 },
+  utilityButton: {
+    minHeight: 44, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, borderRadius: radius.sm,
   },
+  utilityButtonText: { color: colors.textSecondary, fontFamily, ...typography.label },
   prompt: {
-    marginTop: 14, minHeight: 86, paddingHorizontal: 16, paddingVertical: 14,
+    marginTop: 6, minHeight: 86, paddingHorizontal: 16, paddingVertical: 14,
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderRadius: radius.lg, backgroundColor: colors.surfaceSubtle,
   },
