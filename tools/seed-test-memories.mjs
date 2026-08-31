@@ -11,6 +11,7 @@ import {
   configureApiClient,
   createMemoryMoment,
   createUploadGrants,
+  getMemoryMoment,
   listMemoryMoments,
   login,
   newIdempotencyKey,
@@ -122,7 +123,42 @@ for (const spec of specs) {
   created += 1;
 }
 
-console.log(`时光验收数据已写入：新增 ${created} 段，已存在 ${skipped} 段`);
+const verified = await listMemoryMoments({ limit: 100 });
+let verifiedPhotos = 0;
+for (const [specIndex, spec] of specs.entries()) {
+  const summary = verified.data.find((moment) => memoryKey(moment) === memoryKey(spec));
+  if (!summary) {
+    throw new Error(`第 ${specIndex + 1} 段测试时光未能从正式列表接口读回`);
+  }
+
+  const response = await getMemoryMoment(summary.id);
+  const moment = response.data;
+  if (moment.occurred_on !== spec.occurred_on
+      || moment.title !== spec.title
+      || moment.story !== spec.story
+      || moment.created_by !== 'user'
+      || moment.photos.length !== spec.photos.length) {
+    throw new Error(`第 ${specIndex + 1} 段测试时光的正式详情与写入内容不一致`);
+  }
+
+  for (const [photoIndex, photo] of moment.photos.entries()) {
+    const expected = spec.photos[photoIndex];
+    if (photo.position !== photoIndex || photo.description !== expected[1]) {
+      throw new Error(`第 ${specIndex + 1} 段时光的第 ${photoIndex + 1} 张照片顺序或说明不一致`);
+    }
+    const readResult = await fetch(photo.read_url, { headers: { Range: 'bytes=0-0' } });
+    if (!readResult.ok) {
+      throw new Error(`第 ${specIndex + 1} 段时光的第 ${photoIndex + 1} 张照片无法读取（HTTP ${readResult.status}）`);
+    }
+    await readResult.body?.cancel();
+    verifiedPhotos += 1;
+  }
+}
+
+console.log(
+  `时光验收数据已写入：新增 ${created} 段，已存在 ${skipped} 段；`
+  + `正式列表、详情与 ${verifiedPhotos} 张私有照片读取均通过`,
+);
 
 function memoryKey(moment) {
   return `${moment.occurred_on}|${moment.title}`;
