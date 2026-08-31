@@ -74,7 +74,6 @@ export function RecipeSwapConfirmation() {
                   </View>
                 </View>
               </View>
-              <Text style={styles.copy}>确认后立即保存本周菜单，不需要再到页底确认。</Text>
               {planFailure ? <Text style={styles.failure}>{planFailure}</Text> : null}
               <View style={styles.actions}>
                 <AppButton
@@ -176,7 +175,7 @@ const styles = StyleSheet.create({
     ...typography.body,
   },
   failure: {
-    marginTop: spacing.sm,
+    marginTop: spacing.lg,
     color: colors.danger,
     fontFamily,
     ...typography.meta,
