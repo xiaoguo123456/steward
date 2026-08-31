@@ -30,9 +30,8 @@ import {
   imagePickerAssetsToMemoryPhotos,
   MEMORY_PHOTO_LIMIT,
   mergeMemoryPhotos,
-  moveMemoryPhoto,
 } from '@/features/memories/memory-picker';
-import { colors, fontFamily, radius } from '@/theme/tokens';
+import { colors, fontFamily, radius, spacing } from '@/theme/tokens';
 
 type UploadedSelection = {
   signature: string;
@@ -170,101 +169,36 @@ export default function MemoryEditorScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.sectionHeading}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>照片</Text>
-          {photos.length > 0 ? (
-            <Text style={styles.photoCount}>{photos.length}/{MEMORY_PHOTO_LIMIT}</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>照片</Text>
+        <View style={styles.photoGrid}>
+          {photos.map((photo, index) => (
+            <View key={photo.id} style={styles.photoFrame}>
+              <Image contentFit="cover" source={photo.source} style={StyleSheet.absoluteFill} />
+              <Pressable
+                accessibilityLabel={`移除第 ${index + 1} 张照片`}
+                accessibilityRole="button"
+                onPress={() => setPhotos((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+                style={styles.removePhotoHitbox}
+              >
+                {({ pressed }) => (
+                  <View style={[styles.removePhotoIcon, pressed && styles.removePhotoPressed]}>
+                    <AppIcon color={colors.background} name="close" size={14} />
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          ))}
+          {photos.length < MEMORY_PHOTO_LIMIT ? (
+            <Pressable
+              accessibilityLabel={photos.length === 0 ? '从相册选择照片' : '继续选择照片'}
+              accessibilityRole="button"
+              onPress={() => void pickImages()}
+              style={({ pressed }) => [styles.addPhoto, pressed && styles.addPhotoPressed]}
+            >
+              <AppIcon color={colors.textSecondary} name="add" size={27} />
+            </Pressable>
           ) : null}
         </View>
-
-        {photos.length === 0 ? (
-          <Pressable
-            accessibilityLabel="从相册选择照片"
-            accessibilityRole="button"
-            onPress={() => void pickImages()}
-            style={({ pressed }) => [styles.photoEmpty, pressed && styles.photoEmptyPressed]}
-          >
-            <View style={styles.photoEmptyIcon}>
-              <AppIcon color={colors.primaryStrong} name="images-outline" size={25} />
-            </View>
-            <Text style={styles.photoEmptyTitle}>先选择照片</Text>
-          </Pressable>
-        ) : (
-          <ScrollView
-            contentContainerStyle={styles.photoRail}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
-            {photos.map((photo, index) => (
-              <View key={photo.id} style={styles.photoTile}>
-                <View style={styles.photoFrame}>
-                  <Image contentFit="cover" source={photo.source} style={StyleSheet.absoluteFill} />
-                  <View style={styles.orderBadge}>
-                    <Text style={styles.orderText}>{index + 1}</Text>
-                  </View>
-                  <Pressable
-                    accessibilityLabel={`移除第 ${index + 1} 张照片`}
-                    accessibilityRole="button"
-                    hitSlop={6}
-                    onPress={() => setPhotos((current) => current.filter((_, currentIndex) => currentIndex !== index))}
-                    style={({ pressed }) => [styles.removePhoto, pressed && styles.removePhotoPressed]}
-                  >
-                    <AppIcon color={colors.background} name="close" size={15} />
-                  </Pressable>
-                </View>
-                <View style={styles.orderActions}>
-                  <Pressable
-                    accessibilityLabel={`第 ${index + 1} 张照片向前移动`}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: index === 0 }}
-                    disabled={index === 0}
-                    onPress={() => setPhotos((current) => moveMemoryPhoto(current, index, -1))}
-                    style={({ pressed }) => [
-                      styles.orderButton,
-                      index === 0 && styles.orderButtonDisabled,
-                      pressed && styles.orderButtonPressed,
-                    ]}
-                  >
-                    <AppIcon
-                      color={index === 0 ? colors.textTertiary : colors.textSecondary}
-                      name="arrow-back"
-                      size={16}
-                    />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`第 ${index + 1} 张照片向后移动`}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: index === photos.length - 1 }}
-                    disabled={index === photos.length - 1}
-                    onPress={() => setPhotos((current) => moveMemoryPhoto(current, index, 1))}
-                    style={({ pressed }) => [
-                      styles.orderButton,
-                      index === photos.length - 1 && styles.orderButtonDisabled,
-                      pressed && styles.orderButtonPressed,
-                    ]}
-                  >
-                    <AppIcon
-                      color={index === photos.length - 1 ? colors.textTertiary : colors.textSecondary}
-                      name="arrow-forward"
-                      size={16}
-                    />
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-            {photos.length < MEMORY_PHOTO_LIMIT ? (
-              <Pressable
-                accessibilityLabel="继续选择照片"
-                accessibilityRole="button"
-                onPress={() => void pickImages()}
-                style={({ pressed }) => [styles.addPhoto, pressed && styles.photoEmptyPressed]}
-              >
-                <AppIcon color={colors.primaryStrong} name="add" size={23} />
-                <Text style={styles.addPhotoText}>继续添加</Text>
-              </Pressable>
-            ) : null}
-          </ScrollView>
-        )}
         {pickerError ? <Text accessibilityRole="alert" style={styles.errorText}>{pickerError}</Text> : null}
 
         <View style={styles.fields}>
@@ -315,134 +249,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 32,
   },
-  sectionHeading: {
+  sectionTitle: {
     marginTop: 16,
     marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
     color: colors.text,
     fontFamily,
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '600',
   },
-  photoCount: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: '600',
-  },
-  photoEmpty: {
-    minHeight: 210,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  photoEmptyPressed: {
-    opacity: 0.64,
-  },
-  photoEmptyIcon: {
-    width: 50,
-    height: 50,
-    marginBottom: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
-  },
-  photoEmptyTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: '600',
-  },
-  photoRail: {
-    paddingRight: 8,
-    gap: 10,
-  },
-  photoTile: {
-    width: 116,
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   photoFrame: {
-    width: 116,
-    height: 116,
+    width: '31%',
+    maxWidth: 132,
+    aspectRatio: 1,
     overflow: 'hidden',
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.surface,
   },
-  orderBadge: {
+  removePhotoHitbox: {
     position: 'absolute',
-    top: 7,
-    left: 7,
-    width: 24,
-    height: 24,
+    top: 0,
+    right: 0,
+    width: 48,
+    height: 48,
+    alignItems: 'flex-end',
+    paddingTop: spacing.xs,
+    paddingRight: spacing.xs,
+  },
+  removePhotoIcon: {
+    width: 26,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(16, 24, 21, 0.66)',
-  },
-  orderText: {
-    color: colors.background,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
-    fontWeight: '700',
-  },
-  removePhoto: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(16, 24, 21, 0.66)',
+    backgroundColor: 'rgba(16, 24, 21, 0.68)',
   },
   removePhotoPressed: {
     backgroundColor: colors.danger,
   },
-  orderActions: {
-    marginTop: 5,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  orderButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-  },
-  orderButtonDisabled: {
-    opacity: 0.45,
-  },
-  orderButtonPressed: {
-    backgroundColor: colors.surface,
-  },
   addPhoto: {
-    width: 116,
-    height: 116,
+    width: '31%',
+    maxWidth: 132,
+    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceSubtle,
   },
-  addPhotoText: {
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '600',
+  addPhotoPressed: {
+    opacity: 0.62,
   },
   errorText: {
     marginTop: 10,

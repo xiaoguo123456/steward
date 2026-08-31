@@ -41,17 +41,3 @@ export function mergeMemoryPhotos(
   }
   return result;
 }
-
-export function moveMemoryPhoto(
-  photos: readonly MemoryPhoto[],
-  index: number,
-  offset: -1 | 1,
-): MemoryPhoto[] {
-  const target = index + offset;
-  if (index < 0 || index >= photos.length || target < 0 || target >= photos.length) {
-    return [...photos];
-  }
-  const moved = [...photos];
-  [moved[index], moved[target]] = [moved[target], moved[index]];
-  return moved;
-}

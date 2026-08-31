@@ -10,7 +10,7 @@ import {
   memoryDatesWithCounts,
   toMemoryMoment,
 } from './memory-model.ts';
-import { MEMORY_PHOTO_LIMIT, mergeMemoryPhotos, moveMemoryPhoto } from './memory-picker.ts';
+import { MEMORY_PHOTO_LIMIT, mergeMemoryPhotos } from './memory-picker.ts';
 
 const photo = (id) => ({ id, source: { uri: `file://${id}.jpg` }, description: id });
 const moment = (id, date) => ({
@@ -45,13 +45,12 @@ test('日期展示包含星期且拒绝不存在的日期', () => {
   assert.equal(isMemoryDateKey('2026/08/24'), false);
 });
 
-test('选图去重并严格限制为九张，排序不会越界', () => {
+test('选图按选择顺序去重并严格限制为九张', () => {
   const incoming = Array.from({ length: 12 }, (_, index) => photo(`photo-${index}`));
   const merged = mergeMemoryPhotos([photo('photo-0')], incoming);
   assert.equal(merged.length, MEMORY_PHOTO_LIMIT);
   assert.equal(new Set(merged.map((item) => item.id)).size, MEMORY_PHOTO_LIMIT);
-  assert.deepEqual(moveMemoryPhoto(merged, 1, -1).slice(0, 2).map((item) => item.id), ['photo-1', 'photo-0']);
-  assert.deepEqual(moveMemoryPhoto(merged, 0, -1), merged);
+  assert.deepEqual(merged.slice(0, 3).map((item) => item.id), ['photo-0', 'photo-1', 'photo-2']);
 });
 
 test('正式接口结果按 position 映射为短期网络图片', () => {
@@ -86,6 +85,8 @@ test('时光使用正式查询与上传，发布后只保留整段删除', async
   assert.match(editor, /createMemoryMoment/);
   assert.match(editor, /useMediaUpload/);
   assert.match(editor, /<Field label="描述">/);
+  assert.match(editor, /styles\.photoGrid/);
+  assert.doesNotMatch(editor, /moveMemoryPhoto|orderBadge|orderActions|向前移动|向后移动|photoCount/);
   assert.doesNotMatch(editor, /<Field label="日期"|<Field label="标题|故事（选填）|发布后不可编辑/);
   assert.doesNotMatch(editor, /AI Candidate|本地交互原型|updateMoment|保存修改/);
   assert.match(calendar, /params: \{ pick: '1' \}/);
