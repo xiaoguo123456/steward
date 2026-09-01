@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { HOME_TOP_TABS } from './home-top-navigation.ts';
+import { HOME_TOP_TABS, resolveHomeEntryTab } from './home-top-navigation.ts';
 
 test('首页顶部导航保持固定顺序和短标签', () => {
   assert.deepEqual(
@@ -14,6 +14,19 @@ test('首页顶部导航保持固定顺序和短标签', () => {
       ['relationships', '亲友'],
     ],
   );
+});
+
+test('每次进入首页默认定位到今天，明确回跳仍可单次指定分区', async () => {
+  assert.equal(resolveHomeEntryTab(undefined), 'today');
+  assert.equal(resolveHomeEntryTab('unknown'), 'today');
+  assert.equal(resolveHomeEntryTab('memories'), 'memories');
+  assert.equal(resolveHomeEntryTab('mood'), 'mood');
+  assert.equal(resolveHomeEntryTab('relationships'), 'relationships');
+
+  const home = await readFile(new URL('../../app/(tabs)/today.tsx', import.meta.url), 'utf8');
+  assert.match(home, /useFocusEffect\(/);
+  assert.match(home, /resolveHomeEntryTab\(entryParams\.homeTab\)/);
+  assert.match(home, /router\.setParams\(\{ homeTab: undefined, date: undefined \}\)/);
 });
 
 test('亲友首页使用正式人物查询和添加入口', async () => {
