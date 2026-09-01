@@ -6,3 +6,15 @@ export const HOME_TOP_TABS: readonly { id: HomeTopTabId; label: string }[] = [
   { id: 'mood', label: '心情' },
   { id: 'relationships', label: '亲友' },
 ];
+
+export function isHomeTopTabId(value: string | undefined): value is HomeTopTabId {
+  return value === 'today'
+    || value === 'memories'
+    || value === 'relationships'
+    || value === 'mood';
+}
+
+/** 每次进入首页默认回到“今天”，明确的页内回跳参数只覆盖本次进入。 */
+export function resolveHomeEntryTab(value: string | undefined): HomeTopTabId {
+  return isHomeTopTabId(value) ? value : 'today';
+}

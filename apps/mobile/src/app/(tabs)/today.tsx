@@ -1,6 +1,6 @@
 import { errorMessage, useGetToday, type TodayTask } from '@steward/api-client';
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { type Href, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AI_FAB_TAB_BAR_INSET, AiFab } from '@/components/ui/ai-fab';
@@ -9,7 +9,10 @@ import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
-import type { HomeTopTabId } from '@/features/home/home-top-navigation';
+import {
+  resolveHomeEntryTab,
+  type HomeTopTabId,
+} from '@/features/home/home-top-navigation';
 import { HomeTopTabs } from '@/features/home/home-top-tabs';
 import { MemoriesHome } from '@/features/memories/memories-home';
 import { MoodJournalContent } from '@/features/mood-journal/mood-journal-content';
@@ -100,11 +103,29 @@ const groupLabels: Record<TodayTask['group'], string> = {
 export default function HomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ homeTab?: string; date?: string }>();
-  const initialHomeTab: HomeTopTabId = isHomeTopTabId(params.homeTab) ? params.homeTab : 'today';
+  const entryParamsRef = useRef(params);
+  const initialHomeTab = resolveHomeEntryTab(params.homeTab);
   const [activeHomeTab, setActiveHomeTab] = useState<HomeTopTabId>(initialHomeTab);
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const today = useGetToday();
   const toggleDone = useToggleTaskDone();
+
+  useEffect(() => {
+    entryParamsRef.current = params;
+  }, [params]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const entryParams = entryParamsRef.current;
+      setActiveHomeTab(resolveHomeEntryTab(entryParams.homeTab));
+      setTasksExpanded(false);
+
+      // 日历或详情可以显式回跳到某个首页分区；消费后清理，避免下次进入继续命中。
+      if (entryParams.homeTab !== undefined || entryParams.date !== undefined) {
+        router.setParams({ homeTab: undefined, date: undefined });
+      }
+    }, [router]),
+  );
 
   const tasks = useMemo(() => today.data?.data.tasks ?? [], [today.data]);
   const events = today.data?.data.events ?? [];
@@ -299,13 +320,6 @@ export default function HomeScreen() {
       <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />
     </AppScreen>
   );
-}
-
-function isHomeTopTabId(value: string | undefined): value is HomeTopTabId {
-  return value === 'today'
-    || value === 'memories'
-    || value === 'relationships'
-    || value === 'mood';
 }
 
 /** 只在分组发生变化时显示一次分组标题。 */
