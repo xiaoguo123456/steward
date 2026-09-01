@@ -99,6 +99,10 @@ type AIConfig struct {
 	ModelVision     string
 	ModelChat       string
 	ModelTranscribe string
+	// ApprovedSensitiveContent 只有在 Provider 的敏感数据等级、地区、保留、
+	// 训练退出和删除能力都已经完成审核后才能打开。默认关闭，避免只凭用户同意
+	// 就把心情日记正文发送给尚未批准的 Provider。
+	ApprovedSensitiveContent bool
 
 	Timeout         time.Duration
 	MaxOutputTokens int
@@ -142,6 +146,9 @@ func Load() (Config, error) {
 			ModelVision:     env("STEWARD_AI_MODEL_VISION", ""),
 			ModelChat:       env("STEWARD_AI_MODEL_CHAT", ""),
 			ModelTranscribe: env("STEWARD_AI_MODEL_TRANSCRIBE", ""),
+			ApprovedSensitiveContent: strings.EqualFold(
+				env("STEWARD_AI_APPROVED_SENSITIVE_CONTENT", "false"), "true",
+			),
 			MaxOutputTokens: envInt("STEWARD_AI_MAX_OUTPUT_TOKENS", 2048),
 		},
 		SMS: SMSConfig{

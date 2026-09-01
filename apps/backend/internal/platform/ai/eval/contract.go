@@ -25,6 +25,9 @@ func CheckContractCase(datasetDir string, c Case) []string {
 		fail("runner 必须为 %q", RunnerContract)
 		return failures
 	}
+	if c.Expect.Schema == "mood-journal-polish-result.v1" {
+		return checkMoodJournalPolishContract(datasetDir, c)
+	}
 	if c.Expect.Schema != "mood-reflection-result.v1" {
 		fail("暂不支持契约 %q", c.Expect.Schema)
 		return failures
@@ -92,6 +95,75 @@ func CheckContractCase(datasetDir string, c Case) []string {
 		if !nestedSourceRequired(properties[field]) {
 			fail("Schema 的 %s 必须要求 source_entry_ids", field)
 		}
+	}
+	return failures
+}
+
+func checkMoodJournalPolishContract(datasetDir string, c Case) []string {
+	var failures []string
+	fail := func(format string, args ...any) {
+		failures = append(failures, fmt.Sprintf(format, args...))
+	}
+	if len(c.Input.DraftBlocks) == 0 {
+		fail("至少需要一个 draft_blocks")
+	}
+	seen := make(map[string]struct{}, len(c.Input.DraftBlocks))
+	for _, block := range c.Input.DraftBlocks {
+		if strings.TrimSpace(block.ID) == "" || strings.TrimSpace(block.Type) == "" {
+			fail("草稿块缺少 id 或 type")
+		}
+		if _, exists := seen[block.ID]; exists {
+			fail("草稿块 ID %q 重复", block.ID)
+		}
+		seen[block.ID] = struct{}{}
+	}
+
+	root := filepath.Dir(datasetDir)
+	promptBytes, err := os.ReadFile(filepath.Join(root, "prompts", "mood-journal-polish", "v1.md"))
+	if err != nil {
+		fail("读取 Prompt 失败：%v", err)
+		return failures
+	}
+	schemaBytes, err := os.ReadFile(filepath.Join(root, "schemas", "mood-journal", "mood-journal-polish-result.v1.schema.json"))
+	if err != nil {
+		fail("读取 Schema 失败：%v", err)
+		return failures
+	}
+	prompt := string(promptBytes)
+	for _, required := range []string{
+		"untrusted_user_content",
+		"查询其他日记",
+		"不得新增原文没有",
+		"每个原块 `id` 都必须在输出中出现且只出现一次",
+		"不得删除、合并或重新排序原块",
+		"每个非分隔线块必须只包含一个 `run`",
+		"不能新增、修改或删除链接",
+		"不输出 Markdown、HTML",
+	} {
+		if !strings.Contains(prompt, required) {
+			fail("Prompt 缺少安全约束 %q", required)
+		}
+	}
+
+	var schema map[string]any
+	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
+		fail("Schema 不是合法 JSON：%v", err)
+		return failures
+	}
+	if schema["additionalProperties"] != false {
+		fail("Schema 必须拒绝顶层额外字段")
+	}
+	defs, _ := schema["$defs"].(map[string]any)
+	block, _ := defs["block"].(map[string]any)
+	properties, _ := block["properties"].(map[string]any)
+	runs, _ := properties["runs"].(map[string]any)
+	if limit, ok := runs["maxItems"].(float64); !ok || int(limit) != 1 {
+		fail("Schema 必须限制每个块最多一个 run")
+	}
+	typeDef, _ := properties["type"].(map[string]any)
+	types, _ := typeDef["enum"].([]any)
+	if len(types) != 7 {
+		fail("Schema 必须只允许七种受控块类型")
 	}
 	return failures
 }

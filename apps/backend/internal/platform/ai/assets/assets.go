@@ -43,6 +43,11 @@ var ReviewNarrativePromptV2 string
 //go:embed prompts/note-polish/v1.md
 var NotePolishPromptV1 string
 
+// MoodJournalPolishPromptV1 是心情日记块文档排版润色的系统提示词。
+//
+//go:embed prompts/mood-journal-polish/v1.md
+var MoodJournalPolishPromptV1 string
+
 // CaptureParseSchemaV1 是解析结果的完整 JSON Schema。
 //
 // 模型返回的原始 JSON 属于不可信输入，必须先通过它再进入 Domain 校验。
@@ -70,14 +75,21 @@ var ReviewNarrativeSchemaV2 []byte
 //go:embed schemas/notes/note-polish-result.v1.schema.json
 var NotePolishSchemaV1 []byte
 
+// MoodJournalPolishSchemaV1 是心情日记排版润色结果的完整 JSON Schema。
+//
+//go:embed schemas/mood-journal/mood-journal-polish-result.v1.schema.json
+var MoodJournalPolishSchemaV1 []byte
+
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion    = "capture-parse@v3"
-	VisionExtractPromptVersion   = "vision-extract@v1"
-	AssistantPolicyVersion       = "assistant@v1"
-	ReviewNarrativePromptVersion = "review-narrative@v2"
-	ReviewNarrativeSchemaVersion = "review-narrative-result.v2"
-	NotePolishPromptVersion      = "note-polish@v1"
-	NotePolishSchemaVersion      = "note-polish-result.v1"
-	CaptureParseSchemaVersion    = "capture-parse-result.v3"
+	CaptureParsePromptVersion      = "capture-parse@v3"
+	VisionExtractPromptVersion     = "vision-extract@v1"
+	AssistantPolicyVersion         = "assistant@v1"
+	ReviewNarrativePromptVersion   = "review-narrative@v2"
+	ReviewNarrativeSchemaVersion   = "review-narrative-result.v2"
+	NotePolishPromptVersion        = "note-polish@v1"
+	NotePolishSchemaVersion        = "note-polish-result.v1"
+	MoodJournalPolishPromptVersion = "mood-journal-polish@v1"
+	MoodJournalPolishSchemaVersion = "mood-journal-polish-result.v1"
+	CaptureParseSchemaVersion      = "capture-parse-result.v3"
 )

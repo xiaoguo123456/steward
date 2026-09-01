@@ -92,7 +92,7 @@ const ensureAiSettings = `-- name: EnsureAiSettings :one
 INSERT INTO user_ai_settings (user_id)
 VALUES ($1)
 ON CONFLICT (user_id) DO UPDATE SET user_id = excluded.user_id
-RETURNING user_id, capture_parse_enabled, suggestion_enabled, memory_learning_enabled, updated_at
+RETURNING user_id, capture_parse_enabled, suggestion_enabled, memory_learning_enabled, updated_at, mood_journal_ai_enabled
 `
 
 func (q *Queries) EnsureAiSettings(ctx context.Context, userID string) (UserAiSetting, error) {
@@ -104,6 +104,7 @@ func (q *Queries) EnsureAiSettings(ctx context.Context, userID string) (UserAiSe
 		&i.SuggestionEnabled,
 		&i.MemoryLearningEnabled,
 		&i.UpdatedAt,
+		&i.MoodJournalAiEnabled,
 	)
 	return i, err
 }
@@ -130,7 +131,7 @@ func (q *Queries) EnsureUserPreferences(ctx context.Context, userID string) (Use
 }
 
 const getAiSettings = `-- name: GetAiSettings :one
-SELECT user_id, capture_parse_enabled, suggestion_enabled, memory_learning_enabled, updated_at FROM user_ai_settings WHERE user_id = $1
+SELECT user_id, capture_parse_enabled, suggestion_enabled, memory_learning_enabled, updated_at, mood_journal_ai_enabled FROM user_ai_settings WHERE user_id = $1
 `
 
 func (q *Queries) GetAiSettings(ctx context.Context, userID string) (UserAiSetting, error) {
@@ -142,6 +143,7 @@ func (q *Queries) GetAiSettings(ctx context.Context, userID string) (UserAiSetti
 		&i.SuggestionEnabled,
 		&i.MemoryLearningEnabled,
 		&i.UpdatedAt,
+		&i.MoodJournalAiEnabled,
 	)
 	return i, err
 }
@@ -269,15 +271,17 @@ UPDATE user_ai_settings SET
     capture_parse_enabled   = coalesce($1, capture_parse_enabled),
     suggestion_enabled      = coalesce($2, suggestion_enabled),
     memory_learning_enabled = coalesce($3, memory_learning_enabled),
+    mood_journal_ai_enabled = coalesce($4, mood_journal_ai_enabled),
     updated_at              = now()
-WHERE user_id = $4
-RETURNING user_id, capture_parse_enabled, suggestion_enabled, memory_learning_enabled, updated_at
+WHERE user_id = $5
+RETURNING user_id, capture_parse_enabled, suggestion_enabled, memory_learning_enabled, updated_at, mood_journal_ai_enabled
 `
 
 type UpdateAiSettingsParams struct {
 	CaptureParseEnabled   *bool
 	SuggestionEnabled     *bool
 	MemoryLearningEnabled *bool
+	MoodJournalAiEnabled  *bool
 	UserID                string
 }
 
@@ -286,6 +290,7 @@ func (q *Queries) UpdateAiSettings(ctx context.Context, arg UpdateAiSettingsPara
 		arg.CaptureParseEnabled,
 		arg.SuggestionEnabled,
 		arg.MemoryLearningEnabled,
+		arg.MoodJournalAiEnabled,
 		arg.UserID,
 	)
 	var i UserAiSetting
@@ -295,6 +300,7 @@ func (q *Queries) UpdateAiSettings(ctx context.Context, arg UpdateAiSettingsPara
 		&i.SuggestionEnabled,
 		&i.MemoryLearningEnabled,
 		&i.UpdatedAt,
+		&i.MoodJournalAiEnabled,
 	)
 	return i, err
 }

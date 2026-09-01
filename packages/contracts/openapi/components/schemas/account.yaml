@@ -243,7 +243,7 @@ UpdateUserPreferencesRequest:
 AiSettings:
   type: object
   additionalProperties: false
-  required: [capture_parse_enabled, suggestion_enabled, memory_learning_enabled, updated_at]
+  required: [capture_parse_enabled, suggestion_enabled, memory_learning_enabled, mood_journal_ai_enabled, updated_at]
   properties:
     capture_parse_enabled:
       type: boolean
@@ -254,6 +254,11 @@ AiSettings:
     memory_learning_enabled:
       type: boolean
       description: 关闭后不再生成新的长期记忆建议。
+    mood_journal_ai_enabled:
+      type: boolean
+      description: |
+        用户是否单独允许把当前主动提交的心情日记草稿发送给 AI Provider
+        做排版润色；默认关闭，可随时撤回。
     updated_at:
       type: string
       format: date-time
@@ -277,4 +282,6 @@ UpdateAiSettingsRequest:
     suggestion_enabled:
       type: boolean
     memory_learning_enabled:
+      type: boolean
+    mood_journal_ai_enabled:
       type: boolean

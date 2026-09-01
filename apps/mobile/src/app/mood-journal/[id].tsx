@@ -17,11 +17,13 @@ import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { MoodEditor, type MoodEditorValue } from '@/features/mood-journal/mood-editor';
 import { entryMoodText } from '@/features/mood-journal/model';
+import { useMoodJournalPolish } from '@/features/mood-journal/use-mood-journal-polish';
 import { colors, fontFamily, moodColors, radius, typography } from '@/theme/tokens';
 
 export default function MoodJournalDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const polish = useMoodJournalPolish();
   const { id } = useLocalSearchParams<{ id: string }>();
   const query = useGetMoodJournalEntry(id ?? '', { query: { enabled: Boolean(id) } });
   const entry = query.data?.data;
@@ -45,6 +47,7 @@ export default function MoodJournalDetailScreen() {
         mood_level: value.moodLevel,
         energy_level: value.energyLevel,
         emotion_words: value.emotionWords,
+        polish_action_id: value.polishActionId,
       }, { headers: { 'If-Match': String(entry.version) } });
       await queryClient.invalidateQueries();
       setEditing(false);
@@ -105,6 +108,7 @@ export default function MoodJournalDetailScreen() {
           emotionWords: entry.emotion_words,
         }}
         occurredAt={new Date(entry.occurred_at)}
+        onPolish={polish}
         onSubmit={save}
         saving={saving}
         submitLabel="保存"

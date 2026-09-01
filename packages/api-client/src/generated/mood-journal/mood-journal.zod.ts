@@ -155,7 +155,8 @@ export const CreateMoodJournalEntryBody = zod.object({
   "emotion_words": zod.array(zod.string().max(createMoodJournalEntryBodyEmotionWordsItemMax)).max(createMoodJournalEntryBodyEmotionWordsMax).optional(),
   "context_words": zod.array(zod.string().max(createMoodJournalEntryBodyContextWordsItemMax)).max(createMoodJournalEntryBodyContextWordsMax).optional(),
   "exclude_from_ai": zod.boolean().default(createMoodJournalEntryBodyExcludeFromAiDefault),
-  "include_in_memories": zod.boolean().default(createMoodJournalEntryBodyIncludeInMemoriesDefault)
+  "include_in_memories": zod.boolean().default(createMoodJournalEntryBodyIncludeInMemoriesDefault),
+  "polish_action_id": zod.string().optional().describe('用户采用本次 AI 排版润色结果后回传的 AI Action ID。\n服务端校验归属与成功状态后写入来源引用。\n')
 })
 
 export const createMoodJournalEntryResponseDataContentBlocksItemIdMax = 80;
@@ -343,7 +344,8 @@ export const UpdateMoodJournalEntryBody = zod.object({
   "emotion_words": zod.array(zod.string().max(updateMoodJournalEntryBodyEmotionWordsItemMax)).max(updateMoodJournalEntryBodyEmotionWordsMax).optional(),
   "context_words": zod.array(zod.string().max(updateMoodJournalEntryBodyContextWordsItemMax)).max(updateMoodJournalEntryBodyContextWordsMax).optional(),
   "exclude_from_ai": zod.boolean().optional(),
-  "include_in_memories": zod.boolean().optional()
+  "include_in_memories": zod.boolean().optional(),
+  "polish_action_id": zod.string().optional().describe('用户采用本次 AI 排版润色结果后回传的 AI Action ID。\n服务端校验归属与成功状态后追加来源引用。\n')
 })
 
 export const updateMoodJournalEntryResponseDataContentBlocksItemIdMax = 80;
@@ -434,6 +436,88 @@ export const DeleteMoodJournalEntryResponse = zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
 }).describe('所有成功响应共有的元信息。')
 }).describe('删除等不返回实体的写操作响应，携带需要失效的资源列表。')
+
+/**
+ * 对当前用户主动提交的 blocks_v1 草稿做一次结构化排版润色。
+ * 结果只返回编辑器，不创建或修改日记；用户仍需检查并点击保存。
+ * @summary AI 排版润色心情日记草稿
+ */
+export const polishMoodJournalDraftHeaderIdempotencyKeyMin = 8;
+export const polishMoodJournalDraftHeaderIdempotencyKeyMax = 128;
+
+
+
+export const PolishMoodJournalDraftHeader = zod.object({
+  "Idempotency-Key": zod.string().min(polishMoodJournalDraftHeaderIdempotencyKeyMin).max(polishMoodJournalDraftHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const polishMoodJournalDraftBodyContentBlocksItemIdMax = 80;
+
+export const polishMoodJournalDraftBodyContentBlocksItemRunsItemTextMax = 12000;
+
+export const polishMoodJournalDraftBodyContentBlocksItemRunsItemMarksLinkRegExp = new RegExp('^https?:/');
+export const polishMoodJournalDraftBodyContentBlocksItemRunsMax = 200;
+
+export const polishMoodJournalDraftBodyContentBlocksMax = 500;
+
+
+
+export const PolishMoodJournalDraftBody = zod.object({
+  "content": zod.object({
+  "format": zod.enum(['blocks_v1']),
+  "version": zod.literal(1),
+  "blocks": zod.array(zod.object({
+  "id": zod.string().min(1).max(polishMoodJournalDraftBodyContentBlocksItemIdMax),
+  "type": zod.enum(['paragraph', 'heading_2', 'heading_3', 'bullet_item', 'ordered_item', 'quote', 'divider']),
+  "runs": zod.array(zod.object({
+  "text": zod.string().max(polishMoodJournalDraftBodyContentBlocksItemRunsItemTextMax),
+  "marks": zod.object({
+  "bold": zod.boolean().optional(),
+  "italic": zod.boolean().optional(),
+  "strikethrough": zod.boolean().optional(),
+  "link": zod.string().url().regex(polishMoodJournalDraftBodyContentBlocksItemRunsItemMarksLinkRegExp).optional()
+}).optional()
+})).max(polishMoodJournalDraftBodyContentBlocksItemRunsMax)
+})).min(1).max(polishMoodJournalDraftBodyContentBlocksMax)
+})
+})
+
+export const polishMoodJournalDraftResponseDataContentBlocksItemIdMax = 80;
+
+export const polishMoodJournalDraftResponseDataContentBlocksItemRunsItemTextMax = 12000;
+
+export const polishMoodJournalDraftResponseDataContentBlocksItemRunsItemMarksLinkRegExp = new RegExp('^https?:/');
+export const polishMoodJournalDraftResponseDataContentBlocksItemRunsMax = 200;
+
+export const polishMoodJournalDraftResponseDataContentBlocksMax = 500;
+
+
+
+export const PolishMoodJournalDraftResponse = zod.object({
+  "data": zod.object({
+  "content": zod.object({
+  "format": zod.enum(['blocks_v1']),
+  "version": zod.literal(1),
+  "blocks": zod.array(zod.object({
+  "id": zod.string().min(1).max(polishMoodJournalDraftResponseDataContentBlocksItemIdMax),
+  "type": zod.enum(['paragraph', 'heading_2', 'heading_3', 'bullet_item', 'ordered_item', 'quote', 'divider']),
+  "runs": zod.array(zod.object({
+  "text": zod.string().max(polishMoodJournalDraftResponseDataContentBlocksItemRunsItemTextMax),
+  "marks": zod.object({
+  "bold": zod.boolean().optional(),
+  "italic": zod.boolean().optional(),
+  "strikethrough": zod.boolean().optional(),
+  "link": zod.string().url().regex(polishMoodJournalDraftResponseDataContentBlocksItemRunsItemMarksLinkRegExp).optional()
+}).optional()
+})).max(polishMoodJournalDraftResponseDataContentBlocksItemRunsMax)
+})).min(1).max(polishMoodJournalDraftResponseDataContentBlocksMax)
+}),
+  "ai_action_id": zod.string().describe('本次排版润色的来源引用；用户保存采用后的草稿时原样回传。')
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
 
 /**
  * @summary 查询心情日记日历

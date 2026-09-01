@@ -11,6 +11,8 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 )
@@ -18,6 +20,7 @@ import (
 // UserProfile 是读取日期语义所需的最小用户能力。
 type UserProfile interface {
 	Timezone(ctx context.Context, q *dbgen.Queries, userID string) (string, error)
+	AiSettings(ctx context.Context, userID string) (dbgen.UserAiSetting, error)
 }
 
 // ActivityRecorder 记录用户可见写入，不保存日记正文。
@@ -32,11 +35,27 @@ type Service struct {
 	objects  *objects.Service
 	users    UserProfile
 	activity ActivityRecorder
+	polisher ai.ChatProvider
+	audit    *aiaudit.Recorder
+	// sensitiveProviderApproved 是部署级 Provider 门禁，不能被用户端开关绕过。
+	sensitiveProviderApproved bool
 }
 
 // New 构造心情日记服务。
 func New(db *database.DB, objectSvc *objects.Service, users UserProfile, act ActivityRecorder) *Service {
 	return &Service{db: db, objects: objectSvc, users: users, activity: act}
+}
+
+// WithPolisher 注入用户主动触发的心情日记排版润色能力。
+func (s *Service) WithPolisher(
+	chat ai.ChatProvider,
+	audit *aiaudit.Recorder,
+	sensitiveProviderApproved bool,
+) *Service {
+	s.polisher = chat
+	s.audit = audit
+	s.sensitiveProviderApproved = sensitiveProviderApproved
+	return s
 }
 
 // Entry 是 Note 与心情扩展合并后的领域读模型。
@@ -203,8 +222,12 @@ func (s *Service) Create(ctx context.Context, userID string, body httpapi.Create
 
 	var out Entry
 	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		provenance, err := s.polishProvenance(ctx, q, userID, body.PolishActionId)
+		if err != nil {
+			return err
+		}
 		note, err := s.objects.CreateMoodNoteInTx(ctx, q, userID, objects.CreateMoodNoteCommand{
-			Title: body.Title, Content: body.Content,
+			Title: body.Title, Content: body.Content, Provenance: provenance,
 		})
 		if err != nil {
 			return err
@@ -259,6 +282,9 @@ func (s *Service) Update(ctx context.Context, userID, entryID string,
 	clearTitle, clearMood, clearEnergy := clearFlags(body.Clear)
 	var out Entry
 	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if _, err := s.polishProvenance(ctx, q, userID, body.PolishActionId); err != nil {
+			return err
+		}
 		current, err := q.GetMoodJournalEntry(ctx, entryID)
 		if err != nil {
 			if database.IsNoRows(err) {
@@ -282,7 +308,7 @@ func (s *Service) Update(ctx context.Context, userID, entryID string,
 		}
 		if _, err := q.UpdateMoodJournalNote(ctx, dbgen.UpdateMoodJournalNoteParams{
 			ClearTitle: clearTitle, Title: trimmedOrNil(body.Title), Content: plaintext,
-			ContentDocument: document, NoteID: entryID,
+			ContentDocument: document, PolishActionID: body.PolishActionId, NoteID: entryID,
 		}); err != nil {
 			return apperr.Internal(err)
 		}
@@ -434,6 +460,36 @@ func trimmedOrNil(value *string) *string {
 	}
 	trimmed := strings.TrimSpace(*value)
 	return &trimmed
+}
+
+func (s *Service) polishProvenance(
+	ctx context.Context,
+	q *dbgen.Queries,
+	userID string,
+	actionID *string,
+) ([]objects.ProvenanceInput, error) {
+	if actionID == nil {
+		return []objects.ProvenanceInput{}, nil
+	}
+	trimmed := strings.TrimSpace(*actionID)
+	if trimmed == "" {
+		return nil, apperr.Validation(apperr.Field("polish_action_id", "排版润色来源不能为空。"))
+	}
+	if _, err := q.GetSuccessfulMoodJournalPolishAction(ctx, dbgen.GetSuccessfulMoodJournalPolishActionParams{
+		ActionID: trimmed,
+		UserID:   userID,
+	}); err != nil {
+		if database.IsNoRows(err) {
+			return nil, apperr.Validation(apperr.Field(
+				"polish_action_id", "排版润色结果已失效，请重新润色。"))
+		}
+		return nil, apperr.Internal(err)
+	}
+	return []objects.ProvenanceInput{{
+		SourceType: "ai_action",
+		SourceID:   trimmed,
+		Action:     "derived_from",
+	}}, nil
 }
 
 func clearFlags(values *[]httpapi.UpdateMoodJournalEntryRequestClear) (bool, bool, bool) {

@@ -5,10 +5,12 @@ import { useMemo, useState } from 'react';
 
 import { MoodEditor, type MoodEditorValue } from '@/features/mood-journal/mood-editor';
 import { dateTimeForEntry, localDateKey, parseLocalDateKey } from '@/features/mood-journal/model';
+import { useMoodJournalPolish } from '@/features/mood-journal/use-mood-journal-polish';
 
 export default function NewMoodJournalScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const polish = useMoodJournalPolish();
   const { date } = useLocalSearchParams<{ date?: string }>();
   const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(date ?? '') ? date! : localDateKey(new Date());
   const occurredAt = useMemo(() => {
@@ -31,6 +33,7 @@ export default function NewMoodJournalScreen() {
         mood_level: value.moodLevel,
         energy_level: value.energyLevel,
         emotion_words: value.emotionWords,
+        polish_action_id: value.polishActionId,
       });
       await queryClient.invalidateQueries();
       router.replace({ pathname: '/mood-journal/[id]', params: { id: response.data.id } });
@@ -48,6 +51,7 @@ export default function NewMoodJournalScreen() {
       draftKey={`steward.mood-journal.draft.${dateKey}`}
       failure={failure}
       occurredAt={occurredAt}
+      onPolish={polish}
       onSubmit={submit}
       saving={saving}
     />

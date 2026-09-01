@@ -210,6 +210,7 @@ func (s *Service) UpdateAiSettings(ctx context.Context, userID string, body http
 			CaptureParseEnabled:   body.CaptureParseEnabled,
 			SuggestionEnabled:     body.SuggestionEnabled,
 			MemoryLearningEnabled: body.MemoryLearningEnabled,
+			MoodJournalAiEnabled:  body.MoodJournalAiEnabled,
 		})
 		if err != nil {
 			return apperr.Internal(err)

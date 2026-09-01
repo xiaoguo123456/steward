@@ -112,3 +112,12 @@ WHERE id = sqlc.arg(action_id)
   AND feature = 'assistant'
   AND model_policy = 'note_polish'
   AND status = 'succeeded';
+
+-- name: GetSuccessfulMoodJournalPolishAction :one
+SELECT id
+FROM ai_actions
+WHERE id = sqlc.arg(action_id)
+  AND user_id = sqlc.arg(user_id)
+  AND feature = 'assistant'
+  AND model_policy = 'mood_journal_polish'
+  AND status = 'succeeded';

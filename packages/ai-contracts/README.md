@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前定义五条链路：
+当前定义六条链路：
 
 ```text
 schemas/capture/capture-parse-result.v3.schema.json
@@ -12,6 +12,7 @@ schemas/recipes/seasonal-ingredient-tags.v1.schema.json
 schemas/review/review-narrative-result.v2.schema.json
 schemas/notes/note-polish-result.v1.schema.json
 schemas/mood-journal/mood-reflection-result.v1.schema.json
+schemas/mood-journal/mood-journal-polish-result.v1.schema.json
 ```
 
 前者描述 `apps/backend/internal/platform/ai` 中 `CaptureParseResult` 的完整契约；v3 增加交通、住宿、活动的结束时间、预订字段和素材来源。旧版本作为历史契约保留。
@@ -28,7 +29,9 @@ schemas/mood-journal/mood-reflection-result.v1.schema.json
 模型才生成标题。结果先回填编辑器，用户保存后才写入 Note，并通过 AI Action
 来源引用保留这次润色的实际来源。该契约只接受 `NoteContent.format=plain_text`
 的普通 Note；心情日记的 `blocks_v1` 文档不得复用它，以免富文本结构被压平成
-字符串。后续富文本润色必须新增保留 Block ID、块类型和 Marks 的版本化 Schema。
+字符串。心情日记不复用它，而是使用独立的 `mood-journal-polish-result.v1`：
+结果返回完整 `blocks_v1` 候选，Go 确定性重验原块 ID、顺序、链接、数字／日期
+与块文档上限，新增拆分块由服务端生成正式 ID；保存时同样通过 AI Action 保留来源。
 
 心情日记回望契约只用于用户主动选择范围并单独同意后的深度回望，输出为摘要、
 带日记来源的观察、反思问题和温和建议。当前运营主体、Provider 处理地区、保留与

@@ -36,6 +36,7 @@ import type {
   BadRequestResponse,
   ConflictResponse,
   CreateMoodJournalEntryRequest,
+  ForbiddenResponse,
   GetMoodJournalCalendarParams,
   GetMoodJournalStatisticsParams,
   InternalErrorResponse,
@@ -43,9 +44,13 @@ import type {
   MoodJournalCalendarResponse,
   MoodJournalEntriesResponse,
   MoodJournalEntryResponse,
+  MoodJournalPolishRequest,
+  MoodJournalPolishResponse,
   MoodJournalStatisticsResponse,
   MutationResponse,
   NotFoundResponse,
+  ServiceUnavailableResponse,
+  TooManyRequestsResponse,
   UnauthorizedResponse,
   UpdateMoodJournalEntryRequest
 } from '../model';
@@ -489,6 +494,78 @@ export const useDeleteMoodJournalEntry = <TError = UnauthorizedResponse | NotFou
         TContext
       > => {
       return useMutation(getDeleteMoodJournalEntryMutationOptions(options), queryClient);
+    }
+    export const getPolishMoodJournalDraftUrl = () => {
+
+
+
+
+  return `/v1/mood-journal/polish`
+}
+
+/**
+ * 对当前用户主动提交的 blocks_v1 草稿做一次结构化排版润色。
+ * 结果只返回编辑器，不创建或修改日记；用户仍需检查并点击保存。
+ * @summary AI 排版润色心情日记草稿
+ */
+export const polishMoodJournalDraft = async (moodJournalPolishRequest: MoodJournalPolishRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<MoodJournalPolishResponse> => {
+
+  return stewardFetch<MoodJournalPolishResponse>(getPolishMoodJournalDraftUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(moodJournalPolishRequest)
+  }
+);}
+
+
+
+
+
+export const getPolishMoodJournalDraftMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof polishMoodJournalDraft>>, TError,{data: MoodJournalPolishRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof polishMoodJournalDraft>>, TError,{data: MoodJournalPolishRequest}, TContext> => {
+
+const mutationKey = ['polishMoodJournalDraft'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof polishMoodJournalDraft>>, {data: MoodJournalPolishRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  polishMoodJournalDraft(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PolishMoodJournalDraftMutationResult = NonNullable<Awaited<ReturnType<typeof polishMoodJournalDraft>>>
+    export type PolishMoodJournalDraftMutationBody = MoodJournalPolishRequest
+    export type PolishMoodJournalDraftMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse
+
+    /**
+ * @summary AI 排版润色心情日记草稿
+ */
+export const usePolishMoodJournalDraft = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | InternalErrorResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof polishMoodJournalDraft>>, TError,{data: MoodJournalPolishRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof polishMoodJournalDraft>>,
+        TError,
+        {data: MoodJournalPolishRequest},
+        TContext
+      > => {
+      return useMutation(getPolishMoodJournalDraftMutationOptions(options), queryClient);
     }
     export const getGetMoodJournalCalendarUrl = (params: GetMoodJournalCalendarParams,) => {
   const normalizedParams = new URLSearchParams();

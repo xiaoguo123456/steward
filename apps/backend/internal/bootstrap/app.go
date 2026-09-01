@@ -187,6 +187,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 
 	chat := newChatProvider(parser)
 	objectsSvc.WithNotePolisher(chat, auditor)
+	moodJournalSvc.WithPolisher(chat, auditor, cfg.AI.ApprovedSensitiveContent)
 	engine := newEngine(chat, logger)
 	stream, streamLimit, err := newStreamTransport(ctx, cfg, db, logger)
 	if err != nil {

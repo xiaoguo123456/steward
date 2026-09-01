@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   blocksPlaintext,
+  compactMoodJournalDraft,
   createBlocksDocument,
   dateTimeForEntry,
   localDateKey,
@@ -15,6 +16,18 @@ test('块文档只维护一份权威正文并可生成本地预览', () => {
   const document = createBlocksDocument('第一段');
   document.blocks.push({ id: 'blk_2', type: 'quote', runs: [{ text: '第二段' }] });
   assert.equal(blocksPlaintext(document), '第一段\n第二段');
+});
+
+test('恢复旧草稿时清理手动工具栏遗留的空块', () => {
+  const empty = createBlocksDocument();
+  empty.blocks.push({ id: 'blk_old_quote', type: 'quote', runs: [{ text: '' }] });
+  const compactedEmpty = compactMoodJournalDraft(empty);
+  assert.equal(compactedEmpty.blocks.length, 1);
+  assert.equal(compactedEmpty.blocks[0].type, 'paragraph');
+
+  const partial = createBlocksDocument('保留这段');
+  partial.blocks.push({ id: 'blk_old_empty', type: 'heading_2', runs: [{ text: '  ' }] });
+  assert.deepEqual(compactMoodJournalDraft(partial).blocks.map((block) => block.id), [partial.blocks[0].id]);
 });
 
 test('最近七天保持从旧到新的连续日期', () => {

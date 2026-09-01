@@ -132,6 +132,42 @@ EntryItem:
       '500':
         $ref: '../components/responses.yaml#/InternalError'
 
+Polish:
+  post:
+    operationId: polishMoodJournalDraft
+    summary: AI 排版润色心情日记草稿
+    description: |
+      对当前用户主动提交的 blocks_v1 草稿做一次结构化排版润色。
+      结果只返回编辑器，不创建或修改日记；用户仍需检查并点击保存。
+    tags: [mood-journal]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/mood-journal.yaml#/MoodJournalPolishRequest'
+    responses:
+      '200':
+        description: 返回待用户检查的结构化润色结果。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/mood-journal.yaml#/MoodJournalPolishResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '429':
+        $ref: '../components/responses.yaml#/TooManyRequests'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+      '503':
+        $ref: '../components/responses.yaml#/ServiceUnavailable'
+
 Calendar:
   get:
     operationId: getMoodJournalCalendar

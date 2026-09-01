@@ -13,10 +13,8 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { NoteContentBlocksV1 } from './noteContentBlocksV1';
 
-export interface UpdateAiSettingsRequest {
-  capture_parse_enabled?: boolean;
-  suggestion_enabled?: boolean;
-  memory_learning_enabled?: boolean;
-  mood_journal_ai_enabled?: boolean;
+export interface MoodJournalPolishRequest {
+  content: NoteContentBlocksV1;
 }

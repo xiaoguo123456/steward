@@ -26,13 +26,13 @@ import { colors, fontFamily, typography } from '@/theme/tokens';
 
 type ToggleKey = keyof Pick<
   AiSettings,
-  'capture_parse_enabled' | 'suggestion_enabled' | 'memory_learning_enabled'
+  'capture_parse_enabled' | 'suggestion_enabled' | 'memory_learning_enabled' | 'mood_journal_ai_enabled'
 >;
 
 const toggles: {
   key: ToggleKey;
   title: string;
-  icon: 'sparkles-outline' | 'bulb-outline' | 'bookmark-outline';
+  icon: 'sparkles-outline' | 'bulb-outline' | 'bookmark-outline' | 'document-text-outline';
   subtitle: string;
 }[] = [
   {
@@ -52,6 +52,12 @@ const toggles: {
     title: '学习长期偏好',
     icon: 'bookmark-outline',
     subtitle: '关闭后不再提出新的偏好。已经记住的仍然生效，可在「长期偏好」里逐条删除。',
+  },
+  {
+    key: 'mood_journal_ai_enabled',
+    title: '心情日记 AI',
+    icon: 'document-text-outline',
+    subtitle: '开启后，只有你点击排版润色时，当前日记正文才会发送给 AI；可随时关闭。',
   },
 ];
 

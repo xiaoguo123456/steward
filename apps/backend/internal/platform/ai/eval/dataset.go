@@ -73,6 +73,14 @@ type Case struct {
 // ContractInput 是尚未接入在线 Provider 的结构化契约用例输入。
 type ContractInput struct {
 	SelectedEntries []ContractSelectedEntry `json:"selected_entries"`
+	DraftBlocks     []ContractDraftBlock    `json:"draft_blocks"`
+}
+
+// ContractDraftBlock 是排版润色契约用例中的最小块投影。
+type ContractDraftBlock struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
+	Text string `json:"text"`
 }
 
 // ContractSelectedEntry 是契约用例里允许模型看到的一篇临时日记投影。

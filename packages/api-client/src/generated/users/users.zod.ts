@@ -175,6 +175,7 @@ export const GetAiSettingsResponse = zod.object({
   "capture_parse_enabled": zod.boolean().describe('关闭后 Capture 只保存原始输入，不调用 AI 解析。'),
   "suggestion_enabled": zod.boolean().describe('关闭后不生成任何 AI 建议。'),
   "memory_learning_enabled": zod.boolean().describe('关闭后不再生成新的长期记忆建议。'),
+  "mood_journal_ai_enabled": zod.boolean().describe('用户是否单独允许把当前主动提交的心情日记草稿发送给 AI Provider\n做排版润色；默认关闭，可随时撤回。\n'),
   "updated_at": zod.string().datetime({"offset":true})
 }),
   "meta": zod.object({
@@ -188,7 +189,8 @@ export const GetAiSettingsResponse = zod.object({
 export const UpdateAiSettingsBody = zod.object({
   "capture_parse_enabled": zod.boolean().optional(),
   "suggestion_enabled": zod.boolean().optional(),
-  "memory_learning_enabled": zod.boolean().optional()
+  "memory_learning_enabled": zod.boolean().optional(),
+  "mood_journal_ai_enabled": zod.boolean().optional()
 })
 
 export const UpdateAiSettingsResponse = zod.object({
@@ -196,6 +198,7 @@ export const UpdateAiSettingsResponse = zod.object({
   "capture_parse_enabled": zod.boolean().describe('关闭后 Capture 只保存原始输入，不调用 AI 解析。'),
   "suggestion_enabled": zod.boolean().describe('关闭后不生成任何 AI 建议。'),
   "memory_learning_enabled": zod.boolean().describe('关闭后不再生成新的长期记忆建议。'),
+  "mood_journal_ai_enabled": zod.boolean().describe('用户是否单独允许把当前主动提交的心情日记草稿发送给 AI Provider\n做排版润色；默认关闭，可随时撤回。\n'),
   "updated_at": zod.string().datetime({"offset":true})
 }),
   "meta": zod.object({

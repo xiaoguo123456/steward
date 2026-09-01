@@ -141,6 +141,22 @@ func (h *API) DeleteMoodJournalEntry(ctx context.Context, req httpapi.DeleteMood
 	)), nil
 }
 
+// PolishMoodJournalDraft 返回待用户检查的一次性排版润色候选，不写入日记。
+func (h *API) PolishMoodJournalDraft(ctx context.Context, req httpapi.PolishMoodJournalDraftRequestObject) (httpapi.PolishMoodJournalDraftResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := h.svc.PolishDraft(ctx, userID, *req.Body)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.PolishMoodJournalDraft200JSONResponse{
+		Data: result,
+		Meta: httpx.Meta(ctx),
+	}, nil
+}
+
 // GetMoodJournalCalendar 查询日历标记。
 func (h *API) GetMoodJournalCalendar(ctx context.Context, req httpapi.GetMoodJournalCalendarRequestObject) (httpapi.GetMoodJournalCalendarResponseObject, error) {
 	userID, err := httpx.UserID(ctx)

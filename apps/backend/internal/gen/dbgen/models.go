@@ -915,6 +915,7 @@ type UserAiSetting struct {
 	SuggestionEnabled     bool
 	MemoryLearningEnabled bool
 	UpdatedAt             time.Time
+	MoodJournalAiEnabled  bool
 }
 
 type UserPreference struct {

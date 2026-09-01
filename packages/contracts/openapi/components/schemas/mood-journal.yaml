@@ -105,6 +105,11 @@ CreateMoodJournalEntryRequest:
     include_in_memories:
       type: boolean
       default: true
+    polish_action_id:
+      type: string
+      description: |
+        用户采用本次 AI 排版润色结果后回传的 AI Action ID。
+        服务端校验归属与成功状态后写入来源引用。
 
 UpdateMoodJournalEntryRequest:
   type: object
@@ -148,6 +153,40 @@ UpdateMoodJournalEntryRequest:
       type: boolean
     include_in_memories:
       type: boolean
+    polish_action_id:
+      type: string
+      description: |
+        用户采用本次 AI 排版润色结果后回传的 AI Action ID。
+        服务端校验归属与成功状态后追加来源引用。
+
+MoodJournalPolishRequest:
+  type: object
+  additionalProperties: false
+  required: [content]
+  properties:
+    content:
+      $ref: './objects.yaml#/NoteContentBlocksV1'
+
+MoodJournalPolishResult:
+  type: object
+  additionalProperties: false
+  required: [content, ai_action_id]
+  properties:
+    content:
+      $ref: './objects.yaml#/NoteContentBlocksV1'
+    ai_action_id:
+      type: string
+      description: 本次排版润色的来源引用；用户保存采用后的草稿时原样回传。
+
+MoodJournalPolishResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MoodJournalPolishResult'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
 
 MoodJournalCalendarDay:
   type: object

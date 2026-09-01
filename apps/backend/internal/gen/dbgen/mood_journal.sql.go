@@ -491,9 +491,22 @@ UPDATE notes SET
                  ELSE coalesce($2, title) END,
     content = coalesce($3, content),
     content_document = coalesce($4, content_document),
+    provenance_refs = CASE
+        WHEN $5::text IS NULL THEN provenance_refs
+        WHEN EXISTS (
+            SELECT 1 FROM jsonb_array_elements(provenance_refs) ref
+            WHERE ref->>'source_type' = 'ai_action'
+              AND ref->>'source_id' = $5::text
+        ) THEN provenance_refs
+        ELSE provenance_refs || jsonb_build_array(jsonb_build_object(
+            'source_type', 'ai_action',
+            'source_id', $5::text,
+            'action', 'derived_from'
+        ))
+    END,
     updated_at = now(),
     version = version + 1
-WHERE id = $5
+WHERE id = $6
   AND note_kind = 'mood_journal'
   AND deleted_at IS NULL
 RETURNING id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version, note_kind, content_document
@@ -504,6 +517,7 @@ type UpdateMoodJournalNoteParams struct {
 	Title           *string
 	Content         *string
 	ContentDocument []byte
+	PolishActionID  *string
 	NoteID          string
 }
 
@@ -513,6 +527,7 @@ func (q *Queries) UpdateMoodJournalNote(ctx context.Context, arg UpdateMoodJourn
 		arg.Title,
 		arg.Content,
 		arg.ContentDocument,
+		arg.PolishActionID,
 		arg.NoteID,
 	)
 	var i Note

@@ -40,6 +40,14 @@ export function blocksPlaintext(content: NoteContentBlocksV1): string {
     .trim();
 }
 
+// 旧版手动工具栏可能在未保存草稿里留下多个空块。新版一键排版不再让用户
+// 手动管理空块，恢复时只保留有正文的块；全空则回到单个普通段落。
+export function compactMoodJournalDraft(content: NoteContentBlocksV1): NoteContentBlocksV1 {
+  const blocks = content.blocks.filter((block) =>
+    block.runs.some((run) => run.text.trim().length > 0));
+  return blocks.length > 0 ? { ...content, blocks } : createBlocksDocument();
+}
+
 export function localDateKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

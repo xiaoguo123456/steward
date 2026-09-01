@@ -913,6 +913,7 @@ Runtime 不能把全量 Capability 永久暴露给模型。Assistant Application
 - Search Answer：API 已明确是查询，模型只解析查询条件。
 - Review Generation：任务类型由 Job 决定。
 - `plain_text` 普通 Note 草稿润色：用户点击专用按钮已经给出明确意图，模型只返回待检查的标题与纯文本正文，不做路由，也不直接写 Note；`blocks_v1` 与心情日记不进入这条链路。
+- 心情日记排版润色：用户点击专用按钮并完成单独同意后，专用 `mood-journal-polish-result.v1` 只返回当前块文档候选，不做路由、不读取其他日记，也不直接写 Note；它不能复用普通 Note 的纯文本 Schema。
 - 用户点击“确认／拒绝”：由 Proposal API 决定。
 - 用户从快捷答案回应 Capture Question：由 Question 类型和回答 Schema 决定。
 
@@ -2184,16 +2185,16 @@ contract_owner
 
 ## 20.9 心情日记 AI 数据边界
 
-心情日记正文按高敏用户内容处理，但它不是 Memory，也不能因为出现稳定语气或反复主题就自动转成长期语义记忆。相关 AI Run 只允许两种显式输入范围：当前单篇日记的保存后追问，或用户在周／月回望中主动勾选的日记集合。
+心情日记正文按高敏用户内容处理，但它不是 Memory，也不能因为出现稳定语气或反复主题就自动转成长期语义记忆。相关 AI Run 只允许三种显式输入范围：当前草稿的一键排版润色、当前单篇日记的保存后追问，或用户在周／月回望中主动勾选的日记集合。
 
 - “仅统计”只调用 Go 的确定性查询，不创建 Provider Run；篇数、五级心情分布和感受词频率不得伪装为模型洞察。
 - “深度回望”同时检查全局 AI 开关、心情日记单独同意、Provider 敏感级别许可和每篇 `exclude_from_ai`。任一条件不满足就拒绝生成，不能静默缩小范围后仍声称分析了全部日记。
-- Context Builder 只发送从选中日记权威文档同事务派生的 `content_plaintext`、必要日期和不可反推账户的临时来源引用，不发送块 JSON、Marks、链接 URL 或内部 Block ID。标题、位置、媒体、Project、其他 Note、长期 Memory 和 Assistant 历史默认全部排除；正文写事务未能同时生成投影时整体回滚，不能留下供 AI 读取的旧文本。
+- 回望 Context Builder 只发送从选中日记权威文档同事务派生的 `content_plaintext`、必要日期和不可反推账户的临时来源引用，不发送块 JSON、Marks、链接 URL 或内部 Block ID。排版润色是唯一例外：用户单独同意并主动点击后只发送当前草稿的块 JSON，以便保留结构与 Marks；仍不发送标题、心情、精力、位置、媒体、Project、其他 Note、长期 Memory 或 Assistant 历史。
 - 日记正文进入 Prompt 时固定放入 `untrusted_user_content`；其中出现的命令、角色说明、工具调用或数据请求都只是正文内容，不能改变 System Policy、扩大工具集或授权读取其他日记。
 - 模型输出必须通过 `mood-journal` 版本化 JSON Schema，并由 Go 重验每个 `source_entry_id` 的用户归属、版本、选择范围和排除状态。无来源的观察不能进入可保存结果；来源已经修改或删除时让旧候选失效。
 - 追问最多返回一个问题；周／月回望只返回简短摘要、最多三条观察、最多三个反思问题和最多两条温和建议。禁止心理疾病诊断、人格定性、创伤或关系事实推断、药物建议和确定性未来预测。
 - 只有用户点击“保存回望”后才写入 `mood_journal_reflections`；不自动改写日记、不创建 Note 副本、不生成 Memory。日志、Trace、Eval 快照和错误上报都不能包含正文或模型原始响应。
-- 现有 `note-polish-result.v1` 只服务于 `plain_text` 普通 Note，不接受 `blocks_v1` 或 `mood_journal`。如果以后允许 AI 修改富文本，必须新增保留 Block ID、块类型和 Marks 的独立 Schema、差异预览与格式保真 Eval，不能让模型返回字符串覆盖块文档。
+- `note-polish-result.v1` 只服务于 `plain_text` 普通 Note，不接受 `blocks_v1` 或 `mood_journal`。心情日记使用独立 `mood-journal-polish-result.v1`：模型必须保留每个原块 ID 与顺序，新增拆分块使用临时 ID 并由 Go 替换为正式 ID；Go 还要校验链接集合、数字／日期 Token、块类型和完整 Domain 约束，不能让模型返回字符串覆盖块文档。
 
 如果用户在本次主动 AI 交互中明确表达即时自伤或伤害他人的风险，产品可以显示经法务和地区配置审核的安全支持信息，并鼓励联系当地紧急服务或可信任的人；不得声称系统在持续监控全部日记、已经完成临床风险判断或能够替代专业帮助。没有完成地区、文案、升级路径和 Eval 评审前，只能拒绝越界诊断，不能上线虚构的危机处理能力。
 

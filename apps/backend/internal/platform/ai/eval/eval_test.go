@@ -202,8 +202,9 @@ func TestEvalDatasetShape(t *testing.T) {
 		switch c.Runner {
 		case eval.RunnerAssistant:
 		case eval.RunnerContract:
-			if c.Expect.Schema == "" || len(c.Input.SelectedEntries) == 0 {
-				t.Errorf("契约用例 %s 缺少 schema 或 selected_entries", c.ID)
+			if c.Expect.Schema == "" ||
+				(len(c.Input.SelectedEntries) == 0 && len(c.Input.DraftBlocks) == 0) {
+				t.Errorf("契约用例 %s 缺少 schema 或契约输入", c.ID)
 			}
 		default:
 			t.Errorf("用例 %s 的 runner 非法：%q", c.ID, c.Runner)

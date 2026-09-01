@@ -302,8 +302,9 @@ func (s *Service) CreateNoteInTx(ctx context.Context, q *dbgen.Queries, userID s
 
 // CreateMoodNoteCommand 是心情日记模块在事务内创建专用 Note 的输入。
 type CreateMoodNoteCommand struct {
-	Title   *string
-	Content httpapi.NoteContentBlocksV1
+	Title      *string
+	Content    httpapi.NoteContentBlocksV1
+	Provenance []ProvenanceInput
 }
 
 // CreateMoodNoteInTx 创建固定为 mood_journal 的 Note。结构字段仍由心情日记模块写入一对一扩展表。
@@ -315,6 +316,10 @@ func (s *Service) CreateMoodNoteInTx(ctx context.Context, q *dbgen.Queries, user
 	title := ""
 	if cmd.Title != nil {
 		title = strings.TrimSpace(*cmd.Title)
+	}
+	provenanceJSON, err := marshalJSON(cmd.Provenance)
+	if err != nil {
+		return dbgen.Note{}, err
 	}
 	row, err := q.CreateNote(ctx, dbgen.CreateNoteParams{
 		ID:       idgen.New(idgen.PrefixNote),
@@ -328,7 +333,7 @@ func (s *Service) CreateMoodNoteInTx(ctx context.Context, q *dbgen.Queries, user
 		Attachments:     emptyJSONArray,
 		Tags:            []string{},
 		CreatedBy:       "user",
-		ProvenanceRefs:  emptyJSONArray,
+		ProvenanceRefs:  provenanceJSON,
 	})
 	if err != nil {
 		return dbgen.Note{}, apperr.Internal(err)

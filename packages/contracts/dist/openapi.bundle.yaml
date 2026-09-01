@@ -1304,6 +1304,42 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/mood-journal/polish:
+    post:
+      operationId: polishMoodJournalDraft
+      summary: AI 排版润色心情日记草稿
+      description: |
+        对当前用户主动提交的 blocks_v1 草稿做一次结构化排版润色。
+        结果只返回编辑器，不创建或修改日记；用户仍需检查并点击保存。
+      tags:
+        - mood-journal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoodJournalPolishRequest'
+      responses:
+        '200':
+          description: 返回待用户检查的结构化润色结果。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalPolishResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /v1/mood-journal/calendar:
     get:
       operationId: getMoodJournalCalendar
@@ -4156,6 +4192,7 @@ components:
         - capture_parse_enabled
         - suggestion_enabled
         - memory_learning_enabled
+        - mood_journal_ai_enabled
         - updated_at
       properties:
         capture_parse_enabled:
@@ -4167,6 +4204,11 @@ components:
         memory_learning_enabled:
           type: boolean
           description: 关闭后不再生成新的长期记忆建议。
+        mood_journal_ai_enabled:
+          type: boolean
+          description: |
+            用户是否单独允许把当前主动提交的心情日记草稿发送给 AI Provider
+            做排版润色；默认关闭，可随时撤回。
         updated_at:
           type: string
           format: date-time
@@ -4190,6 +4232,8 @@ components:
         suggestion_enabled:
           type: boolean
         memory_learning_enabled:
+          type: boolean
+        mood_journal_ai_enabled:
           type: boolean
     TaskListKind:
       type: string
@@ -5795,6 +5839,11 @@ components:
         include_in_memories:
           type: boolean
           default: true
+        polish_action_id:
+          type: string
+          description: |
+            用户采用本次 AI 排版润色结果后回传的 AI Action ID。
+            服务端校验归属与成功状态后写入来源引用。
     MoodJournalEntryResponse:
       type: object
       additionalProperties: false
@@ -5851,6 +5900,42 @@ components:
           type: boolean
         include_in_memories:
           type: boolean
+        polish_action_id:
+          type: string
+          description: |
+            用户采用本次 AI 排版润色结果后回传的 AI Action ID。
+            服务端校验归属与成功状态后追加来源引用。
+    MoodJournalPolishRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - content
+      properties:
+        content:
+          $ref: '#/components/schemas/NoteContentBlocksV1'
+    MoodJournalPolishResult:
+      type: object
+      additionalProperties: false
+      required:
+        - content
+        - ai_action_id
+      properties:
+        content:
+          $ref: '#/components/schemas/NoteContentBlocksV1'
+        ai_action_id:
+          type: string
+          description: 本次排版润色的来源引用；用户保存采用后的草稿时原样回传。
+    MoodJournalPolishResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MoodJournalPolishResult'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
     MoodJournalCalendarDay:
       type: object
       additionalProperties: false

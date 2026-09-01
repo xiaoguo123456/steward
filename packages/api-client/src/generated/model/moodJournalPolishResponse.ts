@@ -13,10 +13,10 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { MoodJournalPolishResult } from './moodJournalPolishResult';
+import type { ResponseMeta } from './responseMeta';
 
-export interface UpdateAiSettingsRequest {
-  capture_parse_enabled?: boolean;
-  suggestion_enabled?: boolean;
-  memory_learning_enabled?: boolean;
-  mood_journal_ai_enabled?: boolean;
+export interface MoodJournalPolishResponse {
+  data: MoodJournalPolishResult;
+  meta: ResponseMeta;
 }

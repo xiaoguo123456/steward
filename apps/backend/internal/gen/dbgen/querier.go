@@ -238,6 +238,7 @@ type Querier interface {
 	GetRecipe(ctx context.Context, id string) (Recipe, error)
 	GetRecord(ctx context.Context, id string) (GetRecordRow, error)
 	GetReviewSnapshot(ctx context.Context, arg GetReviewSnapshotParams) (ReviewSnapshot, error)
+	GetSuccessfulMoodJournalPolishAction(ctx context.Context, arg GetSuccessfulMoodJournalPolishActionParams) (string, error)
 	GetSuccessfulNotePolishAction(ctx context.Context, arg GetSuccessfulNotePolishActionParams) (string, error)
 	GetTask(ctx context.Context, id string) (Task, error)
 	GetTaskList(ctx context.Context, id string) (GetTaskListRow, error)

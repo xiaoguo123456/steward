@@ -39,4 +39,9 @@ export interface CreateMoodJournalEntryRequest {
   context_words?: string[];
   exclude_from_ai?: boolean;
   include_in_memories?: boolean;
+  /**
+     * 用户采用本次 AI 排版润色结果后回传的 AI Action ID。
+     * 服务端校验归属与成功状态后写入来源引用。
+     */
+  polish_action_id?: string;
 }

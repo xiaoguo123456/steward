@@ -123,6 +123,7 @@ func mapAiSettings(row dbgen.UserAiSetting) httpapi.AiSettings {
 		CaptureParseEnabled:   row.CaptureParseEnabled,
 		SuggestionEnabled:     row.SuggestionEnabled,
 		MemoryLearningEnabled: row.MemoryLearningEnabled,
+		MoodJournalAiEnabled:  row.MoodJournalAiEnabled,
 		UpdatedAt:             row.UpdatedAt,
 	}
 }

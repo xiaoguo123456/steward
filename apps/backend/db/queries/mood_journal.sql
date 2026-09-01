@@ -54,6 +54,19 @@ UPDATE notes SET
                  ELSE coalesce(sqlc.narg(title), title) END,
     content = coalesce(sqlc.narg(content), content),
     content_document = coalesce(sqlc.narg(content_document), content_document),
+    provenance_refs = CASE
+        WHEN sqlc.narg(polish_action_id)::text IS NULL THEN provenance_refs
+        WHEN EXISTS (
+            SELECT 1 FROM jsonb_array_elements(provenance_refs) ref
+            WHERE ref->>'source_type' = 'ai_action'
+              AND ref->>'source_id' = sqlc.narg(polish_action_id)::text
+        ) THEN provenance_refs
+        ELSE provenance_refs || jsonb_build_array(jsonb_build_object(
+            'source_type', 'ai_action',
+            'source_id', sqlc.narg(polish_action_id)::text,
+            'action', 'derived_from'
+        ))
+    END,
     updated_at = now(),
     version = version + 1
 WHERE id = sqlc.arg(note_id)

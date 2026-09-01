@@ -2,7 +2,6 @@ import type {
   EnergyLevel,
   MoodLevel,
   NoteBlock,
-  NoteBlockType,
   NoteContentBlocksV1,
 } from '@steward/api-client';
 import * as SecureStore from 'expo-secure-store';
@@ -10,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,8 +23,14 @@ import {
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
+import { useToast } from '@/components/ui/toast';
 import { colors, fontFamily, moodColors, radius, typography } from '@/theme/tokens';
-import { blocksPlaintext, createBlocksDocument, createParagraphBlock, moodOptions } from './model';
+import {
+  applyMoodJournalPolish,
+  canPolishMoodJournal,
+  type MoodJournalPolishCandidate,
+} from './mood-journal-polish';
+import { blocksPlaintext, compactMoodJournalDraft, createBlocksDocument, moodOptions } from './model';
 
 const emotionSuggestions = ['松弛', '笃定', '疲惫', '期待', '安心', '烦躁', '感激', '孤单'];
 
@@ -34,6 +40,7 @@ export type MoodEditorValue = {
   moodLevel?: MoodLevel;
   energyLevel?: EnergyLevel;
   emotionWords: string[];
+  polishActionId?: string;
 };
 
 type MoodEditorProps = {
@@ -43,6 +50,7 @@ type MoodEditorProps = {
   failure?: string | null;
   draftKey?: string;
   submitLabel?: string;
+  onPolish?: (value: MoodEditorValue) => Promise<MoodJournalPolishCandidate | null>;
   onSubmit: (value: MoodEditorValue) => Promise<boolean>;
 };
 
@@ -53,24 +61,32 @@ export function MoodEditor({
   failure,
   draftKey,
   submitLabel = '完成',
+  onPolish,
   onSubmit,
 }: MoodEditorProps) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [titleVisible, setTitleVisible] = useState(Boolean(initial?.title));
   const [content, setContent] = useState(initial?.content ?? createBlocksDocument());
   const [moodLevel, setMoodLevel] = useState<MoodLevel | undefined>(initial?.moodLevel);
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel | undefined>(initial?.energyLevel);
   const [emotionWords, setEmotionWords] = useState(initial?.emotionWords ?? []);
-  const [promptVisible, setPromptVisible] = useState(!initial);
+  const [polishActionId, setPolishActionId] = useState(initial?.polishActionId);
+  const [polishing, setPolishing] = useState(false);
+  const [undoPolish, setUndoPolish] = useState<{
+    content: NoteContentBlocksV1;
+    polishActionId?: string;
+  } | null>(null);
   const [moodExpanded, setMoodExpanded] = useState(false);
-  const [focusedBlockID, setFocusedBlockID] = useState(content.blocks[0]?.id ?? '');
   const [draftReady, setDraftReady] = useState(!draftKey);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const polishAttempt = useRef(0);
 
   const plaintext = useMemo(() => blocksPlaintext(content), [content]);
-  const canSubmit = Boolean(plaintext) && !saving;
-  const focused = content.blocks.find((block) => block.id === focusedBlockID) ?? content.blocks[0];
+  const busy = saving || polishing;
+  const canSubmit = Boolean(plaintext) && !busy;
+  const polishReady = canPolishMoodJournal(content, busy);
 
   useEffect(() => {
     if (!draftKey) return;
@@ -82,16 +98,15 @@ export function MoodEditor({
         return;
       }
       try {
-        const draft = JSON.parse(raw) as MoodEditorValue & { promptVisible?: boolean };
+        const draft = JSON.parse(raw) as MoodEditorValue;
         if (draft.content?.format === 'blocks_v1' && draft.content.blocks.length > 0) {
           setTitle(draft.title ?? '');
           setTitleVisible(Boolean(draft.title));
-          setContent(draft.content);
-          setFocusedBlockID(draft.content.blocks[0].id);
+          setContent(compactMoodJournalDraft(draft.content));
           setMoodLevel(draft.moodLevel);
           setEnergyLevel(draft.energyLevel);
           setEmotionWords(draft.emotionWords ?? []);
-          setPromptVisible(draft.promptVisible ?? true);
+          setPolishActionId(draft.polishActionId);
         }
       } catch {
         // 草稿损坏时保持空白编辑器；正式数据不受影响。
@@ -106,21 +121,23 @@ export function MoodEditor({
   }, [draftKey, initial]);
 
   useEffect(() => {
-    if (!draftKey || !draftReady || saving) return;
+    if (!draftKey || !draftReady || busy) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       void SecureStore.setItemAsync(draftKey, JSON.stringify({
-        title, content, moodLevel, energyLevel, emotionWords, promptVisible,
+        title, content, moodLevel, energyLevel, emotionWords, polishActionId,
       }));
     }, 450);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [content, draftKey, draftReady, emotionWords, energyLevel, moodLevel, promptVisible, saving, title]);
+  }, [busy, content, draftKey, draftReady, emotionWords, energyLevel, moodLevel, polishActionId, title]);
 
   const submit = async () => {
     if (!canSubmit) return;
-    const succeeded = await onSubmit({ title, content, moodLevel, energyLevel, emotionWords });
+    const succeeded = await onSubmit({
+      title, content, moodLevel, energyLevel, emotionWords, polishActionId,
+    });
     if (succeeded && draftKey) await SecureStore.deleteItemAsync(draftKey);
   };
 
@@ -137,28 +154,41 @@ export function MoodEditor({
     updateBlock(id, { runs: [{ text, ...(marks ? { marks } : {}) }] });
   };
 
-  const setBlockType = (type: NoteBlockType) => {
-    if (!focused) return;
-    updateBlock(focused.id, { type });
-  };
-
-  const toggleMark = (mark: 'bold' | 'italic' | 'strikethrough') => {
-    if (!focused) return;
-    const run = focused.runs[0] ?? { text: '' };
-    const marks = { ...(run.marks ?? {}), [mark]: !run.marks?.[mark] };
-    updateBlock(focused.id, { runs: [{ text: run.text, marks }] });
-  };
-
-  const addBlock = () => {
-    const block = createParagraphBlock('', content.blocks.length);
-    setContent((current) => ({ ...current, blocks: [...current.blocks, block] }));
-    setFocusedBlockID(block.id);
-  };
-
   const toggleEmotion = (word: string) => {
     setEmotionWords((current) => current.includes(word)
       ? current.filter((item) => item !== word)
       : current.length < 3 ? [...current, word] : current);
+  };
+
+  const polish = async () => {
+    if (!onPolish || !polishReady) return;
+    Keyboard.dismiss();
+    const attempt = ++polishAttempt.current;
+    const before = { content, polishActionId };
+    setPolishing(true);
+    try {
+      const candidate = await onPolish({
+        title, content, moodLevel, energyLevel, emotionWords, polishActionId,
+      });
+      if (attempt !== polishAttempt.current || !candidate) return;
+      const next = applyMoodJournalPolish(content, candidate);
+      setContent(next.content);
+      setPolishActionId(next.polishActionId);
+      setUndoPolish(before);
+      showToast('已排版润色，可继续修改');
+    } catch (error) {
+      if (attempt !== polishAttempt.current) return;
+      showToast(error instanceof Error ? error.message : '排版润色暂时不可用，请稍后再试。');
+    } finally {
+      if (attempt === polishAttempt.current) setPolishing(false);
+    }
+  };
+
+  const undo = () => {
+    if (!undoPolish || polishing) return;
+    setContent(undoPolish.content);
+    setPolishActionId(undoPolish.polishActionId);
+    setUndoPolish(null);
   };
 
   return (
@@ -192,31 +222,11 @@ export function MoodEditor({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.localState}>
-            <AppIcon color={colors.textTertiary} name="checkmark" size={14} />
-            <Text style={styles.localStateText}>{draftReady ? '草稿已在本机保护' : '正在恢复草稿…'}</Text>
-          </View>
-
-          {promptVisible ? (
-            <View style={styles.prompt}>
-              <View style={styles.promptCopy}>
-                <Text style={styles.promptLabel}>写作提示 · 可跳过</Text>
-                <Text style={styles.promptText}>此刻，什么最值得被记住？</Text>
-              </View>
-              <Pressable
-                accessibilityLabel="关闭写作提示"
-                accessibilityRole="button"
-                hitSlop={10}
-                onPress={() => setPromptVisible(false)}
-              >
-                <AppIcon color={moodColors.accent} name="close" size={18} />
-              </Pressable>
-            </View>
-          ) : null}
-
           {titleVisible ? (
             <TextInput
               accessibilityLabel="日记标题，可选"
+              accessibilityState={{ disabled: busy }}
+              editable={!busy}
               maxLength={120}
               onChangeText={setTitle}
               placeholder="标题（可选）"
@@ -228,6 +238,8 @@ export function MoodEditor({
             <Pressable
               accessibilityLabel="添加日记标题"
               accessibilityRole="button"
+              accessibilityState={{ disabled: busy }}
+              disabled={busy}
               onPress={() => setTitleVisible(true)}
               style={({ pressed }) => [styles.addTitle, pressed && styles.pressed]}
             >
@@ -237,12 +249,12 @@ export function MoodEditor({
           )}
 
           <View style={styles.blocks}>
-            {content.blocks.map((block) => (
+            {content.blocks.map((block, index) => (
               <BlockInput
+                autoFocus={index === 0}
                 block={block}
-                focused={block.id === focusedBlockID}
+                editable={!busy}
                 key={block.id}
-                onFocus={() => setFocusedBlockID(block.id)}
                 onTextChange={(text) => updateText(block.id, text)}
               />
             ))}
@@ -253,6 +265,7 @@ export function MoodEditor({
               accessibilityLabel="选择此刻心情"
               accessibilityRole="button"
               accessibilityState={{ expanded: moodExpanded }}
+              disabled={busy}
               onPress={() => setMoodExpanded((current) => !current)}
               style={({ pressed }) => [styles.moodSummary, pressed && styles.pressed]}
             >
@@ -276,6 +289,7 @@ export function MoodEditor({
                         accessibilityLabel={option.label}
                         accessibilityRole="radio"
                         accessibilityState={{ selected }}
+                        disabled={busy}
                         key={option.value}
                         onPress={() => setMoodLevel(selected ? undefined : option.value)}
                         style={({ pressed }) => [styles.moodOption, selected && styles.moodOptionSelected, pressed && styles.pressed]}
@@ -296,6 +310,7 @@ export function MoodEditor({
                         accessibilityLabel={word}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: selected }}
+                        disabled={busy}
                         key={word}
                         onPress={() => toggleEmotion(word)}
                         style={({ pressed }) => [styles.wordOption, selected && styles.wordOptionSelected, pressed && styles.pressed]}
@@ -315,6 +330,7 @@ export function MoodEditor({
                       <Pressable
                         accessibilityRole="radio"
                         accessibilityState={{ selected }}
+                        disabled={busy}
                         key={value}
                         onPress={() => setEnergyLevel(selected ? undefined : value)}
                         style={({ pressed }) => [styles.energyOption, selected && styles.energyOptionSelected, pressed && styles.pressed]}
@@ -331,33 +347,58 @@ export function MoodEditor({
           {failure ? <Text accessibilityLiveRegion="polite" style={styles.failure}>{failure}</Text> : null}
         </ScrollView>
 
-        <View style={styles.toolbarWrap}>
-          <View style={styles.toolbar}>
-            <Tool label="正文" selected={focused?.type === 'paragraph'} onPress={() => setBlockType('paragraph')} />
-            <Tool label="H₂" selected={focused?.type === 'heading_2'} onPress={() => setBlockType('heading_2')} />
-            <Tool label="B" selected={Boolean(focused?.runs[0]?.marks?.bold)} onPress={() => toggleMark('bold')} bold />
-            <Tool label="I" selected={Boolean(focused?.runs[0]?.marks?.italic)} onPress={() => toggleMark('italic')} italic />
-            <Tool label="•" selected={focused?.type === 'bullet_item'} onPress={() => setBlockType('bullet_item')} />
-            <Tool label="“" selected={focused?.type === 'quote'} onPress={() => setBlockType('quote')} />
+        {onPolish ? (
+          <View style={styles.polishBar}>
+            <Pressable
+              accessibilityLabel={polishing ? '正在进行 AI 排版润色' : '一键 AI 排版润色'}
+              accessibilityRole="button"
+              accessibilityState={{ busy: polishing, disabled: !polishReady }}
+              disabled={!polishReady}
+              onPress={() => void polish()}
+              style={({ pressed }) => [
+                styles.polishButton,
+                !polishReady && styles.polishButtonDisabled,
+                pressed && styles.polishButtonPressed,
+              ]}
+            >
+              {polishing ? (
+                <ActivityIndicator color={moodColors.accentPressed} size="small" />
+              ) : (
+                <AppIcon
+                  color={polishReady ? moodColors.accentPressed : colors.textTertiary}
+                  name="sparkles"
+                  size={18}
+                />
+              )}
+              <Text
+                accessibilityLiveRegion="polite"
+                style={[styles.polishText, !polishReady && styles.polishTextDisabled]}
+              >
+                {polishing ? '正在排版润色…' : undoPolish ? '再次排版润色' : 'AI 排版润色'}
+              </Text>
+            </Pressable>
+            {undoPolish && !polishing ? (
+              <Pressable
+                accessibilityLabel="撤销本次排版润色"
+                accessibilityRole="button"
+                onPress={undo}
+                style={({ pressed }) => [styles.undoButton, pressed && styles.pressed]}
+              >
+                <AppIcon color={colors.textSecondary} name="return-down-back-outline" size={17} />
+                <Text style={styles.undoText}>撤销</Text>
+              </Pressable>
+            ) : null}
           </View>
-          <Pressable
-            accessibilityLabel="添加正文块"
-            accessibilityRole="button"
-            onPress={addBlock}
-            style={({ pressed }) => [styles.addBlock, pressed && styles.pressed]}
-          >
-            <AppIcon color={moodColors.accent} name="add" size={22} />
-          </Pressable>
-        </View>
+        ) : null}
       </KeyboardAvoidingView>
     </AppScreen>
   );
 }
 
-function BlockInput({ block, focused, onFocus, onTextChange }: {
+function BlockInput({ block, autoFocus, editable, onTextChange }: {
   block: NoteBlock;
-  focused: boolean;
-  onFocus: () => void;
+  autoFocus: boolean;
+  editable: boolean;
   onTextChange: (text: string) => void;
 }) {
   const text = block.runs.map((run) => run.text).join('');
@@ -368,10 +409,11 @@ function BlockInput({ block, focused, onFocus, onTextChange }: {
       {block.type === 'ordered_item' ? <Text style={styles.blockPrefix}>1.</Text> : null}
       <TextInput
         accessibilityLabel="日记正文"
-        autoFocus={focused && text.length === 0}
+        accessibilityState={{ disabled: !editable }}
+        autoFocus={autoFocus && text.length === 0}
+        editable={editable}
         multiline
         onChangeText={onTextChange}
-        onFocus={onFocus}
         placeholder={block.type === 'heading_2' ? '小标题' : '写下此刻…'}
         placeholderTextColor={colors.textTertiary}
         style={[
@@ -390,26 +432,6 @@ function BlockInput({ block, focused, onFocus, onTextChange }: {
   );
 }
 
-function Tool({ label, selected, onPress, bold, italic }: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  bold?: boolean;
-  italic?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={`格式 ${label}`}
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => [styles.tool, selected && styles.toolSelected, pressed && styles.pressed]}
-    >
-      <Text style={[styles.toolText, selected && styles.toolTextSelected, bold && styles.bold, italic && styles.italic]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 function formatEditorDate(date: Date) {
   const today = new Date();
   const prefix = date.toDateString() === today.toDateString()
@@ -424,17 +446,6 @@ const styles = StyleSheet.create({
   doneText: { color: moodColors.accentPressed, fontFamily, ...typography.bodyStrong },
   doneTextDisabled: { color: colors.textTertiary },
   content: { paddingHorizontal: 16, paddingBottom: 30 },
-  localState: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  localStateText: { color: colors.textTertiary, fontFamily, ...typography.meta },
-  prompt: {
-    minHeight: 74, marginTop: 6, paddingHorizontal: 14, paddingVertical: 11,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: moodColors.border,
-    borderRadius: radius.md, backgroundColor: moodColors.soft,
-  },
-  promptCopy: { flex: 1 },
-  promptLabel: { color: moodColors.text, fontFamily, ...typography.meta },
-  promptText: { marginTop: 2, color: colors.text, fontFamily, fontSize: 16, lineHeight: 24, fontWeight: '500' },
   addTitle: { minHeight: 44, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 5 },
   addTitleText: { color: colors.textSecondary, fontFamily, ...typography.meta },
   titleInput: { marginTop: 18, paddingVertical: 4, color: colors.text, fontFamily, ...typography.detail },
@@ -477,12 +488,22 @@ const styles = StyleSheet.create({
   energyText: { color: colors.textSecondary, fontFamily, ...typography.meta },
   energyTextSelected: { color: moodColors.accentPressed, fontWeight: '600' },
   failure: { marginTop: 12, color: colors.danger, fontFamily, ...typography.meta },
-  toolbarWrap: { paddingHorizontal: 12, paddingTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.background },
-  toolbar: { flex: 1, height: 50, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', borderWidth: StyleSheet.hairlineWidth, borderColor: moodColors.border, borderRadius: radius.xl, backgroundColor: '#F8FBFD' },
-  tool: { minWidth: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
-  toolSelected: { backgroundColor: moodColors.soft },
-  toolText: { color: colors.textSecondary, fontFamily, fontSize: 15, lineHeight: 20 },
-  toolTextSelected: { color: moodColors.accentPressed },
-  addBlock: { width: 50, height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: moodColors.soft },
+  polishBar: {
+    paddingHorizontal: 16, paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.background,
+  },
+  polishButton: {
+    flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: radius.md, backgroundColor: moodColors.soft,
+  },
+  polishButtonDisabled: { backgroundColor: colors.surfaceSubtle },
+  polishButtonPressed: { backgroundColor: moodColors.atmosphere },
+  polishText: { color: moodColors.accentPressed, fontFamily, ...typography.bodyStrong },
+  polishTextDisabled: { color: colors.textTertiary },
+  undoButton: {
+    minHeight: 52, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    borderRadius: radius.md, backgroundColor: colors.surfaceSubtle,
+  },
+  undoText: { color: colors.textSecondary, fontFamily, ...typography.label },
   pressed: { opacity: 0.56 },
 });

@@ -87,6 +87,7 @@ UPDATE user_ai_settings SET
     capture_parse_enabled   = coalesce(sqlc.narg(capture_parse_enabled), capture_parse_enabled),
     suggestion_enabled      = coalesce(sqlc.narg(suggestion_enabled), suggestion_enabled),
     memory_learning_enabled = coalesce(sqlc.narg(memory_learning_enabled), memory_learning_enabled),
+    mood_journal_ai_enabled = coalesce(sqlc.narg(mood_journal_ai_enabled), mood_journal_ai_enabled),
     updated_at              = now()
 WHERE user_id = sqlc.arg(user_id)
 RETURNING *;

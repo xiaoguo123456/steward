@@ -238,6 +238,28 @@ func (q *Queries) GetProcessedJob(ctx context.Context, idempotencyKey string) (P
 	return i, err
 }
 
+const getSuccessfulMoodJournalPolishAction = `-- name: GetSuccessfulMoodJournalPolishAction :one
+SELECT id
+FROM ai_actions
+WHERE id = $1
+  AND user_id = $2
+  AND feature = 'assistant'
+  AND model_policy = 'mood_journal_polish'
+  AND status = 'succeeded'
+`
+
+type GetSuccessfulMoodJournalPolishActionParams struct {
+	ActionID string
+	UserID   string
+}
+
+func (q *Queries) GetSuccessfulMoodJournalPolishAction(ctx context.Context, arg GetSuccessfulMoodJournalPolishActionParams) (string, error) {
+	row := q.db.QueryRow(ctx, getSuccessfulMoodJournalPolishAction, arg.ActionID, arg.UserID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getSuccessfulNotePolishAction = `-- name: GetSuccessfulNotePolishAction :one
 SELECT id
 FROM ai_actions

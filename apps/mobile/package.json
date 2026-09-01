@@ -77,7 +77,7 @@
     "test:assistant": "node --experimental-strip-types --test src/features/assistant/assistant-markdown-policy.test.mjs src/features/assistant/assistant-media-capture.test.mjs src/features/assistant/assistant-thread-session.test.mjs",
     "test:calendar": "node --experimental-strip-types --test src/features/calendar/calendar-month.test.mjs",
     "test:memories": "node --experimental-strip-types --test src/features/memories/memory-model.test.mjs",
-    "test:mood-journal": "node --experimental-strip-types --test src/features/mood-journal/model.test.mjs",
+    "test:mood-journal": "node --experimental-strip-types --test src/features/mood-journal/model.test.mjs src/features/mood-journal/mood-journal-polish.test.mjs",
     "test:workouts": "node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs src/features/workouts/workout-voice.test.mjs",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web"

@@ -54,6 +54,9 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
   const visibleMonthAnchor = calendarExpanded
     ? calendarMonthAnchor
     : monthAnchorFromDateKey(selectedDate);
+  const writeLabel = selectedDate === today
+    ? todayCount > 0 ? '再记一件事' : '写下此刻'
+    : '补写这一天';
 
   const selectRailDate = (date: string) => {
     setSelectedDate(date);
@@ -90,23 +93,15 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
       </View>
 
       <Pressable
-        accessibilityLabel={selectedDate === today ? '写下此刻' : '补写这一天'}
+        accessibilityLabel={writeLabel}
         accessibilityRole="button"
         onPress={() => router.push({ pathname: '/mood-journal/new', params: { date: selectedDate } })}
         style={({ pressed }) => [styles.prompt, pressed && styles.promptPressed]}
       >
-        <View style={styles.promptCopy}>
-          <Text style={styles.promptTitle}>
-            {selectedDate === today
-              ? todayCount > 0 ? '再记一件刚刚发生的事' : '今天想留下什么？'
-              : '想为这一天留下什么？'}
-          </Text>
-          <Text style={styles.promptMeta}>只有你可以查看；心情和标题都可以跳过</Text>
+        <View style={styles.writeIcon}>
+          <AppIcon color={moodColors.accentPressed} name="create-outline" size={20} />
         </View>
-        <View style={styles.writeAction}>
-          <AppIcon color={moodColors.accent} name="create-outline" size={17} />
-          <Text style={styles.writeActionText}>{selectedDate === today ? '写下此刻' : '补写这一天'}</Text>
-        </View>
+        <Text style={styles.promptTitle}>{writeLabel}</Text>
       </Pressable>
 
       <View style={styles.calendarSection}>
@@ -203,8 +198,7 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
         />
       ) : entries.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>{selectedDate === today ? '今天还没有写日记' : '这一天还没有日记'}</Text>
-          <Text style={styles.emptyText}>一句话也可以，写下刚刚发生的事。</Text>
+          <Text style={styles.emptyTitle}>{selectedDate === today ? '今天还没有记录' : '这一天还没有记录'}</Text>
         </View>
       ) : (
         <View style={styles.timeline}>
@@ -287,16 +281,16 @@ const styles = StyleSheet.create({
   toolsRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 },
   searchButton: { flex: 1, justifyContent: 'flex-start' },
   prompt: {
-    marginTop: 10, minHeight: 86, paddingHorizontal: 16, paddingVertical: 14,
+    marginTop: 10, minHeight: 60, paddingHorizontal: 12, paddingVertical: 12,
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: radius.lg, backgroundColor: colors.surfaceSubtle,
+    borderRadius: radius.lg, backgroundColor: moodColors.soft,
   },
-  promptPressed: { backgroundColor: moodColors.soft },
-  promptCopy: { flex: 1, minWidth: 0 },
-  promptTitle: { color: colors.text, fontFamily, fontSize: 18, lineHeight: 26, fontWeight: '600' },
-  promptMeta: { marginTop: 4, color: colors.textSecondary, fontFamily, ...typography.meta },
-  writeAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  writeActionText: { color: moodColors.accentPressed, fontFamily, ...typography.bodyStrong },
+  promptPressed: { backgroundColor: moodColors.atmosphere },
+  writeIcon: {
+    width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
+    borderRadius: radius.sm, backgroundColor: colors.surfaceRaised,
+  },
+  promptTitle: { flex: 1, color: colors.text, fontFamily, fontSize: 17, lineHeight: 24, fontWeight: '600' },
   calendarSection: { marginTop: 10 },
   calendarHeader: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   calendarMonthButton: {
@@ -327,7 +321,6 @@ const styles = StyleSheet.create({
   loading: { paddingVertical: 48, alignItems: 'center' },
   empty: { paddingVertical: 40, alignItems: 'center' },
   emptyTitle: { color: colors.text, fontFamily, ...typography.section },
-  emptyText: { marginTop: 6, color: colors.textSecondary, fontFamily, ...typography.meta },
   timeline: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   dateHeading: { paddingTop: 18, paddingBottom: 6, color: colors.text, fontFamily, ...typography.section },
   entry: { minHeight: 116, paddingVertical: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
