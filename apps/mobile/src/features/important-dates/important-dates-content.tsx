@@ -9,7 +9,6 @@ import {
   type ReminderInput,
 } from '@steward/api-client';
 import type { ComponentProps } from 'react';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -449,7 +448,6 @@ function DetailSheet({
   onDelete,
   onEdit,
   onHandle,
-  onOpenCalendar,
 }: {
   busy: boolean;
   failure: string | null;
@@ -458,7 +456,6 @@ function DetailSheet({
   onDelete: () => void;
   onEdit: () => void;
   onHandle: () => void;
-  onOpenCalendar: () => void;
 }) {
   if (!item) return null;
   const spec = kindSpecs[item.kind];
@@ -524,7 +521,7 @@ function DetailSheet({
             <AppButton
               disabled={busy}
               icon="create-outline"
-              label={days < 0 && !item.repeatYearly ? '更新日期' : '编辑重要日'}
+              label="编辑重要日"
               onPress={onEdit}
             />
             {!item.repeatYearly ? (
@@ -541,13 +538,6 @@ function DetailSheet({
                 </Text>
               </>
             ) : null}
-            <AppButton
-              disabled={busy}
-              icon="calendar-outline"
-              label="在日历中查看"
-              onPress={onOpenCalendar}
-              variant="neutral"
-            />
             <AppButton
               accessibilityLabel={`删除重要日：${item.title}`}
               disabled={busy}
@@ -570,7 +560,6 @@ export function ImportantDatesContent({
   createVisible: boolean;
   onCreateVisibleChange: (visible: boolean) => void;
 }) {
-  const router = useRouter();
   const { showToast } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -662,6 +651,9 @@ export function ImportantDatesContent({
         { important_date_handled: true },
         { headers: { 'If-Match': String(item.version) } },
       );
+      if (!response.data.important_date_handled_at) {
+        throw new Error('服务端没有确认重要日处理状态');
+      }
       setSelectedId(null);
       await importantDates.refetch();
       showToast(`“${item.title}”已标记为已处理`, {
@@ -669,11 +661,14 @@ export function ImportantDatesContent({
         durationMs: 10_000,
         onAction: async () => {
           try {
-            await updateEvent(
+            const restored = await updateEvent(
               item.id,
               { important_date_handled: false },
               { headers: { 'If-Match': String(response.data.version) } },
             );
+            if (restored.data.important_date_handled_at) {
+              throw new Error('服务端没有撤销重要日处理状态');
+            }
             await importantDates.refetch();
             showToast(`“${item.title}”已恢复`);
           } catch (error) {
@@ -845,10 +840,6 @@ export function ImportantDatesContent({
         onDelete={confirmDeleteSelected}
         onEdit={editSelected}
         onHandle={() => void markSelectedHandled()}
-        onOpenCalendar={() => {
-          setSelectedId(null);
-          router.push('/calendar');
-        }}
       />
     </>
   );

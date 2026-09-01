@@ -19,7 +19,8 @@
     "admin:typecheck": "pnpm --filter @steward/admin run typecheck && pnpm --filter @steward/admin-api-client run typecheck",
     "admin:test": "pnpm --filter @steward/admin run test",
     "seed:test:memories": "node --no-warnings --experimental-strip-types --loader ./tools/typescript-extension-loader.mjs tools/seed-test-memories.mjs",
-    "seed:test:mood-journal": "node --no-warnings --experimental-strip-types --loader ./tools/typescript-extension-loader.mjs tools/seed-test-mood-journal.mjs"
+    "seed:test:mood-journal": "node --no-warnings --experimental-strip-types --loader ./tools/typescript-extension-loader.mjs tools/seed-test-mood-journal.mjs",
+    "seed:test:important-dates": "node --no-warnings --experimental-strip-types --loader ./tools/typescript-extension-loader.mjs tools/seed-test-important-dates.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
