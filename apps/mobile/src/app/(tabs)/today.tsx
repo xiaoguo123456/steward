@@ -96,7 +96,7 @@ const homeShortcuts: HomeShortcut[] = [
 const groupLabels: Record<TodayTask['group'], string> = {
   overdue: '已逾期',
   due_today: '今天截止',
-  scheduled_today: '今天有安排',
+  scheduled_today: '今天已排期',
   manual: '加入今天',
 };
 
@@ -128,7 +128,6 @@ export default function HomeScreen() {
   );
 
   const tasks = useMemo(() => today.data?.data.tasks ?? [], [today.data]);
-  const events = today.data?.data.events ?? [];
   const counts = today.data?.data.counts;
 
   // 首页默认只渲染前 4 项；展开只改变可见数量，不改变收录与排序。
@@ -214,7 +213,7 @@ export default function HomeScreen() {
               <StatePanel
                 actionLabel="重试"
                 icon="cloud-offline-outline"
-                message={errorMessage(today.error, '暂时无法加载今天的安排。')}
+                message={errorMessage(today.error, '暂时无法加载今天的待办。')}
                 onAction={() => void today.refetch()}
                 title="加载失败"
               />
@@ -223,7 +222,7 @@ export default function HomeScreen() {
                 actionLabel="记一件事"
                 compact
                 icon="sunny-outline"
-                message="今天还没有安排，想到什么就记下来。"
+                message="今天没有待办，想到什么就记下来。"
                 onAction={() => router.push('/capture/new')}
                 title="今天很清爽"
               />
@@ -276,38 +275,6 @@ export default function HomeScreen() {
                 ) : null}
               </>
             )}
-
-            <SectionTitle style={styles.homeSectionTitle} title="今日安排" />
-            <Pressable
-              accessibilityHint="进入日历查看今天的完整安排"
-              accessibilityLabel="打开日历查看今日安排"
-              accessibilityRole="button"
-              onPress={() => router.push('/calendar')}
-              style={({ pressed }) => [styles.brief, pressed && styles.briefPressed]}
-            >
-              <View style={styles.briefIcon}>
-                <AppIcon color={colors.primaryStrong} name="sparkles" size={19} />
-              </View>
-              <View style={styles.briefCopy}>
-                <Text style={styles.briefTitle}>
-                  {events.length > 0 ? `今天有 ${events.length} 个日程` : '今天没有日程安排'}
-                </Text>
-                <Text style={styles.briefSummary}>
-                  {events.length > 0
-                    ? events
-                        .slice(0, 2)
-                        .map((event) => event.title)
-                        .join('、')
-                    : '点击查看日历，安排接下来的时间。'}
-                </Text>
-                {counts && counts.overdue > 0 ? (
-                  <Text style={styles.briefSource}>还有 {counts.overdue} 项已逾期</Text>
-                ) : null}
-              </View>
-              <View style={styles.briefChevron}>
-                <AppIcon color={colors.textTertiary} name="chevron-forward" size={18} />
-              </View>
-            </Pressable>
           </View>
         ) : activeHomeTab === 'memories' ? (
           <MemoriesHome key="memories-home-content" />
@@ -579,58 +546,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '500',
-  },
-  brief: {
-    paddingVertical: 16,
-    paddingRight: 14,
-    paddingLeft: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.lg,
-    backgroundColor: '#F1F8F4',
-  },
-  briefPressed: {
-    backgroundColor: '#E9F4EE',
-  },
-  briefIcon: {
-    width: 36,
-    height: 36,
-    marginRight: 12,
-    alignSelf: 'center',
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#DDF6E9',
-  },
-  briefCopy: {
-    flex: 1,
-    alignSelf: 'center',
-  },
-  briefChevron: {
-    width: 24,
-    alignSelf: 'center',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  briefTitle: {
-    color: colors.text,
-    fontFamily,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: '600',
-  },
-  briefSummary: {
-    marginTop: 4,
-    color: colors.textSecondary,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  briefSource: {
-    marginTop: 6,
-    color: colors.primaryStrong,
-    fontFamily,
-    fontSize: 11,
-    lineHeight: 16,
   },
 });

@@ -108,3 +108,13 @@ test('首页不再保留灵感分区或专属页面入口', async () => {
   assert.equal(HOME_TOP_TABS.some(({ id }) => id === 'inspiration'), false);
   assert.match(tabs, /tab:\s*\{[^}]*flexGrow:\s*1,/s);
 });
+
+test('今天首页只保留待办主区，不用日程数量拼装第二个今日摘要', async () => {
+  const home = await readFile(new URL('../../app/(tabs)/today.tsx', import.meta.url), 'utf8');
+
+  assert.match(home, /title="今天要做"/);
+  assert.match(home, /scheduled_today: '今天已排期'/);
+  assert.match(home, /message="今天没有待办，想到什么就记下来。"/);
+  assert.doesNotMatch(home, /title="今日安排"/);
+  assert.doesNotMatch(home, /data\.events|events\.length|briefTitle|name="sparkles"/);
+});
