@@ -63,7 +63,6 @@ function RootNavigator() {
         <Stack.Screen name="notes/new" />
         <Stack.Screen name="mood-journal/new" />
         <Stack.Screen name="mood-journal/[id]" />
-        <Stack.Screen name="mood-journal/calendar" />
         <Stack.Screen name="mood-journal/search" />
         <Stack.Screen name="mood-journal/garden" />
         <Stack.Screen name="lists/manage" />

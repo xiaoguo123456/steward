@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -35,4 +36,22 @@ test('补写日期保留当前时刻但使用目标当地日期', () => {
   assert.equal(localDateKey(result), '2026-08-20');
   assert.equal(result.getHours(), 21);
   assert.equal(result.getMinutes(), 35);
+});
+
+test('心情首页由月份标题切换周视图与正式月历且选择后收起', async () => {
+  const content = await readFile(new URL('./mood-journal-content.tsx', import.meta.url), 'utf8');
+  const calendar = await readFile(new URL('./mood-calendar.tsx', import.meta.url), 'utf8');
+
+  assert.match(content, /formatCalendarMonthTitle\(visibleMonthAnchor\)/);
+  assert.match(content, /accessibilityState=\{\{ expanded: calendarExpanded \}\}/);
+  assert.match(content, /styles\.calendarTitleButton/);
+  assert.doesNotMatch(content, /calendarDisclosure/);
+  assert.doesNotMatch(content, /date === selectedDate[\s\S]*setCalendarExpanded/s);
+  assert.match(content, /setCalendarExpanded\(false\)/);
+  assert.match(calendar, /useGetMoodJournalCalendar/);
+  assert.match(content, /calendarExpanded \? \([\s\S]*<MoodCalendar[\s\S]*\) : \([\s\S]*<ScrollView/s);
+  assert.match(content, /monthAnchor=\{calendarMonthAnchor\}/);
+  assert.doesNotMatch(calendar, /monthHeader|formatCalendarMonthTitle/);
+  assert.match(calendar, /day\.count/);
+  assert.doesNotMatch(calendar, /fixture|__DEV__/i);
 });
