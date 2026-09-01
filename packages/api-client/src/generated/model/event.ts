@@ -56,6 +56,12 @@ export interface Event {
   note?: string | null;
   reminders?: Reminder[];
   important_date_kind?: ImportantDateKind;
+  /**
+     * 用户明确把一次性重要日标记为已处理时由服务端写入；null 表示未处理。
+     * 日期已过期不会自动写入，年度重复重要日始终为 null。
+     * @nullable
+     */
+  important_date_handled_at?: string | null;
   recurrence: EventRecurrence;
   /**
      * yearly 重复时保留原始月日，格式 MM-DD。

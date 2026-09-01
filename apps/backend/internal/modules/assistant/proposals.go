@@ -32,6 +32,8 @@ type ObjectCommands interface {
 	CreateEventInTx(ctx context.Context, q *dbgen.Queries, userID string, cmd objects.CreateEventCommand) (dbgen.Event, error)
 	UpdateTaskInTx(ctx context.Context, q *dbgen.Queries, userID, taskID string,
 		in objects.TaskUpdate, source activity.Source, sourceID *string) (dbgen.Task, string, error)
+	UpdateEventInTx(ctx context.Context, q *dbgen.Queries, userID, eventID string,
+		in objects.EventUpdate, source activity.Source, sourceID *string) (dbgen.Event, string, error)
 	GetTask(ctx context.Context, userID, taskID string) (dbgen.Task, error)
 }
 
@@ -328,6 +330,8 @@ func (s *ProposalService) execute(ctx context.Context, q *dbgen.Queries, userID 
 		return s.executeTaskUpdate(ctx, q, userID, proposal, command, targetVersion)
 	case "event_create":
 		return s.executeEventCreate(ctx, q, userID, proposal, command)
+	case "event_update":
+		return s.executeEventUpdate(ctx, q, userID, proposal, command, targetVersion)
 	case "memory_upsert":
 		return s.executeMemoryUpsert(ctx, q, userID, proposal, command)
 	default:
@@ -461,7 +465,7 @@ func (s *ProposalService) executeEventCreate(ctx context.Context, q *dbgen.Queri
 
 	cmd := objects.CreateEventCommand{
 		Title:      title,
-		EventKind:  eventKindOr(text(command["event_kind"]), "appointment"),
+		EventKind:  eventKindOr(text(command["event_kind"]), "schedule"),
 		AllDay:     boolOf(command["all_day"]),
 		StartAt:    parseTimestamp(command["start_at"]),
 		EndAt:      parseTimestamp(command["end_at"]),
@@ -493,6 +497,56 @@ func (s *ProposalService) executeEventCreate(ctx context.Context, q *dbgen.Queri
 		ActivityBatchID: batchID,
 		Affected: []httpapi.AffectedResource{
 			{Type: httpapi.AffectedResourceTypeEvent, Id: &event.ID},
+		},
+	}, nil
+}
+
+func (s *ProposalService) executeEventUpdate(ctx context.Context, q *dbgen.Queries,
+	userID string, proposal dbgen.ActionProposal, command map[string]any,
+	targetVersion *int) (ConfirmResult, error) {
+
+	if proposal.TargetID == nil || *proposal.TargetID == "" {
+		return ConfirmResult{}, apperr.Validation(apperr.Field("target_id", "缺少要修改的重要日。"))
+	}
+	expected := proposal.TargetExpectedVersion
+	if targetVersion != nil {
+		v := int32(*targetVersion)
+		expected = &v
+	}
+
+	current, err := q.GetEvent(ctx, *proposal.TargetID)
+	if err != nil {
+		if database.IsNoRows(err) {
+			return ConfirmResult{}, apperr.NotFound("重要日")
+		}
+		return ConfirmResult{}, apperr.Internal(err)
+	}
+	if expected != nil && current.Version != *expected {
+		if _, err := q.MarkProposalResolved(ctx, dbgen.MarkProposalResolvedParams{
+			Status: "stale", ID: proposal.ID,
+		}); err != nil {
+			return ConfirmResult{}, apperr.Internal(err)
+		}
+		return ConfirmResult{}, apperr.New(apperr.CodeAIProposalStale)
+	}
+
+	loc := timeutil.LoadLocation(current.Timezone)
+	body, err := buildEventUpdateBody(command, loc)
+	if err != nil {
+		return ConfirmResult{}, err
+	}
+	event, batchID, err := s.objects.UpdateEventInTx(ctx, q, userID, *proposal.TargetID,
+		objects.EventUpdate{Body: body, ExpectedVersion: expected},
+		activity.SourceProposal, &proposal.ID)
+	if err != nil {
+		return ConfirmResult{}, err
+	}
+	return ConfirmResult{
+		ActivityBatchID: batchID,
+		Affected: []httpapi.AffectedResource{
+			{Type: httpapi.AffectedResourceTypeEvent, Id: &event.ID},
+			{Type: httpapi.AffectedResourceTypeToday},
+			{Type: httpapi.AffectedResourceTypeCalendar},
 		},
 	}, nil
 }
@@ -536,7 +590,7 @@ func (s *ProposalService) executeMemoryUpsert(ctx context.Context, q *dbgen.Quer
 
 func isKnownProposalType(t string) bool {
 	switch t {
-	case "task_create", "task_update", "event_create", "memory_upsert":
+	case "task_create", "task_update", "event_create", "event_update", "memory_upsert":
 		return true
 	default:
 		return false
@@ -632,6 +686,29 @@ func buildTaskUpdateBody(command map[string]any, loc *time.Location,
 	return body, nil
 }
 
+func buildEventUpdateBody(command map[string]any, loc *time.Location) (httpapi.UpdateEventRequest, error) {
+	var body httpapi.UpdateEventRequest
+	if raw := strings.TrimSpace(text(command["start_date"])); raw != "" {
+		date := parseDate(raw, loc)
+		if date == nil {
+			return body, apperr.Validation(apperr.Field("start_date", "重要日日期格式不正确。"))
+		}
+		body.StartDate = &openapi_types.Date{Time: *date}
+	}
+	if raw, present := command["important_date_handled"]; present {
+		handled, ok := raw.(bool)
+		if !ok {
+			return body, apperr.Validation(apperr.Field(
+				"important_date_handled", "处理状态必须是布尔值。"))
+		}
+		body.ImportantDateHandled = &handled
+	}
+	if body.StartDate == nil && body.ImportantDateHandled == nil {
+		return body, apperr.Validation(apperr.Field("command", "重要日建议没有可执行的修改。"))
+	}
+	return body, nil
+}
+
 func priorityOr(v, def string) string {
 	switch v {
 	case "low", "normal", "high", "urgent":
@@ -643,7 +720,7 @@ func priorityOr(v, def string) string {
 
 func eventKindOr(v, def string) string {
 	switch v {
-	case "appointment", "important_date":
+	case "schedule", "important_date":
 		return v
 	default:
 		return def

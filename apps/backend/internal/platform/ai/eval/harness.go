@@ -405,12 +405,16 @@ func resolveScript(steps []ScriptStep, f seeded) []ai.CompletionResult {
 // seeded 记录本次运行预置出来的 ID，供脚本占位符替换。
 type seeded struct {
 	taskIDs  []string
+	eventIDs []string
 	ledgerID string
 }
 
 func (s seeded) replace(text string) string {
 	for i, id := range s.taskIDs {
 		text = strings.ReplaceAll(text, fmt.Sprintf("$TASK%d", i+1), id)
+	}
+	for i, id := range s.eventIDs {
+		text = strings.ReplaceAll(text, fmt.Sprintf("$EVENT%d", i+1), id)
 	}
 	if s.ledgerID != "" {
 		text = strings.ReplaceAll(text, "$LEDGER", s.ledgerID)

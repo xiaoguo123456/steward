@@ -106,6 +106,7 @@ type ScriptCall struct {
 // Fixtures 描述用例需要的初始数据。
 type Fixtures struct {
 	Tasks          []FixtureTask   `json:"tasks"`
+	Events         []FixtureEvent  `json:"events"`
 	LedgerRecords  []FixtureLedger `json:"ledger_records"`
 	Memory         *FixtureMemory  `json:"memory"`
 	DeletedMemory  *FixtureMemory  `json:"deleted_memory"`
@@ -115,6 +116,13 @@ type Fixtures struct {
 // FixtureTask 是一条预置任务。
 type FixtureTask struct {
 	Title string `json:"title"`
+}
+
+// FixtureEvent 是一条预置重要日 Event。
+type FixtureEvent struct {
+	Title      string `json:"title"`
+	StartDate  string `json:"start_date"`
+	Recurrence string `json:"recurrence"`
 }
 
 // FixtureLedger 是一条预置账单。

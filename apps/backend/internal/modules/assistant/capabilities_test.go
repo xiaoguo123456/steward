@@ -14,6 +14,7 @@ import (
 type taskQueriesStub struct {
 	filter objects.TaskFilter
 	task   dbgen.Task
+	event  dbgen.Event
 }
 
 func (s *taskQueriesStub) ListTasks(_ context.Context, _ string,
@@ -26,8 +27,8 @@ func (s *taskQueriesStub) GetTask(_ context.Context, _, _ string) (dbgen.Task, e
 	return s.task, nil
 }
 
-func (*taskQueriesStub) GetEvent(context.Context, string, string) (dbgen.Event, error) {
-	return dbgen.Event{}, nil
+func (s *taskQueriesStub) GetEvent(context.Context, string, string) (dbgen.Event, error) {
+	return s.event, nil
 }
 
 func (*taskQueriesStub) GetNote(context.Context, string, string) (dbgen.Note, error) {
@@ -118,5 +119,66 @@ func TestBuildTaskUpdateBodyMapsDateFields(t *testing.T) {
 	}
 	if body.DueTimezone == nil || *body.DueTimezone != "Asia/Shanghai" {
 		t.Fatalf("due_timezone 映射错误：%v", body.DueTimezone)
+	}
+}
+
+func TestProposeEventUpdateKeepsHandledExplicit(t *testing.T) {
+	stub := &taskQueriesStub{event: dbgen.Event{
+		ID: "evt_expiry", Title: "房租到期", EventKind: "important_date",
+		Recurrence: "none", Version: 2,
+	}}
+	deps := CapabilityDeps{Tasks: stub}
+
+	result, err := deps.proposeEventUpdate(context.Background(), ai.CapabilityContext{
+		UserID: "usr_me", Timezone: "Asia/Shanghai",
+	}, map[string]any{
+		"event_id": "evt_expiry", "expected_version": float64(2),
+		"important_date_handled": true, "reason": "用户明确说已经续租",
+		"source_refs": []any{"event:evt_expiry"},
+	})
+	if err != nil {
+		t.Fatalf("生成处理建议失败：%v", err)
+	}
+	if len(result.Proposals) != 1 || result.Proposals[0].Type != "event_update" {
+		t.Fatalf("应生成 event_update 建议：%+v", result.Proposals)
+	}
+	if handled, ok := result.Proposals[0].Command["important_date_handled"].(bool); !ok || !handled {
+		t.Fatalf("建议没有保留显式处理状态：%+v", result.Proposals[0].Command)
+	}
+}
+
+func TestGetObjectSupportsAllDayImportantDate(t *testing.T) {
+	date := time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC)
+	stub := &taskQueriesStub{event: dbgen.Event{
+		ID: "evt_expiry", Title: "房租到期", EventKind: "important_date",
+		AllDay: true, StartDate: &date, Recurrence: "none", Version: 1,
+	}}
+	result, err := (CapabilityDeps{Tasks: stub}).getObject(context.Background(), ai.CapabilityContext{
+		UserID: "usr_me", Timezone: "Asia/Shanghai",
+	}, map[string]any{"id": "evt_expiry"})
+	if err != nil {
+		t.Fatalf("读取全天重要日失败：%v", err)
+	}
+	if !strings.Contains(result.Content, "2026-08-24") || !strings.Contains(result.Content, "important_date_handled") {
+		t.Fatalf("全天重要日摘要缺少日期或处理状态：%s", result.Content)
+	}
+}
+
+func TestBuildEventUpdateBodyMapsDateAndHandled(t *testing.T) {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := buildEventUpdateBody(map[string]any{
+		"start_date": "2027-08-24", "important_date_handled": false,
+	}, loc)
+	if err != nil {
+		t.Fatalf("映射重要日修改失败：%v", err)
+	}
+	if body.StartDate == nil || body.StartDate.Time.Format("2006-01-02") != "2027-08-24" {
+		t.Fatalf("start_date 映射错误：%+v", body.StartDate)
+	}
+	if body.ImportantDateHandled == nil || *body.ImportantDateHandled {
+		t.Fatalf("false 处理状态必须被保留：%v", body.ImportantDateHandled)
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 )
 
@@ -87,6 +88,61 @@ func TestValidateEventTiming(t *testing.T) {
 				t.Errorf("期望校验通过，实际报错：%v", err)
 			}
 		})
+	}
+}
+
+func TestResolveImportantDateHandledAtRequiresExplicitCommand(t *testing.T) {
+	now := time.Date(2026, 9, 1, 7, 0, 0, 0, time.UTC)
+
+	set, handledAt, err := resolveImportantDateHandledAt(importantDateHandlingInput{
+		Kind: "important_date", Recurrence: "none", Now: now,
+	})
+	if err != nil || set || handledAt != nil {
+		t.Fatalf("没有显式命令时不得根据日期写入处理状态：set=%v value=%v err=%v", set, handledAt, err)
+	}
+
+	handled := true
+	set, handledAt, err = resolveImportantDateHandledAt(importantDateHandlingInput{
+		Kind: "important_date", Recurrence: "none", Explicit: &handled, Now: now,
+	})
+	if err != nil || !set || handledAt == nil || !handledAt.Equal(now) {
+		t.Fatalf("显式处理一次性重要日应写入服务端时间：set=%v value=%v err=%v", set, handledAt, err)
+	}
+}
+
+func TestResolveImportantDateHandledAtClearsOnRenewal(t *testing.T) {
+	current := time.Date(2026, 8, 24, 3, 0, 0, 0, time.UTC)
+	set, handledAt, err := resolveImportantDateHandledAt(importantDateHandlingInput{
+		Current: &current, Kind: "important_date", Recurrence: "none", Reset: true,
+	})
+	if err != nil || !set || handledAt != nil {
+		t.Fatalf("更新日期时应恢复为未处理：set=%v value=%v err=%v", set, handledAt, err)
+	}
+}
+
+func TestResolveImportantDateHandledAtRejectsYearlyEvent(t *testing.T) {
+	handled := true
+	_, _, err := resolveImportantDateHandledAt(importantDateHandlingInput{
+		Kind: "important_date", Recurrence: "yearly", Explicit: &handled, Now: time.Now(),
+	})
+	if err == nil {
+		t.Fatal("年度重复重要日不能永久标记为已处理")
+	}
+}
+
+func TestImportantDateIdentityChangedIgnoresRepeatedFullPayload(t *testing.T) {
+	currentDate := time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC)
+	sameDate := openapi_types.Date{Time: currentDate}
+	current := dbgen.Event{
+		EventKind: "important_date", Recurrence: "none", StartDate: &currentDate,
+	}
+	if importantDateIdentityChanged(current, &sameDate, false, "important_date", "none") {
+		t.Fatal("完整请求携带相同日期、类型和重复规则时不应恢复为未处理")
+	}
+
+	newDate := openapi_types.Date{Time: currentDate.AddDate(1, 0, 0)}
+	if !importantDateIdentityChanged(current, &newDate, false, "important_date", "none") {
+		t.Fatal("真正更新日期时应恢复为未处理")
 	}
 }
 

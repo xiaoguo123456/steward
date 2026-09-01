@@ -13,6 +13,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // 用例的数据准备。
@@ -70,6 +71,26 @@ func (s *Stack) seedFixtures(ctx context.Context, userID string, c Case) (seeded
 			return out, fmtErr("预置任务", err)
 		}
 		out.taskIDs = append(out.taskIDs, created.ID)
+	}
+
+	for _, event := range c.Fixtures.Events {
+		date, err := time.Parse("2006-01-02", event.StartDate)
+		if err != nil {
+			return out, fmtErr("解析预置重要日日期", err)
+		}
+		kind := httpapi.EventKindImportantDate
+		recurrence := httpapi.None
+		if event.Recurrence == "yearly" {
+			recurrence = httpapi.Yearly
+		}
+		created, err := s.Objects.CreateEvent(ctx, userID, httpapi.CreateEventRequest{
+			Title: event.Title, EventKind: &kind, AllDay: true,
+			StartDate: &openapi_types.Date{Time: date}, Recurrence: &recurrence,
+		})
+		if err != nil {
+			return out, fmtErr("预置重要日", err)
+		}
+		out.eventIDs = append(out.eventIDs, created.ID)
 	}
 
 	if c.Fixtures.LedgerRecords != nil {

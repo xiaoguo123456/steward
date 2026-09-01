@@ -138,7 +138,7 @@ func MapToday(t Today) httpapi.TodayView {
 	}
 
 	loc := timeutil.LoadLocation(t.Timezone)
-	events := objects.ProjectYearlyEvents(t.Events,
+	events := objects.ProjectYearlyEvents(activeTodayEvents(t.Events),
 		timeutil.DayOf(t.Date, loc).Start, timeutil.DayOf(t.Date, loc).End, t.Timezone)
 
 	return httpapi.TodayView{
@@ -148,6 +148,19 @@ func MapToday(t Today) httpapi.TodayView {
 		Events:   events,
 		Counts:   counts,
 	}
+}
+
+// activeTodayEvents 排除用户已经明确处理的一次性重要日。
+// Calendar 仍保留它们作为历史事实，因此过滤只属于 Today 读模型。
+func activeTodayEvents(events []dbgen.Event) []dbgen.Event {
+	out := make([]dbgen.Event, 0, len(events))
+	for _, event := range events {
+		if event.ImportantDateHandledAt != nil {
+			continue
+		}
+		out = append(out, event)
+	}
+	return out
 }
 
 // Calendar 是日历聚合结果。

@@ -75,7 +75,7 @@ export default function PersonDetailScreen() {
     .filter((event) => event.event_kind !== 'important_date' && eventTimestamp(event) >= referenceTime)
     .sort((left, right) => eventTimestamp(left) - eventTimestamp(right));
   const importantDates = (eventsQuery.data?.data ?? [])
-    .filter((event) => event.event_kind === 'important_date')
+    .filter((event) => event.event_kind === 'important_date' && !event.important_date_handled_at)
     .sort((left, right) => eventTimestamp(left) - eventTimestamp(right));
 
   return (

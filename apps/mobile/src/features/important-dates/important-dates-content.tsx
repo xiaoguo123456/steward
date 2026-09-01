@@ -1,5 +1,7 @@
 import {
+  deleteEvent,
   errorMessage,
+  updateEvent,
   useCreateEvent,
   useGetImportantDates,
   type ImportantDateEntry,
@@ -8,8 +10,9 @@ import {
 } from '@steward/api-client';
 import type { ComponentProps } from 'react';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -24,6 +27,7 @@ import { DateWheel } from '@/components/ui/date-wheel';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { StatePanel } from '@/components/ui/state-panel';
+import { useToast } from '@/components/ui/toast';
 import { groupImportantDates } from '@/features/important-dates/important-date-list';
 import {
   parseImportantDateParts,
@@ -242,22 +246,30 @@ function ImportantDateRow({
   );
 }
 
-function CreateSheet({
-  visible,
+function EditorSheet({
+  item,
   onClose,
   onSave,
+  saving,
+  failure,
 }: {
-  visible: boolean;
+  item: ImportantDateItem | null;
   onClose: () => void;
   onSave: (draft: ImportantDateDraft) => void;
   saving: boolean;
+  failure: string | null;
 }) {
-  const initialDate = useMemo(() => addDays(startOfToday(), 30), []);
-  const [kind, setKind] = useState<ImportantDateKind>('birthday');
-  const [title, setTitle] = useState('');
-  const [date, setDate] = useState(toIsoDate(initialDate));
-  const [repeatYearly, setRepeatYearly] = useState(true);
-  const [reminders, setReminders] = useState<ReminderValue[]>(['seven-days', 'same-day']);
+  // 编辑器只在面板打开时挂载，因此可以直接用当前条目初始化，避免
+  // Effect 回填引发额外渲染，也不会在再次打开时残留上次草稿。
+  const [kind, setKind] = useState<ImportantDateKind>(() => item?.kind ?? 'birthday');
+  const [title, setTitle] = useState(() => item?.title ?? '');
+  const [date, setDate] = useState(
+    () => item?.date ?? toIsoDate(addDays(startOfToday(), 30)),
+  );
+  const [repeatYearly, setRepeatYearly] = useState(() => item?.repeatYearly ?? true);
+  const [reminders, setReminders] = useState<ReminderValue[]>(
+    () => item?.reminders ?? ['seven-days', 'same-day'],
+  );
 
   const selectKind = (nextKind: ImportantDateKind) => {
     setKind(nextKind);
@@ -274,9 +286,8 @@ function CreateSheet({
 
   const save = () => {
     const trimmedTitle = title.trim();
-    if (!trimmedTitle) return;
+    if (!trimmedTitle || saving) return;
     onSave({ title: trimmedTitle, kind, date, repeatYearly, reminders });
-    setTitle('');
   };
 
   return (
@@ -285,7 +296,7 @@ function CreateSheet({
       onRequestClose={onClose}
       statusBarTranslucent
       transparent
-      visible={visible}
+      visible
     >
       <ModalSheet maxHeight="94%" onClose={onClose}>
         <View style={styles.createSheetLayout}>
@@ -297,11 +308,14 @@ function CreateSheet({
           >
             <View style={styles.sheetHeader}>
               <View style={styles.sheetHeaderCopy}>
-                <Text accessibilityRole="header" style={styles.sheetTitle}>新增重要日</Text>
+                <Text accessibilityRole="header" style={styles.sheetTitle}>
+                  {item ? '编辑重要日' : '新增重要日'}
+                </Text>
               </View>
               <Pressable
-                accessibilityLabel="关闭新增重要日"
+                accessibilityLabel={item ? '关闭编辑重要日' : '关闭新增重要日'}
                 accessibilityRole="button"
+                disabled={saving}
                 onPress={onClose}
                 style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
               >
@@ -318,6 +332,7 @@ function CreateSheet({
                   <Pressable
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
+                    disabled={saving}
                     key={value}
                     onPress={() => selectKind(value)}
                     style={({ pressed }) => [
@@ -342,6 +357,7 @@ function CreateSheet({
             <Text style={styles.fieldLabel}>名称</Text>
             <TextInput
               accessibilityLabel="重要日名称"
+              editable={!saving}
               maxLength={30}
               onChangeText={setTitle}
               placeholder={kindSpecs[kind].placeholder}
@@ -361,6 +377,7 @@ function CreateSheet({
             <Pressable
               accessibilityRole="switch"
               accessibilityState={{ checked: repeatYearly }}
+              disabled={saving}
               onPress={() => setRepeatYearly((current) => !current)}
               style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}
             >
@@ -381,6 +398,7 @@ function CreateSheet({
                   <Pressable
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: selected }}
+                    disabled={saving}
                     key={option.value}
                     onPress={() => toggleReminder(option.value)}
                     style={({ pressed }) => [
@@ -407,10 +425,13 @@ function CreateSheet({
           </ScrollView>
 
           <View style={styles.sheetFooter}>
+            {failure ? (
+              <Text accessibilityRole="alert" style={styles.sheetFailure}>{failure}</Text>
+            ) : null}
             <AppButton
-              disabled={!title.trim()}
+              disabled={!title.trim() || saving}
               icon="checkmark"
-              label="保存重要日"
+              label={saving ? '正在保存…' : item ? '保存修改' : '保存重要日'}
               onPress={save}
             />
           </View>
@@ -421,12 +442,22 @@ function CreateSheet({
 }
 
 function DetailSheet({
+  busy,
+  failure,
   item,
   onClose,
+  onDelete,
+  onEdit,
+  onHandle,
   onOpenCalendar,
 }: {
+  busy: boolean;
+  failure: string | null;
   item: ImportantDateItem | null;
   onClose: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
+  onHandle: () => void;
   onOpenCalendar: () => void;
 }) {
   if (!item) return null;
@@ -441,8 +472,11 @@ function DetailSheet({
       transparent
       visible={Boolean(item)}
     >
-      <ModalSheet maxHeight="66%" onClose={onClose}>
-        <View style={styles.detailContent}>
+      <ModalSheet maxHeight="86%" onClose={onClose}>
+        <ScrollView
+          contentContainerStyle={styles.detailContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.detailHeader}>
             <KindIcon kind={item.kind} size={22} />
             <View style={styles.sheetHeaderCopy}>
@@ -452,6 +486,7 @@ function DetailSheet({
             <Pressable
               accessibilityLabel="关闭重要日详情"
               accessibilityRole="button"
+              disabled={busy}
               onPress={onClose}
               style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
             >
@@ -481,13 +516,48 @@ function DetailSheet({
             </View>
           </View>
 
-          <AppButton
-            icon="calendar-outline"
-            label="在日历中查看"
-            onPress={onOpenCalendar}
-            style={styles.detailAction}
-          />
-        </View>
+          {failure ? (
+            <Text accessibilityRole="alert" style={styles.detailFailure}>{failure}</Text>
+          ) : null}
+
+          <View style={styles.detailActions}>
+            <AppButton
+              disabled={busy}
+              icon="create-outline"
+              label={days < 0 && !item.repeatYearly ? '更新日期' : '编辑重要日'}
+              onPress={onEdit}
+            />
+            {!item.repeatYearly ? (
+              <>
+                <AppButton
+                  disabled={busy}
+                  icon="checkmark-circle-outline"
+                  label={busy ? '正在处理…' : '标记已处理'}
+                  onPress={onHandle}
+                  variant="secondary"
+                />
+                <Text style={styles.handleHint}>
+                  已处理会退出重要日和提醒，历史日历仍会保留。
+                </Text>
+              </>
+            ) : null}
+            <AppButton
+              disabled={busy}
+              icon="calendar-outline"
+              label="在日历中查看"
+              onPress={onOpenCalendar}
+              variant="neutral"
+            />
+            <AppButton
+              accessibilityLabel={`删除重要日：${item.title}`}
+              disabled={busy}
+              icon="trash-outline"
+              label="删除重要日"
+              onPress={onDelete}
+              variant="danger"
+            />
+          </View>
+        </ScrollView>
       </ModalSheet>
     </Modal>
   );
@@ -501,8 +571,12 @@ export function ImportantDatesContent({
   onCreateVisibleChange: (visible: boolean) => void;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [actionPending, setActionPending] = useState(false);
 
   const importantDates = useGetImportantDates();
 
@@ -512,6 +586,7 @@ export function ImportantDatesContent({
         setFailure(null);
         onCreateVisibleChange(false);
         void importantDates.refetch();
+        showToast('重要日已保存');
       },
       onError: (error) => setFailure(errorMessage(error, '没能保存这个重要日。')),
     },
@@ -521,9 +596,33 @@ export function ImportantDatesContent({
   const items = (importantDates.data?.data ?? []).map(toItem);
   const { nextItem, laterItems, expiredItems } = groupImportantDates(items);
   const selectedItem = items.find((item) => item.id === selectedId) ?? null;
+  const editingItem = items.find((item) => item.id === editingId) ?? null;
 
   const saveItem = (draft: ImportantDateDraft) => {
     setFailure(null);
+    if (editingItem) {
+      setSavingEdit(true);
+      void updateEvent(
+        editingItem.id,
+        {
+          title: draft.title,
+          event_kind: 'important_date',
+          important_date_kind: draft.kind,
+          all_day: true,
+          start_date: draft.date,
+          recurrence: draft.repeatYearly ? 'yearly' : 'none',
+          reminders: toReminderInputs(draft.reminders),
+        },
+        { headers: { 'If-Match': String(editingItem.version) } },
+      ).then(async () => {
+        setEditingId(null);
+        await importantDates.refetch();
+        showToast('重要日已更新');
+      }).catch((error) => {
+        setFailure(errorMessage(error, '没能更新这个重要日，请重试。'));
+      }).finally(() => setSavingEdit(false));
+      return;
+    }
     createEvent.mutate({
       data: {
         title: draft.title,
@@ -536,6 +635,86 @@ export function ImportantDatesContent({
         reminders: toReminderInputs(draft.reminders),
       },
     });
+  };
+
+  const closeEditor = () => {
+    if (savingEdit || createEvent.isPending) return;
+    setFailure(null);
+    setEditingId(null);
+    onCreateVisibleChange(false);
+  };
+
+  const editSelected = () => {
+    if (!selectedItem) return;
+    setFailure(null);
+    setEditingId(selectedItem.id);
+    setSelectedId(null);
+  };
+
+  const markSelectedHandled = async () => {
+    if (!selectedItem || selectedItem.repeatYearly || actionPending) return;
+    const item = selectedItem;
+    setFailure(null);
+    setActionPending(true);
+    try {
+      const response = await updateEvent(
+        item.id,
+        { important_date_handled: true },
+        { headers: { 'If-Match': String(item.version) } },
+      );
+      setSelectedId(null);
+      await importantDates.refetch();
+      showToast(`“${item.title}”已标记为已处理`, {
+        actionLabel: '撤销',
+        durationMs: 10_000,
+        onAction: async () => {
+          try {
+            await updateEvent(
+              item.id,
+              { important_date_handled: false },
+              { headers: { 'If-Match': String(response.data.version) } },
+            );
+            await importantDates.refetch();
+            showToast(`“${item.title}”已恢复`);
+          } catch (error) {
+            showToast(errorMessage(error, '暂时无法撤销，请稍后重试。'));
+          }
+        },
+      });
+    } catch (error) {
+      setFailure(errorMessage(error, '暂时无法标记为已处理，请重试。'));
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const removeItem = async (item: ImportantDateItem) => {
+    if (actionPending) return;
+    setFailure(null);
+    setActionPending(true);
+    try {
+      await deleteEvent(item.id);
+      setSelectedId(null);
+      await importantDates.refetch();
+      showToast(`“${item.title}”已删除`);
+    } catch (error) {
+      setFailure(errorMessage(error, '暂时无法删除这个重要日，请重试。'));
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const confirmDeleteSelected = () => {
+    if (!selectedItem || actionPending) return;
+    const item = selectedItem;
+    Alert.alert(
+      `删除“${item.title}”？`,
+      '删除后将从重要日和日历中移除。',
+      [
+        { text: '保留', style: 'cancel' },
+        { text: '删除重要日', style: 'destructive', onPress: () => void removeItem(item) },
+      ],
+    );
   };
 
   return (
@@ -645,15 +824,27 @@ export function ImportantDatesContent({
         </>
       ) : null}
 
-      <CreateSheet
-        onClose={() => onCreateVisibleChange(false)}
-        onSave={saveItem}
-        saving={createEvent.isPending}
-        visible={createVisible}
-      />
+      {createVisible || editingItem ? (
+        <EditorSheet
+          failure={failure}
+          item={editingItem}
+          key={editingItem?.id ?? 'create'}
+          onClose={closeEditor}
+          onSave={saveItem}
+          saving={savingEdit || createEvent.isPending}
+        />
+      ) : null}
       <DetailSheet
+        busy={actionPending}
+        failure={failure}
         item={selectedItem}
-        onClose={() => setSelectedId(null)}
+        onClose={() => {
+          setFailure(null);
+          setSelectedId(null);
+        }}
+        onDelete={confirmDeleteSelected}
+        onEdit={editSelected}
+        onHandle={() => void markSelectedHandled()}
         onOpenCalendar={() => {
           setSelectedId(null);
           router.push('/calendar');
@@ -971,6 +1162,12 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: colors.background,
   },
+  sheetFailure: {
+    marginBottom: 10,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
+  },
   detailContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -1037,7 +1234,23 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '500',
   },
-  detailAction: {
+  detailFailure: {
     marginTop: 18,
+    color: colors.danger,
+    fontFamily,
+    ...typography.meta,
+  },
+  detailActions: {
+    marginTop: 18,
+    gap: 8,
+  },
+  handleHint: {
+    marginTop: -2,
+    marginBottom: 4,
+    paddingHorizontal: 8,
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+    textAlign: 'center',
   },
 });

@@ -296,7 +296,14 @@ func (d CapabilityDeps) getObject(ctx context.Context, cc ai.CapabilityContext,
 		}
 		payload = map[string]any{
 			"id": e.ID, "title": e.Title, "version": e.Version,
-			"start": e.StartAt.In(loc).Format("2006-01-02 15:04"), "all_day": e.AllDay,
+			"event_kind": e.EventKind, "all_day": e.AllDay, "recurrence": e.Recurrence,
+			"important_date_handled": e.ImportantDateHandledAt != nil,
+		}
+		if e.StartAt != nil {
+			payload["start"] = e.StartAt.In(loc).Format("2006-01-02 15:04")
+		}
+		if e.StartDate != nil {
+			payload["start_date"] = timeutil.FormatDate(*e.StartDate)
 		}
 	case strings.HasPrefix(id, "nte_"):
 		kind = "note"

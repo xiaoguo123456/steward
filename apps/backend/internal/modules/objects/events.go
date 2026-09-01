@@ -215,144 +215,168 @@ type EventUpdate struct {
 func (s *Service) UpdateEvent(ctx context.Context, userID, eventID string, in EventUpdate) (dbgen.Event, error) {
 	var out dbgen.Event
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetEvent(ctx, eventID)
-		if err != nil {
-			if database.IsNoRows(err) {
-				return apperr.NotFound("日程")
-			}
-			return apperr.Internal(err)
-		}
-		if in.ExpectedVersion != nil && *in.ExpectedVersion != current.Version {
-			return apperr.New(apperr.CodeVersionConflict)
-		}
-
-		body := in.Body
-		clear := eventClearFlagsOf(body.Clear)
-
-		// 用修改后的完整状态重新校验时间组合，避免出现两组字段同时存在。
-		allDay := current.AllDay
-		if body.AllDay != nil {
-			allDay = *body.AllDay
-		}
-		startAt := pickTime(body.StartAt, current.StartAt, clear.StartAt)
-		endAt := pickTime(body.EndAt, current.EndAt, clear.EndAt)
-		startDate := pickDate(body.StartDate, current.StartDate, clear.StartDate)
-		endDate := pickDate(body.EndDate, current.EndDate, clear.EndDate)
-		if err := validateEventTiming(allDay, startAt, endAt, startDate, endDate); err != nil {
-			return err
-		}
-
-		kind := current.EventKind
-		if body.EventKind != nil {
-			kind = string(*body.EventKind)
-		}
-		recurrence := current.Recurrence
-		if body.Recurrence != nil {
-			recurrence = string(*body.Recurrence)
-		}
-		if recurrence == "yearly" && kind != "important_date" {
-			return apperr.New(apperr.CodeEventRecurrenceDenied)
-		}
-
-		projectID := pickString(body.ProjectId, current.ProjectID, clear.ProjectID)
-		if projectID != nil {
-			if err := s.assertProjectExists(ctx, q, *projectID); err != nil {
-				return err
-			}
-		}
-		location := pickString(body.Location, current.Location, clear.Location)
-		itineraryDetails := unmarshalItineraryDetails(current.ItineraryDetails)
-		if clear.ItineraryDetails {
-			itineraryDetails = nil
-		} else if body.ItineraryDetails != nil {
-			itineraryDetails = body.ItineraryDetails
-		}
-		itineraryJSON, err := s.normalizeItineraryDetails(ctx, q, userID, itineraryDetails, itineraryState{
-			ProjectID: projectID,
-			AllDay:    allDay,
-			StartAt:   startAt,
-			EndAt:     endAt,
-			Location:  location,
-		})
-		if err != nil {
-			return err
-		}
-
-		var remindersJSON []byte
-		if body.Reminders != nil {
-			reminders, err := buildReminders(body.Reminders, !allDay)
-			if err != nil {
-				return err
-			}
-			remindersJSON, err = marshalJSON(reminders)
-			if err != nil {
-				return err
-			}
-		}
-		var participantsJSON []byte
-		if body.Participants != nil {
-			participantsJSON, err = marshalJSON(body.Participants)
-			if err != nil {
-				return err
-			}
-		}
-
-		var originalMonthDay *string
-		if recurrence == "yearly" && startDate != nil {
-			md := timeutil.MonthDay(*startDate)
-			originalMonthDay = &md
-		}
-
-		updated, err := q.UpdateEvent(ctx, dbgen.UpdateEventParams{
-			ID:                    eventID,
-			Title:                 trimmedOrNil(body.Title),
-			EventKind:             optionalString(body.EventKind != nil, kind),
-			AllDay:                body.AllDay,
-			StartAt:               body.StartAt,
-			ClearStartAt:          clear.StartAt,
-			EndAt:                 body.EndAt,
-			ClearEndAt:            clear.EndAt,
-			StartDate:             timePtrOfDate(body.StartDate),
-			ClearStartDate:        clear.StartDate,
-			EndDate:               timePtrOfDate(body.EndDate),
-			ClearEndDate:          clear.EndDate,
-			Timezone:              body.Timezone,
-			Location:              body.Location,
-			ClearLocation:         clear.Location,
-			ItineraryDetails:      itineraryJSON,
-			ClearItineraryDetails: clear.ItineraryDetails,
-			Participants:          participantsJSON,
-			ClearParticipants:     clear.Participants,
-			ProjectID:             body.ProjectId,
-			ClearProjectID:        clear.ProjectID,
-			Note:                  body.Note,
-			ClearNote:             clear.Note,
-			Reminders:             remindersJSON,
-			ClearReminders:        clear.Reminders,
-			Recurrence:            optionalString(body.Recurrence != nil, recurrence),
-			OriginalMonthDay:      originalMonthDay,
-			ImportantDateKind:     importantDateKindOf(body.EventKind, body.ImportantDateKind),
-		})
-		if err != nil {
-			return apperr.Internal(err)
-		}
-
-		if _, err := s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,
-			[]activity.EntryInput{{
-				Action:       "updated",
-				ResourceType: "event",
-				ResourceID:   updated.ID,
-				Title:        updated.Title,
-				Summary:      "修改了日程",
-				BeforeState:  eventUndoState(current),
-				AfterState:   eventUndoState(updated),
-			}}); err != nil {
-			return err
-		}
+		updated, _, err := s.UpdateEventInTx(ctx, q, userID, eventID, in,
+			activity.SourceUserForm, nil)
 		out = updated
-		return nil
+		return err
 	})
 	return out, err
+}
+
+// UpdateEventInTx 在调用方事务内修改 Event，并复用同一套时间、版本和处理状态校验。
+func (s *Service) UpdateEventInTx(ctx context.Context, q *dbgen.Queries, userID, eventID string,
+	in EventUpdate, source activity.Source, sourceID *string) (dbgen.Event, string, error) {
+
+	current, err := q.GetEvent(ctx, eventID)
+	if err != nil {
+		if database.IsNoRows(err) {
+			return dbgen.Event{}, "", apperr.NotFound("日程")
+		}
+		return dbgen.Event{}, "", apperr.Internal(err)
+	}
+	if in.ExpectedVersion != nil && *in.ExpectedVersion != current.Version {
+		return dbgen.Event{}, "", apperr.New(apperr.CodeVersionConflict)
+	}
+
+	body := in.Body
+	clear := eventClearFlagsOf(body.Clear)
+
+	// 用修改后的完整状态重新校验时间组合，避免出现两组字段同时存在。
+	allDay := current.AllDay
+	if body.AllDay != nil {
+		allDay = *body.AllDay
+	}
+	startAt := pickTime(body.StartAt, current.StartAt, clear.StartAt)
+	endAt := pickTime(body.EndAt, current.EndAt, clear.EndAt)
+	startDate := pickDate(body.StartDate, current.StartDate, clear.StartDate)
+	endDate := pickDate(body.EndDate, current.EndDate, clear.EndDate)
+	if err := validateEventTiming(allDay, startAt, endAt, startDate, endDate); err != nil {
+		return dbgen.Event{}, "", err
+	}
+
+	kind := current.EventKind
+	if body.EventKind != nil {
+		kind = string(*body.EventKind)
+	}
+	recurrence := current.Recurrence
+	if body.Recurrence != nil {
+		recurrence = string(*body.Recurrence)
+	}
+	if recurrence == "yearly" && kind != "important_date" {
+		return dbgen.Event{}, "", apperr.New(apperr.CodeEventRecurrenceDenied)
+	}
+
+	setHandledAt, handledAt, err := resolveImportantDateHandledAt(importantDateHandlingInput{
+		Current:    current.ImportantDateHandledAt,
+		Kind:       kind,
+		Recurrence: recurrence,
+		Explicit:   body.ImportantDateHandled,
+		Reset:      importantDateIdentityChanged(current, body.StartDate, clear.StartDate, kind, recurrence),
+		Now:        time.Now().UTC(),
+	})
+	if err != nil {
+		return dbgen.Event{}, "", err
+	}
+
+	projectID := pickString(body.ProjectId, current.ProjectID, clear.ProjectID)
+	if projectID != nil {
+		if err := s.assertProjectExists(ctx, q, *projectID); err != nil {
+			return dbgen.Event{}, "", err
+		}
+	}
+	location := pickString(body.Location, current.Location, clear.Location)
+	itineraryDetails := unmarshalItineraryDetails(current.ItineraryDetails)
+	if clear.ItineraryDetails {
+		itineraryDetails = nil
+	} else if body.ItineraryDetails != nil {
+		itineraryDetails = body.ItineraryDetails
+	}
+	itineraryJSON, err := s.normalizeItineraryDetails(ctx, q, userID, itineraryDetails, itineraryState{
+		ProjectID: projectID,
+		AllDay:    allDay,
+		StartAt:   startAt,
+		EndAt:     endAt,
+		Location:  location,
+	})
+	if err != nil {
+		return dbgen.Event{}, "", err
+	}
+
+	var remindersJSON []byte
+	if body.Reminders != nil {
+		reminders, err := buildReminders(body.Reminders, !allDay)
+		if err != nil {
+			return dbgen.Event{}, "", err
+		}
+		remindersJSON, err = marshalJSON(reminders)
+		if err != nil {
+			return dbgen.Event{}, "", err
+		}
+	}
+	var participantsJSON []byte
+	if body.Participants != nil {
+		participantsJSON, err = marshalJSON(body.Participants)
+		if err != nil {
+			return dbgen.Event{}, "", err
+		}
+	}
+
+	var originalMonthDay *string
+	if recurrence == "yearly" && startDate != nil {
+		md := timeutil.MonthDay(*startDate)
+		originalMonthDay = &md
+	}
+
+	updated, err := q.UpdateEvent(ctx, dbgen.UpdateEventParams{
+		ID:                        eventID,
+		Title:                     trimmedOrNil(body.Title),
+		EventKind:                 optionalString(body.EventKind != nil, kind),
+		AllDay:                    body.AllDay,
+		StartAt:                   body.StartAt,
+		ClearStartAt:              clear.StartAt,
+		EndAt:                     body.EndAt,
+		ClearEndAt:                clear.EndAt,
+		StartDate:                 timePtrOfDate(body.StartDate),
+		ClearStartDate:            clear.StartDate,
+		EndDate:                   timePtrOfDate(body.EndDate),
+		ClearEndDate:              clear.EndDate,
+		Timezone:                  body.Timezone,
+		Location:                  body.Location,
+		ClearLocation:             clear.Location,
+		ItineraryDetails:          itineraryJSON,
+		ClearItineraryDetails:     clear.ItineraryDetails,
+		Participants:              participantsJSON,
+		ClearParticipants:         clear.Participants,
+		ProjectID:                 body.ProjectId,
+		ClearProjectID:            clear.ProjectID,
+		Note:                      body.Note,
+		ClearNote:                 clear.Note,
+		Reminders:                 remindersJSON,
+		ClearReminders:            clear.Reminders,
+		Recurrence:                optionalString(body.Recurrence != nil, recurrence),
+		OriginalMonthDay:          originalMonthDay,
+		ImportantDateKind:         importantDateKindOf(body.EventKind, body.ImportantDateKind),
+		SetImportantDateHandledAt: setHandledAt,
+		ImportantDateHandledAt:    handledAt,
+	})
+	if err != nil {
+		return dbgen.Event{}, "", apperr.Internal(err)
+	}
+
+	batchID, err := s.activity.Record(ctx, q, userID, source, sourceID,
+		[]activity.EntryInput{{
+			Action:       "updated",
+			ResourceType: "event",
+			ResourceID:   updated.ID,
+			Title:        updated.Title,
+			Summary:      eventUpdateSummary(body),
+			BeforeState:  eventUndoState(current),
+			AfterState:   eventUndoState(updated),
+		}})
+	if err != nil {
+		return dbgen.Event{}, "", err
+	}
+	return updated, batchID, nil
 }
 
 // DeleteEvent 软删除 Event。
@@ -394,6 +418,63 @@ type eventClearFlags struct {
 	Note             bool
 	Reminders        bool
 	ItineraryDetails bool
+}
+
+type importantDateHandlingInput struct {
+	Current    *time.Time
+	Kind       string
+	Recurrence string
+	Explicit   *bool
+	Reset      bool
+	Now        time.Time
+}
+
+func importantDateIdentityChanged(current dbgen.Event, startDate *openapi_types.Date,
+	clearStartDate bool, kind, recurrence string) bool {
+
+	if clearStartDate && current.StartDate != nil {
+		return true
+	}
+	if startDate != nil && (current.StartDate == nil ||
+		timeutil.FormatDate(startDate.Time) != timeutil.FormatDate(*current.StartDate)) {
+		return true
+	}
+	return kind != current.EventKind || recurrence != current.Recurrence
+}
+
+// resolveImportantDateHandledAt 把“已处理”限定为显式命令；日期过期不会调用它写入状态。
+func resolveImportantDateHandledAt(in importantDateHandlingInput) (bool, *time.Time, error) {
+	if in.Explicit != nil {
+		if in.Kind != "important_date" {
+			return false, nil, apperr.Validation(apperr.Field(
+				"important_date_handled", "只有重要日可以标记已处理。"))
+		}
+		if *in.Explicit && in.Recurrence != "none" {
+			return false, nil, apperr.Validation(apperr.Field(
+				"important_date_handled", "每年重复的重要日不能永久标记为已处理。"))
+		}
+		if !*in.Explicit {
+			return true, nil, nil
+		}
+		handledAt := in.Now
+		return true, &handledAt, nil
+	}
+
+	// 新日期是一条新的待关注事实；切换类型或重复规则也不能继承旧处理状态。
+	if in.Reset && in.Current != nil {
+		return true, nil, nil
+	}
+	return false, nil, nil
+}
+
+func eventUpdateSummary(body httpapi.UpdateEventRequest) string {
+	if body.ImportantDateHandled != nil {
+		if *body.ImportantDateHandled {
+			return "标记重要日已处理"
+		}
+		return "恢复了重要日"
+	}
+	return "修改了日程"
 }
 
 func eventClearFlagsOf(clear *[]httpapi.UpdateEventRequestClear) eventClearFlags {
@@ -469,13 +550,14 @@ func optionalString(present bool, value string) *string {
 
 func eventUndoState(e dbgen.Event) map[string]any {
 	return map[string]any{
-		"title":             e.Title,
-		"all_day":           e.AllDay,
-		"start_at":          e.StartAt,
-		"start_date":        e.StartDate,
-		"itinerary_details": unmarshalItineraryDetails(e.ItineraryDetails),
-		"deleted":           e.DeletedAt != nil,
-		"version":           e.Version,
+		"title":                     e.Title,
+		"all_day":                   e.AllDay,
+		"start_at":                  e.StartAt,
+		"start_date":                e.StartDate,
+		"important_date_handled_at": e.ImportantDateHandledAt,
+		"itinerary_details":         unmarshalItineraryDetails(e.ItineraryDetails),
+		"deleted":                   e.DeletedAt != nil,
+		"version":                   e.Version,
 	}
 }
 

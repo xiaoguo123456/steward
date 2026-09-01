@@ -47,6 +47,7 @@ const listEventsWithReminders = `-- name: ListEventsWithReminders :many
 SELECT id, title, all_day, start_at, start_date, timezone, recurrence, event_kind, reminders
 FROM events
 WHERE deleted_at IS NULL
+  AND important_date_handled_at IS NULL
   AND jsonb_array_length(reminders) > 0
   AND (start_at IS NOT NULL OR start_date IS NOT NULL)
 LIMIT $1

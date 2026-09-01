@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
@@ -75,12 +76,29 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 			"start_date": str("开始日期，格式 2026-08-19。全天日程用它。"),
 			"all_day":    boolean("是否全天。"),
 			"location":   str("地点，没有就不要传。"),
-			"event_kind": enumOf([]string{"appointment", "important_date"},
-				"appointment 是普通约定，important_date 是生日纪念日这类重要日。"),
+			"event_kind": enumOf([]string{"schedule", "important_date"},
+				"schedule 是普通日程，important_date 是生日纪念日这类重要日。"),
 			"reason":      str("一句话说明你为什么这样建议。"),
 			"source_refs": enumFreeArray("你查过的来源。必须是你真的调用工具读到过的。"),
 		}, []string{"title", "reason", "source_refs"}),
 		Handler: deps.proposeEventCreate,
+	})
+
+	reg.Register(ai.Capability{
+		Name: "events.propose_update",
+		Description: "为用户准备一条「修改已有重要日」的待确认建议，可更新日期或标记已处理。" +
+			"必须先用 objects.get 或 search.hybrid 查到 Event 的 id 和 version。过期不等于已处理，你不能自行推断处理状态。",
+		Risk:           ai.RiskProposal,
+		MaxResultBytes: 1 << 10,
+		Parameters: object(props{
+			"event_id":               str("要修改的重要日 Event ID。"),
+			"expected_version":       integer("你读到这条 Event 时它的 version。"),
+			"start_date":             str("新的公历日期，格式 2026-09-01；不改就不要传。"),
+			"important_date_handled": boolean("只有用户明确说已经处理时才传 true；恢复为未处理时传 false。不得根据日期过期推断。"),
+			"reason":                 str("一句话说明你为什么这样建议。"),
+			"source_refs":            enumFreeArray("你查过的来源。必须是你真的调用工具读到过的。"),
+		}, []string{"event_id", "expected_version", "reason", "source_refs"}),
+		Handler: deps.proposeEventUpdate,
 	})
 
 	if deps.Memory != nil {
@@ -268,6 +286,67 @@ func (d CapabilityDeps) proposeEventCreate(_ context.Context, cc ai.CapabilityCo
 	}, nil
 }
 
+func (d CapabilityDeps) proposeEventUpdate(ctx context.Context, cc ai.CapabilityContext,
+	args map[string]any) (ai.CapabilityResult, error) {
+
+	eventID := strings.TrimSpace(text(args["event_id"]))
+	if !strings.HasPrefix(eventID, "evt_") {
+		return ai.CapabilityResult{}, fmt.Errorf("event_id 必须是 Event ID")
+	}
+	sources, err := requireSources(args)
+	if err != nil {
+		return ai.CapabilityResult{}, err
+	}
+	version, ok := args["expected_version"].(float64)
+	if !ok {
+		return ai.CapabilityResult{}, fmt.Errorf("需要 expected_version：先读这条重要日再建议修改")
+	}
+	expected := int(version)
+
+	current, err := d.Tasks.GetEvent(ctx, cc.UserID, eventID)
+	if err != nil {
+		return ai.CapabilityResult{}, err
+	}
+	if int(current.Version) != expected {
+		return ai.CapabilityResult{}, fmt.Errorf("这条重要日已经变了，请重新读取后再建议")
+	}
+	if current.EventKind != "important_date" {
+		return ai.CapabilityResult{}, fmt.Errorf("events.propose_update 当前只支持重要日")
+	}
+
+	command := pick(args, "start_date", "important_date_handled")
+	if len(command) == 0 {
+		return ai.CapabilityResult{}, fmt.Errorf("至少要指定新日期或处理状态")
+	}
+	loc := timeutil.LoadLocation(cc.Timezone)
+	if raw := strings.TrimSpace(text(command["start_date"])); raw != "" && parseDate(raw, loc) == nil {
+		return ai.CapabilityResult{}, fmt.Errorf("start_date 必须是 YYYY-MM-DD 格式的有效日期")
+	}
+	if handled, present := command["important_date_handled"].(bool); present && handled && current.Recurrence != "none" {
+		return ai.CapabilityResult{}, fmt.Errorf("每年重复的重要日不能永久标记为已处理")
+	}
+
+	changes := describeEventChanges(command, current)
+	return ai.CapabilityResult{
+		Content:    "已经为用户准备好这条重要日修改建议，等他确认。请明确说明是改日期还是标记处理。",
+		SourceRefs: sources,
+		Proposals: []ai.ProposalDraft{{
+			Type:                  "event_update",
+			TargetType:            "event",
+			TargetID:              eventID,
+			TargetExpectedVersion: &expected,
+			Command:               command,
+			Preview: ai.ProposalPreview{
+				Title:   "修改重要日：" + current.Title,
+				Changes: changes,
+			},
+			Reason:         strings.TrimSpace(text(args["reason"])),
+			EditableFields: []string{"start_date", "important_date_handled"},
+			SourceRefs:     sources,
+		}},
+	}, nil
+}
+
 func (d CapabilityDeps) proposeMemoryUpsert(_ context.Context, _ ai.CapabilityContext,
 	args map[string]any) (ai.CapabilityResult, error) {
 
@@ -393,6 +472,38 @@ func describeTaskChanges(command map[string]any,
 				After: t.In(loc).Format("2006-01-02 15:04"),
 			})
 		}
+	}
+	return changes
+}
+
+func describeEventChanges(command map[string]any, current dbgen.Event) []ai.ProposalChange {
+	var changes []ai.ProposalChange
+	if date := strings.TrimSpace(text(command["start_date"])); date != "" {
+		before := ""
+		if current.StartDate != nil {
+			before = timeutil.FormatDate(*current.StartDate)
+		}
+		changes = append(changes, ai.ProposalChange{
+			Field: "start_date", Label: "日期", Before: before, After: date,
+		})
+		if current.ImportantDateHandledAt != nil {
+			changes = append(changes, ai.ProposalChange{
+				Field: "important_date_handled", Label: "处理状态", Before: "已处理", After: "未处理",
+			})
+		}
+	}
+	if handled, present := command["important_date_handled"].(bool); present {
+		before := "未处理"
+		if current.ImportantDateHandledAt != nil {
+			before = "已处理"
+		}
+		after := "未处理"
+		if handled {
+			after = "已处理"
+		}
+		changes = append(changes, ai.ProposalChange{
+			Field: "important_date_handled", Label: "处理状态", Before: before, After: after,
+		})
 	}
 	return changes
 }

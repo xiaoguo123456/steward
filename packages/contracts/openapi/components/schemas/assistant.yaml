@@ -214,7 +214,7 @@ ProposalType:
   description: |
     每种类型都有独立的 command 结构与对应的 Domain Command Mapper。
     command 不是任意 JSON Patch。
-  enum: [task_create, task_update, event_create, memory_upsert]
+  enum: [task_create, task_update, event_create, event_update, memory_upsert]
 
 ProposalStatus:
   type: string

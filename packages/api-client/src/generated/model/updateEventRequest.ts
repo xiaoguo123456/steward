@@ -54,5 +54,10 @@ export interface UpdateEventRequest {
   note?: string | null;
   reminders?: ReminderInput[];
   important_date_kind?: ImportantDateKind;
+  /**
+     * 仅用于一次性重要日的显式处理命令。true 由服务端写入处理时间，
+     * false 清除处理时间；不传表示保持原状态。更新日期或改为年度重复时也会清除。
+     */
+  important_date_handled?: boolean;
   recurrence?: EventRecurrence;
 }

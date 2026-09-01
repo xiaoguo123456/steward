@@ -29,6 +29,7 @@
 - `itinerary_details` 只能用于 `project_kind=trip` 的 Event；交通和住宿必须有完整起止时间，票据只能引用当前用户已上传的图片。
 - 只有 `important_date` 可以按年重复；2 月 29 日在非闰年投影到 2 月 28 日，
   但 `original_month_day` 保留原值。
+- `important_date_handled_at` 只记录用户明确处理的一次性重要日，不能由日期过期自动推断；更新日期、切换为年度重复或改成普通 Event 时清空。
 - Task 状态只能按 `todo/doing → done/cancelled`、`done/cancelled → todo` 流转。
 - Task 可以通过 relationships 的窄接口关联 Person；关联不改变 `list_id`、状态机、Today 收录或提醒语义。
 - Project 的 `progress` 由 Task 计数实时计算，不落库；没有有效 Task 时为 null。

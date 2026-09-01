@@ -514,7 +514,9 @@ function EventAgendaRow({ event }: { event: Event }) {
       <View style={styles.agendaCopy}>
         <Text style={styles.agendaTitle}>{event.title}</Text>
         <Text style={styles.agendaMeta}>
-          {important ? '重要日' : event.all_day ? '全天' : event.start_at ? formatClock(new Date(event.start_at)) : '日程'}
+          {important
+            ? event.important_date_handled_at ? '重要日 · 已处理' : '重要日'
+            : event.all_day ? '全天' : event.start_at ? formatClock(new Date(event.start_at)) : '日程'}
           {event.location ? ` · ${event.location}` : ''}
         </Text>
       </View>

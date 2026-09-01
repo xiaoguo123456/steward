@@ -5,6 +5,7 @@ SELECT * FROM events
 WHERE deleted_at IS NULL
   AND (sqlc.narg(event_kind)::text IS NULL OR event_kind = sqlc.narg(event_kind)::text)
   AND (sqlc.narg(project_id)::text IS NULL OR project_id = sqlc.narg(project_id)::text)
+  AND (NOT sqlc.arg(exclude_handled)::bool OR important_date_handled_at IS NULL)
   AND (
         sqlc.narg(from_at)::timestamptz IS NULL
      -- 按年重复的重要日不受查询窗口限制，由应用层投影到具体年份。
@@ -84,6 +85,11 @@ UPDATE events SET
     recurrence = coalesce(sqlc.narg(recurrence), recurrence),
     original_month_day = coalesce(sqlc.narg(original_month_day), original_month_day),
     important_date_kind = coalesce(sqlc.narg(important_date_kind), important_date_kind),
+    important_date_handled_at = CASE
+        WHEN sqlc.arg(set_important_date_handled_at)::bool
+            THEN sqlc.narg(important_date_handled_at)::timestamptz
+        ELSE important_date_handled_at
+    END,
     updated_at = now(),
     version    = version + 1
 WHERE id = sqlc.arg(id) AND deleted_at IS NULL

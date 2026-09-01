@@ -62,3 +62,35 @@ func TestSortImportantDatesKeepsExpiredDatesOutOfUpcoming(t *testing.T) {
 		t.Fatal("“即将到来”的首条数据不得已过期")
 	}
 }
+
+func TestActiveTodayEventsExcludesHandledImportantDate(t *testing.T) {
+	handledAt := time.Date(2026, 9, 1, 7, 0, 0, 0, time.UTC)
+	events := activeTodayEvents([]dbgen.Event{
+		{ID: "handled", EventKind: "important_date", ImportantDateHandledAt: &handledAt},
+		{ID: "active-important", EventKind: "important_date"},
+		{ID: "schedule", EventKind: "schedule"},
+	})
+
+	if len(events) != 2 || events[0].ID != "active-important" || events[1].ID != "schedule" {
+		t.Fatalf("Today 只应排除已处理重要日，实际 %+v", events)
+	}
+}
+
+func TestIsActiveImportantDateUsesExplicitHandledState(t *testing.T) {
+	handledAt := time.Date(2026, 9, 1, 7, 0, 0, 0, time.UTC)
+	if !isActiveImportantDate(dbgen.Event{StartDate: datePointer(t, "2025-01-01")}) {
+		t.Fatal("日期已过期但未标记处理的重要日仍应留在活动列表")
+	}
+	if isActiveImportantDate(dbgen.Event{ImportantDateHandledAt: &handledAt}) {
+		t.Fatal("用户明确标记已处理的重要日应退出活动列表")
+	}
+}
+
+func datePointer(t *testing.T, value string) *time.Time {
+	t.Helper()
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		t.Fatalf("解析测试日期失败：%v", err)
+	}
+	return &parsed
+}

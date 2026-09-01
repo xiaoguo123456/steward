@@ -27,7 +27,7 @@ func TestWireToolNameMatchesProviderPattern(t *testing.T) {
 		"tasks.search", "tasks.propose_create", "tasks.propose_update",
 		"calendar.read", "objects.get", "records.aggregate",
 		"search.hybrid", "reviews.read", "memories.search",
-		"memories.propose_upsert", "events.propose_create",
+		"memories.propose_upsert", "events.propose_create", "events.propose_update",
 	} {
 		wire := toWireToolName(name)
 		for _, r := range wire {

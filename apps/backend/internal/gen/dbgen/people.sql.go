@@ -274,7 +274,7 @@ func (q *Queries) ListPeople(ctx context.Context, arg ListPeopleParams) ([]Perso
 }
 
 const listPersonEvents = `-- name: ListPersonEvents :many
-SELECT e.id, e.user_id, e.title, e.event_kind, e.all_day, e.start_at, e.end_at, e.start_date, e.end_date, e.timezone, e.location, e.participants, e.project_id, e.note, e.reminders, e.recurrence, e.original_month_day, e.created_by, e.provenance_refs, e.created_at, e.updated_at, e.deleted_at, e.version, e.important_date_kind, e.itinerary_details
+SELECT e.id, e.user_id, e.title, e.event_kind, e.all_day, e.start_at, e.end_at, e.start_date, e.end_date, e.timezone, e.location, e.participants, e.project_id, e.note, e.reminders, e.recurrence, e.original_month_day, e.created_by, e.provenance_refs, e.created_at, e.updated_at, e.deleted_at, e.version, e.important_date_kind, e.itinerary_details, e.important_date_handled_at
 FROM events e
 JOIN event_people ep ON ep.event_id = e.id AND ep.user_id = e.user_id
 WHERE ep.person_id = $1
@@ -332,6 +332,7 @@ func (q *Queries) ListPersonEvents(ctx context.Context, arg ListPersonEventsPara
 			&i.Version,
 			&i.ImportantDateKind,
 			&i.ItineraryDetails,
+			&i.ImportantDateHandledAt,
 		); err != nil {
 			return nil, err
 		}

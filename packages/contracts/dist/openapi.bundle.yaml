@@ -5032,6 +5032,13 @@ components:
             $ref: '#/components/schemas/Reminder'
         important_date_kind:
           $ref: '#/components/schemas/ImportantDateKind'
+        important_date_handled_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            用户明确把一次性重要日标记为已处理时由服务端写入；null 表示未处理。
+            日期已过期不会自动写入，年度重复重要日始终为 null。
         recurrence:
           $ref: '#/components/schemas/EventRecurrence'
         original_month_day:
@@ -5215,6 +5222,11 @@ components:
             $ref: '#/components/schemas/ReminderInput'
         important_date_kind:
           $ref: '#/components/schemas/ImportantDateKind'
+        important_date_handled:
+          type: boolean
+          description: |
+            仅用于一次性重要日的显式处理命令。true 由服务端写入处理时间，
+            false 清除处理时间；不传表示保持原状态。更新日期或改为年度重复时也会清除。
         recurrence:
           $ref: '#/components/schemas/EventRecurrence'
     ProjectStatus:
@@ -7916,6 +7928,7 @@ components:
         - task_create
         - task_update
         - event_create
+        - event_update
         - memory_upsert
     ProposalChange:
       type: object

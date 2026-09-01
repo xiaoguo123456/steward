@@ -33,7 +33,7 @@ INSERT INTO events (
     $17, $18, $19,
     $20, $21
 )
-RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details
+RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at
 `
 
 type CreateEventParams struct {
@@ -111,12 +111,13 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event
 		&i.Version,
 		&i.ImportantDateKind,
 		&i.ItineraryDetails,
+		&i.ImportantDateHandledAt,
 	)
 	return i, err
 }
 
 const getEvent = `-- name: GetEvent :one
-SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details FROM events WHERE id = $1 AND deleted_at IS NULL
+SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at FROM events WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetEvent(ctx context.Context, id string) (Event, error) {
@@ -148,36 +149,39 @@ func (q *Queries) GetEvent(ctx context.Context, id string) (Event, error) {
 		&i.Version,
 		&i.ImportantDateKind,
 		&i.ItineraryDetails,
+		&i.ImportantDateHandledAt,
 	)
 	return i, err
 }
 
 const listEvents = `-- name: ListEvents :many
 
-SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details FROM events
+SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at FROM events
 WHERE deleted_at IS NULL
   AND ($1::text IS NULL OR event_kind = $1::text)
   AND ($2::text IS NULL OR project_id = $2::text)
+  AND (NOT $3::bool OR important_date_handled_at IS NULL)
   AND (
-        $3::timestamptz IS NULL
+        $4::timestamptz IS NULL
      -- 按年重复的重要日不受查询窗口限制，由应用层投影到具体年份。
      OR recurrence = 'yearly'
      OR (start_at IS NOT NULL
-         AND start_at >= $3::timestamptz
-         AND start_at <= $4::timestamptz)
+         AND start_at >= $4::timestamptz
+         AND start_at <= $5::timestamptz)
      OR (start_date IS NOT NULL
-         AND start_date <= $5::date
-         AND coalesce(end_date, start_date) >= $6::date)
+         AND start_date <= $6::date
+         AND coalesce(end_date, start_date) >= $7::date)
   )
-  AND ($7::timestamptz IS NULL
-       OR (created_at, id) < ($7::timestamptz, $8::text))
+  AND ($8::timestamptz IS NULL
+       OR (created_at, id) < ($8::timestamptz, $9::text))
 ORDER BY created_at DESC, id DESC
-LIMIT $9
+LIMIT $10
 `
 
 type ListEventsParams struct {
 	EventKind       *string
 	ProjectID       *string
+	ExcludeHandled  bool
 	FromAt          *time.Time
 	ToAt            time.Time
 	ToDate          time.Time
@@ -192,6 +196,7 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Event
 	rows, err := q.db.Query(ctx, listEvents,
 		arg.EventKind,
 		arg.ProjectID,
+		arg.ExcludeHandled,
 		arg.FromAt,
 		arg.ToAt,
 		arg.ToDate,
@@ -233,6 +238,7 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Event
 			&i.Version,
 			&i.ImportantDateKind,
 			&i.ItineraryDetails,
+			&i.ImportantDateHandledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -245,7 +251,7 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Event
 }
 
 const listEventsInRange = `-- name: ListEventsInRange :many
-SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details FROM events
+SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at FROM events
 WHERE deleted_at IS NULL
   AND ($1::text IS NULL OR project_id = $1::text)
   AND (
@@ -310,6 +316,7 @@ func (q *Queries) ListEventsInRange(ctx context.Context, arg ListEventsInRangePa
 			&i.Version,
 			&i.ImportantDateKind,
 			&i.ItineraryDetails,
+			&i.ImportantDateHandledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -324,7 +331,7 @@ func (q *Queries) ListEventsInRange(ctx context.Context, arg ListEventsInRangePa
 const restoreEvent = `-- name: RestoreEvent :one
 UPDATE events SET deleted_at = NULL, updated_at = now(), version = version + 1
 WHERE id = $1
-RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details
+RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at
 `
 
 func (q *Queries) RestoreEvent(ctx context.Context, id string) (Event, error) {
@@ -356,6 +363,7 @@ func (q *Queries) RestoreEvent(ctx context.Context, id string) (Event, error) {
 		&i.Version,
 		&i.ImportantDateKind,
 		&i.ItineraryDetails,
+		&i.ImportantDateHandledAt,
 	)
 	return i, err
 }
@@ -401,7 +409,7 @@ func (q *Queries) SearchEvents(ctx context.Context, arg SearchEventsParams) ([]S
 const softDeleteEvent = `-- name: SoftDeleteEvent :one
 UPDATE events SET deleted_at = now(), updated_at = now(), version = version + 1
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details
+RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at
 `
 
 func (q *Queries) SoftDeleteEvent(ctx context.Context, id string) (Event, error) {
@@ -433,6 +441,7 @@ func (q *Queries) SoftDeleteEvent(ctx context.Context, id string) (Event, error)
 		&i.Version,
 		&i.ImportantDateKind,
 		&i.ItineraryDetails,
+		&i.ImportantDateHandledAt,
 	)
 	return i, err
 }
@@ -466,41 +475,48 @@ UPDATE events SET
     recurrence = coalesce($25, recurrence),
     original_month_day = coalesce($26, original_month_day),
     important_date_kind = coalesce($27, important_date_kind),
+    important_date_handled_at = CASE
+        WHEN $28::bool
+            THEN $29::timestamptz
+        ELSE important_date_handled_at
+    END,
     updated_at = now(),
     version    = version + 1
-WHERE id = $28 AND deleted_at IS NULL
-RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details
+WHERE id = $30 AND deleted_at IS NULL
+RETURNING id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at
 `
 
 type UpdateEventParams struct {
-	Title                 *string
-	EventKind             *string
-	AllDay                *bool
-	ClearStartAt          bool
-	StartAt               *time.Time
-	ClearEndAt            bool
-	EndAt                 *time.Time
-	ClearStartDate        bool
-	StartDate             *time.Time
-	ClearEndDate          bool
-	EndDate               *time.Time
-	Timezone              *string
-	ClearLocation         bool
-	Location              *string
-	ClearItineraryDetails bool
-	ItineraryDetails      []byte
-	ClearParticipants     bool
-	Participants          []byte
-	ClearProjectID        bool
-	ProjectID             *string
-	ClearNote             bool
-	Note                  *string
-	ClearReminders        bool
-	Reminders             []byte
-	Recurrence            *string
-	OriginalMonthDay      *string
-	ImportantDateKind     *string
-	ID                    string
+	Title                     *string
+	EventKind                 *string
+	AllDay                    *bool
+	ClearStartAt              bool
+	StartAt                   *time.Time
+	ClearEndAt                bool
+	EndAt                     *time.Time
+	ClearStartDate            bool
+	StartDate                 *time.Time
+	ClearEndDate              bool
+	EndDate                   *time.Time
+	Timezone                  *string
+	ClearLocation             bool
+	Location                  *string
+	ClearItineraryDetails     bool
+	ItineraryDetails          []byte
+	ClearParticipants         bool
+	Participants              []byte
+	ClearProjectID            bool
+	ProjectID                 *string
+	ClearNote                 bool
+	Note                      *string
+	ClearReminders            bool
+	Reminders                 []byte
+	Recurrence                *string
+	OriginalMonthDay          *string
+	ImportantDateKind         *string
+	SetImportantDateHandledAt bool
+	ImportantDateHandledAt    *time.Time
+	ID                        string
 }
 
 func (q *Queries) UpdateEvent(ctx context.Context, arg UpdateEventParams) (Event, error) {
@@ -532,6 +548,8 @@ func (q *Queries) UpdateEvent(ctx context.Context, arg UpdateEventParams) (Event
 		arg.Recurrence,
 		arg.OriginalMonthDay,
 		arg.ImportantDateKind,
+		arg.SetImportantDateHandledAt,
+		arg.ImportantDateHandledAt,
 		arg.ID,
 	)
 	var i Event
@@ -561,6 +579,7 @@ func (q *Queries) UpdateEvent(ctx context.Context, arg UpdateEventParams) (Event
 		&i.Version,
 		&i.ImportantDateKind,
 		&i.ItineraryDetails,
+		&i.ImportantDateHandledAt,
 	)
 	return i, err
 }

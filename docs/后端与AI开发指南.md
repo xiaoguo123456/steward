@@ -792,6 +792,7 @@ Proposal Capability 只构造建议，不执行写入：
 | `tasks.propose_create` | `task_create` Proposal |
 | `tasks.propose_update` | 带 `expected_version` 的 `task_update` Proposal；支持截止日期和 `focus_date`，确认后才执行 |
 | `events.propose_create` | `event_create` Proposal |
+| `events.propose_update` | 带 `expected_version` 的 `event_update` Proposal；可更新重要日日期或建议标记已处理，确认后才执行 |
 | `objects.propose_delete` | 带影响预览的删除 Proposal |
 | `scheduler.propose_schedule` | 只从 Slot Engine 候选中选择的安排 Proposal |
 | `memories.propose_upsert` | 长期记忆新增／修改 Proposal |

@@ -51,7 +51,8 @@ func (s *Service) GetImportantDates(ctx context.Context, userID string, limit in
 
 		kind := "important_date"
 		rows, err := q.ListEvents(ctx, dbgen.ListEventsParams{
-			EventKind: &kind,
+			EventKind:      &kind,
+			ExcludeHandled: true,
 			// ListEvents 按创建时间排序，limit 却表示领域排序后的返回数量。
 			// 先读取契约允许的最大集合，否则新建的过期日期可能把真正
 			// 最近的未来日期挤出候选集合。
@@ -62,6 +63,11 @@ func (s *Service) GetImportantDates(ctx context.Context, userID string, limit in
 		}
 
 		for _, row := range rows {
+			// 处理状态只能来自用户明确命令；一旦存在，这条历史 Event
+			// 仍留在日历，但不再占据活动重要日列表。
+			if !isActiveImportantDate(row) {
+				continue
+			}
 			next, ok := nextOccurrence(row, today, loc)
 			if !ok {
 				continue
@@ -80,6 +86,10 @@ func (s *Service) GetImportantDates(ctx context.Context, userID string, limit in
 		return nil
 	})
 	return out, tz, err
+}
+
+func isActiveImportantDate(event dbgen.Event) bool {
+	return event.ImportantDateHandledAt == nil
 }
 
 // sortImportantDates 先排今天和未来的日期，再排已过期的一次性日期。

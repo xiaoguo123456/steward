@@ -79,6 +79,7 @@ export const ListEventsResponse = zod.object({
   "days_before": zod.number().int().nullish().describe('kind=absolute_local 时提前的天数，0 表示当天。')
 })).optional(),
   "important_date_kind": zod.enum(['birthday', 'anniversary', 'expiry', 'other']).optional().describe('重要日的四种预设。它不新增领域类型，只决定图标、表单默认值与\n默认重复规则；生日与纪念日默认 recurrence=yearly，\n到期日与其他默认 recurrence=none。\n只有 event_kind=important_date 时才有意义。\n'),
+  "important_date_handled_at": zod.string().datetime({"offset":true}).nullish().describe('用户明确把一次性重要日标记为已处理时由服务端写入；null 表示未处理。\n日期已过期不会自动写入，年度重复重要日始终为 null。\n'),
   "recurrence": zod.enum(['none', 'yearly']).describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。'),
   "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
@@ -209,6 +210,7 @@ export const CreateEventResponse = zod.object({
   "days_before": zod.number().int().nullish().describe('kind=absolute_local 时提前的天数，0 表示当天。')
 })).optional(),
   "important_date_kind": zod.enum(['birthday', 'anniversary', 'expiry', 'other']).optional().describe('重要日的四种预设。它不新增领域类型，只决定图标、表单默认值与\n默认重复规则；生日与纪念日默认 recurrence=yearly，\n到期日与其他默认 recurrence=none。\n只有 event_kind=important_date 时才有意义。\n'),
+  "important_date_handled_at": zod.string().datetime({"offset":true}).nullish().describe('用户明确把一次性重要日标记为已处理时由服务端写入；null 表示未处理。\n日期已过期不会自动写入，年度重复重要日始终为 null。\n'),
   "recurrence": zod.enum(['none', 'yearly']).describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。'),
   "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
@@ -283,6 +285,7 @@ export const GetEventResponse = zod.object({
   "days_before": zod.number().int().nullish().describe('kind=absolute_local 时提前的天数，0 表示当天。')
 })).optional(),
   "important_date_kind": zod.enum(['birthday', 'anniversary', 'expiry', 'other']).optional().describe('重要日的四种预设。它不新增领域类型，只决定图标、表单默认值与\n默认重复规则；生日与纪念日默认 recurrence=yearly，\n到期日与其他默认 recurrence=none。\n只有 event_kind=important_date 时才有意义。\n'),
+  "important_date_handled_at": zod.string().datetime({"offset":true}).nullish().describe('用户明确把一次性重要日标记为已处理时由服务端写入；null 表示未处理。\n日期已过期不会自动写入，年度重复重要日始终为 null。\n'),
   "recurrence": zod.enum(['none', 'yearly']).describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。'),
   "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
@@ -360,6 +363,7 @@ export const UpdateEventBody = zod.object({
   "days_before": zod.number().int().nullish()
 })).optional(),
   "important_date_kind": zod.enum(['birthday', 'anniversary', 'expiry', 'other']).optional().describe('重要日的四种预设。它不新增领域类型，只决定图标、表单默认值与\n默认重复规则；生日与纪念日默认 recurrence=yearly，\n到期日与其他默认 recurrence=none。\n只有 event_kind=important_date 时才有意义。\n'),
+  "important_date_handled": zod.boolean().optional().describe('仅用于一次性重要日的显式处理命令。true 由服务端写入处理时间，\nfalse 清除处理时间；不传表示保持原状态。更新日期或改为年度重复时也会清除。\n'),
   "recurrence": zod.enum(['none', 'yearly']).optional().describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。')
 }).describe('只提交需要修改的字段；不传表示保持原值。\n清空一个可空字段必须把字段名放进 clear 数组，\n因为生成的 Go 类型无法区分“不传”与“传 null”。\n')
 
@@ -409,6 +413,7 @@ export const UpdateEventResponse = zod.object({
   "days_before": zod.number().int().nullish().describe('kind=absolute_local 时提前的天数，0 表示当天。')
 })).optional(),
   "important_date_kind": zod.enum(['birthday', 'anniversary', 'expiry', 'other']).optional().describe('重要日的四种预设。它不新增领域类型，只决定图标、表单默认值与\n默认重复规则；生日与纪念日默认 recurrence=yearly，\n到期日与其他默认 recurrence=none。\n只有 event_kind=important_date 时才有意义。\n'),
+  "important_date_handled_at": zod.string().datetime({"offset":true}).nullish().describe('用户明确把一次性重要日标记为已处理时由服务端写入；null 表示未处理。\n日期已过期不会自动写入，年度重复重要日始终为 null。\n'),
   "recurrence": zod.enum(['none', 'yearly']).describe('MVP 只支持无重复与按月日每年重复；yearly 仅 important_date 可用。'),
   "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
