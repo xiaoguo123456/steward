@@ -1,10 +1,8 @@
 import {
   errorMessage,
   type Event,
-  type PersonInteraction,
   useGetPerson,
   useListPersonEvents,
-  useListPersonInteractions,
 } from '@steward/api-client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -16,25 +14,24 @@ import {
   View,
 } from 'react-native';
 
+import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { AppScreen } from '@/components/ui/app-screen';
 import { NavHeader } from '@/components/ui/nav-header';
+import { SectionTitle } from '@/components/ui/section-title';
 import { StatePanel } from '@/components/ui/state-panel';
 import {
   eventTimestamp,
   formatEventTime,
-  formatInteractionTime,
-  interactionTypeLabels,
   relationshipGroupLabels,
 } from '@/features/relationships/model';
-import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { colors, fontFamily, radius, spacing, typography } from '@/theme/tokens';
 
 export default function PersonDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const personID = Array.isArray(params.id) ? params.id[0] : params.id;
   const personQuery = useGetPerson(personID ?? '', { query: { enabled: Boolean(personID), staleTime: 30_000 } });
-  const interactionsQuery = useListPersonInteractions(personID ?? '', { limit: 20 }, { query: { enabled: Boolean(personID) } });
   const eventsQuery = useListPersonEvents(personID ?? '', { limit: 50 }, { query: { enabled: Boolean(personID) } });
 
   if (personQuery.isPending) {
@@ -67,9 +64,11 @@ export default function PersonDetailScreen() {
   const relation = person.relationship_label || relationshipGroupLabels[person.relationship_group];
   const referenceTime = eventsQuery.dataUpdatedAt || personQuery.dataUpdatedAt;
   const upcomingEvents = (eventsQuery.data?.data ?? [])
-    .filter((event) => eventTimestamp(event) >= referenceTime)
+    .filter((event) => event.event_kind !== 'important_date' && eventTimestamp(event) >= referenceTime)
     .sort((left, right) => eventTimestamp(left) - eventTimestamp(right));
-  const interactions = interactionsQuery.data?.data ?? [];
+  const importantDates = (eventsQuery.data?.data ?? [])
+    .filter((event) => event.event_kind === 'important_date')
+    .sort((left, right) => eventTimestamp(left) - eventTimestamp(right));
 
   return (
     <AppScreen includeBottomInset>
@@ -78,8 +77,8 @@ export default function PersonDetailScreen() {
           <Pressable
             accessibilityLabel="编辑亲友资料"
             accessibilityRole="button"
-            hitSlop={10}
             onPress={() => router.push({ pathname: '/people/[id]/edit', params: { id: person.id } })}
+            style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}
           >
             <AppIcon color={colors.primaryStrong} name="create-outline" size={22} />
           </Pressable>
@@ -89,78 +88,58 @@ export default function PersonDetailScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.identity}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{person.name.trim().slice(0, 1)}</Text></View>
-          <Text style={styles.name}>{person.name}</Text>
-          <Text style={styles.relation}>{relation}</Text>
+          <View style={styles.identityCopy}>
+            <Text style={styles.name}>{person.name}</Text>
+            <Text style={styles.relation}>{relation}</Text>
+          </View>
         </View>
 
-        <View style={styles.actions}>
-          <QuickAction
-            icon="chatbubble-ellipses-outline"
-            label="记互动"
-            onPress={() => router.push({ pathname: '/people/[id]/interaction/new', params: { id: person.id } })}
-          />
-          <QuickAction
-            icon="calendar-outline"
-            label="加事件"
-            onPress={() => router.push({ pathname: '/people/[id]/event/new', params: { id: person.id } })}
-          />
-        </View>
+        <AppButton
+          compact
+          icon="calendar-outline"
+          label="添加事件"
+          onPress={() => router.push({ pathname: '/people/[id]/event/new', params: { id: person.id } })}
+        />
 
-        <DetailSection title="接下来">
+        <DetailSection title="近期安排">
           {eventsQuery.isPending ? (
             <ActivityIndicator color={colors.primary} style={styles.inlineLoader} />
           ) : eventsQuery.isError ? (
             <InlineFailure onRetry={() => void eventsQuery.refetch()} />
           ) : upcomingEvents.length === 0 ? (
-            <EmptyRow label="还没有安排" />
+            <EmptyRow label="暂无安排" />
           ) : upcomingEvents.map((event, index) => (
             <EventRow divider={index < upcomingEvents.length - 1} event={event} key={event.id} />
           ))}
         </DetailSection>
 
-        <DetailSection title="最近互动">
-          {interactionsQuery.isPending ? (
+        <DetailSection title="重要日">
+          {eventsQuery.isPending ? (
             <ActivityIndicator color={colors.primary} style={styles.inlineLoader} />
-          ) : interactionsQuery.isError ? (
-            <InlineFailure onRetry={() => void interactionsQuery.refetch()} />
-          ) : interactions.length === 0 ? (
-            <EmptyRow label="还没有互动记录" />
-          ) : interactions.map((interaction, index) => (
-            <InteractionRow
-              divider={index < interactions.length - 1}
-              interaction={interaction}
-              key={interaction.id}
-            />
+          ) : eventsQuery.isError ? (
+            <InlineFailure onRetry={() => void eventsQuery.refetch()} />
+          ) : importantDates.length === 0 ? (
+            <EmptyRow label="暂无重要日" />
+          ) : importantDates.map((event, index) => (
+            <EventRow divider={index < importantDates.length - 1} event={event} key={event.id} />
           ))}
         </DetailSection>
 
         {person.note ? (
-          <DetailSection title="关于TA">
+          <View style={styles.about}>
+            <SectionTitle title="关于TA" />
             <Text style={styles.note}>{person.note}</Text>
-          </DetailSection>
+          </View>
         ) : null}
       </ScrollView>
     </AppScreen>
   );
 }
 
-function QuickAction({ icon, label, onPress }: { icon: Parameters<typeof AppIcon>[0]['name']; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}
-    >
-      <View style={styles.quickIcon}><AppIcon color={colors.primaryStrong} name={icon} size={22} /></View>
-      <Text style={styles.quickLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
 function DetailSection({ children, title }: { children: React.ReactNode; title: string }) {
   return (
     <View style={styles.section}>
-      <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
+      <SectionTitle title={title} />
       <View style={styles.sectionBody}>{children}</View>
     </View>
   );
@@ -180,21 +159,6 @@ function EventRow({ divider, event }: { divider: boolean; event: Event }) {
   );
 }
 
-function InteractionRow({ divider, interaction }: { divider: boolean; interaction: PersonInteraction }) {
-  return (
-    <View style={[styles.timelineRow, divider && styles.divider]}>
-      <View style={styles.timelineIcon}>
-        <AppIcon color={colors.primaryStrong} name="chatbubble-outline" size={18} />
-      </View>
-      <View style={styles.timelineCopy}>
-        <Text style={styles.rowTitle}>{interaction.summary}</Text>
-        <Text style={styles.rowMeta}>{interactionTypeLabels[interaction.interaction_type]} · {formatInteractionTime(interaction.occurred_at)}</Text>
-        {interaction.note ? <Text style={styles.rowNote}>{interaction.note}</Text> : null}
-      </View>
-    </View>
-  );
-}
-
 function EmptyRow({ label }: { label: string }) {
   return <Text style={styles.empty}>{label}</Text>;
 }
@@ -209,28 +173,25 @@ function InlineFailure({ onRetry }: { onRetry: () => void }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  content: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 36, gap: 28 },
-  identity: { alignItems: 'center' },
-  avatar: { width: 84, height: 84, alignItems: 'center', justifyContent: 'center', borderRadius: 42, backgroundColor: colors.primarySoft },
-  avatarText: { color: colors.primaryStrong, fontFamily, fontSize: 30, lineHeight: 38, fontWeight: '700' },
-  name: { marginTop: 13, color: colors.text, fontFamily, ...typography.detail },
-  relation: { marginTop: 2, color: colors.textSecondary, fontFamily, ...typography.meta },
-  actions: { flexDirection: 'row', gap: 12 },
-  quickAction: { minHeight: 72, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: radius.lg, backgroundColor: colors.primarySoft },
-  quickIcon: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { color: colors.primaryStrong, fontFamily, ...typography.bodyStrong },
-  section: { gap: 10 },
-  sectionTitle: { color: colors.text, fontFamily, ...typography.section },
-  sectionBody: { overflow: 'hidden', borderRadius: radius.lg, backgroundColor: colors.surfaceSubtle },
-  timelineRow: { minHeight: 72, paddingHorizontal: 14, paddingVertical: 13, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: 40, gap: spacing.xxxl },
+  editButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
+  identity: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  identityCopy: { minWidth: 0, flex: 1, gap: spacing.xs },
+  avatar: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center', borderRadius: 36, backgroundColor: colors.primarySoft },
+  avatarText: { color: colors.primaryStrong, fontFamily, fontSize: 28, lineHeight: 36, fontWeight: '700' },
+  name: { color: colors.text, fontFamily, ...typography.detail },
+  relation: { color: colors.textSecondary, fontFamily, ...typography.body },
+  section: { gap: spacing.xs },
+  sectionBody: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  timelineRow: { minHeight: 68, paddingVertical: spacing.md, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  timelineIcon: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.background },
+  timelineIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.primarySoft },
   timelineCopy: { minWidth: 0, flex: 1, gap: 2 },
   rowTitle: { color: colors.text, fontFamily, ...typography.bodyStrong },
   rowMeta: { color: colors.textSecondary, fontFamily, ...typography.meta },
-  rowNote: { marginTop: 4, color: colors.textSecondary, fontFamily, ...typography.body },
-  note: { padding: 16, color: colors.text, fontFamily, ...typography.body },
-  empty: { padding: 18, color: colors.textSecondary, fontFamily, ...typography.body },
+  about: { gap: spacing.xs },
+  note: { paddingTop: spacing.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, color: colors.text, fontFamily, ...typography.body },
+  empty: { paddingVertical: spacing.lg, color: colors.textSecondary, fontFamily, ...typography.body },
   failure: { minHeight: 52, alignItems: 'center', justifyContent: 'center' },
   failureText: { color: colors.danger, fontFamily, ...typography.meta },
   inlineLoader: { marginVertical: 26 },

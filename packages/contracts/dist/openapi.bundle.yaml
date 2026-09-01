@@ -2012,6 +2012,8 @@ paths:
     get:
       operationId: listPersonInteractions
       summary: 查询某人的历史互动
+      description: 旧版 App 兼容接口；新版亲友详情不再展示或创建互动，兼容窗口结束后移除。
+      deprecated: true
       tags:
         - people
       parameters:
@@ -2034,6 +2036,8 @@ paths:
     post:
       operationId: createPersonInteraction
       summary: 记录一次已经发生的互动
+      description: 旧版 App 兼容接口；新版亲友详情不再展示或创建互动，兼容窗口结束后移除。
+      deprecated: true
       tags:
         - people
       parameters:

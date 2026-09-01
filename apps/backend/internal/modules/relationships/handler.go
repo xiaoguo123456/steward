@@ -118,7 +118,7 @@ func (h *RelationshipAPI) DeletePerson(ctx context.Context, req httpapi.DeletePe
 		httpx.Resource(httpapi.AffectedResourceTypeActivity, ""))), nil
 }
 
-// ListPersonInteractions 查询历史互动。
+// ListPersonInteractions 为已发布旧版 App 保留历史互动查询兼容。
 func (h *RelationshipAPI) ListPersonInteractions(ctx context.Context, req httpapi.ListPersonInteractionsRequestObject) (httpapi.ListPersonInteractionsResponseObject, error) {
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
@@ -153,7 +153,7 @@ func (h *RelationshipAPI) ListPersonInteractions(ctx context.Context, req httpap
 	return httpapi.ListPersonInteractions200JSONResponse{Data: data, Page: httpx.PageOf(hasMore, next), Meta: httpx.Meta(ctx)}, nil
 }
 
-// CreatePersonInteraction 记录一次互动。
+// CreatePersonInteraction 为已发布旧版 App 保留互动写入兼容。
 func (h *RelationshipAPI) CreatePersonInteraction(ctx context.Context, req httpapi.CreatePersonInteractionRequestObject) (httpapi.CreatePersonInteractionResponseObject, error) {
 	userID, err := httpx.UserID(ctx)
 	if err != nil {

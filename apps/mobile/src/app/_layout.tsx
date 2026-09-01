@@ -78,7 +78,6 @@ function RootNavigator() {
         <Stack.Screen name="people/new" />
         <Stack.Screen name="people/[id]" />
         <Stack.Screen name="people/[id]/edit" />
-        <Stack.Screen name="people/[id]/interaction/new" />
         <Stack.Screen name="people/[id]/event/new" />
         <Stack.Screen name="me" />
         <Stack.Screen name="features/[slug]" />

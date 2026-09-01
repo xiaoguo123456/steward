@@ -237,6 +237,8 @@ export const DeletePersonResponse = zod.object({
 }).describe('删除等不返回实体的写操作响应，携带需要失效的资源列表。')
 
 /**
+ * 旧版 App 兼容接口；新版亲友详情不再展示或创建互动，兼容窗口结束后移除。
+ * @deprecated
  * @summary 查询某人的历史互动
  */
 export const ListPersonInteractionsParams = zod.object({
@@ -286,6 +288,8 @@ export const ListPersonInteractionsResponse = zod.object({
 })
 
 /**
+ * 旧版 App 兼容接口；新版亲友详情不再展示或创建互动，兼容窗口结束后移除。
+ * @deprecated
  * @summary 记录一次已经发生的互动
  */
 export const CreatePersonInteractionParams = zod.object({

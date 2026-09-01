@@ -10,8 +10,8 @@ test('首页顶部导航保持固定顺序和短标签', () => {
     [
       ['today', '今天'],
       ['memories', '时光'],
-      ['relationships', '亲友'],
       ['mood', '心情'],
+      ['relationships', '亲友'],
     ],
   );
 });
@@ -35,18 +35,19 @@ test('亲友首页使用正式人物查询和添加入口', async () => {
   assert.doesNotMatch(relationships, /style=\{styles\.actionRow\}/);
 });
 
-test('亲友详情提供人物互动和关联事件闭环', async () => {
+test('亲友详情聚焦人物资料、近期安排和重要日', async () => {
   const detail = await readFile(new URL('../../app/people/[id].tsx', import.meta.url), 'utf8');
   const eventForm = await readFile(new URL('../../app/people/[id]/event/new.tsx', import.meta.url), 'utf8');
   const editForm = await readFile(new URL('../../app/people/[id]/edit.tsx', import.meta.url), 'utf8');
 
   assert.match(detail, /useGetPerson/);
-  assert.match(detail, /useListPersonInteractions/);
   assert.match(detail, /useListPersonEvents/);
-  assert.match(detail, /label="记互动"/);
-  assert.match(detail, /label="加事件"/);
-  assert.match(detail, /title="接下来"/);
-  assert.match(detail, /title="最近互动"/);
+  assert.doesNotMatch(detail, /useListPersonInteractions|记互动|最近互动/);
+  assert.match(detail, /label="添加事件"/);
+  assert.match(detail, /title="近期安排"/);
+  assert.match(detail, /title="重要日"/);
+  assert.match(detail, /event\.event_kind !== 'important_date'/);
+  assert.match(detail, /event\.event_kind === 'important_date'/);
   assert.match(eventForm, /kind === 'important_date' \? 1900/);
   assert.match(editForm, /homeTab: 'relationships'/);
 });

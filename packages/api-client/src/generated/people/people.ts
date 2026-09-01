@@ -512,6 +512,8 @@ export const useDeletePerson = <TError = UnauthorizedResponse | NotFoundResponse
 }
 
 /**
+ * 旧版 App 兼容接口；新版亲友详情不再展示或创建互动，兼容窗口结束后移除。
+ * @deprecated
  * @summary 查询某人的历史互动
  */
 export const listPersonInteractions = async (personId: string,
@@ -589,6 +591,7 @@ export function useListPersonInteractions<TData = Awaited<ReturnType<typeof list
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
+ * @deprecated
  * @summary 查询某人的历史互动
  */
 
@@ -619,6 +622,8 @@ export const getCreatePersonInteractionUrl = (personId: string,) => {
 }
 
 /**
+ * 旧版 App 兼容接口；新版亲友详情不再展示或创建互动，兼容窗口结束后移除。
+ * @deprecated
  * @summary 记录一次已经发生的互动
  */
 export const createPersonInteraction = async (personId: string,
@@ -669,6 +674,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreatePersonInteractionMutationError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse
 
     /**
+ * @deprecated
  * @summary 记录一次已经发生的互动
  */
 export const useCreatePersonInteraction = <TError = BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse | InternalErrorResponse,
