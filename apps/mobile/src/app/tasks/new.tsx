@@ -1,6 +1,7 @@
 import {
   createTask,
   errorMessage,
+  useGetPerson,
   useListTaskLists,
   type TaskPriority,
 } from '@steward/api-client';
@@ -41,9 +42,11 @@ type Picker = 'due' | 'reminder' | 'priority' | 'list' | null;
 
 export default function NewTaskScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ entry?: string; listId?: string }>();
+  const params = useLocalSearchParams<{ entry?: string; listId?: string; personId?: string }>();
   const queryClient = useQueryClient();
   const listsQuery = useListTaskLists({ list_kind: 'tasks' });
+  const personID = params.personId?.trim() || null;
+  const personQuery = useGetPerson(personID ?? '', { query: { enabled: Boolean(personID) } });
   const reminder = useTaskReminder();
 
   const [title, setTitle] = useState('');
@@ -67,7 +70,9 @@ export default function NewTaskScreen() {
   const listId = lists.some((list) => list.id === pickedListId) ? pickedListId : defaultListId;
   const selectedList = lists.find((list) => list.id === listId) ?? null;
   const selectedReminderTime = reminderTime ?? reminder.defaultTime;
-  const canSave = title.trim().length > 0 && Boolean(listId) && !saving;
+  const person = personQuery.data?.data;
+  const personReady = !personID || Boolean(person);
+  const canSave = title.trim().length > 0 && Boolean(listId) && personReady && !saving;
 
   const openDuePicker = () => {
     setDraftDueDate(dueDate ?? formatDateParam(new Date()));
@@ -89,6 +94,7 @@ export default function NewTaskScreen() {
         description,
         priority,
         listId,
+        personId: person?.id,
         focusDate: focusToday ? formatDateParam(new Date()) : undefined,
         // 只给日期不给时刻：提醒时间属于 Reminder，不把截止日期补成虚构时刻。
         dueDate: dueDate ?? undefined,
@@ -234,6 +240,16 @@ export default function NewTaskScreen() {
               value={priorityLabel(priority)}
             />
             <SettingDivider />
+            {personID ? (
+              <>
+                <SettingRow
+                  icon="person-outline"
+                  label="亲友"
+                  value={person?.name ?? (personQuery.isPending ? '加载中' : '不可用')}
+                />
+                <SettingDivider />
+              </>
+            ) : null}
             <SettingRow
               disabled={lists.length === 0}
               icon="list-outline"
@@ -245,6 +261,9 @@ export default function NewTaskScreen() {
 
           {listsQuery.isError ? (
             <Text style={styles.error}>暂时无法加载清单，请稍后重试。</Text>
+          ) : null}
+          {personQuery.isError ? (
+            <Text style={styles.error}>暂时无法关联这位亲友，请返回后重试。</Text>
           ) : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>

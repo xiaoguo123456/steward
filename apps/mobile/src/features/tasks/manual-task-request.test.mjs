@@ -37,3 +37,18 @@ test('手动设置截止日期时保留用户时区和自选提醒时间', () =>
     reminders: [{ kind: 'absolute_local', local_time: '18:30', days_before: 0 }],
   });
 });
+
+test('从亲友详情创建任务时保留人物关联且不改变清单归属', () => {
+  assert.deepEqual(buildManualTaskRequest({
+    title: '给妈妈买药',
+    description: '',
+    priority: 'normal',
+    listId: 'list-family',
+    personId: 'per-mom',
+  }), {
+    title: '给妈妈买药',
+    priority: 'normal',
+    list_id: 'list-family',
+    person_id: 'per-mom',
+  });
+});

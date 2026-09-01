@@ -59,5 +59,10 @@ export interface CreateTaskRequest {
   list_id?: string | null;
   /** @nullable */
   project_id?: string | null;
+  /**
+     * 创建时关联一位当前用户的亲友；Task 仍归属 list_id 指定的清单。
+     * @nullable
+     */
+  person_id?: string | null;
   reminders?: ReminderInput[];
 }

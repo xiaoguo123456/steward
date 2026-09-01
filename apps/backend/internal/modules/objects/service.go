@@ -35,6 +35,11 @@ type MediaResolver interface {
 	ValidateImageReferences(ctx context.Context, q *dbgen.Queries, userID string, mediaIDs []string) error
 }
 
+// PersonLinker 是 relationships 模块公开的最小能力：校验人物归属并关联 Task。
+type PersonLinker interface {
+	LinkTask(ctx context.Context, q *dbgen.Queries, userID, taskID, personID string) error
+}
+
 // Service 是 Task、Event、Project 与 Note 的应用服务。
 type Service struct {
 	db       *database.DB
@@ -42,6 +47,7 @@ type Service struct {
 	users    UserProfile
 	activity ActivityRecorder
 	media    MediaResolver
+	people   PersonLinker
 	polisher ai.ChatProvider
 	audit    *aiaudit.Recorder
 }
@@ -49,6 +55,12 @@ type Service struct {
 // New 构造 Service。
 func New(db *database.DB, lists ListResolver, users UserProfile, act ActivityRecorder, media MediaResolver) *Service {
 	return &Service{db: db, lists: lists, users: users, activity: act, media: media}
+}
+
+// WithPersonLinker 注入亲友关联能力；启动组装完成后再处理请求。
+func (s *Service) WithPersonLinker(linker PersonLinker) *Service {
+	s.people = linker
+	return s
 }
 
 // WithNotePolisher 注入显式的一键润色能力。Provider 为空时普通笔记 CRUD 仍可用。

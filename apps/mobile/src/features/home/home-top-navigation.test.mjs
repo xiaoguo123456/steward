@@ -35,15 +35,19 @@ test('亲友首页使用正式人物查询和添加入口', async () => {
   assert.doesNotMatch(relationships, /style=\{styles\.actionRow\}/);
 });
 
-test('亲友详情聚焦人物资料、近期安排和重要日', async () => {
+test('亲友详情聚焦人物资料、关联待办、近期安排和重要日', async () => {
   const detail = await readFile(new URL('../../app/people/[id].tsx', import.meta.url), 'utf8');
   const eventForm = await readFile(new URL('../../app/people/[id]/event/new.tsx', import.meta.url), 'utf8');
   const editForm = await readFile(new URL('../../app/people/[id]/edit.tsx', import.meta.url), 'utf8');
 
   assert.match(detail, /useGetPerson/);
   assert.match(detail, /useListPersonEvents/);
+  assert.match(detail, /useListTasks/);
+  assert.match(detail, /person_id: personID/);
   assert.doesNotMatch(detail, /useListPersonInteractions|记互动|最近互动/);
+  assert.match(detail, /label="添加任务"/);
   assert.match(detail, /label="添加事件"/);
+  assert.match(detail, /title="待办"/);
   assert.match(detail, /title="近期安排"/);
   assert.match(detail, /title="重要日"/);
   assert.match(detail, /event\.event_kind !== 'important_date'/);

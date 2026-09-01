@@ -31,6 +31,7 @@ export const ListTasksQueryParams = zod.object({
   "list_id": zod.string().optional(),
   "list_kind": zod.enum(['tasks', 'shopping']).optional().describe('按清单用途筛选。计划页传 tasks，购物场景传 shopping。'),
   "project_id": zod.string().optional(),
+  "person_id": zod.string().optional().describe('只返回与该亲友关联的 Task；Task 仍保留原 TaskList 归属。'),
   "due_before": zod.string().date().optional().describe('以用户时区解释的当地日期上界，含当日。'),
   "scheduled_on": zod.string().date().optional(),
   "day": zod.string().date().optional().describe('该当地日期需要关注的 Task，收录规则与 Today 完全一致：\n当日截止、当日有计划时间、已逾期，或被明确加入当天。\n用于“明天”等按天视图，避免客户端自行推导收录条件。\n'),
@@ -130,6 +131,7 @@ export const CreateTaskBody = zod.object({
   "focus_date": zod.string().date().nullish(),
   "list_id": zod.string().nullish().describe('未指定时使用用户的默认清单。'),
   "project_id": zod.string().nullish(),
+  "person_id": zod.string().nullish().describe('创建时关联一位当前用户的亲友；Task 仍归属 list_id 指定的清单。'),
   "reminders": zod.array(zod.object({
   "kind": zod.enum(['relative', 'absolute_local']),
   "offset_minutes": zod.number().int().nullish(),

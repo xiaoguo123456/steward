@@ -1,8 +1,10 @@
 import {
   errorMessage,
   type Event,
+  type Task,
   useGetPerson,
   useListPersonEvents,
+  useListTasks,
 } from '@steward/api-client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -33,6 +35,10 @@ export default function PersonDetailScreen() {
   const personID = Array.isArray(params.id) ? params.id[0] : params.id;
   const personQuery = useGetPerson(personID ?? '', { query: { enabled: Boolean(personID), staleTime: 30_000 } });
   const eventsQuery = useListPersonEvents(personID ?? '', { limit: 50 }, { query: { enabled: Boolean(personID) } });
+  const tasksQuery = useListTasks(
+    { person_id: personID, status: ['todo', 'doing'], limit: 50 },
+    { query: { enabled: Boolean(personID) } },
+  );
 
   if (personQuery.isPending) {
     return (
@@ -94,12 +100,40 @@ export default function PersonDetailScreen() {
           </View>
         </View>
 
-        <AppButton
-          compact
-          icon="calendar-outline"
-          label="添加事件"
-          onPress={() => router.push({ pathname: '/people/[id]/event/new', params: { id: person.id } })}
-        />
+        <View style={styles.actions}>
+          <AppButton
+            compact
+            icon="checkmark-circle-outline"
+            label="添加任务"
+            onPress={() => router.push({ pathname: '/tasks/new', params: { personId: person.id } })}
+            style={styles.actionButton}
+          />
+          <AppButton
+            compact
+            icon="calendar-outline"
+            label="添加事件"
+            onPress={() => router.push({ pathname: '/people/[id]/event/new', params: { id: person.id } })}
+            style={styles.actionButton}
+            variant="secondary"
+          />
+        </View>
+
+        <DetailSection title="待办">
+          {tasksQuery.isPending ? (
+            <ActivityIndicator color={colors.primary} style={styles.inlineLoader} />
+          ) : tasksQuery.isError ? (
+            <InlineFailure onRetry={() => void tasksQuery.refetch()} />
+          ) : (tasksQuery.data?.data ?? []).length === 0 ? (
+            <EmptyRow label="暂无待办" />
+          ) : (tasksQuery.data?.data ?? []).map((task, index, tasks) => (
+            <TaskRow
+              divider={index < tasks.length - 1}
+              key={task.id}
+              onPress={() => router.push({ pathname: '/tasks/[id]', params: { id: task.id } })}
+              task={task}
+            />
+          ))}
+        </DetailSection>
 
         <DetailSection title="近期安排">
           {eventsQuery.isPending ? (
@@ -159,6 +193,39 @@ function EventRow({ divider, event }: { divider: boolean; event: Event }) {
   );
 }
 
+function TaskRow({ divider, onPress, task }: { divider: boolean; onPress: () => void; task: Task }) {
+  const due = taskDueLabel(task);
+  return (
+    <Pressable
+      accessibilityLabel={`查看任务：${task.title}`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.taskRow, divider && styles.divider, pressed && styles.pressed]}
+    >
+      <AppIcon color={colors.primaryStrong} name="ellipse-outline" size={20} />
+      <View style={styles.timelineCopy}>
+        <Text numberOfLines={2} style={styles.rowTitle}>{task.title}</Text>
+        {due ? <Text style={styles.rowMeta}>{due}</Text> : null}
+      </View>
+      <AppIcon color={colors.textTertiary} name="chevron-forward" size={17} />
+    </Pressable>
+  );
+}
+
+function taskDueLabel(task: Task) {
+  if (task.due_date) {
+    const [, month, day] = task.due_date.split('-');
+    return `${Number(month)}月${Number(day)}日截止`;
+  }
+  if (task.due_at) {
+    const value = new Date(task.due_at);
+    if (!Number.isNaN(value.getTime())) {
+      return `${value.getMonth() + 1}月${value.getDate()}日 ${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}截止`;
+    }
+  }
+  return '';
+}
+
 function EmptyRow({ label }: { label: string }) {
   return <Text style={styles.empty}>{label}</Text>;
 }
@@ -181,9 +248,12 @@ const styles = StyleSheet.create({
   avatarText: { color: colors.primaryStrong, fontFamily, fontSize: 28, lineHeight: 36, fontWeight: '700' },
   name: { color: colors.text, fontFamily, ...typography.detail },
   relation: { color: colors.textSecondary, fontFamily, ...typography.body },
+  actions: { flexDirection: 'row', gap: spacing.md },
+  actionButton: { flex: 1 },
   section: { gap: spacing.xs },
   sectionBody: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   timelineRow: { minHeight: 68, paddingVertical: spacing.md, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  taskRow: { minHeight: 64, paddingVertical: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   timelineIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.primarySoft },
   timelineCopy: { minWidth: 0, flex: 1, gap: 2 },

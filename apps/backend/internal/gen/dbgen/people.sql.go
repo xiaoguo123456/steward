@@ -193,6 +193,23 @@ func (q *Queries) LinkEventToPerson(ctx context.Context, arg LinkEventToPersonPa
 	return err
 }
 
+const linkTaskToPerson = `-- name: LinkTaskToPerson :exec
+INSERT INTO task_people (task_id, person_id, user_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (task_id, person_id) DO NOTHING
+`
+
+type LinkTaskToPersonParams struct {
+	TaskID   string
+	PersonID string
+	UserID   string
+}
+
+func (q *Queries) LinkTaskToPerson(ctx context.Context, arg LinkTaskToPersonParams) error {
+	_, err := q.db.Exec(ctx, linkTaskToPerson, arg.TaskID, arg.PersonID, arg.UserID)
+	return err
+}
+
 const listPeople = `-- name: ListPeople :many
 
 SELECT id, user_id, name, relationship_group, relationship_label, note, created_by, provenance_refs, created_at, updated_at, deleted_at, version FROM people

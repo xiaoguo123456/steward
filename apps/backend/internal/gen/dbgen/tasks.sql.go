@@ -357,35 +357,41 @@ WHERE deleted_at IS NULL
        WHERE tl.id = tasks.list_id AND tl.list_kind = $3::text
   ))
   AND ($4::text IS NULL OR project_id = $4::text)
-  AND ($5::date IS NULL OR due_date <= $5::date)
-  AND ($6::date IS NULL OR due_date >= $6::date)
-  AND ($7::timestamptz IS NULL
-       OR (scheduled_start_at >= $7::timestamptz
-           AND scheduled_start_at <= $8::timestamptz))
+  AND ($5::text IS NULL OR EXISTS (
+       SELECT 1 FROM task_people tp
+       WHERE tp.task_id = tasks.id
+         AND tp.user_id = tasks.user_id
+         AND tp.person_id = $5::text
+  ))
+  AND ($6::date IS NULL OR due_date <= $6::date)
+  AND ($7::date IS NULL OR due_date >= $7::date)
+  AND ($8::timestamptz IS NULL
+       OR (scheduled_start_at >= $8::timestamptz
+           AND scheduled_start_at <= $9::timestamptz))
   -- 未安排：todo 且没有任何截止、计划与 focus_date。
-  AND (NOT $9::bool
+  AND (NOT $10::bool
        OR (status = 'todo' AND due_date IS NULL AND due_at IS NULL
            AND scheduled_start_at IS NULL AND focus_date IS NULL))
-  AND ($10::text IS NULL OR title ILIKE '%' || $10::text || '%')
-  AND ($11::timestamptz IS NULL
-       OR (completed_at >= $11::timestamptz
-           AND completed_at <= $12::timestamptz))
+  AND ($11::text IS NULL OR title ILIKE '%' || $11::text || '%')
+  AND ($12::timestamptz IS NULL
+       OR (completed_at >= $12::timestamptz
+           AND completed_at <= $13::timestamptz))
   -- day：与 Today 相同的收录规则，用于“明天”等按天视图。
-  AND ($13::date IS NULL
+  AND ($14::date IS NULL
        OR (status IN ('todo', 'doing')
-           AND (focus_date = $13::date
+           AND (focus_date = $14::date
                 OR (scheduled_start_at IS NOT NULL
-                    AND scheduled_start_at >= $14::timestamptz
-                    AND scheduled_start_at <= $15::timestamptz)
-                OR due_date = $13::date
+                    AND scheduled_start_at >= $15::timestamptz
+                    AND scheduled_start_at <= $16::timestamptz)
+                OR due_date = $14::date
                 OR (due_at IS NOT NULL
-                    AND due_at >= $14::timestamptz
-                    AND due_at <= $15::timestamptz))))
+                    AND due_at >= $15::timestamptz
+                    AND due_at <= $16::timestamptz))))
   -- 键集分页游标：按 (created_at, id) 递减推进。
-  AND ($16::timestamptz IS NULL
-       OR (created_at, id) < ($16::timestamptz, $17::text))
+  AND ($17::timestamptz IS NULL
+       OR (created_at, id) < ($17::timestamptz, $18::text))
 ORDER BY created_at DESC, id DESC
-LIMIT $18
+LIMIT $19
 `
 
 type ListTasksParams struct {
@@ -393,6 +399,7 @@ type ListTasksParams struct {
 	ListID          *string
 	ListKind        *string
 	ProjectID       *string
+	PersonID        *string
 	DueBefore       *time.Time
 	DueFrom         *time.Time
 	ScheduledFrom   *time.Time
@@ -416,6 +423,7 @@ func (q *Queries) ListTasks(ctx context.Context, arg ListTasksParams) ([]Task, e
 		arg.ListID,
 		arg.ListKind,
 		arg.ProjectID,
+		arg.PersonID,
 		arg.DueBefore,
 		arg.DueFrom,
 		arg.ScheduledFrom,

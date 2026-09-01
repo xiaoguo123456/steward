@@ -144,6 +144,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	memoryMomentsSvc := memorymoments.New(db, mediaSvc, activitySvc, enqueuer)
 	objectsSvc := objects.New(db, listsSvc, usersSvc, activitySvc, mediaSvc)
 	relationshipsSvc := relationships.New(db, objectsSvc, activitySvc)
+	objectsSvc.WithPersonLinker(relationshipsSvc)
 	moodJournalSvc := moodjournal.New(db, objectsSvc, usersSvc, activitySvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)

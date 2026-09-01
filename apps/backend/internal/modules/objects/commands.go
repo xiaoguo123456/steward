@@ -2,6 +2,7 @@ package objects
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -43,6 +44,7 @@ type CreateTaskCommand struct {
 	FocusDate         *time.Time
 	ListID            string
 	ProjectID         *string
+	PersonID          *string
 	CreatedBy         string
 	Provenance        []ProvenanceInput
 }
@@ -124,6 +126,14 @@ func (s *Service) CreateTaskInTx(ctx context.Context, q *dbgen.Queries, userID s
 	})
 	if err != nil {
 		return dbgen.Task{}, apperr.Internal(err)
+	}
+	if cmd.PersonID != nil {
+		if s.people == nil {
+			return dbgen.Task{}, apperr.Internal(fmt.Errorf("亲友关联能力未初始化"))
+		}
+		if err := s.people.LinkTask(ctx, q, userID, row.ID, *cmd.PersonID); err != nil {
+			return dbgen.Task{}, err
+		}
 	}
 	return row, nil
 }

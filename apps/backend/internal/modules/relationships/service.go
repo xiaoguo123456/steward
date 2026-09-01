@@ -1,4 +1,4 @@
-// Package relationships 管理用户主动建立的亲友档案、历史互动和人物事件关联。
+// Package relationships 管理用户主动建立的亲友档案及其事件、任务关联。
 package relationships
 
 import (
@@ -109,6 +109,23 @@ func (s *Service) Get(ctx context.Context, userID, personID string) (dbgen.Perso
 		return nil
 	})
 	return out, err
+}
+
+// LinkTask 在调用方事务内校验人物归属并关联正式 Task。
+func (s *Service) LinkTask(ctx context.Context, q *dbgen.Queries,
+	userID, taskID, personID string) error {
+	if _, err := q.GetPerson(ctx, personID); err != nil {
+		if database.IsNoRows(err) {
+			return apperr.NotFound("亲友")
+		}
+		return apperr.Internal(err)
+	}
+	if err := q.LinkTaskToPerson(ctx, dbgen.LinkTaskToPersonParams{
+		TaskID: taskID, PersonID: personID, UserID: userID,
+	}); err != nil {
+		return apperr.Internal(err)
+	}
+	return nil
 }
 
 // Create 手动创建亲友档案。

@@ -266,6 +266,7 @@ type Querier interface {
 	// 后台每个响应都要说出「这份数据算到什么时候」。
 	LatestAggregation(ctx context.Context, kind string) (AdminAggregationRun, error)
 	LinkEventToPerson(ctx context.Context, arg LinkEventToPersonParams) error
+	LinkTaskToPerson(ctx context.Context, arg LinkTaskToPersonParams) error
 	ListAIPrices(ctx context.Context) ([]ListAIPricesRow, error)
 	ListActivityBatches(ctx context.Context, arg ListActivityBatchesParams) ([]ActivityBatch, error)
 	ListActivityEntries(ctx context.Context, batchID string) ([]ActivityEntry, error)

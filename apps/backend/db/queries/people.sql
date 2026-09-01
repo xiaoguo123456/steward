@@ -81,6 +81,11 @@ INSERT INTO event_people (event_id, person_id, user_id)
 VALUES (sqlc.arg(event_id), sqlc.arg(person_id), sqlc.arg(user_id))
 ON CONFLICT (event_id, person_id) DO NOTHING;
 
+-- name: LinkTaskToPerson :exec
+INSERT INTO task_people (task_id, person_id, user_id)
+VALUES (sqlc.arg(task_id), sqlc.arg(person_id), sqlc.arg(user_id))
+ON CONFLICT (task_id, person_id) DO NOTHING;
+
 -- name: ListPersonEvents :many
 SELECT e.*
 FROM events e

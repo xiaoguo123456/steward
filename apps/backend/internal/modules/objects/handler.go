@@ -35,6 +35,7 @@ func (h *ObjectAPI) ListTasks(ctx context.Context, req httpapi.ListTasksRequestO
 	filter := TaskFilter{
 		ListID:      req.Params.ListId,
 		ProjectID:   req.Params.ProjectId,
+		PersonID:    req.Params.PersonId,
 		Query:       req.Params.Q,
 		Unscheduled: req.Params.Unscheduled != nil && *req.Params.Unscheduled,
 		// 多取一条用于判断是否还有下一页。

@@ -845,6 +845,13 @@ type TaskList struct {
 	ListKind   string
 }
 
+type TaskPerson struct {
+	TaskID    string
+	PersonID  string
+	UserID    string
+	CreatedAt time.Time
+}
+
 type Tracker struct {
 	ID             string
 	UserID         string

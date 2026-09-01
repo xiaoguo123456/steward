@@ -10,6 +10,12 @@ WHERE deleted_at IS NULL
        WHERE tl.id = tasks.list_id AND tl.list_kind = sqlc.narg(list_kind)::text
   ))
   AND (sqlc.narg(project_id)::text IS NULL OR project_id = sqlc.narg(project_id)::text)
+  AND (sqlc.narg(person_id)::text IS NULL OR EXISTS (
+       SELECT 1 FROM task_people tp
+       WHERE tp.task_id = tasks.id
+         AND tp.user_id = tasks.user_id
+         AND tp.person_id = sqlc.narg(person_id)::text
+  ))
   AND (sqlc.narg(due_before)::date IS NULL OR due_date <= sqlc.narg(due_before)::date)
   AND (sqlc.narg(due_from)::date IS NULL OR due_date >= sqlc.narg(due_from)::date)
   AND (sqlc.narg(scheduled_from)::timestamptz IS NULL

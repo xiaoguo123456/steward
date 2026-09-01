@@ -34,6 +34,12 @@ Collection:
         required: false
         schema:
           type: string
+      - name: person_id
+        in: query
+        required: false
+        description: 只返回与该亲友关联的 Task；Task 仍保留原 TaskList 归属。
+        schema:
+          type: string
       - name: due_before
         in: query
         required: false

@@ -544,6 +544,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: person_id
+          in: query
+          required: false
+          description: 只返回与该亲友关联的 Task；Task 仍保留原 TaskList 归属。
+          schema:
+            type: string
         - name: due_before
           in: query
           required: false
@@ -4723,6 +4729,10 @@ components:
         project_id:
           type: string
           nullable: true
+        person_id:
+          type: string
+          nullable: true
+          description: 创建时关联一位当前用户的亲友；Task 仍归属 list_id 指定的清单。
         reminders:
           type: array
           items:

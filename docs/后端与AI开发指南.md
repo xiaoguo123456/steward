@@ -781,6 +781,8 @@ Registry 中的 Capability 必须有：
 | `search.hybrid` | Search | 关键词、结构化过滤和向量混合检索 |
 | `memories.search` | Memory | 查找当前 Turn 相关且允许使用的记忆 |
 
+亲友关联任务的手工链路已经复用正式 Task Command，但当前不向 Registry 注册人物检索，也不允许 `tasks.propose_create` 接收 `person_id`。原因是通用 `suggestion_enabled` 不能代替亲友资料的单独授权。以后启用时必须先补齐最小字段披露、同名人物消歧、`person:<id>` 来源、个人信息／第三方清单和对应 Eval，再由用户确认 Proposal 后调用同一 Task Command；模型不得猜测人物 ID。
+
 ## 10.3 Proposal Capability
 
 Proposal Capability 只构造建议，不执行写入：

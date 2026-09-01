@@ -2,6 +2,7 @@ package objects
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ type TaskFilter struct {
 	ListID        *string
 	ListKind      *string
 	ProjectID     *string
+	PersonID      *string
 	DueFrom       *time.Time
 	DueBefore     *time.Time
 	ScheduledFrom *time.Time
@@ -52,6 +54,7 @@ func (s *Service) ListTasks(ctx context.Context, userID string, f TaskFilter) ([
 			ListID:          f.ListID,
 			ListKind:        f.ListKind,
 			ProjectID:       f.ProjectID,
+			PersonID:        f.PersonID,
 			DueFrom:         f.DueFrom,
 			DueBefore:       f.DueBefore,
 			ScheduledFrom:   f.ScheduledFrom,
@@ -196,6 +199,14 @@ func (s *Service) CreateTask(ctx context.Context, userID string, body httpapi.Cr
 		})
 		if err != nil {
 			return apperr.Internal(err)
+		}
+		if body.PersonId != nil {
+			if s.people == nil {
+				return apperr.Internal(fmt.Errorf("亲友关联能力未初始化"))
+			}
+			if err := s.people.LinkTask(ctx, q, userID, created.ID, *body.PersonId); err != nil {
+				return err
+			}
 		}
 
 		if _, err := s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,

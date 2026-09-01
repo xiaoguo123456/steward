@@ -8,6 +8,7 @@ type ManualTaskRequestInput = {
   description: string;
   priority: TaskPriority;
   listId: string;
+  personId?: string;
   focusDate?: string;
   dueDate?: string;
   dueTimezone?: string;
@@ -20,6 +21,7 @@ export function buildManualTaskRequest({
   description,
   priority,
   listId,
+  personId,
   focusDate,
   dueDate,
   dueTimezone,
@@ -32,6 +34,7 @@ export function buildManualTaskRequest({
   };
 
   if (description.trim()) request.description = description.trim();
+  if (personId) request.person_id = personId;
   if (focusDate) request.focus_date = focusDate;
   if (dueDate) {
     request.due_date = dueDate;

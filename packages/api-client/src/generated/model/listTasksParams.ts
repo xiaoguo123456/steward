@@ -40,6 +40,10 @@ list_id?: string;
 list_kind?: TaskListKind;
 project_id?: string;
 /**
+ * 只返回与该亲友关联的 Task；Task 仍保留原 TaskList 归属。
+ */
+person_id?: string;
+/**
  * 以用户时区解释的当地日期上界，含当日。
  */
 due_before?: string;
