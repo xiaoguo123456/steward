@@ -52,7 +52,10 @@ func (s *Service) GetImportantDates(ctx context.Context, userID string, limit in
 		kind := "important_date"
 		rows, err := q.ListEvents(ctx, dbgen.ListEventsParams{
 			EventKind: &kind,
-			RowLimit:  limit,
+			// ListEvents 按创建时间排序，limit 却表示领域排序后的返回数量。
+			// 先读取契约允许的最大集合，否则新建的过期日期可能把真正
+			// 最近的未来日期挤出候选集合。
+			RowLimit: 200,
 		})
 		if err != nil {
 			return apperr.Internal(err)
@@ -70,17 +73,35 @@ func (s *Service) GetImportantDates(ctx context.Context, userID string, limit in
 			})
 		}
 
-		// 按下一次发生日期升序。同一天的按标题稳定排序，
-		// 否则两次请求的顺序可能不一样。
-		sort.SliceStable(out, func(i, j int) bool {
-			if out[i].NextOccurrence.Equal(out[j].NextOccurrence) {
-				return out[i].Event.Title < out[j].Event.Title
-			}
-			return out[i].NextOccurrence.Before(out[j].NextOccurrence)
-		})
+		sortImportantDates(out)
+		if len(out) > int(limit) {
+			out = out[:limit]
+		}
 		return nil
 	})
 	return out, tz, err
+}
+
+// sortImportantDates 先排今天和未来的日期，再排已过期的一次性日期。
+//
+// “即将到来”会直接使用第一条数据，所以已过期条目不能仅因为日期更早
+// 就排到未来条目之前。已过期组按最近过期优先，避免最陈旧的日期
+// 占据组内首位；同日期再按标题稳定排序。
+func sortImportantDates(entries []ImportantDateEntry) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		iExpired := entries[i].DaysUntil < 0
+		jExpired := entries[j].DaysUntil < 0
+		if iExpired != jExpired {
+			return !iExpired
+		}
+		if entries[i].NextOccurrence.Equal(entries[j].NextOccurrence) {
+			return entries[i].Event.Title < entries[j].Event.Title
+		}
+		if iExpired {
+			return entries[i].NextOccurrence.After(entries[j].NextOccurrence)
+		}
+		return entries[i].NextOccurrence.Before(entries[j].NextOccurrence)
+	})
 }
 
 // nextOccurrence 算出这条重要日的下一次发生日期。

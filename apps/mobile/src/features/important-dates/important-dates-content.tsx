@@ -24,6 +24,7 @@ import { DateWheel } from '@/components/ui/date-wheel';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { StatePanel } from '@/components/ui/state-panel';
+import { groupImportantDates } from '@/features/important-dates/important-date-list';
 import {
   parseImportantDateParts,
 } from '@/features/important-dates/important-date-picker';
@@ -516,10 +517,9 @@ export function ImportantDatesContent({
     },
   });
 
-  // 服务端已经按下一次发生日期升序返回，客户端不重排。
+  // 服务端已经把未来日期排在已过期日期前，客户端只分组不重排。
   const items = (importantDates.data?.data ?? []).map(toItem);
-  const nextItem = items[0];
-  const laterItems = items.slice(1);
+  const { nextItem, laterItems, expiredItems } = groupImportantDates(items);
   const selectedItem = items.find((item) => item.id === selectedId) ?? null;
 
   const saveItem = (draft: ImportantDateDraft) => {
@@ -596,12 +596,14 @@ export function ImportantDatesContent({
 
       {!nextItem && !importantDates.isLoading ? (
         <StatePanel
-          actionLabel="添加第一个重要日"
+          actionLabel={items.length > 0 ? '新增重要日' : '添加第一个重要日'}
           compact
           icon="gift-outline"
-          message="记录生日、纪念日或证件到期日，到时间前再提醒你。"
+          message={items.length > 0
+            ? '当前只有已过期的一次性日期，它们仍保留在下方供你查看。'
+            : '记录生日、纪念日或证件到期日，到时间前再提醒你。'}
           onAction={() => onCreateVisibleChange(true)}
-          title="还没有重要日"
+          title={items.length > 0 ? '暂无即将到来的重要日' : '还没有重要日'}
         />
       ) : null}
 
@@ -615,6 +617,24 @@ export function ImportantDatesContent({
           </View>
           <View style={styles.dateList}>
             {laterItems.map((item) => (
+              <ImportantDateRow
+                item={item}
+                key={item.id}
+                onPress={() => setSelectedId(item.id)}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {expiredItems.length > 0 ? (
+        <>
+          <View style={styles.listHeader}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>已过期</Text>
+            <Text style={styles.listCount}>{expiredItems.length} 项</Text>
+          </View>
+          <View style={styles.dateList}>
+            {expiredItems.map((item) => (
               <ImportantDateRow
                 item={item}
                 key={item.id}

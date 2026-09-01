@@ -1,0 +1,75 @@
+{
+  "data": [
+    {
+      "event": {
+        "id": "evt_01anniversary",
+        "type": "event",
+        "title": "结婚纪念日",
+        "event_kind": "important_date",
+        "all_day": true,
+        "start_date": "2020-09-14",
+        "timezone": "Asia/Shanghai",
+        "participants": [],
+        "reminders": [],
+        "important_date_kind": "anniversary",
+        "recurrence": "yearly",
+        "original_month_day": "09-14",
+        "created_by": "user",
+        "provenance_refs": [],
+        "created_at": "2026-08-01T00:00:00Z",
+        "updated_at": "2026-08-01T00:00:00Z",
+        "version": 1
+      },
+      "next_occurrence_date": "2026-09-14",
+      "days_until": 13
+    },
+    {
+      "event": {
+        "id": "evt_01birthday",
+        "type": "event",
+        "title": "朋友生日",
+        "event_kind": "important_date",
+        "all_day": true,
+        "start_date": "1996-09-21",
+        "timezone": "Asia/Shanghai",
+        "participants": [],
+        "reminders": [],
+        "important_date_kind": "birthday",
+        "recurrence": "yearly",
+        "original_month_day": "09-21",
+        "created_by": "user",
+        "provenance_refs": [],
+        "created_at": "2026-08-01T00:00:00Z",
+        "updated_at": "2026-08-01T00:00:00Z",
+        "version": 1
+      },
+      "next_occurrence_date": "2026-09-21",
+      "days_until": 20
+    },
+    {
+      "event": {
+        "id": "evt_01expired",
+        "type": "event",
+        "title": "旧护照到期",
+        "event_kind": "important_date",
+        "all_day": true,
+        "start_date": "2026-08-24",
+        "timezone": "Asia/Shanghai",
+        "participants": [],
+        "reminders": [],
+        "important_date_kind": "expiry",
+        "recurrence": "none",
+        "created_by": "user",
+        "provenance_refs": [],
+        "created_at": "2026-08-01T00:00:00Z",
+        "updated_at": "2026-08-01T00:00:00Z",
+        "version": 1
+      },
+      "next_occurrence_date": "2026-08-24",
+      "days_until": -8
+    }
+  ],
+  "meta": {
+    "request_id": "req_01important_dates"
+  }
+}

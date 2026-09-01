@@ -550,6 +550,8 @@ export const DismissReminderResponse = zod.object({
 /**
  * 重要日复用 event_kind=important_date 的全天 Event，这里只做投影与排序。
  * 年度投影、2 月 29 日与时区换算都由服务端确定性代码计算，客户端不得重排。
+ * 今天和未来条目优先且按发生日期升序；已过期的一次性条目放在其后，
+ * 按最近过期优先。客户端可按 days_until 分区，但保留组内顺序。
  * 新增与修改仍然走普通的 Event 接口。
  * @summary 读取重要日及其下一次发生日期
  */
@@ -624,9 +626,9 @@ export const GetImportantDatesResponse = zod.object({
   "deleted_at": zod.string().datetime({"offset":true}).nullish(),
   "version": zod.number().int()
 }),
-  "next_occurrence_date": zod.string().date().describe('下一次发生的当地日期。按年重复时由服务端投影，\n2 月 29 日在非闰年投影到 2 月 28 日；详情仍展示原始月日。\n'),
+  "next_occurrence_date": zod.string().date().describe('下一次发生的当地日期。按年重复时由服务端投影，\n2 月 29 日在非闰年投影到 2 月 28 日；详情仍展示原始月日。\n一次性日期已过期时仍返回原日期，并由 days_until 的负数明确标识。\n'),
   "days_until": zod.number().int().describe('距离下一次发生还有几天。今天为 0，已过期且不重复时为负数。')
-})).describe('按 next_occurrence_date 升序返回，客户端不得重排。'),
+})).describe('先返回今天和未来条目，按 next_occurrence_date 升序；\n再返回已过期的一次性条目，按 next_occurrence_date 降序。\n客户端可按 days_until 分区，但不得改变组内顺序。\n'),
   "meta": zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
 }).describe('所有成功响应共有的元信息。')
