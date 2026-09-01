@@ -27,10 +27,12 @@ import {
   formatEventTime,
   relationshipGroupLabels,
 } from '@/features/relationships/model';
+import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
 import { colors, fontFamily, radius, spacing, typography } from '@/theme/tokens';
 
 export default function PersonDetailScreen() {
   const router = useRouter();
+  const toggleTaskDone = useToggleTaskDone();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const personID = Array.isArray(params.id) ? params.id[0] : params.id;
   const personQuery = useGetPerson(personID ?? '', { query: { enabled: Boolean(personID), staleTime: 30_000 } });
@@ -127,12 +129,19 @@ export default function PersonDetailScreen() {
             <EmptyRow label="暂无待办" />
           ) : (tasksQuery.data?.data ?? []).map((task, index, tasks) => (
             <TaskRow
+              busy={toggleTaskDone.isPending && toggleTaskDone.variables?.id === task.id}
               divider={index < tasks.length - 1}
               key={task.id}
               onPress={() => router.push({ pathname: '/tasks/[id]', params: { id: task.id } })}
+              onToggle={() => toggleTaskDone.mutate(task)}
               task={task}
             />
           ))}
+          {toggleTaskDone.isError ? (
+            <Text accessibilityRole="alert" style={styles.taskActionError}>
+              {errorMessage(toggleTaskDone.error, '暂时无法完成任务，请重试。')}
+            </Text>
+          ) : null}
         </DetailSection>
 
         <DetailSection title="近期安排">
@@ -193,22 +202,51 @@ function EventRow({ divider, event }: { divider: boolean; event: Event }) {
   );
 }
 
-function TaskRow({ divider, onPress, task }: { divider: boolean; onPress: () => void; task: Task }) {
+function TaskRow({
+  busy,
+  divider,
+  onPress,
+  onToggle,
+  task,
+}: {
+  busy: boolean;
+  divider: boolean;
+  onPress: () => void;
+  onToggle: () => void;
+  task: Task;
+}) {
   const due = taskDueLabel(task);
   return (
-    <Pressable
-      accessibilityLabel={`查看任务：${task.title}`}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.taskRow, divider && styles.divider, pressed && styles.pressed]}
-    >
-      <AppIcon color={colors.primaryStrong} name="ellipse-outline" size={20} />
-      <View style={styles.timelineCopy}>
-        <Text numberOfLines={2} style={styles.rowTitle}>{task.title}</Text>
-        {due ? <Text style={styles.rowMeta}>{due}</Text> : null}
-      </View>
-      <AppIcon color={colors.textTertiary} name="chevron-forward" size={17} />
-    </Pressable>
+    <View style={[styles.taskRow, divider && styles.divider]}>
+      <Pressable
+        accessibilityLabel={`完成任务：${task.title}`}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: false, disabled: busy }}
+        disabled={busy}
+        hitSlop={6}
+        onPress={onToggle}
+        style={({ pressed }) => [styles.taskCheckbox, pressed && styles.pressed]}
+      >
+        {busy ? (
+          <ActivityIndicator color={colors.primaryStrong} size="small" />
+        ) : (
+          <AppIcon color={colors.primaryStrong} name="ellipse-outline" size={20} />
+        )}
+      </Pressable>
+      <Pressable
+        accessibilityLabel={`查看任务：${task.title}`}
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={onPress}
+        style={({ pressed }) => [styles.taskMain, pressed && styles.pressed]}
+      >
+        <View style={styles.timelineCopy}>
+          <Text numberOfLines={2} style={styles.rowTitle}>{task.title}</Text>
+          {due ? <Text style={styles.rowMeta}>{due}</Text> : null}
+        </View>
+        <AppIcon color={colors.textTertiary} name="chevron-forward" size={17} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -253,7 +291,10 @@ const styles = StyleSheet.create({
   section: { gap: spacing.xs },
   sectionBody: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   timelineRow: { minHeight: 68, paddingVertical: spacing.md, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  taskRow: { minHeight: 64, paddingVertical: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  taskRow: { minHeight: 64, paddingVertical: spacing.sm, flexDirection: 'row', alignItems: 'center' },
+  taskCheckbox: { width: 32, minHeight: 44, alignItems: 'flex-start', justifyContent: 'center' },
+  taskMain: { minHeight: 48, minWidth: 0, flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  taskActionError: { paddingBottom: spacing.md, color: colors.danger, fontFamily, ...typography.meta },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   timelineIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.primarySoft },
   timelineCopy: { minWidth: 0, flex: 1, gap: 2 },

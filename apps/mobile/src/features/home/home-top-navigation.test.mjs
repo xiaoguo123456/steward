@@ -48,6 +48,9 @@ test('亲友详情聚焦人物资料、关联待办、近期安排和重要日',
   assert.match(detail, /label="添加任务"/);
   assert.match(detail, /label="添加事件"/);
   assert.match(detail, /title="待办"/);
+  assert.match(detail, /useToggleTaskDone/);
+  assert.match(detail, /accessibilityRole="checkbox"/);
+  assert.match(detail, /accessibilityLabel=\{`完成任务：\$\{task\.title\}`\}/);
   assert.match(detail, /title="近期安排"/);
   assert.match(detail, /title="重要日"/);
   assert.match(detail, /event\.event_kind !== 'important_date'/);
