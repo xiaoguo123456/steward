@@ -20,6 +20,13 @@ for (const entry of entries) {
     continue;
   }
 
+  // 脚本既会被完整 generate 调用，也可能被开发者单独执行。
+  // 已经接过响应 Schema 时只规范文件尾，避免重复插入 import 和校验器参数。
+  if (source.includes(`import * as StewardResponseSchemas from './${entry.name}.zod';`)) {
+    await writeFile(schemaPath, `${schemas.trimEnd()}\n`);
+    continue;
+  }
+
   const lines = source.split('\n');
   const output = [];
   let operation = null;

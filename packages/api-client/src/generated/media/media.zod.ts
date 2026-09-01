@@ -180,4 +180,3 @@ export const RenewMediaUploadGrantResponse = zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
 }).describe('所有成功响应共有的元信息。')
 })
-
