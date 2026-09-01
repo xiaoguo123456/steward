@@ -17,7 +17,11 @@ import type { ImportantDateEntry } from './importantDateEntry';
 import type { ResponseMeta } from './responseMeta';
 
 export interface ImportantDatesResponse {
-  /** 按 next_occurrence_date 升序返回，客户端不得重排。 */
+  /**
+     * 先返回今天和未来条目，按 next_occurrence_date 升序；
+     * 再返回已过期的一次性条目，按 next_occurrence_date 降序。
+     * 客户端可按 days_until 分区，但不得改变组内顺序。
+     */
   data: ImportantDateEntry[];
   meta: ResponseMeta;
 }

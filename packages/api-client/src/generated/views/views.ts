@@ -582,6 +582,8 @@ export const useDismissReminder = <TError = BadRequestResponse | UnauthorizedRes
 /**
  * 重要日复用 event_kind=important_date 的全天 Event，这里只做投影与排序。
  * 年度投影、2 月 29 日与时区换算都由服务端确定性代码计算，客户端不得重排。
+ * 今天和未来条目优先且按发生日期升序；已过期的一次性条目放在其后，
+ * 按最近过期优先。客户端可按 days_until 分区，但保留组内顺序。
  * 新增与修改仍然走普通的 Event 接口。
  * @summary 读取重要日及其下一次发生日期
  */

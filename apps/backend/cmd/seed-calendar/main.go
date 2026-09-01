@@ -1,7 +1,8 @@
 // Command seed-calendar 向指定测试账号补充月历验收数据。
 //
-// 它只允许连接 steward_test 数据库，只新增缺少的同名同日事项，
-// 不删除或改写账号已有内容，适合在真机验收前重复执行。
+// 它只允许连接 steward_test 数据库：普通事项按同名同日去重，
+// 按年重复的重要日按名称去重。命令不删除或改写账号已有内容，
+// 适合在真机验收前重复执行。
 package main
 
 import (
@@ -19,11 +20,67 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
 
 const seedTimezone = "Asia/Shanghai"
 
 var emptyArray = []byte(`[]`)
+
+type calendarEventSpec struct {
+	day               int
+	title             string
+	eventKind         string
+	hour              int
+	location          string
+	recurrence        string
+	importantDateKind string
+}
+
+func scheduleEvent(day int, title string, hour int, location string) calendarEventSpec {
+	return calendarEventSpec{
+		day: day, title: title, eventKind: "schedule", hour: hour,
+		location: location, recurrence: "none",
+	}
+}
+
+func importantDateEvent(
+	day int,
+	title string,
+	kind string,
+	recurrence string,
+) calendarEventSpec {
+	return calendarEventSpec{
+		day: day, title: title, eventKind: "important_date",
+		recurrence: recurrence, importantDateKind: kind,
+	}
+}
+
+func calendarEventSpecs() []calendarEventSpec {
+	return []calendarEventSpec{
+		scheduleEvent(2, "产品周报", 9, "线上会议"),
+		scheduleEvent(3, "团队周会", 10, "一号会议室"),
+		scheduleEvent(4, "设计评审", 14, "二号会议室"),
+		scheduleEvent(5, "上海出差", 8, "虹桥站"),
+		scheduleEvent(6, "客户回访", 15, "线上会议"),
+		scheduleEvent(7, "健身课", 19, "社区健身房"),
+		scheduleEvent(9, "朋友聚餐", 18, "静安寺"),
+		scheduleEvent(10, "牙医复诊", 11, "口腔门诊"),
+		scheduleEvent(12, "版本发布", 16, "线上"),
+		scheduleEvent(13, "财务对账", 10, "办公室"),
+		importantDateEvent(14, "结婚纪念日", "anniversary", "yearly"),
+		scheduleEvent(15, "参观展览", 14, "美术馆"),
+		scheduleEvent(17, "亲子活动", 10, "城市公园"),
+		scheduleEvent(19, "读书会", 19, "图书馆"),
+		importantDateEvent(21, "朋友生日", "birthday", "yearly"),
+		scheduleEvent(22, "周末晚餐", 18, "滨寿司"),
+		importantDateEvent(24, "房租到期", "expiry", "none"),
+		scheduleEvent(25, "项目启动会", 9, "三号会议室"),
+		scheduleEvent(27, "出差返程", 17, "虹桥站"),
+		scheduleEvent(28, "家庭聚餐", 18, "家"),
+		scheduleEvent(29, "周末露营", 9, "郊野公园"),
+	}
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -216,6 +273,7 @@ func seedMonth(
 		return createdTasks, 0, err
 	}
 	existingEventKeys := make(map[string]struct{}, len(existingEvents))
+	existingYearlyImportantTitles := make(map[string]struct{})
 	for _, event := range existingEvents {
 		date := event.StartDate
 		if date == nil {
@@ -224,67 +282,64 @@ func seedMonth(
 		if date != nil {
 			existingEventKeys[calendarKey(event.Title, date.In(loc))] = struct{}{}
 		}
+		if event.EventKind == "important_date" && event.Recurrence == "yearly" {
+			existingYearlyImportantTitles[event.Title] = struct{}{}
+		}
 	}
 
-	events := []struct {
-		day      int
-		title    string
-		kind     string
-		hour     int
-		location string
-	}{
-		{2, "产品周报", "schedule", 9, "线上会议"},
-		{3, "团队周会", "schedule", 10, "一号会议室"},
-		{4, "设计评审", "schedule", 14, "二号会议室"},
-		{5, "上海出差", "schedule", 8, "虹桥站"},
-		{6, "客户回访", "schedule", 15, "线上会议"},
-		{7, "健身课", "schedule", 19, "社区健身房"},
-		{9, "朋友聚餐", "schedule", 18, "静安寺"},
-		{10, "牙医复诊", "schedule", 11, "口腔门诊"},
-		{12, "版本发布", "schedule", 16, "线上"},
-		{13, "财务对账", "schedule", 10, "办公室"},
-		{14, "结婚纪念日", "important_date", 0, ""},
-		{15, "参观展览", "schedule", 14, "美术馆"},
-		{17, "亲子活动", "schedule", 10, "城市公园"},
-		{19, "读书会", "schedule", 19, "图书馆"},
-		{21, "朋友生日", "important_date", 0, ""},
-		{22, "周末晚餐", "schedule", 18, "滨寿司"},
-		{24, "房租到期", "important_date", 0, ""},
-		{25, "项目启动会", "schedule", 9, "三号会议室"},
-		{27, "出差返程", "schedule", 17, "虹桥站"},
-		{28, "家庭聚餐", "schedule", 18, "家"},
-		{29, "周末露营", "schedule", 9, "郊野公园"},
-	}
 	createdEvents := 0
-	for _, spec := range events {
+	for _, spec := range calendarEventSpecs() {
 		date := time.Date(anchor.Year(), anchor.Month(), spec.day, 0, 0, 0, 0, loc)
+		if spec.recurrence == "yearly" {
+			if _, exists := existingYearlyImportantTitles[spec.title]; exists {
+				continue
+			}
+		}
 		if _, exists := existingEventKeys[calendarKey(spec.title, date)]; exists {
 			continue
 		}
-		params := dbgen.CreateEventParams{
-			ID: idgen.New(idgen.PrefixEvent), UserID: userID,
-			Title: spec.title, EventKind: spec.kind, Timezone: seedTimezone,
-			Participants: emptyArray, Reminders: emptyArray, Recurrence: "none",
-			CreatedBy: "user", ProvenanceRefs: emptyArray,
-		}
-		if spec.kind == "important_date" {
-			params.AllDay = true
-			params.StartDate = &date
-		} else {
-			start := time.Date(anchor.Year(), anchor.Month(), spec.day, spec.hour, 0, 0, 0, loc)
-			end := start.Add(time.Hour)
-			params.StartAt = &start
-			params.EndAt = &end
-			if spec.location != "" {
-				params.Location = &spec.location
-			}
-		}
+		params := newSeedEventParams(spec, date, userID)
 		if _, err := q.CreateEvent(ctx, params); err != nil {
 			return createdTasks, createdEvents, fmt.Errorf("创建日程 %s 失败：%w", spec.title, err)
+		}
+		if spec.recurrence == "yearly" {
+			existingYearlyImportantTitles[spec.title] = struct{}{}
 		}
 		createdEvents++
 	}
 	return createdTasks, createdEvents, nil
+}
+
+func newSeedEventParams(
+	spec calendarEventSpec,
+	date time.Time,
+	userID string,
+) dbgen.CreateEventParams {
+	params := dbgen.CreateEventParams{
+		ID: idgen.New(idgen.PrefixEvent), UserID: userID,
+		Title: spec.title, EventKind: spec.eventKind, Timezone: seedTimezone,
+		Participants: emptyArray, Reminders: emptyArray, Recurrence: spec.recurrence,
+		CreatedBy: "user", ProvenanceRefs: emptyArray,
+	}
+	if spec.eventKind == "important_date" {
+		params.AllDay = true
+		params.StartDate = &date
+		params.ImportantDateKind = &spec.importantDateKind
+		if spec.recurrence == "yearly" {
+			monthDay := timeutil.MonthDay(date)
+			params.OriginalMonthDay = &monthDay
+		}
+		return params
+	}
+
+	start := time.Date(date.Year(), date.Month(), date.Day(), spec.hour, 0, 0, 0, date.Location())
+	end := start.Add(time.Hour)
+	params.StartAt = &start
+	params.EndAt = &end
+	if spec.location != "" {
+		params.Location = &spec.location
+	}
+	return params
 }
 
 func calendarKey(title string, date time.Time) string {

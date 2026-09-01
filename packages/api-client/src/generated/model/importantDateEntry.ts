@@ -20,6 +20,7 @@ export interface ImportantDateEntry {
   /**
      * 下一次发生的当地日期。按年重复时由服务端投影，
      * 2 月 29 日在非闰年投影到 2 月 28 日；详情仍展示原始月日。
+     * 一次性日期已过期时仍返回原日期，并由 days_until 的负数明确标识。
      */
   next_occurrence_date: string;
   /** 距离下一次发生还有几天。今天为 0，已过期且不重复时为负数。 */

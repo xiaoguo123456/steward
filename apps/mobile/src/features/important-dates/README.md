@@ -14,7 +14,7 @@
 
 - 列表使用正式 `GET /v1/important-dates` 读模型；新增通过生成 Client 创建 `event_kind=important_date` 的全天 Event。
 - `ImportantDateKind` 是页面视图模型；保存时映射到契约中的 `important_date_kind`，不得作为另一套网络 DTO。
-- 年度投影、2 月 29 日、时区、剩余天数和排序由 Go Domain 负责，客户端按服务端顺序渲染，不自行重算。
+- 年度投影、2 月 29 日、时区、剩余天数和组内排序由 Go Domain 负责。客户端只按 `days_until` 把响应分成“即将到来／更多重要日”与“已过期”，保留各组的服务端顺序，不自行重算日期或重排。
 - 当前提醒只保存正式 Event 提醒规则，设备推送注册与 Expo Notifications 尚未接入；页面不得暗示系统通知已经送达。
 
 ## 日期选择
