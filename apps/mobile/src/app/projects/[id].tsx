@@ -3,6 +3,7 @@ import {
   useGetProject,
   useListEvents,
   useListNotes,
+  useListRecords,
   useListTasks,
   type Project,
   type ProjectStatus,
@@ -220,23 +221,41 @@ function Overview({ project }: { project: Project }) {
   );
 }
 
-/** 项目下的内容。任务、日程与笔记都按 project_id 从服务端取，不在客户端归类。 */
+/** 项目下的内容。四类 Object 都按 project_id 从服务端取，不在客户端归类。 */
 function ProjectObjects({ projectId }: { projectId: string }) {
   const router = useRouter();
   const tasks = useListTasks({ project_id: projectId, limit: 50 });
   const events = useListEvents({ project_id: projectId, limit: 50 });
   const notes = useListNotes({ project_id: projectId, limit: 50 });
+  const records = useListRecords({ project_id: projectId, limit: 50 });
 
   const taskRows = tasks.data?.data ?? [];
   const eventRows = events.data?.data ?? [];
   const noteRows = notes.data?.data ?? [];
-  const empty = taskRows.length === 0 && eventRows.length === 0 && noteRows.length === 0;
+  const recordRows = records.data?.data ?? [];
+  const empty = taskRows.length === 0 && eventRows.length === 0
+    && noteRows.length === 0 && recordRows.length === 0;
 
-  if (tasks.isPending || events.isPending || notes.isPending) {
+  if (tasks.isPending || events.isPending || notes.isPending || records.isPending) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.primary} />
       </View>
+    );
+  }
+
+  const objectError = tasks.error ?? events.error ?? notes.error ?? records.error;
+  if (objectError) {
+    return (
+      <StatePanel
+        actionLabel="重试"
+        icon="cloud-offline-outline"
+        message={errorMessage(objectError, '暂时无法加载项目内容。')}
+        onAction={() => {
+          void Promise.all([tasks.refetch(), events.refetch(), notes.refetch(), records.refetch()]);
+        }}
+        title="加载失败"
+      />
     );
   }
 
@@ -279,6 +298,7 @@ function ProjectObjects({ projectId }: { projectId: string }) {
                 icon="calendar-outline"
                 key={event.id}
                 meta={event.start_date ?? ''}
+                onPress={() => router.push({ pathname: '/events/[id]' as never, params: { id: event.id } })}
                 title={event.title}
               />
             ))}
@@ -302,6 +322,22 @@ function ProjectObjects({ projectId }: { projectId: string }) {
           </View>
         </>
       ) : null}
+
+      {recordRows.length > 0 ? (
+        <>
+          <SectionTitle count={`${recordRows.length} 条`} style={styles.section} title="数据" />
+          <View style={styles.rows}>
+            {recordRows.map((record) => (
+              <ObjectRow
+                icon="analytics-outline"
+                key={record.id}
+                meta={record.tracker_name ?? record.tracker_id}
+                title={record.title}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
     </>
   );
 }
@@ -315,7 +351,7 @@ function ObjectRow({
 }: {
   title: string;
   meta: string;
-  icon: 'checkmark-circle-outline' | 'calendar-outline' | 'document-text-outline';
+  icon: 'checkmark-circle-outline' | 'calendar-outline' | 'document-text-outline' | 'analytics-outline';
   done?: boolean;
   onPress?: () => void;
 }) {

@@ -14,6 +14,7 @@ import {
   type HomeTopTabId,
 } from '@/features/home/home-top-navigation';
 import { HomeTopTabs } from '@/features/home/home-top-tabs';
+import { NotificationEntry } from '@/features/notifications/notification-entry';
 import { MemoriesHome } from '@/features/memories/memories-home';
 import { MoodJournalContent } from '@/features/mood-journal/mood-journal-content';
 import { RelationshipsContent } from '@/features/relationships/relationships-content';
@@ -152,14 +153,17 @@ export default function HomeScreen() {
       >
         <PageHeader
           action={
-            <Pressable
-              accessibilityLabel="打开我的"
-              accessibilityRole="button"
-              onPress={() => router.push('/me')}
-              style={styles.avatar}
-            >
-              <AppIcon color={colors.background} name="person" size={20} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <NotificationEntry />
+              <Pressable
+                accessibilityLabel="打开我的"
+                accessibilityRole="button"
+                onPress={() => router.push('/me')}
+                style={styles.avatar}
+              >
+                <AppIcon color={colors.background} name="person" size={20} />
+              </Pressable>
+            </View>
           }
           subtitle={formatToday(today.data?.data.date)}
           title="首页"
@@ -348,7 +352,20 @@ function PendingRemindersBlock() {
   const reminders = usePendingReminders();
   const today = new Date();
 
-  if (reminders.loading || reminders.items.length === 0) return null;
+  if (reminders.loading) return null;
+  if (reminders.failure && reminders.items.length === 0) {
+    return (
+      <StatePanel
+        actionLabel="重试"
+        compact
+        icon="cloud-offline-outline"
+        message={reminders.failure}
+        onAction={() => void reminders.refetch()}
+        title="提醒加载失败"
+      />
+    );
+  }
+  if (reminders.items.length === 0) return null;
 
   return (
     <View style={styles.reminderBlock}>
@@ -397,6 +414,7 @@ function PendingRemindersBlock() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   reminderBlock: {
     marginTop: 8,
     paddingHorizontal: 12,

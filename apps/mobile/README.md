@@ -17,11 +17,11 @@
 - 服务端事实使用 TanStack Query；网络请求必须通过 `@steward/api-client` 的生成 Client 和 Zod 校验器，不手写 URL、网络 DTO 或第二套错误码。
 - 当前跨组件状态使用 React Context／Reducer／页面状态；凭证和心情日记草稿使用 `expo-secure-store`。仓库当前没有 Zustand、React Hook Form 或通用 SQLite 草稿层。
 - Hugeicons 只能经 `src/components/ui/icon.tsx` 的语义名称使用。Expo UI 与 Slider 只能经 `src/components/ui/selection-controls.tsx` 适配后使用；Feature 不直接绑定底层组件库。
-- MapLibre、Location、Image Picker、Speech、Secure Store 和 Updates 都包含平台或生命周期边界。新增原生依赖、权限或 Plugin 后必须重新构建原生包，不能只发布 JavaScript 更新。
+- MapLibre、Location、Image Picker、Speech、Keep Awake、Local Authentication、Secure Store 和 Updates 都包含平台或生命周期边界。新增原生依赖、权限或 Plugin 后必须重新构建原生包，不能只发布 JavaScript 更新。应用锁通过系统面容、指纹或设备密码验证，App 不读取或上传生物识别模板。
 
 ## 当前能力边界
 
-核心管理、Capture 确认、Assistant、时光、心情日记、食谱、行程、重要日、购物和复盘等页面已经使用正式 API。Capture 未提交输入使用按账号分库的 SQLCipher 草稿与离线上传队列，媒体先复制到应用 Documents；Web 不持久化该私有草稿。时光复用正式媒体上传并读取 Memory Moments API，发布后只读且只能整段删除；其独立发布草稿和离线上传恢复尚未持久化。亲友占用首页标签，但只在开发构建中展示 Fixture，生产构建显示准备状态；音乐不进入当前首页信息架构。专注、记账和运动均把最终记录写入正式 Tracker／Record；专注计时和原始 GPS 仍按各模块边界留在设备会话，拍照记账复用正式媒体 Capture、可编辑确认和 Record 保存链路。
+核心管理、Capture 确认、Assistant、时光、心情日记、亲友、食谱、行程、重要日、购物和复盘等页面已经使用正式 API。Capture 未提交输入使用按账号分库的 SQLCipher 草稿与离线上传队列，媒体先复制到应用 Documents；Web 不持久化该私有草稿。时光复用正式媒体上传并读取 Memory Moments API，发布后只读且只能整段删除；其独立发布草稿和离线上传恢复尚未持久化。亲友使用正式 People API 保存用户主动录入的人物及其 Task／Event 关联，不读取系统通讯录，也不装载 Fixture；音乐不进入当前首页信息架构。专注、记账和运动均把最终记录写入正式 Tracker／Record；专注计时和原始 GPS 仍按各模块边界留在设备会话，拍照记账复用正式媒体 Capture、可编辑确认和 Record 保存链路。
 
 不要从页面是否“看起来完整”推断是否已接正式数据。开发前先查 [实现状态](../../docs/实现状态.md)，再阅读目标 Feature 的 README、[功能规格说明](../../docs/功能规格说明.md) 和 [产品设计说明](../../docs/产品设计说明.md)。
 
@@ -69,6 +69,7 @@ pnpm --filter mobile test:h5
 - 测试 APK、生产 APK 和服务器部署由独立 GitHub Actions 工作流负责，触发方式、签名和产物见 [部署说明](../../docs/部署说明.md)。
 - OTA 只允许发布与已安装原生 runtime 兼容的 JavaScript、样式和专用资源，且只能经仓库工作流执行；runtime、频道、签名、灰度与回滚规则见 [ADR-028：移动端 OTA 更新](../../docs/ADR-028-移动端OTA更新.md)。
 - 新增原生依赖、权限、App Config、图标、启动图或普通原生资源时必须提升 App 版本并重新构建 APK。
+- `expo-local-authentication` 从 `1.0.1`／Android `versionCode=2` 起进入原生运行时；该版本需真机验证首次开启、取消、失败、系统锁定、后台预览遮挡和重新解锁，并同步核对 iOS Face ID 用途说明与商店隐私申报。
 - Expo Project、验签证书、Secrets、首个原生包和回滚演练完成前，不得声称 OTA 已对用户生效。
 
 ## 依赖补丁

@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './projects.zod';
 import {
   useMutation,
   useQuery
@@ -95,6 +96,7 @@ export const listProjects = async (params?: ListProjectsParams, options?: Parame
 
 
   }
+, StewardResponseSchemas.ListProjectsResponse
 );}
 
 
@@ -195,6 +197,7 @@ export const createProject = async (createProjectRequest: CreateProjectRequest, 
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createProjectRequest)
   }
+, StewardResponseSchemas.CreateProjectResponse
 );}
 
 
@@ -265,6 +268,7 @@ export const getProject = async (projectId: string, options?: Parameters<typeof 
 
 
   }
+, StewardResponseSchemas.GetProjectResponse
 );}
 
 
@@ -366,6 +370,7 @@ export const updateProject = async (projectId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateProjectRequest)
   }
+, StewardResponseSchemas.UpdateProjectResponse
 );}
 
 
@@ -436,6 +441,7 @@ export const deleteProject = async (projectId: string, options?: Parameters<type
 
 
   }
+, StewardResponseSchemas.DeleteProjectResponse
 );}
 
 

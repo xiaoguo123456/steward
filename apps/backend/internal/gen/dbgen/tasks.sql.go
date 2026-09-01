@@ -301,6 +301,44 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 	return i, err
 }
 
+const getTaskForUpdate = `-- name: GetTaskForUpdate :one
+SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category FROM tasks WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
+`
+
+func (q *Queries) GetTaskForUpdate(ctx context.Context, id string) (Task, error) {
+	row := q.db.QueryRow(ctx, getTaskForUpdate, id)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+		&i.DueDate,
+		&i.DueAt,
+		&i.DueTimezone,
+		&i.ScheduledStartAt,
+		&i.ScheduledEndAt,
+		&i.ScheduledTimezone,
+		&i.EstimatedMinutes,
+		&i.FocusDate,
+		&i.ListID,
+		&i.ProjectID,
+		&i.Reminders,
+		&i.CompletedAt,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.QuantityText,
+		&i.ShoppingCategory,
+	)
+	return i, err
+}
+
 const listCompletedTasksBetween = `-- name: ListCompletedTasksBetween :many
 SELECT id, title, completed_at FROM tasks
 WHERE deleted_at IS NULL AND status = 'done'
@@ -571,15 +609,17 @@ WITH scoped AS (
            tl.name  AS list_name,
            tl.color AS list_color,
            CASE
-               WHEN (t.due_date IS NOT NULL AND t.due_date < $2::date)
-                    OR (t.due_at IS NOT NULL AND t.due_at < $3::timestamptz)
+               WHEN (t.due_date IS NOT NULL
+                     AND t.due_date < ($2::timestamptz AT TIME ZONE t.due_timezone)::date)
+                    OR (t.due_at IS NOT NULL AND t.due_at < $2::timestamptz)
                    THEN 0
-               WHEN t.due_date = $2::date
-                    OR (t.due_at IS NOT NULL AND t.due_at <= $4::timestamptz)
+               WHEN (t.due_date IS NOT NULL
+                     AND t.due_date = ($2::timestamptz AT TIME ZONE t.due_timezone)::date)
+                    OR (t.due_at IS NOT NULL AND t.due_at <= $3::timestamptz)
                    THEN 1
                WHEN t.scheduled_start_at IS NOT NULL
-                    AND t.scheduled_start_at >= $5::timestamptz
-                    AND t.scheduled_start_at <= $4::timestamptz
+                    AND t.scheduled_start_at >= $4::timestamptz
+                    AND t.scheduled_start_at <= $3::timestamptz
                    THEN 2
                ELSE 3
            END AS group_rank
@@ -589,12 +629,13 @@ WITH scoped AS (
       AND t.status IN ('todo', 'doing')
       AND tl.list_kind = 'tasks'
       AND (
-            t.focus_date = $2::date
+            t.focus_date = $5::date
          OR (t.scheduled_start_at IS NOT NULL
-             AND t.scheduled_start_at >= $5::timestamptz
-             AND t.scheduled_start_at <= $4::timestamptz)
-         OR (t.due_date IS NOT NULL AND t.due_date <= $2::date)
-         OR (t.due_at IS NOT NULL AND t.due_at <= $4::timestamptz)
+             AND t.scheduled_start_at >= $4::timestamptz
+             AND t.scheduled_start_at <= $3::timestamptz)
+         OR (t.due_date IS NOT NULL
+             AND t.due_date <= ($2::timestamptz AT TIME ZONE t.due_timezone)::date)
+         OR (t.due_at IS NOT NULL AND t.due_at <= $3::timestamptz)
       )
 )
 SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category, list_name, list_color, group_rank FROM scoped
@@ -616,10 +657,10 @@ ORDER BY
 
 type ListTodayTasksParams struct {
 	Tz       string
-	Today    time.Time
 	NowAt    time.Time
 	DayEnd   time.Time
 	DayStart time.Time
+	Today    time.Time
 }
 
 type ListTodayTasksRow struct {
@@ -660,10 +701,10 @@ type ListTodayTasksRow struct {
 func (q *Queries) ListTodayTasks(ctx context.Context, arg ListTodayTasksParams) ([]ListTodayTasksRow, error) {
 	rows, err := q.db.Query(ctx, listTodayTasks,
 		arg.Tz,
-		arg.Today,
 		arg.NowAt,
 		arg.DayEnd,
 		arg.DayStart,
+		arg.Today,
 	)
 	if err != nil {
 		return nil, err

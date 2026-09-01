@@ -1,6 +1,7 @@
 import {
   createCapture,
   errorMessage,
+  useCancelTurn,
   useCreateThread,
   useCreateTurn,
   useGetCurrentThread,
@@ -57,7 +58,7 @@ export default function AiConversationScreen() {
   const queryClient = useQueryClient();
   const listRef = useRef<ScrollView>(null);
 
-  const params = useLocalSearchParams<{ threadId?: string }>();
+  const params = useLocalSearchParams<{ threadId?: string; taskAction?: string; taskId?: string }>();
   const [threadSession, dispatchThread] = useReducer(
     assistantThreadSessionReducer,
     createAssistantThreadSession(params.threadId),
@@ -65,13 +66,14 @@ export default function AiConversationScreen() {
   const threadId = threadSession.threadId;
   const [turnId, setTurnId] = useState('');
   const [operationId, setOperationId] = useState('');
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(() => taskActionDraft(params.taskAction, params.taskId));
   const [images, setImages] = useState<LocalMedia[]>([]);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [submittingCapture, setSubmittingCapture] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const picker = useImagePicker();
   const media = useMediaUpload();
+
 
   // 打开面板只读取今天的默认对话，不创建空 Thread。
   const currentThread = useGetCurrentThread({
@@ -127,9 +129,17 @@ export default function AiConversationScreen() {
 
   const turnStatus = operation.data?.data.status;
   const settled =
-    turnStatus === 'succeeded' || turnStatus === 'failed' || turnStatus === 'cancelled';
+    turnStatus === 'succeeded' || turnStatus === 'failed' || turnStatus === 'cancelled'
+    || operation.isError;
   // 状态还没拉回来时也算"正在回复"，否则用户能在同一轮里连发两条。
   const thinking = Boolean(operationId) && !settled;
+
+  const cancelTurn = useCancelTurn({
+    mutation: {
+      onSuccess: () => void operation.refetch(),
+      onError: (error) => setFailure(errorMessage(error, '没能停止这次回复，请稍后再试。')),
+    },
+  });
 
   // 这一轮结束就把消息与建议拉一次。
   // 不清空 operationId：那是渲染期的 setState，而且 Operation 完成后
@@ -150,6 +160,8 @@ export default function AiConversationScreen() {
   const turnFailure =
     turnStatus === 'failed'
       ? errorMessage(operation.data?.data.error, '助理这次没能回复，请稍后再试。')
+      : operation.isError
+        ? errorMessage(operation.error, '回复状态暂时无法确认。你可以重新发送，原回复稍后仍会出现在记录里。')
       : null;
   const restoring =
     threadSession.mode === 'default' &&
@@ -466,20 +478,22 @@ export default function AiConversationScreen() {
             value={input}
           />
           <Pressable
-            accessibilityLabel="发送消息"
+            accessibilityLabel={thinking ? '停止回复' : '发送消息'}
             accessibilityRole="button"
-            accessibilityState={{ disabled: !canSend }}
-            disabled={!canSend}
-            onPress={send}
+            accessibilityState={{ disabled: thinking ? cancelTurn.isPending : !canSend }}
+            disabled={thinking ? cancelTurn.isPending : !canSend}
+            onPress={thinking
+              ? () => cancelTurn.mutate({ turnId })
+              : send}
             style={({ pressed }) => [
               styles.sendButton,
-              !canSend && styles.sendDisabled,
-              pressed && canSend && styles.sendPressed,
+              ((!thinking && !canSend) || cancelTurn.isPending) && styles.sendDisabled,
+              pressed && (thinking || canSend) && styles.sendPressed,
             ]}
           >
             <AppIcon
-              color={canSend ? colors.background : colors.textSecondary}
-              name="arrow-up"
+              color={thinking || canSend ? colors.background : colors.textSecondary}
+              name={thinking ? 'close' : 'arrow-up'}
               size={19}
             />
           </Pressable>
@@ -487,6 +501,19 @@ export default function AiConversationScreen() {
       </View>
     </ModalSheet>
   );
+}
+
+/** Task 详情仅传稳定 ID；私人标题和描述由服务端只读能力按当前用户重新读取。 */
+function taskActionDraft(action?: string, rawTaskID?: string): string {
+  const taskID = rawTaskID?.trim();
+  if (!taskID?.startsWith('tsk_')) return '';
+  if (action === 'split') {
+    return `请先读取任务 ${taskID} 的最新版本，再把它拆成 2 到 10 个可执行的子任务。只生成一条批量待确认建议，不要直接写入，也不要自动完成原任务。`;
+  }
+  if (action === 'schedule') {
+    return `请先读取任务 ${taskID}、我的工作时间以及现有日程，给出首选和最多 3 个备选时间段。只生成包含计划开始与结束时间的待确认建议，不要直接修改任务。`;
+  }
+  return '';
 }
 
 function MessageRow({

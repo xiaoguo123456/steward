@@ -1,3 +1,4 @@
+import { errorMessage } from '@steward/api-client';
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -46,6 +47,7 @@ export default function WorkoutSummaryScreen() {
   const outdoor = isOutdoorWorkoutMode(mode);
   const modeDefinition = workoutModes.find((item) => item.id === mode) ?? workoutModes[0];
   const [feeling, setFeeling] = useState<(typeof feelings)[number]['id']>('good');
+  const [saveFailure, setSaveFailure] = useState<string | null>(null);
   const workout = useBuiltinTracker('workout', { limit: 1 });
 
   const elapsedSeconds = Number(rawSeconds ?? 0) || 0;
@@ -64,21 +66,26 @@ export default function WorkoutSummaryScreen() {
       : formatAveragePace(elapsedSeconds, confirmedDistanceMeters);
   const inputInvalid = distance.trim() !== '' && distanceValue === undefined;
 
-  const saveRecord = () => {
+  const saveRecord = async () => {
     if (inputInvalid || workout.saving) return;
+    setSaveFailure(null);
     // GPS 距离仍允许用户在总结页修正；未测到也未补填的字段不落库。
-    workout.save(
-      {
-        duration_min: durationMin,
-        mode,
-        distance_km: outdoor ? distanceValue : undefined,
-      },
-      new Date(),
-      // 「感觉」在运动记录项里没有对应字段，但它是用户真给出的信息，
-      // 不该收集完就丢掉。放进 note，打卡详情里看得见。
-      `感觉：${feelings.find((item) => item.id === feeling)?.label ?? ''}`,
-    );
-    returnToExerciseHome(true);
+    try {
+      await workout.saveAsync(
+        {
+          duration_min: durationMin,
+          mode,
+          distance_km: outdoor ? distanceValue : undefined,
+        },
+        new Date(),
+        // 「感觉」在运动记录项里没有对应字段，但它是用户真给出的信息，
+        // 不该收集完就丢掉。放进 note，打卡详情里看得见。
+        `感觉：${feelings.find((item) => item.id === feeling)?.label ?? ''}`,
+      );
+      returnToExerciseHome(true);
+    } catch (error) {
+      setSaveFailure(errorMessage(error, '运动记录保存失败，请重试。'));
+    }
   };
 
   const returnToExerciseHome = (saved = false) => {
@@ -173,15 +180,19 @@ export default function WorkoutSummaryScreen() {
             );
           })}
         </View>
+        {saveFailure ? (
+          <Text accessibilityRole="alert" style={styles.saveFailure}>{saveFailure}</Text>
+        ) : null}
 
         <View style={styles.footerActions}>
           {inputInvalid ? (
             <Text style={styles.inputError}>距离请填数字。</Text>
           ) : null}
           <WorkoutPrimaryButton
+            disabled={inputInvalid || workout.saving}
             icon="checkmark-circle-outline"
             label={workout.saving ? '正在保存…' : '保存运动记录'}
-            onPress={saveRecord}
+            onPress={() => void saveRecord()}
           />
           <Pressable
             accessibilityRole="button"
@@ -284,6 +295,12 @@ const styles = StyleSheet.create({
   },
   inputError: {
     marginBottom: 10,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  saveFailure: {
     color: colors.danger,
     fontFamily,
     fontSize: 13,

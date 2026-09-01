@@ -211,7 +211,7 @@ var seedRecipes = []recipeSeed{
 // seedRecipeContent 写入示例菜谱。
 //
 // 菜谱不属于任何用户，但 InTx 需要一个身份来设置 RLS 上下文；
-// 这张表本身不受 RLS 约束，传演示用户只是为了复用同一条事务通道。
+// 这张表本身不受 RLS 约束，传入本地种子用户只是为了复用同一条事务通道。
 func seedRecipeContent(ctx context.Context, db *database.DB, userID string) error {
 	return db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		for _, r := range seedRecipes {

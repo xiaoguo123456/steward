@@ -27,7 +27,7 @@ var (
 func captureParseSchema() (*jsonschema.Schema, error) {
 	schemaOnce.Do(func() {
 		var doc any
-		if err := json.Unmarshal(assets.CaptureParseSchemaV3, &doc); err != nil {
+		if err := json.Unmarshal(assets.CaptureParseSchemaV4, &doc); err != nil {
 			schemaErr = fmt.Errorf("解析结果 Schema 不合法：%w", err)
 			return
 		}
@@ -47,8 +47,8 @@ func captureParseSchema() (*jsonschema.Schema, error) {
 //
 //	构造 Prompt → 调用 Provider → 完整 Schema 校验 → 结构修复重试一次 → Domain 映射
 //
-// Provider 不可用或输出始终不合法时降级到本地确定性解析，
-// 保证用户不会卡在一个永远失败的整理上。
+// Provider 不可用或输出始终不合法时返回正式错误，由 Capture 状态机保留原始输入并允许重试。
+// 生产链路不得用规则替身冒充模型成功。
 func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest) (ai.CaptureParseResult, error) {
 	validator, err := captureParseSchema()
 	if err != nil {
@@ -58,13 +58,13 @@ func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest)
 	userPrompt := buildUserPrompt(req)
 	messages := []chatMessage{
 		// 系统策略与用户资料使用不同角色，边界明确。
-		{Role: "system", Content: assets.CaptureParsePromptV3},
+		{Role: "system", Content: assets.CaptureParsePromptV4},
 		{Role: "user", Content: userPrompt},
 	}
 
 	raw, usage, err := p.chat(ctx, p.cfg.ParseModel, messages, true)
 	if err != nil {
-		return p.fallback(ctx, req, err)
+		return ai.CaptureParseResult{}, err
 	}
 
 	parsed, validateErr := decodeAndValidate(raw, validator)
@@ -85,13 +85,13 @@ func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest)
 		usage.OutputTokens += retryUsage.OutputTokens
 		usage.LatencyMS += retryUsage.LatencyMS
 		if retryErr != nil {
-			return p.fallback(ctx, req, retryErr)
+			return ai.CaptureParseResult{}, retryErr
 		}
 
 		parsed, validateErr = decodeAndValidate(retryRaw, validator)
 		if validateErr != nil {
 			p.logger.Error("模型输出两次都不符合 Schema", "error", validateErr)
-			return p.fallback(ctx, req, ai.ErrSchemaInvalid)
+			return ai.CaptureParseResult{}, ai.ErrSchemaInvalid
 		}
 	}
 
@@ -100,22 +100,6 @@ func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest)
 	result.ProviderModel = p.cfg.ParseModel
 	result.PromptVersion = assets.CaptureParsePromptVersion
 	result.SchemaVersion = assets.CaptureParseSchemaVersion
-	return result, nil
-}
-
-// fallback 在 Provider 不可用时退回本地确定性解析。
-func (p *Provider) fallback(ctx context.Context, req ai.CaptureParseRequest, cause error) (ai.CaptureParseResult, error) {
-	if p.cfg.Fallback == nil {
-		return ai.CaptureParseResult{}, cause
-	}
-	p.logger.Warn("模型解析不可用，本次使用本地确定性解析", "cause", cause)
-
-	result, err := p.cfg.Fallback.ParseCapture(ctx, req)
-	if err != nil {
-		return ai.CaptureParseResult{}, cause
-	}
-	// 明确标注结果来自降级路径，避免审计记录产生误导。
-	result.ProviderModel = "fallback:" + result.ProviderModel
 	return result, nil
 }
 
@@ -138,29 +122,32 @@ type rawItineraryDetails struct {
 
 type rawResult struct {
 	Candidates []struct {
-		Type             string               `json:"type"`
-		Action           string               `json:"action"`
-		Title            string               `json:"title"`
-		Content          string               `json:"content"`
-		Description      string               `json:"description"`
-		ProjectKind      string               `json:"project_kind"`
-		Destination      string               `json:"destination"`
-		Priority         string               `json:"priority"`
-		DueDate          string               `json:"due_date"`
-		DueAt            string               `json:"due_at"`
-		AllDay           bool                 `json:"all_day"`
-		StartAt          string               `json:"start_at"`
-		EndAt            string               `json:"end_at"`
-		StartDate        string               `json:"start_date"`
-		EndDate          string               `json:"end_date"`
-		TargetDate       string               `json:"target_date"`
-		EventKind        string               `json:"event_kind"`
-		Location         string               `json:"location"`
-		ItineraryDetails *rawItineraryDetails `json:"itinerary_details"`
-		Tags             []string             `json:"tags"`
-		TrackerID        string               `json:"tracker_id"`
-		Timestamp        string               `json:"timestamp"`
-		Values           []struct {
+		Ref                   string               `json:"ref"`
+		Type                  string               `json:"type"`
+		Action                string               `json:"action"`
+		TargetID              string               `json:"target_id"`
+		TargetExpectedVersion *int32               `json:"target_expected_version"`
+		Title                 string               `json:"title"`
+		Content               string               `json:"content"`
+		Description           string               `json:"description"`
+		ProjectKind           string               `json:"project_kind"`
+		Destination           string               `json:"destination"`
+		Priority              string               `json:"priority"`
+		DueDate               string               `json:"due_date"`
+		DueAt                 string               `json:"due_at"`
+		AllDay                bool                 `json:"all_day"`
+		StartAt               string               `json:"start_at"`
+		EndAt                 string               `json:"end_at"`
+		StartDate             string               `json:"start_date"`
+		EndDate               string               `json:"end_date"`
+		TargetDate            string               `json:"target_date"`
+		EventKind             string               `json:"event_kind"`
+		Location              string               `json:"location"`
+		ItineraryDetails      *rawItineraryDetails `json:"itinerary_details"`
+		Tags                  []string             `json:"tags"`
+		TrackerID             string               `json:"tracker_id"`
+		Timestamp             string               `json:"timestamp"`
+		Values                []struct {
 			Key    string   `json:"key"`
 			Number *float64 `json:"number"`
 			Text   string   `json:"text"`
@@ -169,6 +156,11 @@ type rawResult struct {
 		Warnings []string        `json:"warnings"`
 		Sources  []rawSourceSpan `json:"sources"`
 	} `json:"candidates"`
+	Relations []struct {
+		Kind    string `json:"kind"`
+		FromRef string `json:"from_ref"`
+		ToRef   string `json:"to_ref"`
+	} `json:"relations"`
 	Questions []struct {
 		Question     string   `json:"question"`
 		Blocking     bool     `json:"blocking"`
@@ -335,23 +327,26 @@ func mapToNeutral(parsed rawResult, req ai.CaptureParseRequest) ai.CaptureParseR
 			sources = append([]ai.SourceSpan(nil), fallbackSources...)
 		}
 		candidate := ai.CandidateDraft{
-			Type:        c.Type,
-			Action:      orDefault(c.Action, "create"),
-			Title:       strings.TrimSpace(c.Title),
-			Content:     strings.TrimSpace(c.Content),
-			Description: strings.TrimSpace(c.Description),
-			ProjectKind: c.ProjectKind,
-			Destination: strings.TrimSpace(c.Destination),
-			Priority:    c.Priority,
-			AllDay:      c.AllDay,
-			EventKind:   c.EventKind,
-			Location:    strings.TrimSpace(c.Location),
-			ProjectRef:  req.SuggestedProjectID,
-			Tags:        c.Tags,
-			TrackerID:   c.TrackerID,
-			Missing:     c.Missing,
-			Warnings:    c.Warnings,
-			Sources:     sources,
+			Ref:                   c.Ref,
+			Type:                  c.Type,
+			Action:                orDefault(c.Action, "create"),
+			TargetID:              c.TargetID,
+			TargetExpectedVersion: c.TargetExpectedVersion,
+			Title:                 strings.TrimSpace(c.Title),
+			Content:               strings.TrimSpace(c.Content),
+			Description:           strings.TrimSpace(c.Description),
+			ProjectKind:           c.ProjectKind,
+			Destination:           strings.TrimSpace(c.Destination),
+			Priority:              c.Priority,
+			AllDay:                c.AllDay,
+			EventKind:             c.EventKind,
+			Location:              strings.TrimSpace(c.Location),
+			ProjectRef:            req.SuggestedProjectID,
+			Tags:                  c.Tags,
+			TrackerID:             c.TrackerID,
+			Missing:               c.Missing,
+			Warnings:              c.Warnings,
+			Sources:               sources,
 		}
 
 		candidate.DueDate = parseDate(c.DueDate, loc)
@@ -387,6 +382,11 @@ func mapToNeutral(parsed rawResult, req ai.CaptureParseRequest) ai.CaptureParseR
 		})
 
 		out.Candidates = append(out.Candidates, candidate)
+	}
+	for _, relation := range parsed.Relations {
+		out.Relations = append(out.Relations, ai.RelationDraft{
+			Kind: relation.Kind, FromRef: relation.FromRef, ToRef: relation.ToRef,
+		})
 	}
 
 	for _, q := range parsed.Questions {

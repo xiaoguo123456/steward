@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './mood-journal.zod';
 import {
   useMutation,
   useQuery
@@ -44,8 +45,11 @@ import type {
   MoodJournalCalendarResponse,
   MoodJournalEntriesResponse,
   MoodJournalEntryResponse,
+  MoodJournalFollowUpResponse,
   MoodJournalPolishRequest,
   MoodJournalPolishResponse,
+  MoodJournalReflectionRequest,
+  MoodJournalReflectionResponse,
   MoodJournalStatisticsResponse,
   MutationResponse,
   NotFoundResponse,
@@ -104,6 +108,7 @@ export const listMoodJournalEntries = async (params?: ListMoodJournalEntriesPara
 
 
   }
+, StewardResponseSchemas.ListMoodJournalEntriesResponse
 );}
 
 
@@ -204,6 +209,7 @@ export const createMoodJournalEntry = async (createMoodJournalEntryRequest: Crea
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createMoodJournalEntryRequest)
   }
+, StewardResponseSchemas.CreateMoodJournalEntryResponse
 );}
 
 
@@ -274,6 +280,7 @@ export const getMoodJournalEntry = async (entryId: string, options?: Parameters<
 
 
   }
+, StewardResponseSchemas.GetMoodJournalEntryResponse
 );}
 
 
@@ -375,6 +382,7 @@ export const updateMoodJournalEntry = async (entryId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateMoodJournalEntryRequest)
   }
+, StewardResponseSchemas.UpdateMoodJournalEntryResponse
 );}
 
 
@@ -445,6 +453,7 @@ export const deleteMoodJournalEntry = async (entryId: string, options?: Paramete
 
 
   }
+, StewardResponseSchemas.DeleteMoodJournalEntryResponse
 );}
 
 
@@ -495,6 +504,78 @@ export const useDeleteMoodJournalEntry = <TError = UnauthorizedResponse | NotFou
       > => {
       return useMutation(getDeleteMoodJournalEntryMutationOptions(options), queryClient);
     }
+    export const getGenerateMoodJournalFollowUpUrl = (entryId: string,) => {
+
+
+
+
+  return `/v1/mood-journal/entries/${entryId}/follow-up`
+}
+
+/**
+ * 用户保存后主动选择继续思考时调用。只发送当前日记的纯文本投影；结果是可跳过的只读候选，不修改日记。
+ * @summary 生成单篇日记保存后追问
+ */
+export const generateMoodJournalFollowUp = async (entryId: string, options?: Parameters<typeof stewardFetch>[1]): Promise<MoodJournalFollowUpResponse> => {
+
+  return stewardFetch<MoodJournalFollowUpResponse>(getGenerateMoodJournalFollowUpUrl(entryId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+, StewardResponseSchemas.GenerateMoodJournalFollowUpResponse
+);}
+
+
+
+
+
+export const getGenerateMoodJournalFollowUpMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | TooManyRequestsResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateMoodJournalFollowUp>>, TError,{entryId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateMoodJournalFollowUp>>, TError,{entryId: string}, TContext> => {
+
+const mutationKey = ['generateMoodJournalFollowUp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateMoodJournalFollowUp>>, {entryId: string}> = (props) => {
+          const {entryId} = props ?? {};
+
+          return  generateMoodJournalFollowUp(entryId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateMoodJournalFollowUpMutationResult = NonNullable<Awaited<ReturnType<typeof generateMoodJournalFollowUp>>>
+
+    export type GenerateMoodJournalFollowUpMutationError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | TooManyRequestsResponse | ServiceUnavailableResponse
+
+    /**
+ * @summary 生成单篇日记保存后追问
+ */
+export const useGenerateMoodJournalFollowUp = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | TooManyRequestsResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateMoodJournalFollowUp>>, TError,{entryId: string}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateMoodJournalFollowUp>>,
+        TError,
+        {entryId: string},
+        TContext
+      > => {
+      return useMutation(getGenerateMoodJournalFollowUpMutationOptions(options), queryClient);
+    }
     export const getPolishMoodJournalDraftUrl = () => {
 
 
@@ -517,6 +598,7 @@ export const polishMoodJournalDraft = async (moodJournalPolishRequest: MoodJourn
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(moodJournalPolishRequest)
   }
+, StewardResponseSchemas.PolishMoodJournalDraftResponse
 );}
 
 
@@ -594,6 +676,7 @@ export const getMoodJournalCalendar = async (params: GetMoodJournalCalendarParam
 
 
   }
+, StewardResponseSchemas.GetMoodJournalCalendarResponse
 );}
 
 
@@ -701,6 +784,7 @@ export const getMoodJournalStatistics = async (params: GetMoodJournalStatisticsP
 
 
   }
+, StewardResponseSchemas.GetMoodJournalStatisticsResponse
 );}
 
 
@@ -781,3 +865,75 @@ export function useGetMoodJournalStatistics<TData = Awaited<ReturnType<typeof ge
 
 
 
+export const getGenerateMoodJournalReflectionUrl = () => {
+
+
+
+
+  return `/v1/mood-journal/reflections`
+}
+
+/**
+ * 仅使用用户本次明确选择、属于日期范围且未排除 AI 的日记纯文本投影。结果不自动保存、不写入 Note 或 Memory。
+ * @summary 生成周或月心情回望候选
+ */
+export const generateMoodJournalReflection = async (moodJournalReflectionRequest: MoodJournalReflectionRequest, options?: Parameters<typeof stewardFetch>[1]): Promise<MoodJournalReflectionResponse> => {
+
+  return stewardFetch<MoodJournalReflectionResponse>(getGenerateMoodJournalReflectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(moodJournalReflectionRequest)
+  }
+, StewardResponseSchemas.GenerateMoodJournalReflectionResponse
+);}
+
+
+
+
+
+export const getGenerateMoodJournalReflectionMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateMoodJournalReflection>>, TError,{data: MoodJournalReflectionRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateMoodJournalReflection>>, TError,{data: MoodJournalReflectionRequest}, TContext> => {
+
+const mutationKey = ['generateMoodJournalReflection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateMoodJournalReflection>>, {data: MoodJournalReflectionRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateMoodJournalReflection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateMoodJournalReflectionMutationResult = NonNullable<Awaited<ReturnType<typeof generateMoodJournalReflection>>>
+    export type GenerateMoodJournalReflectionMutationBody = MoodJournalReflectionRequest
+    export type GenerateMoodJournalReflectionMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | ServiceUnavailableResponse
+
+    /**
+ * @summary 生成周或月心情回望候选
+ */
+export const useGenerateMoodJournalReflection = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | TooManyRequestsResponse | ServiceUnavailableResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateMoodJournalReflection>>, TError,{data: MoodJournalReflectionRequest}, TContext>, request?: SecondParameter<typeof stewardFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof generateMoodJournalReflection>>,
+        TError,
+        {data: MoodJournalReflectionRequest},
+        TContext
+      > => {
+      return useMutation(getGenerateMoodJournalReflectionMutationOptions(options), queryClient);
+    }

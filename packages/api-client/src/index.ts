@@ -35,3 +35,4 @@ export * from './generated/assistant/assistant';
 export * from './generated/memory/memory';
 export * from './generated/recipes/recipes';
 export * from './generated/system/system';
+export * from './generated/notifications/notifications';

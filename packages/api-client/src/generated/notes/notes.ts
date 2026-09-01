@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './notes.zod';
 import {
   useMutation,
   useQuery
@@ -100,6 +101,7 @@ export const listNotes = async (params?: ListNotesParams, options?: Parameters<t
 
 
   }
+, StewardResponseSchemas.ListNotesResponse
 );}
 
 
@@ -200,6 +202,7 @@ export const createNote = async (createNoteRequest: CreateNoteRequest, options?:
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createNoteRequest)
   }
+, StewardResponseSchemas.CreateNoteResponse
 );}
 
 
@@ -272,6 +275,7 @@ export const polishNoteDraft = async (notePolishRequest: NotePolishRequest, opti
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(notePolishRequest)
   }
+, StewardResponseSchemas.PolishNoteDraftResponse
 );}
 
 
@@ -342,6 +346,7 @@ export const getNote = async (noteId: string, options?: Parameters<typeof stewar
 
 
   }
+, StewardResponseSchemas.GetNoteResponse
 );}
 
 
@@ -443,6 +448,7 @@ export const updateNote = async (noteId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateNoteRequest)
   }
+, StewardResponseSchemas.UpdateNoteResponse
 );}
 
 
@@ -513,6 +519,7 @@ export const deleteNote = async (noteId: string, options?: Parameters<typeof ste
 
 
   }
+, StewardResponseSchemas.DeleteNoteResponse
 );}
 
 

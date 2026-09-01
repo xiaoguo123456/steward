@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './trackers.zod';
 import {
   useMutation,
   useQuery
@@ -100,6 +101,7 @@ export const listTrackers = async (params?: ListTrackersParams, options?: Parame
 
 
   }
+, StewardResponseSchemas.ListTrackersResponse
 );}
 
 
@@ -200,6 +202,7 @@ export const createTracker = async (createTrackerRequest: CreateTrackerRequest, 
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createTrackerRequest)
   }
+, StewardResponseSchemas.CreateTrackerResponse
 );}
 
 
@@ -270,6 +273,7 @@ export const getTracker = async (trackerId: string, options?: Parameters<typeof 
 
 
   }
+, StewardResponseSchemas.GetTrackerResponse
 );}
 
 
@@ -371,6 +375,7 @@ export const updateTracker = async (trackerId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateTrackerRequest)
   }
+, StewardResponseSchemas.UpdateTrackerResponse
 );}
 
 
@@ -441,6 +446,7 @@ export const deleteTracker = async (trackerId: string, options?: Parameters<type
 
 
   }
+, StewardResponseSchemas.DeleteTrackerResponse
 );}
 
 
@@ -518,6 +524,7 @@ export const listRecords = async (params?: ListRecordsParams, options?: Paramete
 
 
   }
+, StewardResponseSchemas.ListRecordsResponse
 );}
 
 
@@ -618,6 +625,7 @@ export const createRecord = async (createRecordRequest: CreateRecordRequest, opt
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createRecordRequest)
   }
+, StewardResponseSchemas.CreateRecordResponse
 );}
 
 
@@ -688,6 +696,7 @@ export const getRecord = async (recordId: string, options?: Parameters<typeof st
 
 
   }
+, StewardResponseSchemas.GetRecordResponse
 );}
 
 
@@ -789,6 +798,7 @@ export const updateRecord = async (recordId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateRecordRequest)
   }
+, StewardResponseSchemas.UpdateRecordResponse
 );}
 
 
@@ -859,6 +869,7 @@ export const deleteRecord = async (recordId: string, options?: Parameters<typeof
 
 
   }
+, StewardResponseSchemas.DeleteRecordResponse
 );}
 
 

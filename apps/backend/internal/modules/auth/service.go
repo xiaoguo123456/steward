@@ -261,16 +261,18 @@ func (s *Service) Login(ctx context.Context, phone, code, timezone string) (Logi
 		return LoginResult{}, apperr.Internal(err)
 	}
 	refreshExpiresAt := now.Add(s.tokens.RefreshTTL())
+	refreshTokenID := idgen.New(idgen.PrefixRefreshToken)
 
 	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		if err := s.users.EnsureDefaults(ctx, q, userID); err != nil {
 			return err
 		}
 		if _, err := q.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
-			ID:        idgen.New(idgen.PrefixRefreshToken),
+			ID:        refreshTokenID,
 			UserID:    userID,
 			TokenHash: refreshHash,
 			ExpiresAt: refreshExpiresAt,
+			FamilyID:  refreshTokenID,
 		}); err != nil {
 			return apperr.Internal(err)
 		}
@@ -286,7 +288,7 @@ func (s *Service) Login(ctx context.Context, phone, code, timezone string) (Logi
 		return LoginResult{}, err
 	}
 
-	accessToken, accessExpiresAt, err := s.tokens.IssueAccessToken(userID, now)
+	accessToken, accessExpiresAt, err := s.tokens.IssueAccessTokenForSession(userID, refreshTokenID, now)
 	if err != nil {
 		return LoginResult{}, apperr.Internal(err)
 	}
@@ -306,53 +308,33 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (LoginResult
 	now := time.Now()
 	hash := auth.HashToken(refreshToken)
 
-	var userID string
-	var oldTokenID string
-	err := s.withAnonymousTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
-		row, err := s.findRefreshToken(ctx, tx, hash)
-		if err != nil {
-			if isNoRows(err) {
-				return apperr.New(apperr.CodeRefreshTokenInvalid)
-			}
-			return apperr.Internal(err)
-		}
-		if row.RevokedAt != nil || now.After(row.ExpiresAt) {
-			return apperr.New(apperr.CodeRefreshTokenInvalid)
-		}
-		userID = row.UserID
-		oldTokenID = row.ID
-		return nil
-	})
-	if err != nil {
-		return LoginResult{}, err
-	}
-
 	newPlain, newHash, err := auth.GenerateRefreshToken()
 	if err != nil {
 		return LoginResult{}, apperr.Internal(err)
 	}
 	refreshExpiresAt := now.Add(s.tokens.RefreshTTL())
-
-	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		// 轮换：旧令牌立即作废，被窃取的令牌只能使用一次。
-		if err := q.RevokeRefreshToken(ctx, oldTokenID); err != nil {
+	newTokenID := idgen.New(idgen.PrefixRefreshToken)
+	var userID string
+	var rotationOutcome string
+	err = s.withAnonymousTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		rotated, err := s.rotateRefreshToken(ctx, tx, hash, newTokenID, newHash, refreshExpiresAt)
+		if err != nil {
 			return apperr.Internal(err)
 		}
-		if _, err := q.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
-			ID:        idgen.New(idgen.PrefixRefreshToken),
-			UserID:    userID,
-			TokenHash: newHash,
-			ExpiresAt: refreshExpiresAt,
-		}); err != nil {
-			return apperr.Internal(err)
+		rotationOutcome = rotated.Outcome
+		if rotated.UserID != nil {
+			userID = *rotated.UserID
 		}
 		return nil
 	})
 	if err != nil {
 		return LoginResult{}, err
 	}
+	if rotationOutcome != "rotated" || userID == "" {
+		return LoginResult{}, apperr.New(apperr.CodeRefreshTokenInvalid)
+	}
 
-	accessToken, accessExpiresAt, err := s.tokens.IssueAccessToken(userID, now)
+	accessToken, accessExpiresAt, err := s.tokens.IssueAccessTokenForSession(userID, newTokenID, now)
 	if err != nil {
 		return LoginResult{}, apperr.Internal(err)
 	}
@@ -495,15 +477,23 @@ func defaultDisplayName(phone string) string {
 // 从此永久接管账号——而真正的机主再也登不进来，他的号码已经不对应任何账号了。
 // 要求旧号的验证码意味着「光有一个会话不够」。
 //
-// 成功后撤销该用户的全部刷新令牌：换绑之后其他设备上的登录应当失效。
-// 调用方负责给当前设备重新签发。
-func (s *Service) ChangePhone(ctx context.Context, userID, currentCode,
-	newPhone, newCode string) (dbgen.User, error) {
+// 成功后撤销除当前 Access Token 所属 family 之外的刷新令牌：
+// 其他设备失效，当前设备继续使用已有 Refresh Token。
+func (s *Service) ChangePhone(ctx context.Context, userID, currentSessionID, idempotencyKey,
+	currentCode, newPhone, newCode string) (dbgen.User, error) {
 
 	newPhone = strings.TrimSpace(newPhone)
 	if !phonePattern.MatchString(newPhone) {
 		return dbgen.User{}, apperr.New(apperr.CodePhoneInvalid)
 	}
+	if strings.TrimSpace(currentSessionID) == "" {
+		return dbgen.User{}, apperr.New(apperr.CodeUnauthenticated)
+	}
+	if strings.TrimSpace(idempotencyKey) == "" {
+		return dbgen.User{}, apperr.New(apperr.CodeIdempotencyKeyReq)
+	}
+	requestHash := s.tokens.DeriveChangePhoneRequestFingerprint(
+		userID, newPhone, currentCode, newCode)
 
 	now := time.Now()
 	var updated dbgen.User
@@ -512,6 +502,26 @@ func (s *Service) ChangePhone(ctx context.Context, userID, currentCode,
 	// 需要 app.user_id 才放行自己那一行。登录路径没有身份，所以那边走的是
 	// SECURITY DEFINER 函数——两条路径的授权前提不同，不要混用。
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if err := q.AcquireIdempotencyLock(ctx,
+			"auth.change-phone:"+userID+":"+idempotencyKey); err != nil {
+			return apperr.Internal(err)
+		}
+		replayed, err := q.GetIdempotencyRecord(ctx, dbgen.GetIdempotencyRecordParams{
+			UserID: userID, Endpoint: "auth.change-phone", Key: idempotencyKey,
+		})
+		if err == nil {
+			if subtle.ConstantTimeCompare(replayed.RequestHash, requestHash) != 1 {
+				return apperr.New(apperr.CodeIdempotencyReused)
+			}
+			updated, err = q.GetUser(ctx, userID)
+			if err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		if !database.IsNoRows(err) {
+			return apperr.Internal(err)
+		}
 		tx, err := database.TxFrom(ctx)
 		if err != nil {
 			return apperr.Internal(err)
@@ -562,8 +572,18 @@ func (s *Service) ChangePhone(ctx context.Context, userID, currentCode,
 		}
 		updated = row
 
-		// 换绑之后其他设备上的登录应当失效。
-		if err := q.RevokeAllRefreshTokens(ctx, userID); err != nil {
+		// 只保留 Access Token 所属的 Refresh family；其他设备全部失效。
+		if err := q.RevokeOtherRefreshTokenFamilies(ctx, dbgen.RevokeOtherRefreshTokenFamiliesParams{
+			OwnerUserID: userID, CurrentTokenID: currentSessionID,
+		}); err != nil {
+			return apperr.Internal(err)
+		}
+		resourceID := userID
+		if err := q.SaveIdempotencyRecord(ctx, dbgen.SaveIdempotencyRecordParams{
+			UserID: userID, Endpoint: "auth.change-phone", Key: idempotencyKey,
+			RequestHash: requestHash, StatusCode: 200, ResponseBody: []byte(`{}`),
+			ResourceID: &resourceID, ExpiresAt: now.Add(24 * time.Hour),
+		}); err != nil {
 			return apperr.Internal(err)
 		}
 		return nil

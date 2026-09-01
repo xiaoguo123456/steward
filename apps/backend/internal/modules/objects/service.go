@@ -2,12 +2,19 @@ package objects
 
 import (
 	"context"
+	"crypto/subtle"
+	"encoding/json"
+	"errors"
+	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
+	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/httpx"
 )
 
 // ListResolver 是 lists 模块公开的最小能力：校验清单归属并回退到默认清单。
@@ -72,3 +79,65 @@ func (s *Service) WithNotePolisher(chat ai.ChatProvider, audit *aiaudit.Recorder
 
 // DB 暴露连接供同模块 Handler 使用。
 func (s *Service) DB() *database.DB { return s.db }
+
+const objectIdempotencyTTL = 24 * time.Hour
+
+// beginObjectReplay 在业务事务内串行化相同幂等键，并返回首次响应快照。
+// request 必须只包含稳定的契约字段；Token、验证码等秘密不能传入这里。
+func beginObjectReplay(ctx context.Context, q *dbgen.Queries, userID, endpoint string,
+	request any) (responseBody []byte, replayed bool, requestHash []byte, err error) {
+	key := httpx.IdempotencyKey(ctx)
+	if key == "" {
+		return nil, false, nil, nil
+	}
+	body, err := json.Marshal(request)
+	if err != nil {
+		return nil, false, nil, apperr.Internal(err)
+	}
+	requestHash = authHash(body)
+	if err := q.AcquireIdempotencyLock(ctx, endpoint+":"+userID+":"+key); err != nil {
+		return nil, false, nil, apperr.Internal(err)
+	}
+	record, err := q.GetIdempotencyRecord(ctx, dbgen.GetIdempotencyRecordParams{
+		UserID: userID, Endpoint: endpoint, Key: key,
+	})
+	if database.IsNoRows(err) {
+		return nil, false, requestHash, nil
+	}
+	if err != nil {
+		return nil, false, nil, apperr.Internal(err)
+	}
+	if subtle.ConstantTimeCompare(record.RequestHash, requestHash) != 1 {
+		return nil, false, nil, apperr.New(apperr.CodeIdempotencyReused)
+	}
+	if len(record.ResponseBody) == 0 {
+		return nil, false, nil, apperr.Internal(errors.New("幂等记录缺少响应快照"))
+	}
+	return record.ResponseBody, true, requestHash, nil
+}
+
+func saveObjectReplay(ctx context.Context, q *dbgen.Queries, userID, endpoint string,
+	requestHash []byte, status int32, resourceID string, response any) error {
+	key := httpx.IdempotencyKey(ctx)
+	if key == "" {
+		return nil
+	}
+	snapshot, err := json.Marshal(response)
+	if err != nil {
+		return apperr.Internal(err)
+	}
+	if err := q.SaveIdempotencyRecord(ctx, dbgen.SaveIdempotencyRecordParams{
+		UserID: userID, Endpoint: endpoint, Key: key, RequestHash: requestHash,
+		StatusCode: status, ResponseBody: snapshot, ResourceID: &resourceID,
+		ExpiresAt: time.Now().Add(objectIdempotencyTTL),
+	}); err != nil {
+		return apperr.Internal(err)
+	}
+	return nil
+}
+
+func authHash(value []byte) []byte {
+	// idempotency_keys 只需要不可逆且稳定的请求摘要，不包含秘密字段。
+	// 复用平台 Token 哈希的 SHA-256 实现，避免维护第二套摘要算法。
+	return authpkg.HashToken(string(value))
+}

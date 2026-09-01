@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "orval --config orval.config.ts"
+    "generate": "orval --config orval.config.ts && node scripts/attach-response-schemas.mjs"
   },
   "peerDependencies": {
     "@tanstack/react-query": ">=5",

@@ -23,3 +23,10 @@
 先经过 JSON Schema、块 ID／顺序、链接、数字与 Domain 校验，只回填可撤销草稿；
 用户最终保存并回传 `ai_action_id` 后才把来源写入 Note。部署还必须显式设置
 `STEWARD_AI_APPROVED_SENSITIVE_CONTENT=true`；默认关闭时，即使用户同意也不发送正文。
+
+保存后追问通过单篇 `follow-up` 接口只读取该篇服务端纯文本投影，返回一个不落库、
+可跳过的问题。周／月深度回望通过 `reflections` 接口接收本次明确选择的日记 ID；
+服务端重新校验当前用户、日期范围、逐篇 `exclude_from_ai` 和版本来源，只发送日期、
+日记 ID 与纯文本投影。两类输出均经过版本化 JSON Schema、来源集合重验与 AI Action
+审计，不自动修改 Note、Memory 或其他领域；同意、Provider 或部署门禁不满足时明确失败，
+客户端继续展示确定性统计。

@@ -160,11 +160,16 @@ export function ReviewContent() {
     setPeriodPickerVisible(false);
   };
 
-  const submitReflection = () => {
+  const submitReflection = async () => {
     const text = reflection.trim();
     if (!text) return;
-    review.saveReflection(text);
-    setReflectionExpanded(false);
+    try {
+      await review.saveReflection(text);
+      setReflectionExpanded(false);
+      setReflection('');
+    } catch {
+      // 数据层会把正式错误展示在页面中；保留输入供用户重试。
+    }
   };
 
   const periodLabel = review.review
@@ -247,7 +252,7 @@ export function ReviewContent() {
         )}
       </View>
 
-      {!review.loading && !review.narrative && review.hasReviewableData && review.metrics.length > 0 ? (
+      {!review.loading && review.hasReviewableData && review.metrics.length > 0 ? (
         <View accessibilityLabel="本周数据概览" style={styles.metricStrip}>
           {metricGroups.map((metrics) => (
             <View

@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './system.zod';
 import {
   useMutation,
   useQuery
@@ -87,6 +88,7 @@ export const getOperation = async (operationId: string, options?: Parameters<typ
 
 
   }
+, StewardResponseSchemas.GetOperationResponse
 );}
 
 
@@ -194,6 +196,7 @@ export const listActivityBatches = async (params?: ListActivityBatchesParams, op
 
 
   }
+, StewardResponseSchemas.ListActivityBatchesResponse
 );}
 
 
@@ -295,6 +298,7 @@ export const undoActivityBatch = async (batchId: string, options?: Parameters<ty
 
 
   }
+, StewardResponseSchemas.UndoActivityBatchResponse
 );}
 
 

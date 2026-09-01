@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './tasks.zod';
 import {
   useMutation,
   useQuery
@@ -95,6 +96,7 @@ export const listTasks = async (params?: ListTasksParams, options?: Parameters<t
 
 
   }
+, StewardResponseSchemas.ListTasksResponse
 );}
 
 
@@ -195,6 +197,7 @@ export const createTask = async (createTaskRequest: CreateTaskRequest, options?:
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createTaskRequest)
   }
+, StewardResponseSchemas.CreateTaskResponse
 );}
 
 
@@ -265,6 +268,7 @@ export const getTask = async (taskId: string, options?: Parameters<typeof stewar
 
 
   }
+, StewardResponseSchemas.GetTaskResponse
 );}
 
 
@@ -366,6 +370,7 @@ export const updateTask = async (taskId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateTaskRequest)
   }
+, StewardResponseSchemas.UpdateTaskResponse
 );}
 
 
@@ -437,6 +442,7 @@ export const deleteTask = async (taskId: string, options?: Parameters<typeof ste
 
 
   }
+, StewardResponseSchemas.DeleteTaskResponse
 );}
 
 

@@ -28,6 +28,10 @@ cursor?: CursorParameter;
  */
 limit?: LimitParameter;
 tracker_id?: string;
+/**
+ * 只返回归属当前 Project 的 Record，用于 Project Objects/Data 聚合。
+ */
+project_id?: string;
 from?: string;
 to?: string;
 };

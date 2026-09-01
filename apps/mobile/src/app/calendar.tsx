@@ -193,6 +193,7 @@ export default function CalendarScreen() {
             daysByDate={daysByDate}
             onSelectDate={selectWeekDate}
             onShiftWeek={shiftWeek}
+            onOpenEvent={(id) => router.push({ pathname: '/events/[id]' as never, params: { id } })}
             onOpenTask={(id) => router.push({ pathname: '/tasks/[id]', params: { id } })}
             selectedDate={selectedDate}
             todayKey={todayKey}
@@ -225,6 +226,10 @@ export default function CalendarScreen() {
             day={selected}
             date={selectedDate}
             onClose={() => setAgendaVisible(false)}
+            onOpenEvent={(id) => {
+              setAgendaVisible(false);
+              router.push({ pathname: '/events/[id]' as never, params: { id } });
+            }}
             onOpenTask={(id) => {
               setAgendaVisible(false);
               router.push({ pathname: '/tasks/[id]', params: { id } });
@@ -326,11 +331,13 @@ function AgendaSheet({
   day,
   date,
   onClose,
+  onOpenEvent,
   onOpenTask,
 }: {
   day?: CalendarDay;
   date: string;
   onClose: () => void;
+  onOpenEvent: (id: string) => void;
   onOpenTask: (id: string) => void;
 }) {
   const count = (day?.events.length ?? 0) + (day?.tasks.length ?? 0);
@@ -357,7 +364,7 @@ function AgendaSheet({
             <Text style={styles.emptyTitle}>这一天还没有安排</Text>
           </View>
         ) : (
-          <AgendaRows day={day} onOpenTask={onOpenTask} />
+          <AgendaRows day={day} onOpenEvent={onOpenEvent} onOpenTask={onOpenTask} />
         )}
       </ScrollView>
     </View>
@@ -371,6 +378,7 @@ function WeekCalendar({
   todayKey,
   onSelectDate,
   onShiftWeek,
+  onOpenEvent,
   onOpenTask,
 }: {
   cells: { date: string; day: number }[];
@@ -379,6 +387,7 @@ function WeekCalendar({
   todayKey: string;
   onSelectDate: (date: string) => void;
   onShiftWeek: (weeks: number) => void;
+  onOpenEvent: (id: string) => void;
   onOpenTask: (id: string) => void;
 }) {
   const swipeStartX = useRef<number | null>(null);
@@ -477,17 +486,17 @@ function WeekCalendar({
             <Text style={styles.emptyHint}>可以选择本周其他日期查看</Text>
           </View>
         ) : (
-          <AgendaRows day={selectedDay} onOpenTask={onOpenTask} />
+          <AgendaRows day={selectedDay} onOpenEvent={onOpenEvent} onOpenTask={onOpenTask} />
         )}
       </ScrollView>
     </View>
   );
 }
 
-function AgendaRows({ day, onOpenTask }: { day?: CalendarDay; onOpenTask: (id: string) => void }) {
+function AgendaRows({ day, onOpenEvent, onOpenTask }: { day?: CalendarDay; onOpenEvent: (id: string) => void; onOpenTask: (id: string) => void }) {
   return (
     <>
-      {day?.events.map((event) => <EventAgendaRow event={event} key={event.id} />)}
+      {day?.events.map((event) => <EventAgendaRow event={event} key={event.id} onPress={() => onOpenEvent(event.id)} />)}
       {day?.tasks.map((task) => (
         <Pressable key={task.id} onPress={() => onOpenTask(task.id)} style={({ pressed }) => [styles.agendaRow, pressed && styles.pressed]}>
           <View style={[styles.agendaIcon, styles.taskIcon]}>
@@ -504,10 +513,10 @@ function AgendaRows({ day, onOpenTask }: { day?: CalendarDay; onOpenTask: (id: s
   );
 }
 
-function EventAgendaRow({ event }: { event: Event }) {
+function EventAgendaRow({ event, onPress }: { event: Event; onPress: () => void }) {
   const important = event.event_kind === 'important_date';
   return (
-    <View style={styles.agendaRow}>
+    <Pressable accessibilityLabel={`打开日程：${event.title}`} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.agendaRow, pressed && styles.pressed]}>
       <View style={[styles.agendaIcon, important ? styles.importantIcon : styles.eventIcon]}>
         <AppIcon color={important ? '#B4234D' : '#4258B5'} name={important ? 'gift-outline' : 'calendar-outline'} size={17} />
       </View>
@@ -520,7 +529,8 @@ function EventAgendaRow({ event }: { event: Event }) {
           {event.location ? ` · ${event.location}` : ''}
         </Text>
       </View>
-    </View>
+      <AppIcon color={colors.textTertiary} name="chevron-forward" size={17} />
+    </Pressable>
   );
 }
 

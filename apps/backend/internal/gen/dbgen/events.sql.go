@@ -154,6 +154,44 @@ func (q *Queries) GetEvent(ctx context.Context, id string) (Event, error) {
 	return i, err
 }
 
+const getEventForUpdate = `-- name: GetEventForUpdate :one
+SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at FROM events WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
+`
+
+func (q *Queries) GetEventForUpdate(ctx context.Context, id string) (Event, error) {
+	row := q.db.QueryRow(ctx, getEventForUpdate, id)
+	var i Event
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.EventKind,
+		&i.AllDay,
+		&i.StartAt,
+		&i.EndAt,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Timezone,
+		&i.Location,
+		&i.Participants,
+		&i.ProjectID,
+		&i.Note,
+		&i.Reminders,
+		&i.Recurrence,
+		&i.OriginalMonthDay,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ImportantDateKind,
+		&i.ItineraryDetails,
+		&i.ImportantDateHandledAt,
+	)
+	return i, err
+}
+
 const listEvents = `-- name: ListEvents :many
 
 SELECT id, user_id, title, event_kind, all_day, start_at, end_at, start_date, end_date, timezone, location, participants, project_id, note, reminders, recurrence, original_month_day, created_by, provenance_refs, created_at, updated_at, deleted_at, version, important_date_kind, itinerary_details, important_date_handled_at FROM events
@@ -473,8 +511,14 @@ UPDATE events SET
     reminders  = CASE WHEN $23::bool THEN '[]'::jsonb
                       ELSE coalesce($24, reminders) END,
     recurrence = coalesce($25, recurrence),
-    original_month_day = coalesce($26, original_month_day),
-    important_date_kind = coalesce($27, important_date_kind),
+    original_month_day = CASE
+        WHEN coalesce($25, recurrence) <> 'yearly' THEN NULL
+        ELSE coalesce($26, original_month_day)
+    END,
+    important_date_kind = CASE
+        WHEN coalesce($2, event_kind) <> 'important_date' THEN NULL
+        ELSE coalesce($27, important_date_kind)
+    END,
     important_date_handled_at = CASE
         WHEN $28::bool
             THEN $29::timestamptz

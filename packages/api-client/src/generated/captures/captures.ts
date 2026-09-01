@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './captures.zod';
 import {
   useMutation,
   useQuery
@@ -94,6 +95,7 @@ export const createCapture = async (createCaptureRequest: CreateCaptureRequest, 
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createCaptureRequest)
   }
+, StewardResponseSchemas.CreateCaptureResponse
 );}
 
 
@@ -164,6 +166,7 @@ export const getCapture = async (captureId: string, options?: Parameters<typeof 
 
 
   }
+, StewardResponseSchemas.GetCaptureResponse
 );}
 
 
@@ -264,6 +267,7 @@ export const discardCapture = async (captureId: string, options?: Parameters<typ
 
 
   }
+, StewardResponseSchemas.DiscardCaptureResponse
 );}
 
 
@@ -337,6 +341,7 @@ export const confirmCapture = async (captureId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(confirmCaptureRequest)
   }
+, StewardResponseSchemas.ConfirmCaptureResponse
 );}
 
 
@@ -415,6 +420,7 @@ export const listCaptureQuestions = async (params?: ListCaptureQuestionsParams, 
 
 
   }
+, StewardResponseSchemas.ListCaptureQuestionsResponse
 );}
 
 
@@ -517,6 +523,7 @@ export const answerCaptureQuestion = async (questionId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(answerCaptureQuestionRequest)
   }
+, StewardResponseSchemas.AnswerCaptureQuestionResponse
 );}
 
 

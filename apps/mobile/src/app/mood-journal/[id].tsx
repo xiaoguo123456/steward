@@ -1,6 +1,7 @@
 import {
   deleteMoodJournalEntry,
   errorMessage,
+  generateMoodJournalFollowUp,
   updateMoodJournalEntry,
   useGetMoodJournalEntry,
   type NoteBlock,
@@ -18,18 +19,37 @@ import { StatePanel } from '@/components/ui/state-panel';
 import { MoodEditor, type MoodEditorValue } from '@/features/mood-journal/mood-editor';
 import { entryMoodText } from '@/features/mood-journal/model';
 import { useMoodJournalPolish } from '@/features/mood-journal/use-mood-journal-polish';
+import { useMoodJournalAiConsent } from '@/features/mood-journal/use-mood-journal-ai-consent';
 import { colors, fontFamily, moodColors, radius, typography } from '@/theme/tokens';
 
 export default function MoodJournalDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const polish = useMoodJournalPolish();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, followUp } = useLocalSearchParams<{ id: string; followUp?: string }>();
+  const ensureAiConsent = useMoodJournalAiConsent();
   const query = useGetMoodJournalEntry(id ?? '', { query: { enabled: Boolean(id) } });
   const entry = query.data?.data;
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [question, setQuestion] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+
+  const askFollowUp = async () => {
+    if (!entry || asking) return;
+    setAsking(true);
+    setFailure(null);
+    try {
+      if (!await ensureAiConsent('current')) return;
+      const response = await generateMoodJournalFollowUp(entry.id);
+      setQuestion(response.data.question);
+    } catch (error) {
+      setFailure(errorMessage(error, '追问暂时不可用。你的日记仍已安全保存，可以稍后再试。'));
+    } finally {
+      setAsking(false);
+    }
+  };
 
   const save = async (value: MoodEditorValue) => {
     if (!entry) return false;
@@ -47,6 +67,9 @@ export default function MoodJournalDetailScreen() {
         mood_level: value.moodLevel,
         energy_level: value.energyLevel,
         emotion_words: value.emotionWords,
+        context_words: value.contextWords,
+        exclude_from_ai: value.excludeFromAi,
+        include_in_memories: value.includeInMemories,
         polish_action_id: value.polishActionId,
       }, { headers: { 'If-Match': String(entry.version) } });
       await queryClient.invalidateQueries();
@@ -106,6 +129,9 @@ export default function MoodJournalDetailScreen() {
           moodLevel: entry.mood_level,
           energyLevel: entry.energy_level,
           emotionWords: entry.emotion_words,
+          contextWords: entry.context_words,
+          excludeFromAi: entry.exclude_from_ai,
+          includeInMemories: entry.include_in_memories,
         }}
         occurredAt={new Date(entry.occurred_at)}
         onPolish={polish}
@@ -147,6 +173,21 @@ export default function MoodJournalDetailScreen() {
           <AppIcon color={colors.textTertiary} name="lock-closed-outline" size={15} />
           <Text style={styles.privateText}>仅你可见</Text>
         </View>
+        {followUp === '1' || question ? (
+          <View style={styles.followUpCard}>
+            <Text style={styles.followUpTitle}>{question ? '继续想一想' : '日记已经保存'}</Text>
+            <Text style={styles.followUpText}>{question ?? '如果愿意，可以让 AI 只根据这篇正文提出一个温和、可跳过的问题。'}</Text>
+            {!question ? (
+              <Pressable accessibilityRole="button" disabled={asking || entry.exclude_from_ai} onPress={() => void askFollowUp()} style={styles.followUpButton}>
+                <Text style={styles.followUpButtonText}>{entry.exclude_from_ai ? '这篇已排除 AI' : asking ? '正在准备…' : '继续想一想'}</Text>
+              </Pressable>
+            ) : (
+              <Pressable accessibilityRole="button" onPress={() => setEditing(true)} style={styles.followUpButton}>
+                <Text style={styles.followUpButtonText}>继续写这篇</Text>
+              </Pressable>
+            )}
+          </View>
+        ) : null}
         {failure ? <Text style={styles.failure}>{failure}</Text> : null}
       </ScrollView>
     </AppScreen>
@@ -201,4 +242,9 @@ const styles = StyleSheet.create({
   privateNote: { marginTop: 22, flexDirection: 'row', alignItems: 'center', gap: 6 },
   privateText: { color: colors.textTertiary, fontFamily, ...typography.meta },
   failure: { marginTop: 16, color: colors.danger, fontFamily, ...typography.meta },
+  followUpCard: { marginTop: 24, padding: 16, borderRadius: radius.md, backgroundColor: moodColors.soft },
+  followUpTitle: { color: colors.text, fontFamily, ...typography.bodyStrong },
+  followUpText: { marginTop: 6, color: colors.textSecondary, fontFamily, ...typography.body },
+  followUpButton: { minHeight: 44, marginTop: 12, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: moodColors.accent },
+  followUpButtonText: { color: colors.surface, fontFamily, ...typography.label },
 });

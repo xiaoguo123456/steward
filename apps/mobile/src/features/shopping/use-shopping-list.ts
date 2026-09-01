@@ -3,11 +3,11 @@ import {
   useCreateTaskList,
   useListTaskLists,
   useListTasks,
-  useUpdateTask,
+  updateTask,
   type ShoppingCategory,
   type Task,
 } from '@steward/api-client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 /**
  * 购物清单的数据层。
@@ -62,7 +62,17 @@ export function useShoppingList() {
 
   const createList = useCreateTaskList();
   const createTask = useCreateTask({ mutation: { onSuccess: invalidate } });
-  const updateTask = useUpdateTask({ mutation: { onSuccess: invalidate } });
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ item, data }: {
+      item: ShoppingListItem;
+      data: Parameters<typeof updateTask>[1];
+    }) => updateTask(
+      item.id,
+      data,
+      { headers: { 'If-Match': String(item.version) } },
+    ),
+    onSuccess: invalidate,
+  });
 
   const items: ShoppingListItem[] = [
     ...(pendingTasks.data?.data ?? []),
@@ -82,25 +92,29 @@ export function useShoppingList() {
   return {
     items,
     loading: lists.isLoading || pendingTasks.isLoading || completedTasks.isLoading,
+    failed: lists.isError || pendingTasks.isError || completedTasks.isError,
+    queryError: lists.error ?? pendingTasks.error ?? completedTasks.error,
+    refetch: async () => {
+      await lists.refetch();
+      if (shoppingList) await Promise.all([pendingTasks.refetch(), completedTasks.refetch()]);
+    },
     ready: Boolean(shoppingList),
 
-    create: (draft: ShoppingDraft) => {
-      void (async () => {
-        const listId = await ensureList();
-        createTask.mutate({
-          data: {
-            title: draft.title,
-            list_id: listId,
-            quantity_text: draft.quantity || null,
-            description: draft.note || null,
-          },
-        });
-      })();
+    create: async (draft: ShoppingDraft) => {
+      const listId = await ensureList();
+      await createTask.mutateAsync({
+        data: {
+          title: draft.title,
+          list_id: listId,
+          quantity_text: draft.quantity || null,
+          description: draft.note || null,
+        },
+      });
     },
 
-    update: (item: ShoppingListItem, draft: ShoppingDraft) => {
-      updateTask.mutate({
-        taskId: item.id,
+    update: async (item: ShoppingListItem, draft: ShoppingDraft) => {
+      await updateTaskMutation.mutateAsync({
+        item,
         data: {
           title: draft.title,
           quantity_text: draft.quantity || null,
@@ -111,14 +125,15 @@ export function useShoppingList() {
       });
     },
 
-    toggle: (item: ShoppingListItem) => {
-      updateTask.mutate({
-        taskId: item.id,
+    toggle: async (item: ShoppingListItem) => {
+      await updateTaskMutation.mutateAsync({
+        item,
         data: { status: item.done ? 'todo' : 'done' },
       });
     },
 
-    pending: createTask.isPending || updateTask.isPending || createList.isPending,
+    pending: createTask.isPending || updateTaskMutation.isPending || createList.isPending,
+    mutationError: createTask.error ?? updateTaskMutation.error ?? createList.error,
   };
 }
 

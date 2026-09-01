@@ -79,6 +79,7 @@ function OutdoorWorkoutPrepare({
       params: {
         mode,
         goal: goalValue,
+        awake: keepScreenAwake ? '1' : '0',
         voice: voiceEnabled ? '1' : '0',
       },
     } as Href);

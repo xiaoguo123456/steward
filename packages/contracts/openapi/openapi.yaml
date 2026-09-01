@@ -55,6 +55,9 @@ tags:
     x-displayName: 菜谱内容
   - name: views
     x-displayName: 聚合视图
+  - name: notifications
+    x-displayName: 产品内通知
+    description: 已触发通知的持久化列表与已读状态。
   - name: system
     x-displayName: 系统
 
@@ -114,12 +117,16 @@ paths:
     $ref: './paths/mood-journal.yaml#/EntryCollection'
   /v1/mood-journal/entries/{entry_id}:
     $ref: './paths/mood-journal.yaml#/EntryItem'
+  /v1/mood-journal/entries/{entry_id}/follow-up:
+    $ref: './paths/mood-journal.yaml#/FollowUp'
   /v1/mood-journal/polish:
     $ref: './paths/mood-journal.yaml#/Polish'
   /v1/mood-journal/calendar:
     $ref: './paths/mood-journal.yaml#/Calendar'
   /v1/mood-journal/statistics:
     $ref: './paths/mood-journal.yaml#/Statistics'
+  /v1/mood-journal/reflections:
+    $ref: './paths/mood-journal.yaml#/Reflections'
 
   /v1/trackers:
     $ref: './paths/trackers.yaml#/Collection'
@@ -214,6 +221,10 @@ paths:
     $ref: './paths/recipes.yaml#/Favorites'
   /v1/reminders/pending:
     $ref: './paths/views.yaml#/PendingReminders'
+  /v1/notifications:
+    $ref: './paths/notifications.yaml#/Collection'
+  /v1/notifications/{notification_id}/read:
+    $ref: './paths/notifications.yaml#/Read'
   /v1/me/phone:
     $ref: './paths/users.yaml#/Phone'
   /v1/me/phone/code:

@@ -75,6 +75,13 @@ type Querier interface {
 	// 于是每次聚合都返回 value_count = 0，用户明明有账却被告知"没有记录"。
 	AggregateRecordField(ctx context.Context, arg AggregateRecordFieldParams) (AggregateRecordFieldRow, error)
 	AnswerCaptureQuestion(ctx context.Context, arg AnswerCaptureQuestionParams) (CaptureQuestion, error)
+	AppendEventCaptureProvenance(ctx context.Context, arg AppendEventCaptureProvenanceParams) (int64, error)
+	AppendNoteCaptureProvenance(ctx context.Context, arg AppendNoteCaptureProvenanceParams) (int64, error)
+	AppendProjectCaptureProvenance(ctx context.Context, arg AppendProjectCaptureProvenanceParams) (int64, error)
+	AppendRecordCaptureProvenance(ctx context.Context, arg AppendRecordCaptureProvenanceParams) (int64, error)
+	// Capture 更新保留首次 created_from，并把本次 updated_from 追加到当前实体。
+	AppendTaskCaptureProvenance(ctx context.Context, arg AppendTaskCaptureProvenanceParams) (int64, error)
+	AppendTrackerCaptureProvenance(ctx context.Context, arg AppendTrackerCaptureProvenanceParams) (int64, error)
 	BumpCaptureRevision(ctx context.Context, arg BumpCaptureRevisionParams) (Capture, error)
 	CancelTurn(ctx context.Context, id string) (AssistantTurn, error)
 	CancelUserOperationsForDeletion(ctx context.Context, userID string) error
@@ -198,11 +205,15 @@ type Querier interface {
 	GetAccountDeletionRequestByUser(ctx context.Context, userID string) (AccountDeletionRequest, error)
 	GetAccountDeletionStatusByToken(ctx context.Context, arg GetAccountDeletionStatusByTokenParams) (AccountDeletionStatusRecord, error)
 	GetActiveMemoryByKey(ctx context.Context, memoryKey string) (MemoryItem, error)
+	GetActiveRelationByIdentity(ctx context.Context, arg GetActiveRelationByIdentityParams) (Relation, error)
 	GetActiveShoppingTaskList(ctx context.Context, userID string) (TaskList, error)
 	GetActivityBatch(ctx context.Context, id string) (ActivityBatch, error)
 	GetAiSettings(ctx context.Context, userID string) (UserAiSetting, error)
 	GetCapture(ctx context.Context, id string) (Capture, error)
 	GetCaptureCandidate(ctx context.Context, arg GetCaptureCandidateParams) (CaptureCandidate, error)
+	// Worker 在 Provider 返回后必须锁定权威 Capture，再校验 revision 与终态。
+	// 这样迟到结果与用户放弃／确认／新 revision 的写入会被数据库串行化。
+	GetCaptureForUpdate(ctx context.Context, id string) (Capture, error)
 	GetCaptureQuestion(ctx context.Context, id string) (CaptureQuestion, error)
 	// 创建 Thread 后发送可能因网络失败没有发生；当天重试时复用这个不可见空壳，
 	// 不让并发设备或重试不断产生新的空 Thread。
@@ -220,6 +231,7 @@ type Querier interface {
 	// 归属由策略保证，手写条件反而会让人以为没有策略也安全。
 	GetDietProfile(ctx context.Context, userID string) (RecipeDietProfile, error)
 	GetEvent(ctx context.Context, id string) (Event, error)
+	GetEventForUpdate(ctx context.Context, id string) (Event, error)
 	GetIdempotencyRecord(ctx context.Context, arg GetIdempotencyRecordParams) (IdempotencyKey, error)
 	GetLatestVerificationCode(ctx context.Context, arg GetLatestVerificationCodeParams) (AuthVerificationCode, error)
 	GetMealPlanByWeek(ctx context.Context, weekStart time.Time) (MealPlan, error)
@@ -229,22 +241,27 @@ type Querier interface {
 	GetMoodJournalEntry(ctx context.Context, noteID string) (GetMoodJournalEntryRow, error)
 	GetNextActiveTaskListForUpdate(ctx context.Context, arg GetNextActiveTaskListForUpdateParams) (TaskList, error)
 	GetNote(ctx context.Context, id string) (Note, error)
+	GetNoteForUpdate(ctx context.Context, id string) (Note, error)
 	GetOperation(ctx context.Context, id string) (AsyncOperation, error)
 	GetPerson(ctx context.Context, id string) (Person, error)
 	GetPersonInteraction(ctx context.Context, id string) (PersonInteraction, error)
 	GetProcessedJob(ctx context.Context, idempotencyKey string) (ProcessedJob, error)
 	GetProject(ctx context.Context, id string) (Project, error)
+	GetProjectForUpdate(ctx context.Context, id string) (Project, error)
 	GetProposal(ctx context.Context, id string) (ActionProposal, error)
 	GetRecipe(ctx context.Context, id string) (Recipe, error)
 	GetRecord(ctx context.Context, id string) (GetRecordRow, error)
+	GetRecordForUpdate(ctx context.Context, id string) (GetRecordForUpdateRow, error)
 	GetReviewSnapshot(ctx context.Context, arg GetReviewSnapshotParams) (ReviewSnapshot, error)
 	GetSuccessfulMoodJournalPolishAction(ctx context.Context, arg GetSuccessfulMoodJournalPolishActionParams) (string, error)
 	GetSuccessfulNotePolishAction(ctx context.Context, arg GetSuccessfulNotePolishActionParams) (string, error)
 	GetTask(ctx context.Context, id string) (Task, error)
+	GetTaskForUpdate(ctx context.Context, id string) (Task, error)
 	GetTaskList(ctx context.Context, id string) (GetTaskListRow, error)
 	GetTaskListForUpdate(ctx context.Context, id string) (TaskList, error)
 	GetThread(ctx context.Context, id string) (AssistantThread, error)
 	GetTracker(ctx context.Context, id string) (Tracker, error)
+	GetTrackerForUpdate(ctx context.Context, id string) (Tracker, error)
 	GetTurn(ctx context.Context, id string) (AssistantTurn, error)
 	// 账户与偏好。登录链路在拿到用户身份之前只能走 SECURITY DEFINER 函数。
 	// 说明：登录前的三个查询（按手机号查用户、创建用户、按哈希查 Refresh Token）
@@ -273,6 +290,7 @@ type Querier interface {
 	ListActivityEntries(ctx context.Context, batchID string) ([]ActivityEntry, error)
 	ListActivityEntriesForBatches(ctx context.Context, batchIds []string) ([]ActivityEntry, error)
 	ListAdminAudit(ctx context.Context, arg ListAdminAuditParams) ([]AdminAuditLog, error)
+	ListAllDayEventDuplicateCandidates(ctx context.Context, arg ListAllDayEventDuplicateCandidatesParams) ([]ListAllDayEventDuplicateCandidatesRow, error)
 	ListCaptureCandidates(ctx context.Context, arg ListCaptureCandidatesParams) ([]CaptureCandidate, error)
 	ListCaptureConflicts(ctx context.Context, arg ListCaptureConflictsParams) ([]CaptureConflict, error)
 	ListCaptureParts(ctx context.Context, arg ListCapturePartsParams) ([]CapturePart, error)
@@ -305,9 +323,11 @@ type Querier interface {
 	ListMoodJournalCalendar(ctx context.Context, arg ListMoodJournalCalendarParams) ([]ListMoodJournalCalendarRow, error)
 	// 心情日记查询。正文权威文档来自 notes，结构字段来自一对一扩展表。
 	ListMoodJournalEntries(ctx context.Context, arg ListMoodJournalEntriesParams) ([]ListMoodJournalEntriesRow, error)
+	ListNoteDuplicateCandidates(ctx context.Context, userID string) ([]ListNoteDuplicateCandidatesRow, error)
 	ListNoteTags(ctx context.Context) ([]string, error)
 	// Note 查询。Note 没有完成状态，列表按置顶优先、更新时间倒序。
 	ListNotes(ctx context.Context, arg ListNotesParams) ([]Note, error)
+	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
 	// 取还没算成本的调用。
 	ListPendingCostActions(ctx context.Context, rowLimit int32) ([]ListPendingCostActionsRow, error)
 	// 长期停留在 pending 的资产说明客户端放弃了上传，交给清理任务回收。
@@ -316,6 +336,7 @@ type Querier interface {
 	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
 	ListPersonEvents(ctx context.Context, arg ListPersonEventsParams) ([]Event, error)
 	ListPersonInteractions(ctx context.Context, arg ListPersonInteractionsParams) ([]PersonInteraction, error)
+	ListProjectDuplicateCandidates(ctx context.Context, userID string) ([]ListProjectDuplicateCandidatesRow, error)
 	// Project 查询。progress 由 Task 计数在应用层计算，不落库。
 	ListProjects(ctx context.Context, arg ListProjectsParams) ([]Project, error)
 	ListProposals(ctx context.Context, arg ListProposalsParams) ([]ActionProposal, error)
@@ -335,11 +356,15 @@ type Querier interface {
 	ListRecipes(ctx context.Context, arg ListRecipesParams) ([]Recipe, error)
 	// 选定之后再取完整菜谱（含食材与步骤）。候选阶段刻意不取这些列。
 	ListRecipesByIDs(ctx context.Context, ids []string) ([]Recipe, error)
+	ListRecordDuplicateCandidates(ctx context.Context, arg ListRecordDuplicateCandidatesParams) ([]ListRecordDuplicateCandidatesRow, error)
 	ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error)
 	ListRelearnBlocks(ctx context.Context, rowLimit int32) ([]MemoryRelearnBlock, error)
 	// 用户消掉过的提醒。只查窗口内的：更早的那些已经超出过期窗口，
 	// 本来就不会再浮出来。
 	ListReminderDismissals(ctx context.Context, since time.Time) ([]ListReminderDismissalsRow, error)
+	// 以下查询只做确定性重复检测的范围裁剪。标题、正文与 values 的最终归一化比较
+	// 仍由 Go Domain 完成，不能依赖数据库模糊匹配或 AI 相似度。
+	ListTaskDuplicateCandidates(ctx context.Context, arg ListTaskDuplicateCandidatesParams) ([]ListTaskDuplicateCandidatesRow, error)
 	ListTaskLists(ctx context.Context, includeArchived bool) ([]ListTaskListsRow, error)
 	ListTaskListsByKind(ctx context.Context, arg ListTaskListsByKindParams) ([]ListTaskListsByKindRow, error)
 	// Task 查询。Today 的收录与排序完全由这里的确定性 SQL 决定，客户端不得重排。
@@ -358,6 +383,7 @@ type Querier interface {
 	// 只返回真正说过话的对话。用户打开面板又直接关掉不算一次对话，
 	// 那种空壳出现在历史里只会让列表全是「新对话」。
 	ListThreads(ctx context.Context, arg ListThreadsParams) ([]AssistantThread, error)
+	ListTimedEventDuplicateCandidates(ctx context.Context, arg ListTimedEventDuplicateCandidatesParams) ([]ListTimedEventDuplicateCandidatesRow, error)
 	// 收录条件与分组顺序来自功能规格 8.3 与 8.4：
 	// 分组依次为已逾期、今天截止、今天有计划时间、手动加入今天；
 	// 一个 Task 同时符合多个分组时只进入最靠前的一个。
@@ -380,6 +406,7 @@ type Querier interface {
 	MarkMediaFailed(ctx context.Context, arg MarkMediaFailedParams) error
 	// byte_size 与 content_hash 来自服务端对存储侧的回查，不采信客户端上报值。
 	MarkMediaUploaded(ctx context.Context, arg MarkMediaUploadedParams) (MediaAsset, error)
+	MarkNotificationRead(ctx context.Context, notificationID string) (MarkNotificationReadRow, error)
 	MarkProposalExecuted(ctx context.Context, arg MarkProposalExecutedParams) (ActionProposal, error)
 	// 用于 rejected、stale、expired、failed 等终态。
 	MarkProposalResolved(ctx context.Context, arg MarkProposalResolvedParams) (ActionProposal, error)
@@ -401,6 +428,8 @@ type Querier interface {
 	RecordAdminAudit(ctx context.Context, arg RecordAdminAuditParams) (AdminAuditLog, error)
 	RecordAiAction(ctx context.Context, arg RecordAiActionParams) error
 	RecordToolCall(ctx context.Context, arg RecordToolCallParams) error
+	// Relation 端点必须是当前用户仍存在的正式 Object；Tracker 不是端点。
+	RelationEndpointExists(ctx context.Context, arg RelationEndpointExistsParams) (bool, error)
 	// 新增或停用价格之后，把受影响的调用重新标成待算。
 	// 只影响这个 Provider + 模型，不是全表重算。
 	ResetCostStatus(ctx context.Context, arg ResetCostStatusParams) error
@@ -413,6 +442,7 @@ type Querier interface {
 	RetireAIPrice(ctx context.Context, arg RetireAIPriceParams) error
 	RevokeAdminSession(ctx context.Context, id string) error
 	RevokeAllRefreshTokens(ctx context.Context, userID string) error
+	RevokeOtherRefreshTokenFamilies(ctx context.Context, arg RevokeOtherRefreshTokenFamiliesParams) error
 	RevokeRefreshToken(ctx context.Context, id string) error
 	// 把明细汇总回 ai_actions 上的缓存列。
 	//
@@ -515,6 +545,9 @@ type Querier interface {
 	// **金额一律在 SQL 里用 numeric 算**，Go 只负责搬字符串。
 	// 用 float64 搬一趟就会有舍入误差，而这是钱。
 	UpsertAIPrice(ctx context.Context, arg UpsertAIPriceParams) (AiModelPrice, error)
+	// 部分唯一索引让不同 Capture 的并发确认也只生成一条正式关系。
+	// 重放时只追加尚未包含的来源，避免同一来源重复膨胀。
+	UpsertActiveRelation(ctx context.Context, arg UpsertActiveRelationParams) (Relation, error)
 	// 第一次修改时顺带建行：客户端不需要先「创建档案」再改。
 	//
 	// INSERT 分支必须带上全部字段。只写 user_id 的话，第一次填问卷不会冲突，
@@ -523,6 +556,8 @@ type Querier interface {
 	UpsertDietProfile(ctx context.Context, arg UpsertDietProfileParams) (RecipeDietProfile, error)
 	// 采用菜单是整周覆盖，因此这里同时负责建与更新，并推进版本号。
 	UpsertMealPlan(ctx context.Context, arg UpsertMealPlanParams) (MealPlan, error)
+	// 产品内通知中心。
+	UpsertNotification(ctx context.Context, arg UpsertNotificationParams) error
 	// 只给 seed 用：菜谱由平台提供，没有面向用户的写接口。
 	UpsertRecipe(ctx context.Context, arg UpsertRecipeParams) error
 	// Review 快照。确定性指标始终可用，AI 叙述是可选增强。

@@ -23,6 +23,17 @@ export function RecipeImage({
   recipe: Recipe;
   style?: StyleProp<ViewStyle>;
 }) {
+  if (!recipe.image) {
+    return (
+      <View
+        accessibilityLabel={`${recipe.title}，暂无图片`}
+        style={[styles.imageFrame, styles.imagePlaceholder, style]}
+      >
+        <AppIcon color={recipeColors.faint} name="restaurant-outline" size={24} />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.imageFrame, style]}>
       <Image
@@ -449,6 +460,10 @@ const styles = StyleSheet.create({
   imageFrame: {
     overflow: 'hidden',
     backgroundColor: recipeColors.surfaceMuted,
+  },
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   image: {
     width: '100%',

@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './users.zod';
 import {
   useMutation,
   useQuery
@@ -99,6 +100,7 @@ export const requestAccountDeletion = async (accountDeletionRequest: AccountDele
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(accountDeletionRequest)
   }
+, StewardResponseSchemas.RequestAccountDeletionResponse
 );}
 
 
@@ -169,6 +171,7 @@ export const getAccountDeletionStatus = async (deletionRequestId: string, option
 
 
   }
+, StewardResponseSchemas.GetAccountDeletionStatusResponse
 );}
 
 
@@ -269,6 +272,7 @@ export const getCurrentUser = async ( options?: Parameters<typeof stewardFetch>[
 
 
   }
+, StewardResponseSchemas.GetCurrentUserResponse
 );}
 
 
@@ -369,6 +373,7 @@ export const updateCurrentUser = async (updateUserRequest: UpdateUserRequest, op
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateUserRequest)
   }
+, StewardResponseSchemas.UpdateCurrentUserResponse
 );}
 
 
@@ -439,6 +444,7 @@ export const getUserPreferences = async ( options?: Parameters<typeof stewardFet
 
 
   }
+, StewardResponseSchemas.GetUserPreferencesResponse
 );}
 
 
@@ -539,6 +545,7 @@ export const updateUserPreferences = async (updateUserPreferencesRequest: Update
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateUserPreferencesRequest)
   }
+, StewardResponseSchemas.UpdateUserPreferencesResponse
 );}
 
 
@@ -609,6 +616,7 @@ export const getAiSettings = async ( options?: Parameters<typeof stewardFetch>[1
 
 
   }
+, StewardResponseSchemas.GetAiSettingsResponse
 );}
 
 
@@ -709,6 +717,7 @@ export const updateAiSettings = async (updateAiSettingsRequest: UpdateAiSettings
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateAiSettingsRequest)
   }
+, StewardResponseSchemas.UpdateAiSettingsResponse
 );}
 
 
@@ -783,6 +792,7 @@ export const changePhone = async (changePhoneRequest: ChangePhoneRequest, option
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(changePhoneRequest)
   }
+, StewardResponseSchemas.ChangePhoneResponse
 );}
 
 
@@ -857,6 +867,7 @@ export const requestCurrentPhoneCode = async ( options?: Parameters<typeof stewa
 
 
   }
+, StewardResponseSchemas.RequestCurrentPhoneCodeResponse
 );}
 
 

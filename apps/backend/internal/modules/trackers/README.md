@@ -11,7 +11,8 @@ Tracker 字段定义与 Record 录入。Tracker 是可复用的 Schema，Record 
 ## 公开接口
 
 - CRUD 与统计查询；`TrackerAPI` 实现 `/v1/trackers`、`/v1/records`。
-- 事务内 Command：`CreateTrackerInTx` / `CreateRecordInTx`，供 Capture 确认使用。
+- 事务内 Command：`CreateTrackerInTx` / `CreateRecordInTx` / `UpdateTrackerCommandInTx` /
+  `UpdateRecordCommandInTx`，供 Capture 确认使用；更新强制校验 `expected_version`。
 - 撤销：实现 `activity.Undoer`。
 
 ## 不变量

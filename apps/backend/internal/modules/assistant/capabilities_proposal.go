@@ -23,6 +23,28 @@ import (
 // RegisterProposals 把 Proposal Capability 登记进 Registry。
 func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 	reg.Register(ai.Capability{
+		Name: "tasks.propose_split",
+		Description: "把一个已存在的多步骤任务拆成 2 到 10 条待确认子任务。" +
+			"必须先用 objects.get 读取原任务的 id 和 version；这里只生成一条批量建议，确认后才创建子任务并建立 related_to 关系。",
+		Risk: ai.RiskProposal, MaxResultBytes: 4 << 10,
+		Parameters: object(props{
+			"task_id":          str("原任务 ID。"),
+			"expected_version": integer("读取原任务时的 version。"),
+			"tasks": map[string]any{
+				"type": "array", "minItems": 2, "maxItems": 10,
+				"items": object(props{
+					"title":             str("子任务标题。"),
+					"description":       str("可选说明。"),
+					"estimated_minutes": integer("可选预计分钟数。"),
+				}, []string{"title"}),
+			},
+			"reason":      str("为什么这样拆分。"),
+			"source_refs": enumFreeArray("必须包含刚读取的原任务来源。"),
+		}, []string{"task_id", "expected_version", "tasks", "reason", "source_refs"}),
+		Handler: deps.proposeTaskSplit,
+	})
+
+	reg.Register(ai.Capability{
 		Name: "tasks.propose_create",
 		Description: "为用户准备一条「新建任务」的待确认建议。" +
 			"用户说要做某件事、需要记下来时用它。你不能直接创建任务。",
@@ -125,6 +147,68 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 			Handler: deps.proposeMemoryUpsert,
 		})
 	}
+}
+
+func (d CapabilityDeps) proposeTaskSplit(ctx context.Context, cc ai.CapabilityContext,
+	args map[string]any) (ai.CapabilityResult, error) {
+	taskID := strings.TrimSpace(text(args["task_id"]))
+	if !strings.HasPrefix(taskID, "tsk_") {
+		return ai.CapabilityResult{}, fmt.Errorf("task_id 必须是任务 ID")
+	}
+	version, ok := args["expected_version"].(float64)
+	if !ok {
+		return ai.CapabilityResult{}, fmt.Errorf("需要 expected_version")
+	}
+	current, err := d.Tasks.GetTask(ctx, cc.UserID, taskID)
+	if err != nil {
+		return ai.CapabilityResult{}, err
+	}
+	if current.Version != int32(version) {
+		return ai.CapabilityResult{}, fmt.Errorf("任务已经变化，请重新读取")
+	}
+	sources, err := requireSources(args)
+	if err != nil {
+		return ai.CapabilityResult{}, err
+	}
+	raw, ok := args["tasks"].([]any)
+	if !ok || len(raw) < 2 || len(raw) > 10 {
+		return ai.CapabilityResult{}, fmt.Errorf("子任务数量必须是 2 到 10")
+	}
+	items := make([]map[string]any, 0, len(raw))
+	changes := make([]ai.ProposalChange, 0, len(raw))
+	for _, value := range raw {
+		item, ok := value.(map[string]any)
+		if !ok {
+			return ai.CapabilityResult{}, fmt.Errorf("子任务格式不正确")
+		}
+		title := strings.TrimSpace(text(item["title"]))
+		if title == "" {
+			return ai.CapabilityResult{}, fmt.Errorf("子任务标题不能为空")
+		}
+		clean := map[string]any{"title": title}
+		if description := strings.TrimSpace(text(item["description"])); description != "" {
+			clean["description"] = description
+		}
+		if minutes, ok := item["estimated_minutes"].(float64); ok && minutes > 0 {
+			clean["estimated_minutes"] = int(minutes)
+		}
+		items = append(items, clean)
+		changes = append(changes, ai.ProposalChange{Field: "task", Label: "子任务", After: title})
+	}
+	expected := int(version)
+	return ai.CapabilityResult{
+		Content:    "已经准备好拆分建议，只有用户确认后才会批量创建。",
+		SourceRefs: sources,
+		Proposals: []ai.ProposalDraft{{
+			Type: "task_split", TargetType: "task", TargetID: taskID,
+			TargetExpectedVersion: &expected,
+			Command:               map[string]any{"task_id": taskID, "tasks": items},
+			EditableFields:        []string{"selected_tasks"},
+			Preview: ai.ProposalPreview{Title: "拆分任务：" + current.Title, Changes: changes,
+				Impact: "将创建子任务并与原任务建立关联；原任务不会自动完成。"},
+			Reason: strings.TrimSpace(text(args["reason"])), SourceRefs: sources,
+		}},
+	}, nil
 }
 
 func (d CapabilityDeps) proposeTaskCreate(_ context.Context, cc ai.CapabilityContext,

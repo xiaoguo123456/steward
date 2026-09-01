@@ -107,10 +107,9 @@ func (p *Provider) CompleteStream(ctx context.Context, req ai.CompletionRequest,
 		return ai.CompletionResult{}, ai.ErrRateLimited
 	}
 	if resp.StatusCode >= 400 {
-		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4<<10))
 		p.logger.Error("流式对话返回错误",
-			"status", resp.StatusCode, "model", p.cfg.ChatModel,
-			"body", truncate(string(raw), 500))
+			"status", resp.StatusCode, "model", p.cfg.ChatModel)
 		return ai.CompletionResult{}, fmt.Errorf("%w: HTTP %d", ai.ErrProviderUnavailable, resp.StatusCode)
 	}
 
@@ -152,7 +151,7 @@ func (p *Provider) readStream(body io.Reader, onDelta func(string),
 		}
 		if chunk.Error != nil {
 			p.logger.Error("流式对话返回业务错误",
-				"message", chunk.Error.Message, "type", chunk.Error.Type)
+				"type", chunk.Error.Type)
 			return ai.CompletionResult{}, fmt.Errorf("%w: %s",
 				ai.ErrProviderUnavailable, chunk.Error.Type)
 		}

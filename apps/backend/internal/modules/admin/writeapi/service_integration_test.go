@@ -314,8 +314,8 @@ func TestSuspendRevokesSessions(t *testing.T) {
 		}
 		for i := 0; i < 2; i++ {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO auth_refresh_tokens (id, user_id, token_hash, expires_at)
-				VALUES ($1, $2, $3, now() + interval '30 days')`,
+				INSERT INTO auth_refresh_tokens (id, user_id, token_hash, expires_at, family_id)
+				VALUES ($1, $2, $3, now() + interval '30 days', $1)`,
 				// 散列要唯一：固定值会让第二次运行撞上唯一约束。
 				// 和成本测试踩的是同一个坑——只在干净库上能过的测试不算测试。
 				idgen.New("rft"), userID, []byte(idgen.New("hash"))); err != nil {

@@ -2,6 +2,7 @@ package captures
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
+	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
@@ -23,20 +25,70 @@ type ConfirmResult struct {
 	SavedRows int
 }
 
+const confirmEndpoint = "captures.confirm"
+
+// confirmReplay 是幂等记录中的最小响应快照。Capture 已在同一事务进入终态，
+// 重放时重新加载只读详情，并复用首次确认产生的资源列表与批次引用。
+type confirmReplay struct {
+	Affected  []httpapi.AffectedResource `json:"affected_resources"`
+	BatchID   string                     `json:"batch_id"`
+	SavedRows int                        `json:"saved_rows"`
+}
+
 // Confirm 保存用户勾选的候选项。
 //
 // 全部创建、更新与关系变更在一个事务内完成，任一失败整体回滚（CFM-004）。
 // 未列出的候选视为用户放弃，不进入任何正式内容（CFM-007）。
-func (s *Service) Confirm(ctx context.Context, userID, captureID string,
+func (s *Service) Confirm(ctx context.Context, userID, captureID, idempotencyKey string,
 	body httpapi.ConfirmCaptureRequest) (ConfirmResult, error) {
 
 	if len(body.Items) == 0 {
 		return ConfirmResult{}, apperr.Validation(apperr.Field("items", "至少需要选择一项才能保存。"))
 	}
+	if strings.TrimSpace(idempotencyKey) == "" {
+		return ConfirmResult{}, apperr.New(apperr.CodeIdempotencyKeyReq)
+	}
+	rawBody, err := json.Marshal(struct {
+		CaptureID string                        `json:"capture_id"`
+		Body      httpapi.ConfirmCaptureRequest `json:"body"`
+	}{CaptureID: captureID, Body: body})
+	if err != nil {
+		return ConfirmResult{}, apperr.Internal(err)
+	}
+	requestHash := authpkg.HashToken(string(rawBody))
 
 	var out ConfirmResult
-	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		capture, err := q.GetCapture(ctx, captureID)
+	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		if err := q.AcquireIdempotencyLock(ctx,
+			confirmEndpoint+":"+userID+":"+idempotencyKey); err != nil {
+			return apperr.Internal(err)
+		}
+		replayed, err := q.GetIdempotencyRecord(ctx, dbgen.GetIdempotencyRecordParams{
+			UserID: userID, Endpoint: confirmEndpoint, Key: idempotencyKey,
+		})
+		if err == nil {
+			if subtle.ConstantTimeCompare(replayed.RequestHash, requestHash) != 1 {
+				return apperr.New(apperr.CodeIdempotencyReused)
+			}
+			var snapshot confirmReplay
+			if err := json.Unmarshal(replayed.ResponseBody, &snapshot); err != nil {
+				return apperr.Internal(err)
+			}
+			detail, err := s.loadDetail(ctx, q, captureID)
+			if err != nil {
+				return err
+			}
+			detail.Created = snapshot.Affected
+			out = ConfirmResult{Detail: detail, Affected: snapshot.Affected,
+				BatchID: snapshot.BatchID, SavedRows: snapshot.SavedRows}
+			return nil
+		}
+		if !database.IsNoRows(err) {
+			return apperr.Internal(err)
+		}
+
+		// 幂等键只串行化同一个重试键；Capture 行锁还要阻止两个不同键并发确认同一批候选。
+		capture, err := q.GetCaptureForUpdate(ctx, captureID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("这次输入")
@@ -65,11 +117,18 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 		if err != nil {
 			return apperr.Internal(err)
 		}
+		updateProvenance := append([]objects.ProvenanceInput(nil), provenance...)
+		updateProvenance[0].Action = "updated_from"
+		updateProvenanceJSON, err := json.Marshal(updateProvenance)
+		if err != nil {
+			return apperr.Internal(err)
+		}
 
 		// 本次新建的 Tracker 需要被同批 Record 引用，因此记录候选到实体的映射。
 		createdTrackers := make(map[string]string)
 		// Project 必须先于同批次中引用它的 Task、Event 与 Note 创建。
 		createdProjects := make(map[string]string)
+		confirmedResources := make(map[string]ConfirmedResource, len(body.Items))
 		entries := make([]activity.EntryInput, 0, len(body.Items))
 		affected := make([]httpapi.AffectedResource, 0, len(body.Items)+3)
 
@@ -94,6 +153,26 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 					"items", "还有必填信息没有补全，请先完善后再保存："+
 						strings.Join(unresolved, "、")))
 			}
+			if payload.Task != nil && item.listID != nil {
+				payload.Task.ListId = item.listID
+			}
+			if isConfirmUpdate(item) {
+				confirmed, title, err := s.updateConfirmedCandidate(
+					ctx, q, userID, candidate, payload, createdProjects)
+				if err != nil {
+					return err
+				}
+				if err := appendCaptureUpdateProvenance(ctx, q, userID, confirmed, updateProvenanceJSON); err != nil {
+					return err
+				}
+				confirmedResources[candidate.ID] = confirmed
+				entries = append(entries, activity.EntryInput{
+					Action: "updated", ResourceType: confirmed.Type, ResourceID: confirmed.ID,
+					Title: title, Summary: "从一次输入更新了已有内容",
+				})
+				affected = append(affected, resource(affectedResourceType(confirmed.Type), confirmed.ID))
+				continue
+			}
 
 			switch candidate.CandidateType {
 			case "tracker":
@@ -106,6 +185,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 					return err
 				}
 				createdTrackers[candidate.ID] = row.ID
+				confirmedResources[candidate.ID] = ConfirmedResource{Type: "tracker", ID: row.ID}
 				entries = append(entries, activity.EntryInput{
 					Action: "created", ResourceType: "tracker", ResourceID: row.ID,
 					Title: row.Name, Summary: "从一次输入创建了记录项",
@@ -133,6 +213,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 				if err != nil {
 					return err
 				}
+				confirmedResources[candidate.ID] = ConfirmedResource{Type: "record", ID: row.ID}
 				entries = append(entries, activity.EntryInput{
 					Action: "created", ResourceType: "record", ResourceID: row.ID,
 					Title: row.Title, Summary: "从一次输入新增了记录",
@@ -174,6 +255,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 				if err != nil {
 					return err
 				}
+				confirmedResources[candidate.ID] = ConfirmedResource{Type: "task", ID: row.ID}
 				entries = append(entries, activity.EntryInput{
 					Action: "created", ResourceType: "task", ResourceID: row.ID,
 					Title: row.Title, Summary: "从一次输入创建了任务",
@@ -215,6 +297,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 				if err != nil {
 					return err
 				}
+				confirmedResources[candidate.ID] = ConfirmedResource{Type: "event", ID: row.ID}
 				entries = append(entries, activity.EntryInput{
 					Action: "created", ResourceType: "event", ResourceID: row.ID,
 					Title: row.Title, Summary: "从一次输入创建了日程",
@@ -239,6 +322,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 				if err != nil {
 					return err
 				}
+				confirmedResources[candidate.ID] = ConfirmedResource{Type: "note", ID: row.ID}
 				entries = append(entries, activity.EntryInput{
 					Action: "created", ResourceType: "note", ResourceID: row.ID,
 					Title: row.Title, Summary: "从一次输入创建了笔记",
@@ -293,6 +377,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 					return err
 				}
 				createdProjects[candidate.ID] = row.ID
+				confirmedResources[candidate.ID] = ConfirmedResource{Type: "project", ID: row.ID}
 				summary := "从一次输入创建了项目"
 				if projectKind == "trip" {
 					summary = "从一次输入创建了行程"
@@ -306,6 +391,24 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 			default:
 				return apperr.Validation(apperr.Field("items", "存在无法保存的候选类型。"))
 			}
+		}
+
+		relationCandidates, err := q.ListCaptureRelationCandidates(ctx, dbgen.ListCaptureRelationCandidatesParams{
+			CaptureID: capture.ID, Revision: capture.Revision,
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		relations, err := s.PersistConfirmedRelations(
+			ctx, q, userID, relationCandidates, confirmedResources, provenanceJSON)
+		if err != nil {
+			return err
+		}
+		for _, relation := range relations {
+			entries = append(entries, activity.EntryInput{
+				Action: "created", ResourceType: "relation", ResourceID: relation.ID,
+				Summary: "从一次输入保存了内容关系",
+			})
 		}
 
 		_ = loc
@@ -334,6 +437,19 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 		}
 		detail.Created = affected
 		out = ConfirmResult{Detail: detail, Affected: affected, BatchID: batchID, SavedRows: len(entries)}
+		responseBody, err := json.Marshal(confirmReplay{
+			Affected: affected, BatchID: batchID, SavedRows: len(entries),
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		if err := q.SaveIdempotencyRecord(ctx, dbgen.SaveIdempotencyRecordParams{
+			UserID: userID, Endpoint: confirmEndpoint, Key: idempotencyKey,
+			RequestHash: requestHash, StatusCode: 200, ResponseBody: responseBody,
+			ResourceID: &captureID, ExpiresAt: time.Now().Add(24 * time.Hour),
+		}); err != nil {
+			return apperr.Internal(err)
+		}
 		return nil
 	})
 	return out, err
@@ -341,9 +457,10 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID string,
 
 // confirmItem 是一个待保存的候选与用户编辑。
 type confirmItem struct {
-	candidate dbgen.CaptureCandidate
-	override  *httpapi.CaptureDraftPayload
-	listID    *string
+	candidate           dbgen.CaptureCandidate
+	override            *httpapi.CaptureDraftPayload
+	listID              *string
+	duplicateResolution *httpapi.ConfirmCaptureItemDuplicateResolution
 }
 
 // orderItems 校验候选归属，并把 Project、Tracker 排到依赖它们的对象之前。
@@ -362,7 +479,16 @@ func orderItems(ctx context.Context, q *dbgen.Queries, capture dbgen.Capture,
 			}
 			return nil, apperr.Internal(err)
 		}
-		ci := confirmItem{candidate: candidate, override: item.Payload, listID: item.ListId}
+		if candidate.DuplicateOf != nil && item.DuplicateResolution == nil {
+			return nil, apperr.Validation(apperr.Field(
+				"items", "存在可能重复的内容，请明确选择更新原内容或仍然创建。"))
+		}
+		if candidate.DuplicateOf == nil && item.DuplicateResolution != nil {
+			return nil, apperr.Validation(apperr.Field(
+				"items", "未命中重复内容时不能提交重复处理选择。"))
+		}
+		ci := confirmItem{candidate: candidate, override: item.Payload, listID: item.ListId,
+			duplicateResolution: item.DuplicateResolution}
 		switch candidate.CandidateType {
 		case "project":
 			projectsFirst = append(projectsFirst, ci)
@@ -390,6 +516,11 @@ func (s *Service) loadDetail(ctx context.Context, q *dbgen.Queries, captureID st
 		return out, apperr.Internal(err)
 	}
 	if out.Candidates, err = q.ListCaptureCandidates(ctx, dbgen.ListCaptureCandidatesParams{
+		CaptureID: captureID, Revision: capture.Revision,
+	}); err != nil {
+		return out, apperr.Internal(err)
+	}
+	if out.Relations, err = q.ListCaptureRelationCandidates(ctx, dbgen.ListCaptureRelationCandidatesParams{
 		CaptureID: captureID, Revision: capture.Revision,
 	}); err != nil {
 		return out, apperr.Internal(err)
@@ -517,6 +648,25 @@ func resource(kind httpapi.AffectedResourceType, id string) httpapi.AffectedReso
 		res.Id = &id
 	}
 	return res
+}
+
+func affectedResourceType(objectType string) httpapi.AffectedResourceType {
+	switch objectType {
+	case "task":
+		return httpapi.AffectedResourceTypeTask
+	case "event":
+		return httpapi.AffectedResourceTypeEvent
+	case "project":
+		return httpapi.AffectedResourceTypeProject
+	case "note":
+		return httpapi.AffectedResourceTypeNote
+	case "tracker":
+		return httpapi.AffectedResourceTypeTracker
+	case "record":
+		return httpapi.AffectedResourceTypeRecord
+	default:
+		return httpapi.AffectedResourceType(objectType)
+	}
 }
 
 func optional(v string) *string {

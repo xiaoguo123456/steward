@@ -1,3 +1,10 @@
+import {
+  errorMessage,
+  getGetTodayQueryKey,
+  getListTasksQueryKey,
+  updateTask,
+} from '@steward/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
@@ -50,6 +57,7 @@ const qualityLabels: Record<FocusQuality, string> = {
 
 export default function FocusScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
   const { records, saveRecord } = useFocusPrototype();
   const lastTickAtRef = useRef<number | null>(null);
@@ -73,6 +81,9 @@ export default function FocusScreen() {
   const [taskCompleted, setTaskCompleted] = useState(false);
   const [quality, setQuality] = useState<FocusQuality | null>(null);
   const [recordSaved, setRecordSaved] = useState(false);
+  const [savingSession, setSavingSession] = useState(false);
+  const [saveFailure, setSaveFailure] = useState<string | null>(null);
+  const [taskCompletionApplied, setTaskCompletionApplied] = useState(false);
   const [showTaskSheet, setShowTaskSheet] = useState(false);
   const [showDurationSheet, setShowDurationSheet] = useState(false);
   const [showThoughtSheet, setShowThoughtSheet] = useState(false);
@@ -140,6 +151,8 @@ export default function FocusScreen() {
     setElapsedSeconds(0);
     setRemainingSeconds(durationMinutes * 60);
     setRecordSaved(false);
+    setSaveFailure(null);
+    setTaskCompletionApplied(false);
   };
 
   const chooseDuration = (minutes: number) => {
@@ -181,27 +194,58 @@ export default function FocusScreen() {
     setPhase('summary');
   };
 
-  const saveSession = () => {
-    saveRecord({
-      task: selectedTask,
-      mode,
-      plannedSeconds: mode === 'pomodoro' ? plannedSeconds : undefined,
-      elapsedSeconds,
-      completedAt: new Date().toISOString(),
-      taskCompleted,
-      quality,
-      thoughts,
-    });
-    lastTickAtRef.current = null;
-    setRunning(false);
-    setPhase('ready');
-    setElapsedSeconds(0);
-    setRemainingSeconds(durationMinutes * 60);
-    setThoughts([]);
-    setThoughtDraft('');
-    setTaskCompleted(false);
-    setQuality(null);
-    setRecordSaved(true);
+  const saveSession = async () => {
+    if (savingSession) return;
+    setSavingSession(true);
+    setSaveFailure(null);
+    try {
+      if (
+        taskCompleted &&
+        !taskCompletionApplied &&
+        selectedTask &&
+        !selectedTask.temporary
+      ) {
+        if (selectedTask.version === undefined) {
+          throw new Error('任务版本尚未加载，请返回后重试。');
+        }
+        await updateTask(
+          selectedTask.id,
+          { status: 'done' },
+          { headers: { 'If-Match': String(selectedTask.version) } },
+        );
+        setTaskCompletionApplied(true);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetTodayQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() }),
+        ]);
+      }
+
+      await saveRecord({
+        task: selectedTask,
+        mode,
+        plannedSeconds: mode === 'pomodoro' ? plannedSeconds : undefined,
+        elapsedSeconds,
+        completedAt: new Date().toISOString(),
+        taskCompleted,
+        quality,
+        thoughts,
+      });
+      lastTickAtRef.current = null;
+      setRunning(false);
+      setPhase('ready');
+      setElapsedSeconds(0);
+      setRemainingSeconds(durationMinutes * 60);
+      setThoughts([]);
+      setThoughtDraft('');
+      setTaskCompleted(false);
+      setTaskCompletionApplied(false);
+      setQuality(null);
+      setRecordSaved(true);
+    } catch (error) {
+      setSaveFailure(errorMessage(error, '保存失败，请重试。'));
+    } finally {
+      setSavingSession(false);
+    }
   };
 
   const saveThought = () => {
@@ -678,13 +722,16 @@ export default function FocusScreen() {
                 <Text style={styles.summaryThoughtsText}>本次记下 {thoughts.length} 条想法</Text>
               </View>
             ) : null}
+            {saveFailure ? (
+              <Text accessibilityRole="alert" style={styles.saveFailure}>{saveFailure}</Text>
+            ) : null}
           </ScrollView>
           <View style={styles.actionDock}>
             <FocusButton
-              disabled={elapsedSeconds <= 0}
+              disabled={elapsedSeconds <= 0 || savingSession}
               icon="checkmark"
-              label="保存专注记录"
-              onPress={saveSession}
+              label={savingSession ? '保存中…' : '保存专注记录'}
+              onPress={() => void saveSession()}
             />
           </View>
         </View>
@@ -1629,6 +1676,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '600',
+  },
+  saveFailure: {
+    marginTop: 16,
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
   },
   temporaryTaskRow: {
     minHeight: 54,

@@ -10,6 +10,9 @@ ORDER BY created_at, id;
 -- name: GetTracker :one
 SELECT * FROM trackers WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
 
+-- name: GetTrackerForUpdate :one
+SELECT * FROM trackers WHERE id = sqlc.arg(id) AND deleted_at IS NULL FOR UPDATE;
+
 -- name: ListTrackerStats :many
 -- 每个 Tracker 的记录数与最近记录时间。
 -- GROUP BY 保证每个分组至少有一行，因此 max(timestamp) 非空；
@@ -119,6 +122,7 @@ FROM records r
 JOIN trackers t ON t.id = r.tracker_id
 WHERE r.deleted_at IS NULL
   AND (sqlc.narg(tracker_id)::text IS NULL OR r.tracker_id = sqlc.narg(tracker_id)::text)
+  AND (sqlc.narg(project_id)::text IS NULL OR r.project_id = sqlc.narg(project_id)::text)
   AND (sqlc.narg(from_at)::timestamptz IS NULL OR r.timestamp >= sqlc.narg(from_at)::timestamptz)
   AND (sqlc.narg(to_at)::timestamptz IS NULL OR r.timestamp <= sqlc.narg(to_at)::timestamptz)
   AND (sqlc.narg(cursor_timestamp)::timestamptz IS NULL
@@ -131,6 +135,13 @@ SELECT r.*, t.name AS tracker_name
 FROM records r
 JOIN trackers t ON t.id = r.tracker_id
 WHERE r.id = sqlc.arg(id) AND r.deleted_at IS NULL;
+
+-- name: GetRecordForUpdate :one
+SELECT r.*, t.name AS tracker_name
+FROM records r
+JOIN trackers t ON t.id = r.tracker_id
+WHERE r.id = sqlc.arg(id) AND r.deleted_at IS NULL
+FOR UPDATE OF r;
 
 -- name: CreateRecord :one
 INSERT INTO records (

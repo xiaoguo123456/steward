@@ -31,7 +31,8 @@ RETURNING *;
 SELECT * FROM auth_verification_codes
 WHERE phone = sqlc.arg(phone) AND purpose = sqlc.arg(purpose)
 ORDER BY created_at DESC
-LIMIT 1;
+LIMIT 1
+FOR UPDATE;
 
 -- name: ConsumeVerificationCode :exec
 UPDATE auth_verification_codes SET consumed_at = now()
@@ -42,8 +43,8 @@ UPDATE auth_verification_codes SET attempts = attempts + 1
 WHERE id = sqlc.arg(id);
 
 -- name: CreateRefreshToken :one
-INSERT INTO auth_refresh_tokens (id, user_id, token_hash, expires_at)
-VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(token_hash), sqlc.arg(expires_at))
+INSERT INTO auth_refresh_tokens (id, user_id, token_hash, expires_at, family_id)
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(token_hash), sqlc.arg(expires_at), sqlc.arg(family_id))
 RETURNING *;
 
 -- name: RevokeRefreshToken :exec
@@ -53,6 +54,16 @@ WHERE id = sqlc.arg(id) AND revoked_at IS NULL;
 -- name: RevokeAllRefreshTokens :exec
 UPDATE auth_refresh_tokens SET revoked_at = now()
 WHERE user_id = sqlc.arg(user_id) AND revoked_at IS NULL;
+
+-- name: RevokeOtherRefreshTokenFamilies :exec
+UPDATE auth_refresh_tokens SET revoked_at = now()
+WHERE auth_refresh_tokens.user_id = sqlc.arg(owner_user_id)
+  AND family_id <> (
+      SELECT current_token.family_id FROM auth_refresh_tokens AS current_token
+      WHERE current_token.id = sqlc.arg(current_token_id)
+        AND current_token.user_id = sqlc.arg(owner_user_id)
+  )
+  AND revoked_at IS NULL;
 
 -- name: EnsureUserPreferences :one
 INSERT INTO user_preferences (user_id)

@@ -51,6 +51,9 @@ tags:
     x-displayName: 菜谱内容
   - name: views
     x-displayName: 聚合视图
+  - name: notifications
+    x-displayName: 产品内通知
+    description: 已触发通知的持久化列表与已读状态。
   - name: system
     x-displayName: 系统
 paths:
@@ -1304,6 +1307,39 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/mood-journal/entries/{entry_id}/follow-up:
+    parameters:
+      - name: entry_id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: generateMoodJournalFollowUp
+      summary: 生成单篇日记保存后追问
+      description: |
+        用户保存后主动选择继续思考时调用。只发送当前日记的纯文本投影；结果是可跳过的只读候选，不修改日记。
+      tags:
+        - mood-journal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 返回一个温和追问。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalFollowUpResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /v1/mood-journal/polish:
     post:
       operationId: polishMoodJournalDraft
@@ -1404,6 +1440,39 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/mood-journal/reflections:
+    post:
+      operationId: generateMoodJournalReflection
+      summary: 生成周或月心情回望候选
+      description: |
+        仅使用用户本次明确选择、属于日期范围且未排除 AI 的日记纯文本投影。结果不自动保存、不写入 Note 或 Memory。
+      tags:
+        - mood-journal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoodJournalReflectionRequest'
+      responses:
+        '200':
+          description: 返回带来源引用的回望候选。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodJournalReflectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /v1/trackers:
     get:
       operationId: listTrackers
@@ -1544,6 +1613,12 @@ paths:
         - name: tracker_id
           in: query
           required: false
+          schema:
+            type: string
+        - name: project_id
+          in: query
+          required: false
+          description: 只返回归属当前 Project 的 Record，用于 Project Objects/Data 聚合。
           schema:
             type: string
         - name: from
@@ -3196,6 +3271,59 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /v1/notifications:
+    get:
+      operationId: listNotifications
+      summary: 读取产品内通知
+      description: |
+        返回已经触发并持久化的通知，按发生时间倒序排列。当前 Event Reminder
+        与 Task Due 复用服务端 Reminder 的确定性触发计算；系统通知权限被拒绝
+        不影响本接口。来源软删除后仍返回通知快照，并标记 source_deleted。
+      tags:
+        - notifications
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/notifications/{notification_id}/read:
+    post:
+      operationId: markNotificationRead
+      summary: 标记一条产品内通知已读
+      description: 重复标记同一条通知不会改变首次已读时间。
+      tags:
+        - notifications
+      parameters:
+        - name: notification_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /v1/me/phone:
     post:
       operationId: changePhone
@@ -4207,8 +4335,8 @@ components:
         mood_journal_ai_enabled:
           type: boolean
           description: |
-            用户是否单独允许把当前主动提交的心情日记草稿发送给 AI Provider
-            做排版润色；默认关闭，可随时撤回。
+            用户是否单独允许把本次主动提交或选择的最小心情日记正文发送给 AI Provider，
+            用于排版润色、保存后追问或阶段回望；默认关闭，可随时撤回。
         updated_at:
           type: string
           format: date-time
@@ -5917,6 +6045,37 @@ components:
           description: |
             用户采用本次 AI 排版润色结果后回传的 AI Action ID。
             服务端校验归属与成功状态后追加来源引用。
+    MoodJournalFollowUpResult:
+      type: object
+      additionalProperties: false
+      required:
+        - question
+        - source_entry_id
+        - source_entry_version
+        - ai_action_id
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 160
+        source_entry_id:
+          type: string
+        source_entry_version:
+          type: integer
+          minimum: 1
+        ai_action_id:
+          type: string
+    MoodJournalFollowUpResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MoodJournalFollowUpResult'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
     MoodJournalPolishRequest:
       type: object
       additionalProperties: false
@@ -6038,6 +6197,126 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/MoodJournalStatistics'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    MoodJournalReflectionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - period_start
+        - period_end
+        - entry_ids
+      properties:
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        entry_ids:
+          type: array
+          minItems: 1
+          maxItems: 31
+          uniqueItems: true
+          items:
+            type: string
+    MoodJournalReflectionObservation:
+      type: object
+      additionalProperties: false
+      required:
+        - text
+        - source_entry_ids
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 160
+        source_entry_ids:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+    MoodJournalReflectionSuggestion:
+      type: object
+      additionalProperties: false
+      required:
+        - text
+        - source_entry_ids
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 140
+        source_entry_ids:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+    MoodJournalReflectionResult:
+      type: object
+      additionalProperties: false
+      required:
+        - summary
+        - observations
+        - reflection_questions
+        - gentle_suggestions
+        - source_entries
+        - ai_action_id
+      properties:
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 280
+        observations:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/MoodJournalReflectionObservation'
+        reflection_questions:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        gentle_suggestions:
+          type: array
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/MoodJournalReflectionSuggestion'
+        source_entries:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - id
+              - occurred_at
+              - version
+            properties:
+              id:
+                type: string
+              occurred_at:
+                type: string
+                format: date-time
+              version:
+                type: integer
+                minimum: 1
+        ai_action_id:
+          type: string
+    MoodJournalReflectionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MoodJournalReflectionResult'
         meta:
           $ref: '#/components/schemas/ResponseMeta'
     TrackerStatus:
@@ -7576,6 +7855,15 @@ components:
           type: string
           nullable: true
           description: Task 候选在确认页选择的目标清单。
+        duplicate_resolution:
+          type: string
+          nullable: true
+          enum:
+            - create
+            - update
+          description: |
+            候选命中 duplicate_of 时必须明确选择：create 表示仍然创建，
+            update 表示更新命中的已有实体。未命中重复候选时不得提交。
     ConfirmCaptureRequest:
       type: object
       additionalProperties: false
@@ -7927,6 +8215,7 @@ components:
       enum:
         - task_create
         - task_update
+        - task_split
         - event_create
         - event_update
         - memory_upsert
@@ -8849,6 +9138,86 @@ components:
         id:
           type: string
           description: PendingReminder 的 id，原样回传。
+    NotificationType:
+      type: string
+      enum:
+        - event_reminder
+        - task_due
+        - daily_brief
+        - project_risk
+        - weekly_review
+    NotificationSourceType:
+      type: string
+      enum:
+        - event
+        - task
+        - project
+        - review
+    Notification:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - title
+        - body
+        - source_type
+        - source_id
+        - occurred_at
+        - read_at
+        - source_deleted
+      properties:
+        id:
+          type: string
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+          description: 触发时保存的最小标题快照；来源删除后仍可解释这条通知。
+        body:
+          type: string
+          description: 不包含用户正文的确定性通知说明。
+        source_type:
+          $ref: '#/components/schemas/NotificationSourceType'
+        source_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        source_deleted:
+          type: boolean
+          description: 为 true 时客户端显示“内容已删除”，不得进入空白详情。
+    NotificationsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    NotificationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Notification'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
     ChangePhoneRequest:
       type: object
       additionalProperties: false

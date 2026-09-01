@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { CaptureDraftPayload } from './captureDraftPayload';
+import type { ConfirmCaptureItemDuplicateResolution } from './confirmCaptureItemDuplicateResolution';
 
 /**
  * 用户勾选保存的一个候选项。payload 为用户编辑后的值，
@@ -27,4 +28,10 @@ export interface ConfirmCaptureItem {
      * @nullable
      */
   list_id?: string | null;
+  /**
+     * 候选命中 duplicate_of 时必须明确选择：create 表示仍然创建，
+     * update 表示更新命中的已有实体。未命中重复候选时不得提交。
+     * @nullable
+     */
+  duplicate_resolution?: ConfirmCaptureItemDuplicateResolution;
 }

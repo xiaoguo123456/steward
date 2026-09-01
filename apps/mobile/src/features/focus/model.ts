@@ -7,6 +7,7 @@ export type FocusTaskReference = {
   title: string;
   list: string;
   color: string;
+  version?: number;
   time?: string;
   temporary?: boolean;
 };

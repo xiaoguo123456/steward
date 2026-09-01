@@ -54,6 +54,7 @@ func (h *TrackerAPI) ListTrackers(ctx context.Context, req httpapi.ListTrackersR
 
 // CreateTracker 新建 Tracker。
 func (h *TrackerAPI) CreateTracker(ctx context.Context, req httpapi.CreateTrackerRequestObject) (httpapi.CreateTrackerResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -95,6 +96,7 @@ func (h *TrackerAPI) UpdateTracker(ctx context.Context, req httpapi.UpdateTracke
 
 // DeleteTracker 删除 Tracker。
 func (h *TrackerAPI) DeleteTracker(ctx context.Context, req httpapi.DeleteTrackerRequestObject) (httpapi.DeleteTrackerResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -122,7 +124,11 @@ func (h *TrackerAPI) ListRecords(ctx context.Context, req httpapi.ListRecordsReq
 	}
 
 	limit := httpx.PageLimit(req.Params.Limit)
-	filter := RecordFilter{TrackerID: req.Params.TrackerId, Limit: limit + 1}
+	filter := RecordFilter{
+		TrackerID: req.Params.TrackerId,
+		ProjectID: req.Params.ProjectId,
+		Limit:     limit + 1,
+	}
 	if req.Params.From != nil {
 		t := req.Params.From.Time
 		filter.From = &t
@@ -161,6 +167,7 @@ func (h *TrackerAPI) ListRecords(ctx context.Context, req httpapi.ListRecordsReq
 
 // CreateRecord 新建 Record。
 func (h *TrackerAPI) CreateRecord(ctx context.Context, req httpapi.CreateRecordRequestObject) (httpapi.CreateRecordResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -200,6 +207,7 @@ func (h *TrackerAPI) UpdateRecord(ctx context.Context, req httpapi.UpdateRecordR
 
 // DeleteRecord 删除 Record。
 func (h *TrackerAPI) DeleteRecord(ctx context.Context, req httpapi.DeleteRecordRequestObject) (httpapi.DeleteRecordResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err

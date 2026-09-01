@@ -32,7 +32,7 @@
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "pattern": "^mood_[A-Za-z0-9_-]+$"
+              "pattern": "^(mood|note)_[A-Za-z0-9_-]+$"
             }
           }
         }
@@ -67,7 +67,7 @@
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "pattern": "^mood_[A-Za-z0-9_-]+$"
+              "pattern": "^(mood|note)_[A-Za-z0-9_-]+$"
             }
           }
         }

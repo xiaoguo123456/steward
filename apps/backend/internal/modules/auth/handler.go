@@ -99,7 +99,7 @@ func (h *SessionAPI) ChangePhone(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	row, err := h.svc.ChangePhone(ctx, userID,
+	row, err := h.svc.ChangePhone(ctx, userID, httpx.SessionID(ctx), req.Params.IdempotencyKey,
 		req.Body.CurrentCode, req.Body.NewPhone, req.Body.NewCode)
 	if err != nil {
 		return nil, err

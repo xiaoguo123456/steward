@@ -24,6 +24,7 @@ export function useTodayFocusTasks(): FocusTaskReference[] {
           list: entry.list_name ?? '',
           // Today 已经带上了清单颜色，专注页不用再查一次。
           color: entry.list_color ?? colors.borderStrong,
+          version: entry.task.version,
         })),
     [today.data],
   );

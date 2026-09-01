@@ -45,6 +45,7 @@ export type TripBooking = {
 
 export type TripChecklistItem = {
   id: string;
+  version: number;
   title: string;
   meta?: string;
   completed: boolean;

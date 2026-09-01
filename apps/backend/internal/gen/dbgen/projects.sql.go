@@ -96,6 +96,33 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 	return i, err
 }
 
+const getProjectForUpdate = `-- name: GetProjectForUpdate :one
+SELECT id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version, project_kind FROM projects WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
+`
+
+func (q *Queries) GetProjectForUpdate(ctx context.Context, id string) (Project, error) {
+	row := q.db.QueryRow(ctx, getProjectForUpdate, id)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.StatusBeforeArchived,
+		&i.StartDate,
+		&i.TargetDate,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.ProjectKind,
+	)
+	return i, err
+}
+
 const listProjects = `-- name: ListProjects :many
 
 SELECT id, user_id, title, description, status, status_before_archived, start_date, target_date, created_by, provenance_refs, created_at, updated_at, deleted_at, version, project_kind FROM projects

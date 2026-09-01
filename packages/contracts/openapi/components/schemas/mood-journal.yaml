@@ -293,3 +293,137 @@ MoodJournalStatisticsResponse:
       $ref: '#/MoodJournalStatistics'
     meta:
       $ref: './common.yaml#/ResponseMeta'
+
+MoodJournalFollowUpResult:
+  type: object
+  additionalProperties: false
+  required: [question, source_entry_id, source_entry_version, ai_action_id]
+  properties:
+    question:
+      type: string
+      minLength: 1
+      maxLength: 160
+    source_entry_id:
+      type: string
+    source_entry_version:
+      type: integer
+      minimum: 1
+    ai_action_id:
+      type: string
+
+MoodJournalFollowUpResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MoodJournalFollowUpResult'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+MoodJournalReflectionRequest:
+  type: object
+  additionalProperties: false
+  required: [period_start, period_end, entry_ids]
+  properties:
+    period_start:
+      type: string
+      format: date
+    period_end:
+      type: string
+      format: date
+    entry_ids:
+      type: array
+      minItems: 1
+      maxItems: 31
+      uniqueItems: true
+      items:
+        type: string
+
+MoodJournalReflectionObservation:
+  type: object
+  additionalProperties: false
+  required: [text, source_entry_ids]
+  properties:
+    text:
+      type: string
+      minLength: 1
+      maxLength: 160
+    source_entry_ids:
+      type: array
+      minItems: 1
+      maxItems: 5
+      uniqueItems: true
+      items:
+        type: string
+
+MoodJournalReflectionSuggestion:
+  type: object
+  additionalProperties: false
+  required: [text, source_entry_ids]
+  properties:
+    text:
+      type: string
+      minLength: 1
+      maxLength: 140
+    source_entry_ids:
+      type: array
+      minItems: 1
+      maxItems: 5
+      uniqueItems: true
+      items:
+        type: string
+
+MoodJournalReflectionResult:
+  type: object
+  additionalProperties: false
+  required: [summary, observations, reflection_questions, gentle_suggestions, source_entries, ai_action_id]
+  properties:
+    summary:
+      type: string
+      minLength: 1
+      maxLength: 280
+    observations:
+      type: array
+      maxItems: 3
+      items:
+        $ref: '#/MoodJournalReflectionObservation'
+    reflection_questions:
+      type: array
+      maxItems: 3
+      items:
+        type: string
+        minLength: 1
+        maxLength: 120
+    gentle_suggestions:
+      type: array
+      maxItems: 2
+      items:
+        $ref: '#/MoodJournalReflectionSuggestion'
+    source_entries:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [id, occurred_at, version]
+        properties:
+          id:
+            type: string
+          occurred_at:
+            type: string
+            format: date-time
+          version:
+            type: integer
+            minimum: 1
+    ai_action_id:
+      type: string
+
+MoodJournalReflectionResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/MoodJournalReflectionResult'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

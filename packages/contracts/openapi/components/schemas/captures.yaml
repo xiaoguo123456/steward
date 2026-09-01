@@ -540,6 +540,13 @@ ConfirmCaptureItem:
       type: string
       nullable: true
       description: Task 候选在确认页选择的目标清单。
+    duplicate_resolution:
+      type: string
+      nullable: true
+      enum: [create, update]
+      description: |
+        候选命中 duplicate_of 时必须明确选择：create 表示仍然创建，
+        update 表示更新命中的已有实体。未命中重复候选时不得提交。
 
 ConfirmCaptureRequest:
   type: object

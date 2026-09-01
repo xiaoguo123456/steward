@@ -93,6 +93,7 @@ export function useWeeklyReview(weekOf: string) {
   // 失败提示全部派生：存一份状态就要负责在每条成功路径上清掉它，
   // 少清一处就会留下一条不该出现的红字。
   const failure =
+    (review.error ? errorMessage(review.error, '本周复盘暂时无法读取，请重试。') : null) ??
     (generateStatus === 'failed'
       ? errorMessage(operation.data?.data.error, '这次没能生成小结，指标仍然可用。')
       : null) ??
@@ -120,9 +121,9 @@ export function useWeeklyReview(weekOf: string) {
      * 复盘本身是派生快照，往里面塞用户手写的内容会让它不再可重建。
      * 笔记是用户自己的正式内容，存在那里才找得回来。
      */
-    saveReflection: (text: string) => {
-      if (!data) return;
-      saveReflection.mutate({
+    saveReflection: async (text: string) => {
+      if (!data) throw new Error('复盘尚未加载完成。');
+      await saveReflection.mutateAsync({
         data: {
           title: `复盘补充 · ${data.period_start} 至 ${data.period_end}`,
           content: { format: 'plain_text', text },
@@ -133,9 +134,8 @@ export function useWeeklyReview(weekOf: string) {
     savingReflection: saveReflection.isPending,
     reflectionSaved: saveReflection.isSuccess,
 
-    refetch: () => {
-      void review.refetch();
-      void proposals.refetch();
+    refetch: async () => {
+      await Promise.all([review.refetch(), proposals.refetch()]);
     },
   };
 }

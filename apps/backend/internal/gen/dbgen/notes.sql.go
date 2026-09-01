@@ -133,6 +133,34 @@ func (q *Queries) GetNote(ctx context.Context, id string) (Note, error) {
 	return i, err
 }
 
+const getNoteForUpdate = `-- name: GetNoteForUpdate :one
+SELECT id, user_id, title, content, attachments, tags, pinned_at, project_id, created_by, provenance_refs, created_at, updated_at, deleted_at, version, note_kind, content_document FROM notes WHERE id = $1 AND note_kind = 'general' AND deleted_at IS NULL FOR UPDATE
+`
+
+func (q *Queries) GetNoteForUpdate(ctx context.Context, id string) (Note, error) {
+	row := q.db.QueryRow(ctx, getNoteForUpdate, id)
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Content,
+		&i.Attachments,
+		&i.Tags,
+		&i.PinnedAt,
+		&i.ProjectID,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.NoteKind,
+		&i.ContentDocument,
+	)
+	return i, err
+}
+
 const listNoteTags = `-- name: ListNoteTags :many
 SELECT DISTINCT unnest(tags)::text AS tag FROM notes
 WHERE deleted_at IS NULL

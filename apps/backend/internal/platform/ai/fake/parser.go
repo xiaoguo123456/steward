@@ -36,8 +36,8 @@ func (p *Parser) ParseCapture(_ context.Context, req ai.CaptureParseRequest) (ai
 
 	var result ai.CaptureParseResult
 	result.ProviderModel = "fake-deterministic"
-	result.PromptVersion = "fake-v3"
-	result.SchemaVersion = "capture-parse-result.v3"
+	result.PromptVersion = "fake-v4"
+	result.SchemaVersion = "capture-parse-result.v4"
 
 	defaultListID := ""
 	for _, l := range req.Lists {

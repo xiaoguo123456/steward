@@ -3,12 +3,14 @@ package trackers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
@@ -54,6 +56,79 @@ func (s *Service) CreateTrackerInTx(ctx context.Context, q *dbgen.Queries, userI
 		return dbgen.Tracker{}, apperr.Internal(err)
 	}
 	return row, nil
+}
+
+// UpdateTrackerCommandInTx 在 Capture 确认事务内更新 Tracker。
+// expectedVersion 必须由候选快照携带；调用方统一记录整次确认的 Activity。
+func (s *Service) UpdateTrackerCommandInTx(ctx context.Context, q *dbgen.Queries,
+	userID, trackerID string, body httpapi.UpdateTrackerRequest, expectedVersion int32) (dbgen.Tracker, error) {
+	if body.Fields != nil {
+		if err := validateFields(*body.Fields); err != nil {
+			return dbgen.Tracker{}, err
+		}
+	}
+	if err := validateSchedule(body.Schedule); err != nil {
+		return dbgen.Tracker{}, err
+	}
+	current, err := q.GetTracker(ctx, trackerID)
+	if err != nil {
+		if database.IsNoRows(err) {
+			return dbgen.Tracker{}, apperr.NotFound("记录项")
+		}
+		return dbgen.Tracker{}, apperr.Internal(err)
+	}
+	if current.Version != expectedVersion {
+		return dbgen.Tracker{}, apperr.New(apperr.CodeVersionConflict)
+	}
+	clear := trackerClearFlagsOf(body.Clear)
+	if current.BuiltinKey != nil && body.Fields != nil {
+		return dbgen.Tracker{}, apperr.Validation(apperr.Field("fields",
+			"内置打卡项的字段是固定的，改了它之前记下的数据就读不出来了。"))
+	}
+	if current.BuiltinKey != nil && (body.Schedule != nil || clear.Schedule) {
+		return dbgen.Tracker{}, apperr.Validation(apperr.Field("schedule",
+			"内置记录项由对应功能管理，不设置打卡频率。"))
+	}
+	var fieldsJSON []byte
+	if body.Fields != nil {
+		fieldsJSON, err = json.Marshal(*body.Fields)
+		if err != nil {
+			return dbgen.Tracker{}, apperr.Internal(err)
+		}
+	}
+	scheduleJSON, err := encodeSchedule(body.Schedule)
+	if err != nil {
+		return dbgen.Tracker{}, err
+	}
+	var status *string
+	if body.Status != nil {
+		v := string(*body.Status)
+		status = &v
+	}
+	updated, err := q.UpdateTracker(ctx, dbgen.UpdateTrackerParams{
+		ID: trackerID, Name: trimmedOrNil(body.Name), Description: body.Description,
+		ClearDescription: clear.Description, Fields: fieldsJSON, Schedule: scheduleJSON,
+		ClearSchedule: clear.Schedule, Status: status, Color: colorString(body.Color),
+		ClearColor: clear.Color, Icon: body.Icon, ClearIcon: clear.Icon,
+	})
+	if err != nil {
+		return dbgen.Tracker{}, apperr.Internal(err)
+	}
+	if current.BuiltinKey == nil && current.Status != "archived" && updated.Status == "archived" {
+		if updated.ArchivedAt == nil {
+			return dbgen.Tracker{}, apperr.Internal(fmt.Errorf("归档打卡项缺少 archived_at"))
+		}
+		if s.jobs == nil {
+			return dbgen.Tracker{}, apperr.Internal(fmt.Errorf("归档清理队列尚未初始化"))
+		}
+		if err := s.jobs.EnqueueTrackerArchiveCleanup(ctx, q, ArchiveCleanupArgs{
+			UserID: userID, TrackerID: trackerID, ArchivedBefore: *updated.ArchivedAt,
+			RunAt: updated.ArchivedAt.AddDate(0, 0, 30),
+		}); err != nil {
+			return dbgen.Tracker{}, err
+		}
+	}
+	return updated, nil
 }
 
 // CreateRecordInTx 在调用方事务内创建 Record。
@@ -103,6 +178,63 @@ func (s *Service) CreateRecordInTx(ctx context.Context, q *dbgen.Queries, userID
 		return dbgen.Record{}, apperr.Internal(err)
 	}
 	return row, nil
+}
+
+// UpdateRecordCommandInTx 在 Capture 确认事务内更新 Record。
+func (s *Service) UpdateRecordCommandInTx(ctx context.Context, q *dbgen.Queries,
+	userID, recordID string, body httpapi.UpdateRecordRequest, expectedVersion int32) (dbgen.GetRecordRow, error) {
+	current, err := q.GetRecord(ctx, recordID)
+	if err != nil {
+		if database.IsNoRows(err) {
+			return dbgen.GetRecordRow{}, apperr.NotFound("记录")
+		}
+		return dbgen.GetRecordRow{}, apperr.Internal(err)
+	}
+	if current.Version != expectedVersion {
+		return dbgen.GetRecordRow{}, apperr.New(apperr.CodeVersionConflict)
+	}
+	tracker, err := q.GetTracker(ctx, current.TrackerID)
+	if err != nil {
+		return dbgen.GetRecordRow{}, apperr.Internal(err)
+	}
+	fields, err := decodeFields(tracker.Fields)
+	if err != nil {
+		return dbgen.GetRecordRow{}, err
+	}
+	var valuesJSON []byte
+	var title *string
+	if body.Values != nil {
+		if err := validateValues(fields, *body.Values); err != nil {
+			return dbgen.GetRecordRow{}, err
+		}
+		valuesJSON, err = json.Marshal(*body.Values)
+		if err != nil {
+			return dbgen.GetRecordRow{}, apperr.Internal(err)
+		}
+		tz, err := s.users.Timezone(ctx, q, userID)
+		if err != nil {
+			return dbgen.GetRecordRow{}, err
+		}
+		ts := current.Timestamp
+		if body.Timestamp != nil {
+			ts = *body.Timestamp
+		}
+		t := BuildRecordTitle(tracker.Name, fields, *body.Values, ts, tz)
+		title = &t
+	}
+	clear := recordClearFlagsOf(body.Clear)
+	if _, err := q.UpdateRecord(ctx, dbgen.UpdateRecordParams{
+		ID: recordID, Title: title, Timestamp: body.Timestamp, Values: valuesJSON,
+		Note: body.Note, ClearNote: clear.Note, ProjectID: body.ProjectId,
+		ClearProjectID: clear.ProjectID,
+	}); err != nil {
+		return dbgen.GetRecordRow{}, apperr.Internal(err)
+	}
+	refreshed, err := q.GetRecord(ctx, recordID)
+	if err != nil {
+		return dbgen.GetRecordRow{}, apperr.Internal(err)
+	}
+	return refreshed, nil
 }
 
 // UndoEntry 还原一条 Tracker/Record 变更，实现 activity.Undoer。

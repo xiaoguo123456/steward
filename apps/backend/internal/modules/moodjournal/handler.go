@@ -157,6 +157,36 @@ func (h *API) PolishMoodJournalDraft(ctx context.Context, req httpapi.PolishMood
 	}, nil
 }
 
+// GenerateMoodJournalFollowUp 返回当前日记的一次性追问候选。
+func (h *API) GenerateMoodJournalFollowUp(ctx context.Context, req httpapi.GenerateMoodJournalFollowUpRequestObject) (httpapi.GenerateMoodJournalFollowUpResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := h.svc.GenerateFollowUp(ctx, userID, req.EntryId)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.GenerateMoodJournalFollowUp200JSONResponse{Data: result, Meta: httpx.Meta(ctx)}, nil
+}
+
+// GenerateMoodJournalReflection 返回周／月回望候选，不写入日记或 Memory。
+func (h *API) GenerateMoodJournalReflection(ctx context.Context, req httpapi.GenerateMoodJournalReflectionRequestObject) (httpapi.GenerateMoodJournalReflectionResponseObject, error) {
+	userID, err := httpx.UserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, fromAt, toAt, err := h.rangeForDates(ctx, userID, req.Body.PeriodStart.Time, req.Body.PeriodEnd.Time)
+	if err != nil {
+		return nil, err
+	}
+	result, err := h.svc.GenerateReflection(ctx, userID, fromAt, toAt, req.Body.EntryIds)
+	if err != nil {
+		return nil, err
+	}
+	return httpapi.GenerateMoodJournalReflection200JSONResponse{Data: result, Meta: httpx.Meta(ctx)}, nil
+}
+
 // GetMoodJournalCalendar 查询日历标记。
 func (h *API) GetMoodJournalCalendar(ctx context.Context, req httpapi.GetMoodJournalCalendarRequestObject) (httpapi.GetMoodJournalCalendarResponseObject, error) {
 	userID, err := httpx.UserID(ctx)

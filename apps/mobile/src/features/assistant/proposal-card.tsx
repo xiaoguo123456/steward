@@ -5,7 +5,7 @@ import {
   type ActionProposal,
 } from '@steward/api-client';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppIcon } from '@/components/ui/icon';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
@@ -25,6 +25,15 @@ export function ProposalCard({
   onResolved: () => void;
 }) {
   const [failure, setFailure] = useState<string | null>(null);
+  const [splitTasks, setSplitTasks] = useState(() =>
+    proposal.proposal_type === 'task_split'
+      ? (proposal.preview.changes ?? []).map((change, index) => ({
+          index,
+          selected: true,
+          title: change.after ?? '',
+        }))
+      : [],
+  );
 
   const confirm = useConfirmProposal({
     mutation: {
@@ -57,10 +66,44 @@ export function ProposalCard({
         <Text style={styles.title}>{proposal.preview.title}</Text>
       </View>
 
-      {proposal.preview.changes?.length ? (
+      {proposal.proposal_type === 'task_split' && !resolved ? (
+        <View style={styles.splitTasks}>
+          <Text style={styles.splitHint}>可取消不需要的步骤，也可以直接修改标题（至少保留 2 条）</Text>
+          {splitTasks.map((task) => (
+            <View key={task.index} style={styles.splitTaskRow}>
+              <Pressable
+                accessibilityLabel={`${task.selected ? '取消' : '选择'}子任务 ${task.title}`}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: task.selected }}
+                onPress={() =>
+                  setSplitTasks((items) =>
+                    items.map((item) =>
+                      item.index === task.index ? { ...item, selected: !item.selected } : item,
+                    ),
+                  )
+                }
+                style={[styles.checkbox, task.selected && styles.checkboxSelected]}
+              >
+                {task.selected ? <AppIcon color={colors.background} name="checkmark" size={14} /> : null}
+              </Pressable>
+              <TextInput
+                accessibilityLabel={`子任务 ${task.index + 1} 标题`}
+                editable={task.selected}
+                onChangeText={(title) =>
+                  setSplitTasks((items) =>
+                    items.map((item) => (item.index === task.index ? { ...item, title } : item)),
+                  )
+                }
+                style={[styles.splitTaskInput, !task.selected && styles.splitTaskDisabled]}
+                value={task.title}
+              />
+            </View>
+          ))}
+        </View>
+      ) : proposal.preview.changes?.length ? (
         <View style={styles.changes}>
-          {proposal.preview.changes.map((change) => (
-            <View key={change.field} style={styles.changeRow}>
+          {proposal.preview.changes.map((change, index) => (
+            <View key={`${change.field}-${index}`} style={styles.changeRow}>
               <Text style={styles.changeLabel}>{change.label}</Text>
               <View style={styles.changeValues}>
                 {change.before ? (
@@ -89,8 +132,17 @@ export function ProposalCard({
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityState={{ disabled: busy }}
-            disabled={busy}
+            accessibilityState={{
+              disabled:
+                busy ||
+                (proposal.proposal_type === 'task_split' &&
+                  splitTasks.filter((task) => task.selected && task.title.trim()).length < 2),
+            }}
+            disabled={
+              busy ||
+              (proposal.proposal_type === 'task_split' &&
+                splitTasks.filter((task) => task.selected && task.title.trim()).length < 2)
+            }
             onPress={() =>
               reject.mutate({ proposalId: proposal.id })
             }
@@ -106,7 +158,18 @@ export function ProposalCard({
               confirm.mutate({
                 proposalId: proposal.id,
                 // 版本对不上时服务端会拒绝，避免执行一条已经变过的建议。
-                data: { proposal_version: proposal.version },
+                data: {
+                  proposal_version: proposal.version,
+                  ...(proposal.proposal_type === 'task_split'
+                    ? {
+                        edits: {
+                          selected_tasks: splitTasks
+                            .filter((task) => task.selected && task.title.trim())
+                            .map((task) => ({ index: task.index, title: task.title.trim() })),
+                        },
+                      }
+                    : {}),
+                },
               })
             }
             style={({ pressed }) => [styles.confirm, pressed && styles.pressed]}
@@ -204,6 +267,48 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     fontFamily,
     ...typography.meta,
+  },
+  splitTasks: {
+    gap: 8,
+  },
+  splitHint: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  splitTaskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  checkboxSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  splitTaskInput: {
+    flex: 1,
+    minHeight: 38,
+    paddingHorizontal: 10,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    color: colors.text,
+    backgroundColor: colors.background,
+    fontFamily,
+    ...typography.meta,
+  },
+  splitTaskDisabled: {
+    opacity: 0.45,
   },
   failure: {
     color: colors.danger,

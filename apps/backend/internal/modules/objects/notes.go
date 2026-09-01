@@ -2,6 +2,7 @@ package objects
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -85,6 +86,17 @@ func (s *Service) CreateNote(ctx context.Context, userID string, body httpapi.Cr
 
 	var out dbgen.Note
 	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		replayBody, replayed, requestHash, err := beginObjectReplay(
+			ctx, q, userID, "notes.create", body)
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &out); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
 		if body.ProjectId != nil {
 			if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
 				return err
@@ -144,7 +156,7 @@ func (s *Service) CreateNote(ctx context.Context, userID string, body httpapi.Cr
 			return err
 		}
 		out = created
-		return nil
+		return saveObjectReplay(ctx, q, userID, "notes.create", requestHash, 201, created.ID, out)
 	})
 	return out, err
 }
@@ -166,54 +178,9 @@ func (s *Service) UpdateNote(ctx context.Context, userID, noteID string, in Note
 			}
 			return apperr.Internal(err)
 		}
-		if in.ExpectedVersion != nil && *in.ExpectedVersion != current.Version {
-			return apperr.New(apperr.CodeVersionConflict)
-		}
-
-		body := in.Body
-		if body.ProjectId != nil {
-			if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
-				return err
-			}
-		}
-
-		var content *string
-		var contentDocument []byte
-		if body.Content != nil {
-			document, plaintext, err := notecontent.EncodePlainText(*body.Content)
-			if err != nil {
-				return err
-			}
-			content = &plaintext
-			contentDocument = document
-		}
-
-		var tags []string
-		if body.Tags != nil {
-			tags = normalizeTags(body.Tags)
-		}
-
-		clearProject := false
-		if body.Clear != nil {
-			for _, item := range *body.Clear {
-				if item == httpapi.UpdateNoteRequestClearProjectId {
-					clearProject = true
-				}
-			}
-		}
-
-		updated, err := q.UpdateNote(ctx, dbgen.UpdateNoteParams{
-			ID:              noteID,
-			Title:           trimmedOrNil(body.Title),
-			Content:         content,
-			ContentDocument: contentDocument,
-			Tags:            tags,
-			Pinned:          body.Pinned,
-			ProjectID:       body.ProjectId,
-			ClearProjectID:  clearProject,
-		})
+		updated, err := s.updateNoteCommandInTx(ctx, q, userID, noteID, in.Body, in.ExpectedVersion)
 		if err != nil {
-			return apperr.Internal(err)
+			return err
 		}
 
 		if _, err := s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,
@@ -234,11 +201,79 @@ func (s *Service) UpdateNote(ctx context.Context, userID, noteID string, in Note
 	return out, err
 }
 
+// UpdateNoteCommandInTx 在 Capture 确认事务内更新 Note，不单独创建 Activity 批次。
+func (s *Service) UpdateNoteCommandInTx(ctx context.Context, q *dbgen.Queries,
+	userID, noteID string, body httpapi.UpdateNoteRequest, expectedVersion int32) (dbgen.Note, error) {
+	return s.updateNoteCommandInTx(ctx, q, userID, noteID, body, &expectedVersion)
+}
+
+func (s *Service) updateNoteCommandInTx(ctx context.Context, q *dbgen.Queries,
+	userID, noteID string, body httpapi.UpdateNoteRequest, expectedVersion *int32) (dbgen.Note, error) {
+	current, err := q.GetNoteForUpdate(ctx, noteID)
+	if err != nil {
+		if database.IsNoRows(err) {
+			return dbgen.Note{}, apperr.NotFound("笔记")
+		}
+		return dbgen.Note{}, apperr.Internal(err)
+	}
+	if expectedVersion != nil && *expectedVersion != current.Version {
+		return dbgen.Note{}, apperr.New(apperr.CodeVersionConflict)
+	}
+	if body.ProjectId != nil {
+		if err := s.assertProjectExists(ctx, q, *body.ProjectId); err != nil {
+			return dbgen.Note{}, err
+		}
+	}
+
+	var content *string
+	var contentDocument []byte
+	if body.Content != nil {
+		document, plaintext, err := notecontent.EncodePlainText(*body.Content)
+		if err != nil {
+			return dbgen.Note{}, err
+		}
+		content = &plaintext
+		contentDocument = document
+	}
+	var tags []string
+	if body.Tags != nil {
+		tags = normalizeTags(body.Tags)
+	}
+	clearProject := false
+	if body.Clear != nil {
+		for _, item := range *body.Clear {
+			if item == httpapi.UpdateNoteRequestClearProjectId {
+				clearProject = true
+			}
+		}
+	}
+	updated, err := q.UpdateNote(ctx, dbgen.UpdateNoteParams{
+		ID: noteID, Title: trimmedOrNil(body.Title), Content: content,
+		ContentDocument: contentDocument, Tags: tags, Pinned: body.Pinned,
+		ProjectID: body.ProjectId, ClearProjectID: clearProject,
+	})
+	if err != nil {
+		return dbgen.Note{}, apperr.Internal(err)
+	}
+	return updated, nil
+}
+
 // DeleteNote 软删除 Note。
 func (s *Service) DeleteNote(ctx context.Context, userID, noteID string) (string, error) {
 	var batchID string
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetNote(ctx, noteID)
+		replayBody, replayed, requestHash, err := beginObjectReplay(
+			ctx, q, userID, "notes.delete", map[string]string{"note_id": noteID})
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &batchID); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		current, err := q.GetNoteForUpdate(ctx, noteID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("笔记")
@@ -256,7 +291,10 @@ func (s *Service) DeleteNote(ctx context.Context, userID, noteID string) (string
 				Title:        current.Title,
 				Summary:      "删除了笔记",
 			}})
-		return err
+		if err != nil {
+			return err
+		}
+		return saveObjectReplay(ctx, q, userID, "notes.delete", requestHash, 200, batchID, batchID)
 	})
 	return batchID, err
 }

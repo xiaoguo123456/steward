@@ -49,6 +49,9 @@ LIMIT sqlc.arg(row_limit);
 -- name: GetTask :one
 SELECT * FROM tasks WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
 
+-- name: GetTaskForUpdate :one
+SELECT * FROM tasks WHERE id = sqlc.arg(id) AND deleted_at IS NULL FOR UPDATE;
+
 -- name: CreateTask :one
 INSERT INTO tasks (
     id, user_id, title, description, status, priority,
@@ -133,10 +136,12 @@ WITH scoped AS (
            tl.name  AS list_name,
            tl.color AS list_color,
            CASE
-               WHEN (t.due_date IS NOT NULL AND t.due_date < sqlc.arg(today)::date)
+               WHEN (t.due_date IS NOT NULL
+                     AND t.due_date < (sqlc.arg(now_at)::timestamptz AT TIME ZONE t.due_timezone)::date)
                     OR (t.due_at IS NOT NULL AND t.due_at < sqlc.arg(now_at)::timestamptz)
                    THEN 0
-               WHEN t.due_date = sqlc.arg(today)::date
+               WHEN (t.due_date IS NOT NULL
+                     AND t.due_date = (sqlc.arg(now_at)::timestamptz AT TIME ZONE t.due_timezone)::date)
                     OR (t.due_at IS NOT NULL AND t.due_at <= sqlc.arg(day_end)::timestamptz)
                    THEN 1
                WHEN t.scheduled_start_at IS NOT NULL
@@ -155,7 +160,8 @@ WITH scoped AS (
          OR (t.scheduled_start_at IS NOT NULL
              AND t.scheduled_start_at >= sqlc.arg(day_start)::timestamptz
              AND t.scheduled_start_at <= sqlc.arg(day_end)::timestamptz)
-         OR (t.due_date IS NOT NULL AND t.due_date <= sqlc.arg(today)::date)
+         OR (t.due_date IS NOT NULL
+             AND t.due_date <= (sqlc.arg(now_at)::timestamptz AT TIME ZONE t.due_timezone)::date)
          OR (t.due_at IS NOT NULL AND t.due_at <= sqlc.arg(day_end)::timestamptz)
       )
 )

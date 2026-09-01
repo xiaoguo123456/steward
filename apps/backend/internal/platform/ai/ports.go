@@ -125,35 +125,46 @@ type Confidence struct {
 // Provider 只产出候选：任何正式写入都必须经过用户确认，
 // 并由 Go Domain 重新校验后执行。
 type CandidateDraft struct {
-	Type             string
-	Action           string
-	Title            string
-	Content          string
-	Description      string
-	ProjectKind      string
-	Destination      string
-	Priority         string
-	DueDate          *time.Time
-	DueAt            *time.Time
-	AllDay           bool
-	StartAt          *time.Time
-	EndAt            *time.Time
-	StartDate        *time.Time
-	EndDate          *time.Time
-	TargetDate       *time.Time
-	EventKind        string
-	Location         string
-	ProjectRef       string
-	ItineraryDetails *ItineraryDetailsDraft
-	Tags             []string
-	ListID           string
-	TrackerID        string
-	RecordValues     []RecordValueDraft
-	Timestamp        *time.Time
-	Confidences      []Confidence
-	Sources          []SourceSpan
-	Missing          []string
-	Warnings         []string
+	Ref                   string
+	Type                  string
+	Action                string
+	TargetID              string
+	TargetExpectedVersion *int32
+	Title                 string
+	Content               string
+	Description           string
+	ProjectKind           string
+	Destination           string
+	Priority              string
+	DueDate               *time.Time
+	DueAt                 *time.Time
+	AllDay                bool
+	StartAt               *time.Time
+	EndAt                 *time.Time
+	StartDate             *time.Time
+	EndDate               *time.Time
+	TargetDate            *time.Time
+	EventKind             string
+	Location              string
+	ProjectRef            string
+	ItineraryDetails      *ItineraryDetailsDraft
+	Tags                  []string
+	ListID                string
+	TrackerID             string
+	RecordValues          []RecordValueDraft
+	Timestamp             *time.Time
+	Confidences           []Confidence
+	Sources               []SourceSpan
+	Missing               []string
+	Warnings              []string
+}
+
+// RelationDraft 是候选对象之间或候选与已有对象之间的关系。
+// 端点引用只在服务端解析，模型不能据此读取或修改任何实体。
+type RelationDraft struct {
+	Kind    string
+	FromRef string
+	ToRef   string
 }
 
 // RecordValueDraft 是 Record 候选的一个字段取值。
@@ -187,6 +198,7 @@ type ConflictOption struct {
 // CaptureParseResult 是一次解析的中立输出。
 type CaptureParseResult struct {
 	Candidates      []CandidateDraft
+	Relations       []RelationDraft
 	Questions       []QuestionDraft
 	Conflicts       []ConflictDraft
 	InstructionNote string

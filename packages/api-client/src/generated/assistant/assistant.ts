@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './assistant.zod';
 import {
   useMutation,
   useQuery
@@ -110,6 +111,7 @@ export const listThreads = async (params?: ListThreadsParams, options?: Paramete
 
 
   }
+, StewardResponseSchemas.ListThreadsResponse
 );}
 
 
@@ -214,6 +216,7 @@ export const createThread = async (createThreadRequest?: CreateThreadRequest, op
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createThreadRequest)
   }
+, StewardResponseSchemas.CreateThreadResponse
 );}
 
 
@@ -287,6 +290,7 @@ export const getCurrentThread = async ( options?: Parameters<typeof stewardFetch
 
 
   }
+, StewardResponseSchemas.GetCurrentThreadResponse
 );}
 
 
@@ -387,6 +391,7 @@ export const getThread = async (threadId: string, options?: Parameters<typeof st
 
 
   }
+, StewardResponseSchemas.GetThreadResponse
 );}
 
 
@@ -489,6 +494,7 @@ export const updateThread = async (threadId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateThreadRequest)
   }
+, StewardResponseSchemas.UpdateThreadResponse
 );}
 
 
@@ -561,6 +567,7 @@ export const deleteThread = async (threadId: string, options?: Parameters<typeof
 
 
   }
+, StewardResponseSchemas.DeleteThreadResponse
 );}
 
 
@@ -640,6 +647,7 @@ export const listMessages = async (threadId: string,
 
 
   }
+, StewardResponseSchemas.ListMessagesResponse
 );}
 
 
@@ -754,6 +762,7 @@ export const createTurn = async (threadId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createTurnRequest)
   }
+, StewardResponseSchemas.CreateTurnResponse
 );}
 
 
@@ -930,6 +939,7 @@ export const cancelTurn = async (turnId: string, options?: Parameters<typeof ste
 
 
   }
+, StewardResponseSchemas.CancelTurnResponse
 );}
 
 
@@ -1007,6 +1017,7 @@ export const listProposals = async (params?: ListProposalsParams, options?: Para
 
 
   }
+, StewardResponseSchemas.ListProposalsResponse
 );}
 
 
@@ -1107,6 +1118,7 @@ export const getProposal = async (proposalId: string, options?: Parameters<typeo
 
 
   }
+, StewardResponseSchemas.GetProposalResponse
 );}
 
 
@@ -1211,6 +1223,7 @@ export const confirmProposal = async (proposalId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(confirmProposalRequest)
   }
+, StewardResponseSchemas.ConfirmProposalResponse
 );}
 
 
@@ -1282,6 +1295,7 @@ export const rejectProposal = async (proposalId: string, options?: Parameters<ty
 
 
   }
+, StewardResponseSchemas.RejectProposalResponse
 );}
 
 

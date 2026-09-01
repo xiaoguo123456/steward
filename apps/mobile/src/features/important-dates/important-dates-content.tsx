@@ -712,6 +712,19 @@ export function ImportantDatesContent({
     );
   };
 
+  if (importantDates.isError) {
+    return (
+      <StatePanel
+        actionLabel="重试"
+        compact
+        icon="cloud-offline-outline"
+        message={errorMessage(importantDates.error, '重要日暂时无法读取，请稍后重试。')}
+        onAction={() => void importantDates.refetch()}
+        title="重要日加载失败"
+      />
+    );
+  }
+
   return (
     <>
       <View style={styles.sectionHeader}>

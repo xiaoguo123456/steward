@@ -1,5 +1,5 @@
 import { errorMessage } from '@steward/api-client';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   Modal,
@@ -149,6 +149,18 @@ export default function MeScreen() {
             onPress={() => router.push('/focus')}
             showDivider={false}
             title="专注设置"
+          />
+        </FlatListGroup>
+
+        <Text accessibilityRole="header" style={styles.groupTitle}>
+          隐私与安全
+        </Text>
+        <FlatListGroup>
+          <FlatListRow
+            icon="lock-closed-outline"
+            onPress={() => router.push('/settings/app-lock' as Href)}
+            showDivider={false}
+            title="应用锁"
           />
         </FlatListGroup>
 

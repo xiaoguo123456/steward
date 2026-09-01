@@ -17,6 +17,9 @@ LIMIT sqlc.arg(row_limit);
 -- name: GetNote :one
 SELECT * FROM notes WHERE id = sqlc.arg(id) AND note_kind = 'general' AND deleted_at IS NULL;
 
+-- name: GetNoteForUpdate :one
+SELECT * FROM notes WHERE id = sqlc.arg(id) AND note_kind = 'general' AND deleted_at IS NULL FOR UPDATE;
+
 -- name: CreateNote :one
 INSERT INTO notes (
     id, user_id, note_kind, title, content, content_document, attachments, tags, pinned_at,

@@ -1,0 +1,70 @@
+NotificationType:
+  type: string
+  enum: [event_reminder, task_due, daily_brief, project_risk, weekly_review]
+
+NotificationSourceType:
+  type: string
+  enum: [event, task, project, review]
+
+Notification:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - type
+    - title
+    - body
+    - source_type
+    - source_id
+    - occurred_at
+    - read_at
+    - source_deleted
+  properties:
+    id:
+      type: string
+    type:
+      $ref: '#/NotificationType'
+    title:
+      type: string
+      description: 触发时保存的最小标题快照；来源删除后仍可解释这条通知。
+    body:
+      type: string
+      description: 不包含用户正文的确定性通知说明。
+    source_type:
+      $ref: '#/NotificationSourceType'
+    source_id:
+      type: string
+    occurred_at:
+      type: string
+      format: date-time
+    read_at:
+      type: string
+      format: date-time
+      nullable: true
+    source_deleted:
+      type: boolean
+      description: 为 true 时客户端显示“内容已删除”，不得进入空白详情。
+
+NotificationResponse:
+  type: object
+  additionalProperties: false
+  required: [data, meta]
+  properties:
+    data:
+      $ref: '#/Notification'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'
+
+NotificationsResponse:
+  type: object
+  additionalProperties: false
+  required: [data, page, meta]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/Notification'
+    page:
+      $ref: './common.yaml#/PageInfo'
+    meta:
+      $ref: './common.yaml#/ResponseMeta'

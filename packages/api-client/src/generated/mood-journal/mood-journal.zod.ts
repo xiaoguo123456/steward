@@ -438,6 +438,40 @@ export const DeleteMoodJournalEntryResponse = zod.object({
 }).describe('删除等不返回实体的写操作响应，携带需要失效的资源列表。')
 
 /**
+ * 用户保存后主动选择继续思考时调用。只发送当前日记的纯文本投影；结果是可跳过的只读候选，不修改日记。
+ * @summary 生成单篇日记保存后追问
+ */
+export const GenerateMoodJournalFollowUpParams = zod.object({
+  "entry_id": zod.string()
+})
+
+export const generateMoodJournalFollowUpHeaderIdempotencyKeyMin = 8;
+export const generateMoodJournalFollowUpHeaderIdempotencyKeyMax = 128;
+
+
+
+export const GenerateMoodJournalFollowUpHeader = zod.object({
+  "Idempotency-Key": zod.string().min(generateMoodJournalFollowUpHeaderIdempotencyKeyMin).max(generateMoodJournalFollowUpHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const generateMoodJournalFollowUpResponseDataQuestionMax = 160;
+
+
+
+
+export const GenerateMoodJournalFollowUpResponse = zod.object({
+  "data": zod.object({
+  "question": zod.string().min(1).max(generateMoodJournalFollowUpResponseDataQuestionMax),
+  "source_entry_id": zod.string(),
+  "source_entry_version": zod.number().int().min(1),
+  "ai_action_id": zod.string()
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
  * 对当前用户主动提交的 blocks_v1 草稿做一次结构化排版润色。
  * 结果只返回编辑器，不创建或修改日记；用户仍需检查并点击保存。
  * @summary AI 排版润色心情日记草稿
@@ -571,6 +605,74 @@ export const GetMoodJournalStatisticsResponse = zod.object({
   "word": zod.string(),
   "count": zod.number().int().min(1)
 }))
+}),
+  "meta": zod.object({
+  "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')
+}).describe('所有成功响应共有的元信息。')
+})
+
+/**
+ * 仅使用用户本次明确选择、属于日期范围且未排除 AI 的日记纯文本投影。结果不自动保存、不写入 Note 或 Memory。
+ * @summary 生成周或月心情回望候选
+ */
+export const generateMoodJournalReflectionHeaderIdempotencyKeyMin = 8;
+export const generateMoodJournalReflectionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const GenerateMoodJournalReflectionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(generateMoodJournalReflectionHeaderIdempotencyKeyMin).max(generateMoodJournalReflectionHeaderIdempotencyKeyMax).describe('写请求幂等键，由客户端生成并在重试时保持不变。\n缺失时返回 IDEMPOTENCY_KEY_REQUIRED。\n')
+})
+
+export const generateMoodJournalReflectionBodyEntryIdsMax = 31;
+
+
+
+export const GenerateMoodJournalReflectionBody = zod.object({
+  "period_start": zod.string().date(),
+  "period_end": zod.string().date(),
+  "entry_ids": zod.array(zod.string()).min(1).max(generateMoodJournalReflectionBodyEntryIdsMax)
+})
+
+export const generateMoodJournalReflectionResponseDataSummaryMax = 280;
+
+export const generateMoodJournalReflectionResponseDataObservationsItemTextMax = 160;
+
+export const generateMoodJournalReflectionResponseDataObservationsItemSourceEntryIdsMax = 5;
+
+export const generateMoodJournalReflectionResponseDataObservationsMax = 3;
+
+export const generateMoodJournalReflectionResponseDataReflectionQuestionsItemMax = 120;
+
+export const generateMoodJournalReflectionResponseDataReflectionQuestionsMax = 3;
+
+export const generateMoodJournalReflectionResponseDataGentleSuggestionsItemTextMax = 140;
+
+export const generateMoodJournalReflectionResponseDataGentleSuggestionsItemSourceEntryIdsMax = 5;
+
+export const generateMoodJournalReflectionResponseDataGentleSuggestionsMax = 2;
+
+
+
+
+export const GenerateMoodJournalReflectionResponse = zod.object({
+  "data": zod.object({
+  "summary": zod.string().min(1).max(generateMoodJournalReflectionResponseDataSummaryMax),
+  "observations": zod.array(zod.object({
+  "text": zod.string().min(1).max(generateMoodJournalReflectionResponseDataObservationsItemTextMax),
+  "source_entry_ids": zod.array(zod.string()).min(1).max(generateMoodJournalReflectionResponseDataObservationsItemSourceEntryIdsMax)
+})).max(generateMoodJournalReflectionResponseDataObservationsMax),
+  "reflection_questions": zod.array(zod.string().min(1).max(generateMoodJournalReflectionResponseDataReflectionQuestionsItemMax)).max(generateMoodJournalReflectionResponseDataReflectionQuestionsMax),
+  "gentle_suggestions": zod.array(zod.object({
+  "text": zod.string().min(1).max(generateMoodJournalReflectionResponseDataGentleSuggestionsItemTextMax),
+  "source_entry_ids": zod.array(zod.string()).min(1).max(generateMoodJournalReflectionResponseDataGentleSuggestionsItemSourceEntryIdsMax)
+})).max(generateMoodJournalReflectionResponseDataGentleSuggestionsMax),
+  "source_entries": zod.array(zod.object({
+  "id": zod.string(),
+  "occurred_at": zod.string().datetime({"offset":true}),
+  "version": zod.number().int().min(1)
+})),
+  "ai_action_id": zod.string()
 }),
   "meta": zod.object({
   "request_id": zod.string().describe('服务端为本次请求生成的追踪 ID，便于用户反馈与日志定位。')

@@ -1,4 +1,4 @@
-import type { TurnStreamEvent } from '@steward/api-client';
+import { getStreamTurnUrl, type TurnStreamEvent } from '@steward/api-client';
 import { useEffect, useRef, useState } from 'react';
 
 import { resolveApiBaseUrl } from '@/api/config';
@@ -42,9 +42,6 @@ export function useTurnStream(turnId: string) {
     let cancelled = false;
     let offset = 0;
 
-    const request = new XMLHttpRequest();
-    requestRef.current = request;
-
     const update = (patch: Partial<StreamState>) => {
       setState((current) => ({
         ...(current.forTurn === turnId ? current : emptyState),
@@ -74,6 +71,8 @@ export function useTurnStream(turnId: string) {
 
     const drain = () => {
       if (cancelled) return;
+      const request = requestRef.current;
+      if (!request) return;
       const chunk = request.responseText.slice(offset);
       offset = request.responseText.length;
       // SSE 帧之间用空行分隔；最后一段可能还没收完整，留到下次。
@@ -93,24 +92,33 @@ export function useTurnStream(turnId: string) {
       }
     };
 
-    void (async () => {
+    const start = async (allowRefresh: boolean) => {
       const token = await session.accessToken();
       if (cancelled || !token) return;
-      request.open('GET', `${resolveApiBaseUrl()}/v1/assistant/turns/${turnId}/stream`);
+      const request = new XMLHttpRequest();
+      requestRef.current = request;
+      offset = 0;
+      request.open('GET', `${resolveApiBaseUrl()}${getStreamTurnUrl(turnId)}`);
       request.setRequestHeader('Authorization', `Bearer ${token}`);
       request.onprogress = drain;
-      request.onload = () => {
+      request.onload = async () => {
+        if (request.status === 401 && allowRefresh && await session.refresh()) {
+          if (!cancelled) void start(false);
+          return;
+        }
         drain();
         update({ finished: true });
       };
       // 连不上就安静退场，调用方的轮询会接管。
       request.onerror = () => update({ finished: true });
       request.send();
-    })();
+    };
+
+    void start(true);
 
     return () => {
       cancelled = true;
-      request.abort();
+      requestRef.current?.abort();
       requestRef.current = null;
     };
   }, [turnId]);

@@ -2,6 +2,7 @@ package objects
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
-	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
 
 // TaskFilter 是 Task 列表查询条件。
@@ -105,6 +105,17 @@ func (s *Service) CreateTask(ctx context.Context, userID string, body httpapi.Cr
 
 	var out dbgen.Task
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		replayBody, replayed, requestHash, err := beginObjectReplay(
+			ctx, q, userID, "tasks.create", body)
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &out); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
 		tz, err := s.users.Timezone(ctx, q, userID)
 		if err != nil {
 			return err
@@ -221,7 +232,7 @@ func (s *Service) CreateTask(ctx context.Context, userID string, body httpapi.Cr
 		}
 
 		out = created
-		return nil
+		return saveObjectReplay(ctx, q, userID, "tasks.create", requestHash, 201, created.ID, out)
 	})
 	return out, err
 }
@@ -253,10 +264,28 @@ func (s *Service) UpdateTask(ctx context.Context, userID, taskID string, in Task
 func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 	userID, taskID string, in TaskUpdate,
 	source activity.Source, sourceID *string) (dbgen.Task, string, error) {
+	return s.updateTaskInTx(ctx, q, userID, taskID, in, source, sourceID, true)
+}
+
+// UpdateTaskCommandInTx 在 Capture 确认事务内执行 Task 更新。
+//
+// expectedVersion 是必填值，避免 AI 候选在目标已经变化后覆盖用户的新修改。
+// Activity 由 Capture 对整个确认批次统一记录，避免一个确认被拆成多个批次。
+func (s *Service) UpdateTaskCommandInTx(ctx context.Context, q *dbgen.Queries,
+	userID, taskID string, body httpapi.UpdateTaskRequest, expectedVersion int32) (dbgen.Task, error) {
+	updated, _, err := s.updateTaskInTx(ctx, q, userID, taskID, TaskUpdate{
+		Body: body, ExpectedVersion: &expectedVersion,
+	}, activity.SourceCaptureConfirm, nil, false)
+	return updated, err
+}
+
+func (s *Service) updateTaskInTx(ctx context.Context, q *dbgen.Queries,
+	userID, taskID string, in TaskUpdate, source activity.Source, sourceID *string,
+	recordActivity bool) (dbgen.Task, string, error) {
 
 	fail := func(err error) (dbgen.Task, string, error) { return dbgen.Task{}, "", err }
 
-	current, err := q.GetTask(ctx, taskID)
+	current, err := q.GetTaskForUpdate(ctx, taskID)
 	if err != nil {
 		if database.IsNoRows(err) {
 			return fail(apperr.NotFound("任务"))
@@ -292,47 +321,11 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 		}
 	}
 
-	// 补充具体时刻时用 due_at 取代原 due_date，反之亦然；
-	// 这条规则在 SQL 里已经实现，这里只做互斥校验。
-	if body.DueDate != nil && body.DueAt != nil {
-		return fail(apperr.Validation(apperr.Field("due_at", "截止日期与截止时刻不能同时设置。")))
-	}
-	var dueTZ *string
-	if body.DueDate != nil || body.DueAt != nil {
-		zone := tz
-		if body.DueTimezone != nil && strings.TrimSpace(*body.DueTimezone) != "" {
-			zone = *body.DueTimezone
-		}
-		if err := timeutil.ValidateLocation(zone); err != nil {
-			return fail(apperr.Validation(apperr.Field("due_timezone", "时区名称不合法。")))
-		}
-		dueTZ = &zone
-	}
-
-	if body.ScheduledEndAt != nil {
-		start := body.ScheduledStartAt
-		if start == nil {
-			start = current.ScheduledStartAt
-		}
-		if start == nil {
-			return fail(apperr.Validation(apperr.Field(
-				"scheduled_start_at", "设置计划结束时间前必须先设置开始时间。")))
-		}
-		if !body.ScheduledEndAt.After(*start) {
-			return fail(apperr.Validation(apperr.Field(
-				"scheduled_end_at", "计划结束时间必须晚于开始时间。")))
-		}
-	}
-	var schedTZ *string
-	if body.ScheduledStartAt != nil {
-		zone := tz
-		if body.ScheduledTimezone != nil && strings.TrimSpace(*body.ScheduledTimezone) != "" {
-			zone = *body.ScheduledTimezone
-		}
-		if err := timeutil.ValidateLocation(zone); err != nil {
-			return fail(apperr.Validation(apperr.Field("scheduled_timezone", "时区名称不合法。")))
-		}
-		schedTZ = &zone
+	// PATCH 必须先与当前行合并，再校验完整时间状态。只看请求片段会漏掉
+	// “清除截止但保留旧提醒”“只改开始时间导致结束早于开始”等组合。
+	timing, err := resolveTaskUpdateTiming(current, body, clear, tz)
+	if err != nil {
+		return fail(err)
 	}
 
 	if body.ProjectId != nil {
@@ -342,19 +335,6 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 	}
 	if body.ListId != nil {
 		if _, err := s.lists.ResolveListID(ctx, q, userID, body.ListId); err != nil {
-			return fail(err)
-		}
-	}
-
-	var remindersJSON []byte
-	if body.Reminders != nil {
-		willHaveDueAt := body.DueAt != nil || (current.DueAt != nil && !clear.DueAt)
-		reminders, err := buildReminders(body.Reminders, willHaveDueAt)
-		if err != nil {
-			return fail(err)
-		}
-		remindersJSON, err = marshalJSON(reminders)
-		if err != nil {
 			return fail(err)
 		}
 	}
@@ -375,16 +355,16 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 		ClearDescription:      clear.Description,
 		Status:                status,
 		Priority:              priorityOrNil(body.Priority),
-		DueDate:               timePtrOfDate(body.DueDate),
-		ClearDueDate:          clear.DueDate,
-		DueAt:                 body.DueAt,
-		ClearDueAt:            clear.DueAt,
-		DueTimezone:           dueTZ,
-		ScheduledStartAt:      body.ScheduledStartAt,
-		ClearScheduledStartAt: clear.ScheduledStartAt,
-		ScheduledEndAt:        body.ScheduledEndAt,
-		ClearScheduledEndAt:   clear.ScheduledEndAt,
-		ScheduledTimezone:     schedTZ,
+		DueDate:               timing.dueDate,
+		ClearDueDate:          timing.dueDate == nil,
+		DueAt:                 timing.dueAt,
+		ClearDueAt:            timing.dueAt == nil,
+		DueTimezone:           timing.dueTimezone,
+		ScheduledStartAt:      timing.scheduledStartAt,
+		ClearScheduledStartAt: timing.scheduledStartAt == nil,
+		ScheduledEndAt:        timing.scheduledEndAt,
+		ClearScheduledEndAt:   timing.scheduledEndAt == nil,
+		ScheduledTimezone:     timing.scheduledTimezone,
 		EstimatedMinutes:      estimated,
 		ClearEstimatedMinutes: clear.EstimatedMinutes,
 		FocusDate:             timePtrOfDate(body.FocusDate),
@@ -392,8 +372,8 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 		ListID:                body.ListId,
 		ProjectID:             body.ProjectId,
 		ClearProjectID:        clear.ProjectID,
-		Reminders:             remindersJSON,
-		ClearReminders:        clear.Reminders,
+		Reminders:             timing.remindersJSON,
+		ClearReminders:        len(timing.reminders) == 0,
 		QuantityText:          trimmedOrNil(body.QuantityText),
 		ClearQuantityText:     clear.QuantityText,
 		// 改了名字就重新分类：用户把「牛奶」改成「咖啡豆」之后，
@@ -418,6 +398,9 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 			}
 		}
 	}
+	if !recordActivity {
+		return updated, "", nil
+	}
 	batchID, err := s.activity.Record(ctx, q, userID, source, sourceID,
 		[]activity.EntryInput{{
 			Action:       action,
@@ -438,7 +421,18 @@ func (s *Service) UpdateTaskInTx(ctx context.Context, q *dbgen.Queries,
 func (s *Service) DeleteTask(ctx context.Context, userID, taskID string) (string, error) {
 	var batchID string
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetTask(ctx, taskID)
+		replayBody, replayed, requestHash, err := beginObjectReplay(
+			ctx, q, userID, "tasks.delete", map[string]string{"task_id": taskID})
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &batchID); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		current, err := q.GetTaskForUpdate(ctx, taskID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("任务")
@@ -457,7 +451,10 @@ func (s *Service) DeleteTask(ctx context.Context, userID, taskID string) (string
 				Summary:      "删除了任务",
 				BeforeState:  taskUndoState(current),
 			}})
-		return err
+		if err != nil {
+			return err
+		}
+		return saveObjectReplay(ctx, q, userID, "tasks.delete", requestHash, 200, batchID, batchID)
 	})
 	return batchID, err
 }

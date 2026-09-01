@@ -355,6 +355,7 @@ export const ListRecordsQueryParams = zod.object({
   "cursor": zod.string().optional().describe('上一页返回的不透明游标。App 不得解析其内容。'),
   "limit": zod.number().int().min(1).max(listRecordsQueryLimitMax).default(listRecordsQueryLimitDefault).describe('单页条数。'),
   "tracker_id": zod.string().optional(),
+  "project_id": zod.string().optional().describe('只返回归属当前 Project 的 Record，用于 Project Objects\/Data 聚合。'),
   "from": zod.string().date().optional(),
   "to": zod.string().date().optional()
 })

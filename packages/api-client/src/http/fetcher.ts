@@ -5,6 +5,16 @@ import { getRuntimeConfig, newIdempotencyKey } from './runtime';
 const WRITE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
 
 /**
+ * 一次 App 进程内尚未成功完成的写请求。
+ *
+ * 网络断开、超时或 5xx 后，用户再次提交同一 URL、If-Match 版本与请求体时
+ * 必须复用原来的幂等键；否则服务端可能已经提交成功，第二次却又创建一份数据。
+ * 成功响应完成运行时校验后才释放键，让用户之后可以再次执行相同动作。
+ */
+const pendingIdempotencyKeys = new Map<string, string>();
+const MAX_PENDING_IDEMPOTENCY_KEYS = 128;
+
+/**
  * 生成代码里所有请求的唯一出口。
  *
  * 它负责四件事：拼接 baseURL、附加鉴权头、把错误信封翻译成 ApiError，
@@ -14,18 +24,21 @@ const WRITE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
 export async function stewardFetch<T>(
   url: string,
   init?: RequestInit & { signal?: AbortSignal },
+  responseValidator?: { parse(value: unknown): T },
 ): Promise<T> {
   // 生成器不会把契约里的 Idempotency-Key 写进函数签名，
   // 因此在这里统一补上：缺了它服务端会直接拒绝所有写请求。
   //
-  // 自动生成的键只在本次调用内稳定（包括 401 续期后的重放）。
-  // 需要「用户重试也复用同一个键」时，调用方显式传入：
+  // 自动生成的键在同一 App 进程内按方法、URL、If-Match 与请求体保持稳定，
+  // 直到服务端成功响应也通过运行时校验；401 续期与用户点击重试都会复用它。
+  // 需要跨进程／离线队列恢复时，调用方仍应显式持久化并传入：
   //   createTask(body, { headers: { 'Idempotency-Key': key } })
-  const prepared = withIdempotencyKey(init);
-  const response = await requestWithAuth(url, prepared, true);
+  const prepared = withIdempotencyKey(url, init);
+  const response = await requestWithAuth(url, prepared.init, true);
 
   // 204 与空响应体没有可解析内容。
   if (response.status === 204) {
+    releaseIdempotencyKey(prepared.identity);
     return undefined as T;
   }
 
@@ -35,7 +48,25 @@ export async function stewardFetch<T>(
   if (!response.ok) {
     throw toApiError(response.status, payload);
   }
-  return payload as T;
+  if (!responseValidator) {
+    releaseIdempotencyKey(prepared.identity);
+    return payload as T;
+  }
+  try {
+    const validated = responseValidator.parse(payload);
+    releaseIdempotencyKey(prepared.identity);
+    return validated;
+  } catch {
+    // 服务端成功响应也属于不可信网络输入。字段缺失或非法枚举
+    // 不能以 TypeScript 类型断言混入业务状态。
+    throw new ApiError({
+      status: response.status,
+      code: 'INTERNAL_ERROR',
+      message: '服务响应不符合当前版本契约，请稍后重试或更新应用。',
+      retryable: true,
+      reloadTarget: true,
+    });
+  }
 }
 
 async function requestWithAuth(
@@ -76,17 +107,47 @@ function isRefreshRequest(url: string): boolean {
 
 /** 为写请求补上幂等键；调用方已显式提供时保持不变。 */
 function withIdempotencyKey(
+  url: string,
   init: (RequestInit & { signal?: AbortSignal }) | undefined,
-): (RequestInit & { signal?: AbortSignal }) | undefined {
+): { init: (RequestInit & { signal?: AbortSignal }) | undefined; identity?: string } {
   const method = (init?.method ?? 'GET').toUpperCase();
   if (!WRITE_METHODS.has(method)) {
-    return init;
+    return { init };
   }
   const headers = new Headers(init?.headers);
   if (!headers.has('Idempotency-Key')) {
-    headers.set('Idempotency-Key', newIdempotencyKey());
+    const identity = idempotencyIdentity(method, url, init?.body, headers.get('If-Match'));
+    let key = pendingIdempotencyKeys.get(identity);
+    if (!key) {
+      key = newIdempotencyKey();
+      pendingIdempotencyKeys.set(identity, key);
+      trimPendingIdempotencyKeys();
+    }
+    headers.set('Idempotency-Key', key);
+    return { init: { ...init, headers }, identity };
   }
-  return { ...init, headers };
+  return { init: { ...init, headers } };
+}
+
+function idempotencyIdentity(
+  method: string,
+  url: string,
+  body: BodyInit | null | undefined,
+  ifMatch: string | null,
+): string {
+  return `${method}\n${url}\n${ifMatch ?? ''}\n${typeof body === 'string' ? body : String(body ?? '')}`;
+}
+
+function releaseIdempotencyKey(identity?: string): void {
+  if (identity) pendingIdempotencyKeys.delete(identity);
+}
+
+function trimPendingIdempotencyKeys(): void {
+  while (pendingIdempotencyKeys.size > MAX_PENDING_IDEMPOTENCY_KEYS) {
+    const oldest = pendingIdempotencyKeys.keys().next().value as string | undefined;
+    if (!oldest) return;
+    pendingIdempotencyKeys.delete(oldest);
+  }
 }
 
 function joinUrl(baseUrl: string, path: string): string {

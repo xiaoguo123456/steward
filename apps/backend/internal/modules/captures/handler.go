@@ -65,7 +65,7 @@ func (h *CaptureAPI) ConfirmCapture(ctx context.Context, req httpapi.ConfirmCapt
 	if err != nil {
 		return nil, err
 	}
-	result, err := h.svc.Confirm(ctx, userID, req.CaptureId, *req.Body)
+	result, err := h.svc.Confirm(ctx, userID, req.CaptureId, req.Params.IdempotencyKey, *req.Body)
 	if err != nil {
 		return nil, err
 	}

@@ -21,9 +21,9 @@ func (q *Queries) ConsumeVerificationCode(ctx context.Context, id string) error 
 }
 
 const createRefreshToken = `-- name: CreateRefreshToken :one
-INSERT INTO auth_refresh_tokens (id, user_id, token_hash, expires_at)
-VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, token_hash, expires_at, revoked_at, created_at
+INSERT INTO auth_refresh_tokens (id, user_id, token_hash, expires_at, family_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, user_id, token_hash, expires_at, revoked_at, created_at, family_id, replaced_by_token_id
 `
 
 type CreateRefreshTokenParams struct {
@@ -31,6 +31,7 @@ type CreateRefreshTokenParams struct {
 	UserID    string
 	TokenHash []byte
 	ExpiresAt time.Time
+	FamilyID  string
 }
 
 func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (AuthRefreshToken, error) {
@@ -39,6 +40,7 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 		arg.UserID,
 		arg.TokenHash,
 		arg.ExpiresAt,
+		arg.FamilyID,
 	)
 	var i AuthRefreshToken
 	err := row.Scan(
@@ -48,6 +50,8 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.CreatedAt,
+		&i.FamilyID,
+		&i.ReplacedByTokenID,
 	)
 	return i, err
 }
@@ -153,6 +157,7 @@ SELECT id, phone, purpose, code_hash, attempts, expires_at, consumed_at, created
 WHERE phone = $1 AND purpose = $2
 ORDER BY created_at DESC
 LIMIT 1
+FOR UPDATE
 `
 
 type GetLatestVerificationCodeParams struct {
@@ -253,6 +258,27 @@ WHERE user_id = $1 AND revoked_at IS NULL
 
 func (q *Queries) RevokeAllRefreshTokens(ctx context.Context, userID string) error {
 	_, err := q.db.Exec(ctx, revokeAllRefreshTokens, userID)
+	return err
+}
+
+const revokeOtherRefreshTokenFamilies = `-- name: RevokeOtherRefreshTokenFamilies :exec
+UPDATE auth_refresh_tokens SET revoked_at = now()
+WHERE auth_refresh_tokens.user_id = $1
+  AND family_id <> (
+      SELECT current_token.family_id FROM auth_refresh_tokens AS current_token
+      WHERE current_token.id = $2
+        AND current_token.user_id = $1
+  )
+  AND revoked_at IS NULL
+`
+
+type RevokeOtherRefreshTokenFamiliesParams struct {
+	OwnerUserID    string
+	CurrentTokenID string
+}
+
+func (q *Queries) RevokeOtherRefreshTokenFamilies(ctx context.Context, arg RevokeOtherRefreshTokenFamiliesParams) error {
+	_, err := q.db.Exec(ctx, revokeOtherRefreshTokenFamilies, arg.OwnerUserID, arg.CurrentTokenID)
 	return err
 }
 

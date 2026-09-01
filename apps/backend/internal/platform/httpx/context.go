@@ -14,12 +14,24 @@ const (
 	contextKeyUserID contextKey = iota
 	contextKeyRequestID
 	contextKeyIdempotencyKey
+	contextKeySessionID
 )
 
 // WithUserID 把已认证的用户 ID 放入上下文。
 // 只有 Auth 中间件在验证令牌之后才会调用它，业务层不得自行注入。
 func WithUserID(ctx context.Context, userID string) context.Context {
 	return context.WithValue(ctx, contextKeyUserID, userID)
+}
+
+// WithSessionID 保存 Access Token 绑定的 Refresh Session ID。
+func WithSessionID(ctx context.Context, sessionID string) context.Context {
+	return context.WithValue(ctx, contextKeySessionID, sessionID)
+}
+
+// SessionID 返回当前 Access Token 的 Refresh Session ID。
+func SessionID(ctx context.Context) string {
+	id, _ := ctx.Value(contextKeySessionID).(string)
+	return id
 }
 
 // UserID 取出当前用户 ID。未认证时返回 UNAUTHENTICATED 错误。

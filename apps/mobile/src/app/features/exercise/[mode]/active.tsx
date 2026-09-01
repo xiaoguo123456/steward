@@ -1,4 +1,5 @@
 import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
@@ -67,6 +68,7 @@ export default function ActiveWorkoutScreen() {
     goal?: string | string[];
     plan?: string | string[];
     voice?: string | string[];
+    awake?: string | string[];
   }>();
   const rawMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const mode = getWorkoutMode(rawMode);
@@ -89,6 +91,11 @@ export default function ActiveWorkoutScreen() {
   );
 }
 
+function KeepAwakeGuard() {
+  useKeepAwake('steward-workout');
+  return null;
+}
+
 function OutdoorActiveWorkout({
   mode,
   params,
@@ -97,6 +104,7 @@ function OutdoorActiveWorkout({
   params: {
     goal?: string | string[];
     voice?: string | string[];
+    awake?: string | string[];
   };
 }) {
   const router = useRouter();
@@ -111,6 +119,7 @@ function OutdoorActiveWorkout({
   const goalAnnouncedRef = useRef(false);
   const goalParam = Array.isArray(params.goal) ? params.goal[0] : params.goal;
   const voiceParam = Array.isArray(params.voice) ? params.voice[0] : params.voice;
+  const awakeParam = Array.isArray(params.awake) ? params.awake[0] : params.awake;
   const goal = clientReady ? goalParam : undefined;
   const voiceEnabled = voiceParam !== '0';
   const workoutGoal = useMemo(() => parseWorkoutGoal(goal), [goal]);
@@ -261,6 +270,7 @@ function OutdoorActiveWorkout({
 
   return (
     <AppScreen backgroundColor={workoutAccent.background} includeBottomInset>
+      {awakeParam !== '0' ? <KeepAwakeGuard /> : null}
       <NavHeader
         onBack={() => openConfirmation('back')}
         right={

@@ -328,6 +328,8 @@ func (s *ProposalService) execute(ctx context.Context, q *dbgen.Queries, userID 
 		return s.executeTaskCreate(ctx, q, userID, proposal, command)
 	case "task_update":
 		return s.executeTaskUpdate(ctx, q, userID, proposal, command, targetVersion)
+	case "task_split":
+		return s.executeTaskSplit(ctx, q, userID, proposal, command, targetVersion)
 	case "event_create":
 		return s.executeEventCreate(ctx, q, userID, proposal, command)
 	case "event_update":
@@ -338,6 +340,101 @@ func (s *ProposalService) execute(ctx context.Context, q *dbgen.Queries, userID 
 		return ConfirmResult{}, apperr.Validation(
 			apperr.Field("proposal_type", "不支持这种建议类型。"))
 	}
+}
+
+func (s *ProposalService) executeTaskSplit(ctx context.Context, q *dbgen.Queries,
+	userID string, proposal dbgen.ActionProposal, command map[string]any,
+	targetVersion *int) (ConfirmResult, error) {
+	if proposal.TargetID == nil {
+		return ConfirmResult{}, apperr.Validation(apperr.Field("target_id", "缺少原任务。"))
+	}
+	current, err := q.GetTask(ctx, *proposal.TargetID)
+	if err != nil {
+		return ConfirmResult{}, apperr.NotFound("原任务")
+	}
+	expected := proposal.TargetExpectedVersion
+	if targetVersion != nil {
+		value := int32(*targetVersion)
+		expected = &value
+	}
+	if expected != nil && current.Version != *expected {
+		return ConfirmResult{}, apperr.New(apperr.CodeAIProposalStale)
+	}
+	raw, ok := command["tasks"].([]any)
+	if !ok || len(raw) < 2 || len(raw) > 10 {
+		return ConfirmResult{}, apperr.Validation(apperr.Field("tasks", "子任务数量必须是 2 到 10。"))
+	}
+	if selected, exists := command["selected_tasks"]; exists {
+		selectedItems, ok := selected.([]any)
+		if !ok || len(selectedItems) < 2 || len(selectedItems) > len(raw) {
+			return ConfirmResult{}, apperr.Validation(apperr.Field("selected_tasks", "至少保留 2 条子任务。"))
+		}
+		filtered := make([]any, 0, len(selectedItems))
+		used := map[int]bool{}
+		for _, value := range selectedItems {
+			selection, ok := value.(map[string]any)
+			if !ok {
+				return ConfirmResult{}, apperr.Validation(apperr.Field("selected_tasks", "子任务选择格式不正确。"))
+			}
+			indexValue, ok := selection["index"].(float64)
+			index := int(indexValue)
+			if !ok || index < 0 || index >= len(raw) || used[index] {
+				return ConfirmResult{}, apperr.Validation(apperr.Field("selected_tasks", "子任务选择已失效。"))
+			}
+			used[index] = true
+			original, ok := raw[index].(map[string]any)
+			if !ok {
+				return ConfirmResult{}, apperr.Validation(apperr.Field("tasks", "子任务格式不正确。"))
+			}
+			copy := make(map[string]any, len(original))
+			for key, item := range original {
+				copy[key] = item
+			}
+			copy["title"] = strings.TrimSpace(text(selection["title"]))
+			filtered = append(filtered, copy)
+		}
+		raw = filtered
+	}
+	provenance := provenanceOf(proposal)
+	provenanceJSON, _ := json.Marshal(provenance)
+	affected := make([]httpapi.AffectedResource, 0, len(raw))
+	entries := make([]activity.EntryInput, 0, len(raw))
+	for _, value := range raw {
+		item, ok := value.(map[string]any)
+		if !ok {
+			return ConfirmResult{}, apperr.Validation(apperr.Field("tasks", "子任务格式不正确。"))
+		}
+		title := strings.TrimSpace(text(item["title"]))
+		if title == "" {
+			return ConfirmResult{}, apperr.Validation(apperr.Field("tasks.title", "子任务标题不能为空。"))
+		}
+		cmd := objects.CreateTaskCommand{Title: title, Priority: current.Priority, ListID: current.ListID,
+			ProjectID: current.ProjectID, CreatedBy: "ai", Provenance: provenance}
+		if description := strings.TrimSpace(text(item["description"])); description != "" {
+			cmd.Description = &description
+		}
+		if minutes, ok := item["estimated_minutes"].(float64); ok && minutes > 0 {
+			value := int32(minutes)
+			cmd.EstimatedMinutes = &value
+		}
+		created, err := s.objects.CreateTaskInTx(ctx, q, userID, cmd)
+		if err != nil {
+			return ConfirmResult{}, err
+		}
+		_, err = q.UpsertActiveRelation(ctx, dbgen.UpsertActiveRelationParams{ID: idgen.New(idgen.PrefixRelation), UserID: userID,
+			Kind: "related_to", FromType: "task", FromID: created.ID, ToType: "task", ToID: current.ID,
+			CreatedBy: "ai", ProvenanceRefs: provenanceJSON})
+		if err != nil {
+			return ConfirmResult{}, apperr.Internal(err)
+		}
+		affected = append(affected, httpapi.AffectedResource{Type: httpapi.AffectedResourceTypeTask, Id: &created.ID})
+		entries = append(entries, activity.EntryInput{Action: "created", ResourceType: "task", ResourceID: created.ID, Title: created.Title, Summary: "根据拆分建议创建子任务"})
+	}
+	batchID, err := s.activity.Record(ctx, q, userID, activity.SourceProposal, &proposal.ID, entries)
+	if err != nil {
+		return ConfirmResult{}, err
+	}
+	return ConfirmResult{ActivityBatchID: batchID, Affected: affected}, nil
 }
 
 func (s *ProposalService) executeTaskCreate(ctx context.Context, q *dbgen.Queries,
@@ -590,7 +687,7 @@ func (s *ProposalService) executeMemoryUpsert(ctx context.Context, q *dbgen.Quer
 
 func isKnownProposalType(t string) bool {
 	switch t {
-	case "task_create", "task_update", "event_create", "event_update", "memory_upsert":
+	case "task_create", "task_update", "task_split", "event_create", "event_update", "memory_upsert":
 		return true
 	default:
 		return false
@@ -682,6 +779,9 @@ func buildTaskUpdateBody(command map[string]any, loc *time.Location,
 	}
 	if end := parseTimestamp(command["scheduled_end_at"]); end != nil {
 		body.ScheduledEndAt = end
+	}
+	if body.ScheduledStartAt != nil || body.ScheduledEndAt != nil {
+		body.ScheduledTimezone = &timezone
 	}
 	return body, nil
 }

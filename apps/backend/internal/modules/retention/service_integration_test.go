@@ -91,7 +91,7 @@ func TestAccountDeletionClosesSessionsPurgesDataAndKeepsPublicStatus(t *testing.
 		}
 		if _, err := q.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
 			ID: refreshID, UserID: userID, TokenHash: authpkg.HashToken("refresh"),
-			ExpiresAt: time.Now().Add(time.Hour),
+			ExpiresAt: time.Now().Add(time.Hour), FamilyID: refreshID,
 		}); err != nil {
 			return err
 		}

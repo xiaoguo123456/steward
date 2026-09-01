@@ -11,6 +11,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'r
 import { AppScreen } from '@/components/ui/app-screen';
 import { FlatListGroup, FlatListRow } from '@/components/ui/flat-list';
 import { NavHeader } from '@/components/ui/nav-header';
+import { StatePanel } from '@/components/ui/state-panel';
 import { colors, fontFamily, typography } from '@/theme/tokens';
 
 /**
@@ -94,7 +95,15 @@ export default function AiSettingsScreen() {
 
         {failure ? <Text style={styles.failure}>{failure}</Text> : null}
 
-        {settings.isLoading || !current ? (
+        {settings.isError ? (
+          <StatePanel
+            actionLabel="重试"
+            icon="cloud-offline-outline"
+            message={errorMessage(settings.error, 'AI 设置暂时无法读取，请稍后重试。')}
+            onAction={() => void settings.refetch()}
+            title="加载失败"
+          />
+        ) : settings.isLoading || !current ? (
           <ActivityIndicator color={colors.primary} style={styles.loading} />
         ) : (
           <FlatListGroup>

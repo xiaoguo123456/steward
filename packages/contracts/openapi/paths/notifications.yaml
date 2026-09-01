@@ -1,0 +1,54 @@
+# 产品内通知中心。设备 Push 尚未接入，不影响这里的持久化与已读语义。
+
+Collection:
+  get:
+    operationId: listNotifications
+    summary: 读取产品内通知
+    description: |
+      返回已经触发并持久化的通知，按发生时间倒序排列。当前 Event Reminder
+      与 Task Due 复用服务端 Reminder 的确定性触发计算；系统通知权限被拒绝
+      不影响本接口。来源软删除后仍返回通知快照，并标记 source_deleted。
+    tags: [notifications]
+    parameters:
+      - $ref: '../components/parameters.yaml#/Cursor'
+      - $ref: '../components/parameters.yaml#/Limit'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/notifications.yaml#/NotificationsResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+Read:
+  post:
+    operationId: markNotificationRead
+    summary: 标记一条产品内通知已读
+    description: 重复标记同一条通知不会改变首次已读时间。
+    tags: [notifications]
+    parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '../components/parameters.yaml#/IdempotencyKey'
+    responses:
+      '200':
+        description: 成功。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/notifications.yaml#/NotificationResponse'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '404':
+        $ref: '../components/responses.yaml#/NotFound'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'

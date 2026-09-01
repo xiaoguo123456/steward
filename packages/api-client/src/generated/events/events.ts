@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './events.zod';
 import {
   useMutation,
   useQuery
@@ -95,6 +96,7 @@ export const listEvents = async (params?: ListEventsParams, options?: Parameters
 
 
   }
+, StewardResponseSchemas.ListEventsResponse
 );}
 
 
@@ -195,6 +197,7 @@ export const createEvent = async (createEventRequest: CreateEventRequest, option
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createEventRequest)
   }
+, StewardResponseSchemas.CreateEventResponse
 );}
 
 
@@ -265,6 +268,7 @@ export const getEvent = async (eventId: string, options?: Parameters<typeof stew
 
 
   }
+, StewardResponseSchemas.GetEventResponse
 );}
 
 
@@ -366,6 +370,7 @@ export const updateEvent = async (eventId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateEventRequest)
   }
+, StewardResponseSchemas.UpdateEventResponse
 );}
 
 
@@ -436,6 +441,7 @@ export const deleteEvent = async (eventId: string, options?: Parameters<typeof s
 
 
   }
+, StewardResponseSchemas.DeleteEventResponse
 );}
 
 

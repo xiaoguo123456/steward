@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './media.zod';
 import {
   useMutation,
   useQuery
@@ -91,6 +92,7 @@ export const createUploadGrants = async (createUploadGrantsRequest: CreateUpload
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createUploadGrantsRequest)
   }
+, StewardResponseSchemas.CreateUploadGrantsResponse
 );}
 
 
@@ -161,6 +163,7 @@ export const getMediaAsset = async (mediaId: string, options?: Parameters<typeof
 
 
   }
+, StewardResponseSchemas.GetMediaAssetResponse
 );}
 
 
@@ -263,6 +266,7 @@ export const deleteMediaAsset = async (mediaId: string, options?: Parameters<typ
 
 
   }
+, StewardResponseSchemas.DeleteMediaAssetResponse
 );}
 
 
@@ -336,6 +340,7 @@ export const completeMediaUpload = async (mediaId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(completeUploadRequest)
   }
+, StewardResponseSchemas.CompleteMediaUploadResponse
 );}
 
 
@@ -408,6 +413,7 @@ export const renewMediaUploadGrant = async (mediaId: string, options?: Parameter
 
 
   }
+, StewardResponseSchemas.RenewMediaUploadGrantResponse
 );}
 
 

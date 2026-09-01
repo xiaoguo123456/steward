@@ -1,12 +1,13 @@
 import {
   useGetProjectItinerary,
   useListProjects,
-  useUpdateTask,
+  updateTask,
+  isApiError,
   type Event,
   type Project,
   type ProjectItinerary,
 } from '@steward/api-client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { colors } from '@/theme/tokens';
@@ -42,6 +43,9 @@ export function useTripsOverview() {
     upcoming: trips.filter((trip) => trip.status === 'upcoming'),
     completed: trips.filter((trip) => trip.status === 'completed'),
     loading: projects.isLoading,
+    failed: projects.isError,
+    error: projects.error,
+    refetch: projects.refetch,
   };
 }
 
@@ -52,12 +56,16 @@ export function useTripDetail(projectId: string) {
     query: { enabled: Boolean(projectId) },
   });
 
-  const toggleTask = useUpdateTask({
-    mutation: {
-      onSuccess: () => {
-        void itinerary.refetch();
-        void queryClient.invalidateQueries();
-      },
+  const toggleTask = useMutation({
+    mutationFn: ({ task, completed }: { task: TripChecklistItem; completed: boolean }) =>
+      updateTask(
+        task.id,
+        { status: completed ? 'done' : 'todo' },
+        { headers: { 'If-Match': String(task.version) } },
+      ),
+    onSuccess: () => {
+      void itinerary.refetch();
+      void queryClient.invalidateQueries();
     },
   });
 
@@ -69,9 +77,15 @@ export function useTripDetail(projectId: string) {
   return {
     trip,
     loading: itinerary.isLoading,
-    notFound: itinerary.isError,
-    toggleChecklistItem: (taskId: string, completed: boolean) => {
-      toggleTask.mutate({ taskId, data: { status: completed ? 'done' : 'todo' } });
+    failed: itinerary.isError && !(isApiError(itinerary.error) && itinerary.error.status === 404),
+    error: itinerary.error,
+    notFound: isApiError(itinerary.error) && itinerary.error.status === 404,
+    refetch: itinerary.refetch,
+    toggleError: toggleTask.error,
+    toggleChecklistItem: async (taskId: string, completed: boolean) => {
+      const task = trip?.checklist.find((item) => item.id === taskId);
+      if (!task) return;
+      await toggleTask.mutateAsync({ task, completed });
     },
   };
 }
@@ -225,6 +239,7 @@ function bookingStatusLabel(status?: string): string {
 function toChecklistItem(task: ProjectItinerary['tasks'][number]): TripChecklistItem {
   return {
     id: task.id,
+    version: task.version,
     title: task.title,
     meta: task.description ?? undefined,
     completed: task.status === 'done',

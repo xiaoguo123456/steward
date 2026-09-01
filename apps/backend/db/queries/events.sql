@@ -41,6 +41,9 @@ ORDER BY all_day DESC, start_at NULLS FIRST, start_date NULLS FIRST, created_at;
 -- name: GetEvent :one
 SELECT * FROM events WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
 
+-- name: GetEventForUpdate :one
+SELECT * FROM events WHERE id = sqlc.arg(id) AND deleted_at IS NULL FOR UPDATE;
+
 -- name: CreateEvent :one
 INSERT INTO events (
     id, user_id, title, event_kind, all_day,
@@ -83,8 +86,14 @@ UPDATE events SET
     reminders  = CASE WHEN sqlc.arg(clear_reminders)::bool THEN '[]'::jsonb
                       ELSE coalesce(sqlc.narg(reminders), reminders) END,
     recurrence = coalesce(sqlc.narg(recurrence), recurrence),
-    original_month_day = coalesce(sqlc.narg(original_month_day), original_month_day),
-    important_date_kind = coalesce(sqlc.narg(important_date_kind), important_date_kind),
+    original_month_day = CASE
+        WHEN coalesce(sqlc.narg(recurrence), recurrence) <> 'yearly' THEN NULL
+        ELSE coalesce(sqlc.narg(original_month_day), original_month_day)
+    END,
+    important_date_kind = CASE
+        WHEN coalesce(sqlc.narg(event_kind), event_kind) <> 'important_date' THEN NULL
+        ELSE coalesce(sqlc.narg(important_date_kind), important_date_kind)
+    END,
     important_date_handled_at = CASE
         WHEN sqlc.arg(set_important_date_handled_at)::bool
             THEN sqlc.narg(important_date_handled_at)::timestamptz

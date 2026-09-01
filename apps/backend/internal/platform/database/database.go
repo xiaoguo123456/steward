@@ -27,6 +27,7 @@ var requiredRuntimeFunctions = []string{
 	"public.auth_find_user_by_phone(text)",
 	"public.auth_create_user(text,text,text,text)",
 	"public.auth_find_refresh_token(bytea)",
+	"public.auth_rotate_refresh_token(bytea,text,bytea,timestamp with time zone)",
 	"public.auth_account_is_active(text)",
 	"public.admin_list_users_for_aggregation(integer,text)",
 	"public.account_deletion_worker_media_keys(text)",

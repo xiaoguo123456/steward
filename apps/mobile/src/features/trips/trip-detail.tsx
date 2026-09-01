@@ -189,11 +189,13 @@ export function TripDetail({
   onToggleChecklistItem,
   onAddItem,
   onAddWithAI,
+  failure,
 }: {
   trip: TripPlan;
-  onToggleChecklistItem?: (taskId: string, completed: boolean) => void;
+  onToggleChecklistItem?: (taskId: string, completed: boolean) => void | Promise<void>;
   onAddItem?: (kind: 'transport' | 'lodging' | 'activity', date?: string) => void;
   onAddWithAI?: () => void;
+  failure?: string | null;
 }) {
   const [activeTab, setActiveTab] = useState<DetailTab>('schedule');
   const [selectedDayId, setSelectedDayId] = useState(trip.days[0]?.id ?? '');
@@ -263,6 +265,7 @@ export function TripDetail({
         ) : null}
 
         <SegmentedTabs onChange={setActiveTab} value={activeTab} />
+        {failure ? <Text accessibilityRole="alert" style={styles.failure}>{failure}</Text> : null}
 
         {activeTab === 'schedule' ? (
           <View>
@@ -405,6 +408,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
+  failure: { marginTop: 12, color: colors.danger, fontFamily, ...typography.meta },
   summary: {
     minHeight: 86,
     marginTop: 6,

@@ -21,7 +21,7 @@ import type { FocusMode, FocusQuality, FocusRecord, NewFocusRecord } from './mod
 
 type FocusPrototypeValue = {
   records: FocusRecord[];
-  saveRecord: (record: NewFocusRecord) => void;
+  saveRecord: (record: NewFocusRecord) => Promise<void>;
   saving: boolean;
 };
 
@@ -37,8 +37,8 @@ export function FocusPrototypeProvider({ children }: PropsWithChildren) {
   });
 
   const saveRecord = useCallback(
-    (record: NewFocusRecord) => {
-      tracker.save(
+    async (record: NewFocusRecord) => {
+      await tracker.saveAsync(
         {
           // 服务端字段单位是分钟；秒级精度对「今天专注了多久」没有意义。
           duration_min: Math.max(1, Math.round(record.elapsedSeconds / 60)),

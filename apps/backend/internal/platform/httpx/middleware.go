@@ -89,7 +89,7 @@ func AuthMiddleware(tokens *auth.TokenService, accountActive AccountStateChecker
 				return
 			}
 
-			userID, err := tokens.ParseAccessToken(strings.TrimPrefix(raw, "Bearer "))
+			userID, sessionID, err := tokens.ParseAccessTokenWithSession(strings.TrimPrefix(raw, "Bearer "))
 			if err != nil {
 				WriteError(w, r, apperr.New(apperr.CodeUnauthenticated))
 				return
@@ -107,6 +107,9 @@ func AuthMiddleware(tokens *auth.TokenService, accountActive AccountStateChecker
 			}
 
 			ctx := WithUserID(r.Context(), userID)
+			if sessionID != "" {
+				ctx = WithSessionID(ctx, sessionID)
+			}
 			if key := strings.TrimSpace(r.Header.Get("Idempotency-Key")); key != "" {
 				ctx = WithIdempotencyKey(ctx, key)
 			}

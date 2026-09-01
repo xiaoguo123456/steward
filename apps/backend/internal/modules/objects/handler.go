@@ -113,6 +113,7 @@ func (h *ObjectAPI) ListTasks(ctx context.Context, req httpapi.ListTasksRequestO
 
 // CreateTask 新建 Task。
 func (h *ObjectAPI) CreateTask(ctx context.Context, req httpapi.CreateTaskRequestObject) (httpapi.CreateTaskResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -155,6 +156,7 @@ func (h *ObjectAPI) UpdateTask(ctx context.Context, req httpapi.UpdateTaskReques
 
 // DeleteTask 删除 Task。
 func (h *ObjectAPI) DeleteTask(ctx context.Context, req httpapi.DeleteTaskRequestObject) (httpapi.DeleteTaskResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -238,6 +240,7 @@ func (h *ObjectAPI) ListEvents(ctx context.Context, req httpapi.ListEventsReques
 
 // CreateEvent 新建 Event。
 func (h *ObjectAPI) CreateEvent(ctx context.Context, req httpapi.CreateEventRequestObject) (httpapi.CreateEventResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -280,6 +283,7 @@ func (h *ObjectAPI) UpdateEvent(ctx context.Context, req httpapi.UpdateEventRequ
 
 // DeleteEvent 删除 Event。
 func (h *ObjectAPI) DeleteEvent(ctx context.Context, req httpapi.DeleteEventRequestObject) (httpapi.DeleteEventResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -354,6 +358,7 @@ func (h *ObjectAPI) ListProjects(ctx context.Context, req httpapi.ListProjectsRe
 
 // CreateProject 新建 Project。
 func (h *ObjectAPI) CreateProject(ctx context.Context, req httpapi.CreateProjectRequestObject) (httpapi.CreateProjectResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -396,6 +401,7 @@ func (h *ObjectAPI) UpdateProject(ctx context.Context, req httpapi.UpdateProject
 
 // DeleteProject 删除 Project。
 func (h *ObjectAPI) DeleteProject(ctx context.Context, req httpapi.DeleteProjectRequestObject) (httpapi.DeleteProjectResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -468,6 +474,7 @@ func (h *ObjectAPI) ListNotes(ctx context.Context, req httpapi.ListNotesRequestO
 
 // CreateNote 新建 Note。
 func (h *ObjectAPI) CreateNote(ctx context.Context, req httpapi.CreateNoteRequestObject) (httpapi.CreateNoteResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
@@ -538,6 +545,7 @@ func (h *ObjectAPI) UpdateNote(ctx context.Context, req httpapi.UpdateNoteReques
 
 // DeleteNote 删除 Note。
 func (h *ObjectAPI) DeleteNote(ctx context.Context, req httpapi.DeleteNoteRequestObject) (httpapi.DeleteNoteResponseObject, error) {
+	ctx = httpx.WithIdempotencyKey(ctx, string(req.Params.IdempotencyKey))
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err

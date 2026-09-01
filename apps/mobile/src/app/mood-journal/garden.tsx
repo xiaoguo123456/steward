@@ -1,9 +1,12 @@
 import {
   errorMessage,
+  generateMoodJournalReflection,
   useGetMoodJournalStatistics,
   useListMoodJournalEntries,
+  type MoodJournalReflectionResult,
 } from '@steward/api-client';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
@@ -11,12 +14,16 @@ import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { MoodField } from '@/features/mood-journal/mood-field';
-import { moodLabels, monthRange } from '@/features/mood-journal/model';
+import { localDateKey, moodLabels, monthRange } from '@/features/mood-journal/model';
+import { useMoodJournalAiConsent } from '@/features/mood-journal/use-mood-journal-ai-consent';
 import { colors, fontFamily, moodColors, radius, typography } from '@/theme/tokens';
 
 export default function MoodJournalGardenScreen() {
+  const router = useRouter();
+  const ensureAiConsent = useMoodJournalAiConsent();
+  const [period, setPeriod] = useState<'week' | 'month'>('month');
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-  const range = useMemo(() => monthRange(month), [month]);
+  const range = useMemo(() => period === 'month' ? monthRange(month) : currentWeekRange(), [month, period]);
   const entriesQuery = useListMoodJournalEntries({ ...range, limit: 100 });
   const statisticsQuery = useGetMoodJournalStatistics(range);
   const statistics = statisticsQuery.data?.data;
@@ -25,8 +32,28 @@ export default function MoodJournalGardenScreen() {
   const pending = entriesQuery.isPending || statisticsQuery.isPending;
   const dominantMood = statistics?.mood_distribution.toSorted((a, b) => b.count - a.count)[0];
   const topWords = statistics?.emotion_words.slice(0, 5) ?? [];
+  const eligibleEntries = entries.filter((entry) => !entry.exclude_from_ai);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [reflection, setReflection] = useState<MoodJournalReflectionResult | null>(null);
+  const [reflectionFailure, setReflectionFailure] = useState<string | null>(null);
+  const [reflecting, setReflecting] = useState(false);
 
   const moveMonth = (offset: number) => setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+  const toggleSelected = (id: string) => setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
+  const generateReflection = async () => {
+    if (selected.length === 0 || reflecting) return;
+    setReflecting(true);
+    setReflectionFailure(null);
+    try {
+      if (!await ensureAiConsent('selected')) return;
+      const response = await generateMoodJournalReflection({ period_start: range.from, period_end: range.to, entry_ids: selected });
+      setReflection(response.data);
+    } catch (error) {
+      setReflectionFailure(errorMessage(error, '深度回望暂时不可用；上方确定性统计仍然有效。'));
+    } finally {
+      setReflecting(false);
+    }
+  };
 
   return (
     <AppScreen>
@@ -44,6 +71,13 @@ export default function MoodJournalGardenScreen() {
             <AppIcon color={colors.text} name="chevron-forward" size={20} />
           </Pressable>
         </View>
+        <View style={styles.periodTabs}>
+          {(['week', 'month'] as const).map((value) => (
+            <Pressable accessibilityRole="button" key={value} onPress={() => { setPeriod(value); setSelected([]); setReflection(null); }} style={[styles.periodTab, period === value && styles.periodTabActive]}>
+              <Text style={[styles.periodTabText, period === value && styles.periodTabTextActive]}>{value === 'week' ? '本周' : '本月'}</Text>
+            </Pressable>
+          ))}
+        </View>
 
         {pending ? (
           <View style={styles.loading}><ActivityIndicator color={moodColors.accent} /></View>
@@ -58,7 +92,14 @@ export default function MoodJournalGardenScreen() {
         ) : (
           <>
             <View style={styles.field}>
-              <MoodField height={224} seeds={entries.map((entry) => entry.visual_seed)} />
+              <MoodField
+                height={224}
+                onSelect={(index) => {
+                  const entry = entries[index];
+                  if (entry) router.push({ pathname: '/mood-journal/[id]', params: { id: entry.id } });
+                }}
+                seeds={entries.map((entry) => entry.visual_seed)}
+              />
             </View>
 
             <View style={styles.summary}>
@@ -96,14 +137,62 @@ export default function MoodJournalGardenScreen() {
               <View style={styles.aiIcon}><AppIcon color={moodColors.accent} name="sparkles-outline" size={18} /></View>
               <View style={styles.aiCopy}>
                 <Text style={styles.aiTitle}>深度回望</Text>
-                <Text style={styles.aiText}>你选择日记并单独同意后，AI 才会帮你寻找反复出现的主题。现在只展示本机可解释的确定性统计。</Text>
+                <Text style={styles.aiText}>先选择允许用于本次回望的日记。未选择或未同意时，只展示上方由服务端确定性计算的统计。</Text>
               </View>
             </View>
+            <View style={styles.entryChoices}>
+              {eligibleEntries.map((entry) => {
+                const active = selected.includes(entry.id);
+                return (
+                  <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: active }} key={entry.id} onPress={() => toggleSelected(entry.id)} style={styles.choiceRow}>
+                    <AppIcon color={active ? moodColors.accent : colors.textTertiary} name={active ? 'checkmark-circle' : 'ellipse-outline'} size={21} />
+                    <View style={styles.choiceCopy}>
+                      <Text numberOfLines={1} style={styles.choiceTitle}>{entry.title || entry.content_plaintext}</Text>
+                      <Text style={styles.choiceDate}>{new Date(entry.occurred_at).toLocaleDateString('zh-CN')}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+              {entries.some((entry) => entry.exclude_from_ai) ? <Text style={styles.excludedText}>已排除 AI 的日记不会出现在选择范围中。</Text> : null}
+              <Pressable accessibilityRole="button" disabled={selected.length === 0 || reflecting} onPress={() => void generateReflection()} style={[styles.generateButton, (selected.length === 0 || reflecting) && styles.generateButtonDisabled]}>
+                <Text style={styles.generateButtonText}>{reflecting ? '正在生成…' : `生成 ${period === 'week' ? '本周' : '本月'} AI 回望`}</Text>
+              </Pressable>
+              {reflectionFailure ? <Text style={styles.reflectionFailure}>{reflectionFailure}</Text> : null}
+            </View>
+            {reflection ? (
+              <View style={styles.reflectionCard}>
+                <Text style={styles.reflectionTitle}>本次回望</Text>
+                <Text style={styles.reflectionSummary}>{reflection.summary}</Text>
+                {reflection.observations.map((item) => (
+                  <View key={`${item.text}-${item.source_entry_ids.join()}`} style={styles.reflectionItem}>
+                    <Text style={styles.reflectionText}>{item.text}</Text>
+                    <View style={styles.sources}>{item.source_entry_ids.map((id) => (
+                      <Pressable key={id} onPress={() => router.push({ pathname: '/mood-journal/[id]', params: { id } })}>
+                        <Text style={styles.sourceLink}>查看来源</Text>
+                      </Pressable>
+                    ))}</View>
+                  </View>
+                ))}
+                {reflection.reflection_questions.map((question) => <Text key={question} style={styles.question}>想一想：{question}</Text>)}
+                {reflection.gentle_suggestions.map((suggestion) => <Text key={suggestion.text} style={styles.suggestion}>可以试试：{suggestion.text}</Text>)}
+                <Text style={styles.candidateNote}>这是一次性候选，不会自动写入日记或长期记忆。</Text>
+              </View>
+            ) : null}
           </>
         )}
       </ScrollView>
     </AppScreen>
   );
+}
+
+function currentWeekRange() {
+  const now = new Date();
+  const start = new Date(now);
+  const offset = (now.getDay() + 6) % 7;
+  start.setDate(now.getDate() - offset);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { from: localDateKey(start), to: localDateKey(end) };
 }
 
 const styles = StyleSheet.create({
@@ -133,4 +222,29 @@ const styles = StyleSheet.create({
   aiCopy: { flex: 1 },
   aiTitle: { color: colors.text, fontFamily, ...typography.bodyStrong },
   aiText: { marginTop: 4, color: colors.textSecondary, fontFamily, ...typography.meta },
+  periodTabs: { alignSelf: 'center', flexDirection: 'row', padding: 3, borderRadius: radius.pill, backgroundColor: colors.surface },
+  periodTab: { minWidth: 72, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
+  periodTabActive: { backgroundColor: colors.background },
+  periodTabText: { color: colors.textSecondary, fontFamily, ...typography.label },
+  periodTabTextActive: { color: colors.text },
+  entryChoices: { marginTop: 14 },
+  choiceRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  choiceCopy: { flex: 1 },
+  choiceTitle: { color: colors.text, fontFamily, ...typography.body },
+  choiceDate: { color: colors.textTertiary, fontFamily, ...typography.meta },
+  excludedText: { marginTop: 8, color: colors.textTertiary, fontFamily, ...typography.meta },
+  generateButton: { minHeight: 48, marginTop: 16, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: moodColors.accent },
+  generateButtonDisabled: { opacity: 0.45 },
+  generateButtonText: { color: colors.surface, fontFamily, ...typography.label },
+  reflectionFailure: { marginTop: 10, color: colors.danger, fontFamily, ...typography.meta },
+  reflectionCard: { marginTop: 20, padding: 16, borderRadius: radius.md, backgroundColor: moodColors.soft },
+  reflectionTitle: { color: colors.text, fontFamily, ...typography.section },
+  reflectionSummary: { marginTop: 8, color: colors.text, fontFamily, ...typography.body },
+  reflectionItem: { marginTop: 14 },
+  reflectionText: { color: colors.text, fontFamily, ...typography.body },
+  sources: { marginTop: 4, flexDirection: 'row', gap: 12 },
+  sourceLink: { color: moodColors.accentPressed, fontFamily, ...typography.meta, textDecorationLine: 'underline' },
+  question: { marginTop: 12, color: colors.text, fontFamily, ...typography.body },
+  suggestion: { marginTop: 8, color: colors.textSecondary, fontFamily, ...typography.body },
+  candidateNote: { marginTop: 14, color: colors.textTertiary, fontFamily, ...typography.meta },
 });

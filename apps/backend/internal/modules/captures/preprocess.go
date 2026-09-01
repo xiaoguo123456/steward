@@ -16,7 +16,7 @@ import (
 //
 // 三条约束：
 //   - Provider 调用在事务外进行，只有保存结果时才开短事务。
-//   - 单项失败不影响其他输入项：失败项标记为 failed，其余继续解析。
+//   - 单项失败不影响其他输入项的预处理，但会阻断后续结构化解析，等待用户处理。
 //   - 提取出的文字属于用户资料，不是系统指令；后续 Prompt 会把它放进素材区。
 func (s *Service) preprocessMedia(ctx context.Context, args CaptureParseArgs,
 	parts []dbgen.CapturePart) []dbgen.CapturePart {
@@ -53,6 +53,41 @@ func (s *Service) preprocessMedia(ctx context.Context, args CaptureParseArgs,
 		})
 	}
 	return out
+}
+
+// mediaPreprocessStatus 判断预处理后是否必须停在媒体失败门禁。
+//
+// ignored 表示用户已经明确放弃该输入，不再属于“保留媒体”。只要仍保留的
+// 图片或音频中有一项失败，就不能把不完整素材交给解析器。全部保留媒体失败且
+// 没有可用文字时是整体失败；其余情况都是等待用户处理的部分失败。
+func mediaPreprocessStatus(parts []dbgen.CapturePart) string {
+	retainedMedia := 0
+	failedMedia := 0
+	hasUsableText := false
+
+	for _, part := range parts {
+		if part.Kind == "text" {
+			if part.Status == "succeeded" && part.Text != nil && strings.TrimSpace(*part.Text) != "" {
+				hasUsableText = true
+			}
+			continue
+		}
+		if part.Status == "ignored" {
+			continue
+		}
+		retainedMedia++
+		if part.Status == "failed" {
+			failedMedia++
+		}
+	}
+
+	if failedMedia == 0 {
+		return ""
+	}
+	if !hasUsableText && retainedMedia > 0 && failedMedia == retainedMedia {
+		return "failed"
+	}
+	return "partially_failed"
 }
 
 // extractText 按输入项类型选择 OCR 或转写。
@@ -113,7 +148,7 @@ func (s *Service) extractText(ctx context.Context, userID string, part dbgen.Cap
 
 // markPartFailed 把单个输入项标记为失败。
 //
-// 只有这一项进入 failed，其余输入项继续解析，对应状态机里的 partially_failed。
+// 只有这一项进入 failed，其余输入项继续预处理；后续结构化解析由媒体门禁阻断。
 func (s *Service) markPartFailed(ctx context.Context, userID string,
 	part *dbgen.CapturePart, message string) {
 

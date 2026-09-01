@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './recipes.zod';
 import {
   useMutation,
   useQuery
@@ -107,6 +108,7 @@ export const listRecipes = async (params?: ListRecipesParams, options?: Paramete
 
 
   }
+, StewardResponseSchemas.ListRecipesResponse
 );}
 
 
@@ -207,6 +209,7 @@ export const getRecipe = async (recipeId: string, options?: Parameters<typeof st
 
 
   }
+, StewardResponseSchemas.GetRecipeResponse
 );}
 
 
@@ -308,6 +311,7 @@ export const favoriteRecipe = async (recipeId: string, options?: Parameters<type
 
 
   }
+, StewardResponseSchemas.FavoriteRecipeResponse
 );}
 
 
@@ -378,6 +382,7 @@ export const unfavoriteRecipe = async (recipeId: string, options?: Parameters<ty
 
 
   }
+, StewardResponseSchemas.UnfavoriteRecipeResponse
 );}
 
 
@@ -450,6 +455,7 @@ export const markRecipeCooked = async (recipeId: string, options?: Parameters<ty
 
 
   }
+, StewardResponseSchemas.MarkRecipeCookedResponse
 );}
 
 
@@ -527,6 +533,7 @@ export const listFavoriteRecipes = async (params?: ListFavoriteRecipesParams, op
 
 
   }
+, StewardResponseSchemas.ListFavoriteRecipesResponse
 );}
 
 
@@ -629,6 +636,7 @@ export const getDietProfile = async ( options?: Parameters<typeof stewardFetch>[
 
 
   }
+, StewardResponseSchemas.GetDietProfileResponse
 );}
 
 
@@ -730,6 +738,7 @@ export const updateDietProfile = async (updateDietProfileRequest: UpdateDietProf
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateDietProfileRequest)
   }
+, StewardResponseSchemas.UpdateDietProfileResponse
 );}
 
 
@@ -809,6 +818,7 @@ export const getMealPlan = async (params?: GetMealPlanParams, options?: Paramete
 
 
   }
+, StewardResponseSchemas.GetMealPlanResponse
 );}
 
 
@@ -911,6 +921,7 @@ export const confirmMealPlan = async (confirmMealPlanRequest: ConfirmMealPlanReq
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(confirmMealPlanRequest)
   }
+, StewardResponseSchemas.ConfirmMealPlanResponse
 );}
 
 
@@ -993,6 +1004,7 @@ export const getMealPlanSuggestion = async (params?: GetMealPlanSuggestionParams
 
 
   }
+, StewardResponseSchemas.GetMealPlanSuggestionResponse
 );}
 
 
@@ -1102,6 +1114,7 @@ export const getMealPlanShoppingDraft = async (params?: GetMealPlanShoppingDraft
 
 
   }
+, StewardResponseSchemas.GetMealPlanShoppingDraftResponse
 );}
 
 
@@ -1204,6 +1217,7 @@ export const createShoppingListFromMealPlan = async (createShoppingListRequest: 
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createShoppingListRequest)
   }
+, StewardResponseSchemas.CreateShoppingListFromMealPlanResponse
 );}
 
 

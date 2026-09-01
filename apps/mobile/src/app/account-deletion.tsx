@@ -160,7 +160,14 @@ export default function AccountDeletionScreen() {
           expiresAt: verified.data.expires_at,
         };
         setPending(resumable);
-        await savePendingAccountDeletion(resumable).catch(() => undefined);
+        try {
+          // 受理会立即让普通登录失效。只有先安全保存同键重放所需凭证，
+          // 才能承担“服务端已提交、客户端没收到响应”的故障窗口。
+          await savePendingAccountDeletion(resumable);
+        } catch {
+          setFailure('无法安全保存删除重放凭证，本次尚未提交账号删除。请检查设备安全存储后重试。');
+          return;
+        }
       }
       const accepted = await requestAccountDeletion(
         { reauth_token: resumable.reauthToken, acknowledgement: true },

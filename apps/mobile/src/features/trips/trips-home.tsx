@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { errorMessage } from '@steward/api-client';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AiFab } from '@/components/ui/ai-fab';
@@ -6,6 +7,7 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
+import { StatePanel } from '@/components/ui/state-panel';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 import type { TripPlan } from './trip-data';
 import { useTripsOverview } from './use-trips';
@@ -79,7 +81,7 @@ function CompletedTripRow({ trip, onPress }: { trip: TripPlan; onPress: () => vo
 
 export function TripsHome() {
   const router = useRouter();
-  const { upcoming: upcomingTrips, completed: completedTrips, loading } = useTripsOverview();
+  const { upcoming: upcomingTrips, completed: completedTrips, loading, failed, error, refetch } = useTripsOverview();
   const createTrip = () => router.push('/trips/new');
   const openTrip = (trip: TripPlan) => {
     router.push({ pathname: '/trips/[id]', params: { id: trip.id } });
@@ -102,6 +104,15 @@ export function TripsHome() {
         title="行程"
       />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {failed ? (
+          <StatePanel
+            actionLabel="重试"
+            icon="cloud-offline-outline"
+            message={errorMessage(error, '行程暂时无法读取，请稍后重试。')}
+            onAction={() => void refetch()}
+            title="行程加载失败"
+          />
+        ) : <>
         <SectionHeading count={upcomingTrips.length} title="近期行程" />
         {!loading && upcomingTrips.length === 0 && completedTrips.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -128,6 +139,7 @@ export function TripsHome() {
             </View>
           </View>
         ) : null}
+        </>}
       </ScrollView>
       <AiFab />
     </AppScreen>

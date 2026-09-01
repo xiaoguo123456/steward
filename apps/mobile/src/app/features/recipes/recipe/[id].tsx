@@ -36,7 +36,7 @@ function MissingRecipe() {
           <AppIcon color={recipeColors.faint} name="restaurant-outline" size={30} />
         </View>
         <Text style={styles.missingTitle}>这道菜暂时找不到</Text>
-        <Text style={styles.missingCopy}>演示内容可能已经更新，可以返回继续浏览。</Text>
+        <Text style={styles.missingCopy}>这道菜可能已下架或内容已经更新，可以返回继续浏览。</Text>
         <RecipePrimaryButton
           label="返回菜谱"
           onPress={() => router.replace('/features/recipes?view=discover' as Href)}
@@ -124,7 +124,7 @@ export default function RecipeDetailScreen() {
           ) : cooked ? (
             <View style={styles.addedNotice}>
               <InlineNotice icon="restaurant-outline" tone="neutral">
-                你已经在本地预览中做过这道菜。
+                你已经记录做过这道菜。
               </InlineNotice>
             </View>
           ) : null}

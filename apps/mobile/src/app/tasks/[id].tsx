@@ -3,7 +3,9 @@ import {
   errorMessage,
   updateTask,
   useGetTask,
+  useListProjects,
   useListTaskLists,
+  type ProjectStatus,
   type Task,
 } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -43,6 +46,7 @@ const statusLabels: Record<Task['status'], string> = {
   done: '已完成',
   cancelled: '已取消',
 };
+const projectStatuses: ProjectStatus[] = ['active', 'paused', 'archived'];
 
 export default function TaskDetailScreen() {
   const router = useRouter();
@@ -53,9 +57,11 @@ export default function TaskDetailScreen() {
 
   const taskQuery = useGetTask(id ?? '', { query: { enabled: Boolean(id) } });
   const listsQuery = useListTaskLists({ list_kind: 'tasks' });
+  const projectsQuery = useListProjects({ status: projectStatuses, limit: 100 });
   const task = taskQuery.data?.data;
 
   const listName = listsQuery.data?.data.find((list) => list.id === task?.list_id)?.name ?? '—';
+  const projectName = projectsQuery.data?.data.find((project) => project.id === task?.project_id)?.title ?? '无';
 
   const runAction = async (action: () => Promise<unknown>) => {
     setActionError(null);
@@ -83,10 +89,13 @@ export default function TaskDetailScreen() {
 
   const removeTask = () => {
     if (!task) return;
-    void runAction(async () => {
-      await deleteTask(task.id);
-      router.back();
-    });
+    Alert.alert('删除任务？', '删除后不可撤销，相关页面也将不再显示这条任务。', [
+      { text: '取消', style: 'cancel' },
+      { text: '删除', style: 'destructive', onPress: () => void runAction(async () => {
+        await deleteTask(task.id);
+        router.back();
+      }) },
+    ]);
   };
 
   if (taskQuery.isPending) {
@@ -123,15 +132,14 @@ export default function TaskDetailScreen() {
     <AppScreen>
       <NavHeader
         right={
-          <Pressable
-            accessibilityLabel="删除任务"
-            accessibilityRole="button"
-            disabled={busy}
-            hitSlop={12}
-            onPress={removeTask}
-          >
-            <AppIcon color={colors.danger} name="trash-outline" size={21} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable accessibilityLabel="编辑任务" accessibilityRole="button" disabled={busy} hitSlop={10} onPress={() => router.push({ pathname: '/tasks/[id]/edit' as never, params: { id: task.id } })}>
+              <Text style={styles.editLabel}>编辑</Text>
+            </Pressable>
+            <Pressable accessibilityLabel="删除任务" accessibilityRole="button" disabled={busy} hitSlop={10} onPress={removeTask}>
+              <AppIcon color={colors.danger} name="trash-outline" size={21} />
+            </Pressable>
+          </View>
         }
         title="任务详情"
       />
@@ -167,8 +175,11 @@ export default function TaskDetailScreen() {
         <View style={styles.detailCard}>
           <DetailRow label="状态" value={statusLabels[task.status]} />
           <DetailRow label="所属清单" value={listName} />
+          <DetailRow label="所属项目" value={projectName} />
           <DetailRow color={priority.color} label="优先级" value={priority.label} />
           <DetailRow label="截止" value={dueLabel(task)} />
+          <DetailRow label="计划时间" value={scheduleLabel(task)} />
+          <DetailRow label="加入日期" value={task.focus_date ? formatMonthDay(task.focus_date) : '未设置'} />
           <ReminderRow task={task} />
           {task.estimated_minutes ? (
             <DetailRow label="预计时长" value={`${task.estimated_minutes} 分钟`} />
@@ -181,6 +192,21 @@ export default function TaskDetailScreen() {
             <Text style={styles.description}>{task.description}</Text>
           </View>
         ) : null}
+
+        <View style={styles.aiSection}>
+          <Text style={styles.sectionTitle}>AI 操作</Text>
+          <View style={styles.aiActions}>
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/ai', params: { taskAction: 'split', taskId: task.id } })} style={({ pressed }) => [styles.aiAction, pressed && styles.pressed]}>
+              <AppIcon color={colors.primaryStrong} name="sparkles-outline" size={19} />
+              <Text style={styles.aiActionText}>AI 帮我拆</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/ai', params: { taskAction: 'schedule', taskId: task.id } })} style={({ pressed }) => [styles.aiAction, pressed && styles.pressed]}>
+              <AppIcon color={colors.primaryStrong} name="calendar-outline" size={19} />
+              <Text style={styles.aiActionText}>智能安排</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.aiHint}>AI 只生成待确认建议；确认后才会创建子任务或写入计划时间。</Text>
+        </View>
 
         {task.created_by !== 'user' ? (
           <View style={styles.provenance}>
@@ -260,7 +286,22 @@ function dueLabel(task: Task): string {
   return '未设置';
 }
 
+function scheduleLabel(task: Task): string {
+  if (!task.scheduled_start_at) return '未设置';
+  const start = new Date(task.scheduled_start_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  if (!task.scheduled_end_at) return start;
+  const end = new Date(task.scheduled_end_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  return `${start}–${end}`;
+}
+
 const styles = StyleSheet.create({
+  headerActions: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 18 },
+  editLabel: { color: colors.primaryStrong, fontFamily, ...typography.bodyStrong },
+  aiSection: { marginTop: 22, gap: 10 },
+  aiActions: { flexDirection: 'row', gap: 10 },
+  aiAction: { minHeight: 50, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: radius.md, backgroundColor: colors.primarySoft },
+  aiActionText: { color: colors.primaryStrong, fontFamily, ...typography.label, fontWeight: '600' },
+  aiHint: { color: colors.textSecondary, fontFamily, ...typography.meta },
   reminderControl: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -115,3 +115,60 @@ func TestImportantDateHandlingPersistsAndFiltersActiveReads(t *testing.T) {
 		t.Fatal("更新为新日期后应恢复为未处理")
 	}
 }
+
+func TestUpdateEventClearsImportantDateOnlyFields(t *testing.T) {
+	db := shoppingTestDB(t)
+	userID := seedShoppingTestUser(t, db)
+	service := &Service{db: db, activity: activity.New(db)}
+	ctx := context.Background()
+	startDate := time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)
+	kindValue := "birthday"
+	originalMonthDay := "02-29"
+
+	var created dbgen.Event
+	err := db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		var err error
+		created, err = q.CreateEvent(ctx, dbgen.CreateEventParams{
+			ID: idgen.New(idgen.PrefixEvent), UserID: userID, Title: "生日",
+			EventKind: "important_date", AllDay: true, StartDate: &startDate,
+			Timezone: "Asia/Shanghai", ItineraryDetails: []byte("{}"),
+			Participants: []byte("[]"), Reminders: []byte("[]"),
+			Recurrence: "yearly", OriginalMonthDay: &originalMonthDay,
+			ImportantDateKind: &kindValue, CreatedBy: "user", ProvenanceRefs: []byte("[]"),
+		})
+		return err
+	})
+	if err != nil {
+		t.Fatalf("预置年度重要日失败：%v", err)
+	}
+
+	none := httpapi.None
+	version := created.Version
+	nonRecurring, err := service.UpdateEvent(ctx, userID, created.ID, EventUpdate{
+		Body: httpapi.UpdateEventRequest{Recurrence: &none}, ExpectedVersion: &version,
+	})
+	if err != nil {
+		t.Fatalf("取消年度重复失败：%v", err)
+	}
+	if nonRecurring.OriginalMonthDay != nil {
+		t.Fatalf("取消年度重复后仍残留 original_month_day：%q", *nonRecurring.OriginalMonthDay)
+	}
+
+	schedule := httpapi.EventKindSchedule
+	allDay := false
+	startAt := time.Date(2026, 9, 2, 9, 0, 0, 0, time.UTC)
+	version = nonRecurring.Version
+	converted, err := service.UpdateEvent(ctx, userID, created.ID, EventUpdate{
+		Body: httpapi.UpdateEventRequest{
+			EventKind: &schedule, AllDay: &allDay, StartAt: &startAt,
+			Clear: &[]httpapi.UpdateEventRequestClear{httpapi.UpdateEventRequestClearStartDate},
+		},
+		ExpectedVersion: &version,
+	})
+	if err != nil {
+		t.Fatalf("重要日转换为普通日程失败：%v", err)
+	}
+	if converted.ImportantDateKind != nil {
+		t.Fatalf("普通日程仍残留 important_date_kind：%q", *converted.ImportantDateKind)
+	}
+}

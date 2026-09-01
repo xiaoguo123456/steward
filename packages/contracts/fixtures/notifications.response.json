@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "id": "tsk_01N1|rmd_01R1|2026-09-01",
+      "type": "task_due",
+      "title": "提交回归测试报告",
+      "body": "任务到期提醒",
+      "source_type": "task",
+      "source_id": "tsk_01N1",
+      "occurred_at": "2026-09-01T09:00:00Z",
+      "read_at": null,
+      "source_deleted": false
+    },
+    {
+      "id": "evt_01N2|rmd_01R2|2026-08-31",
+      "type": "event_reminder",
+      "title": "牙医预约",
+      "body": "日程提醒",
+      "source_type": "event",
+      "source_id": "evt_01N2",
+      "occurred_at": "2026-08-31T01:30:00Z",
+      "read_at": "2026-08-31T02:00:00Z",
+      "source_deleted": true
+    }
+  ],
+  "page": {
+    "has_more": false,
+    "next_cursor": null
+  },
+  "meta": {
+    "request_id": "req_notifications_fixture"
+  }
+}

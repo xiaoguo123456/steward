@@ -43,7 +43,8 @@ export function usePendingReminders() {
   return {
     items,
     loading: query.isPending,
-    failure,
+    failure: failure ?? (query.error ? errorMessage(query.error, '提醒暂时无法读取。') : null),
+    refetch: query.refetch,
     dismiss,
   };
 }

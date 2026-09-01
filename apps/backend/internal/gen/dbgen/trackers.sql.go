@@ -335,6 +335,55 @@ func (q *Queries) GetRecord(ctx context.Context, id string) (GetRecordRow, error
 	return i, err
 }
 
+const getRecordForUpdate = `-- name: GetRecordForUpdate :one
+SELECT r.id, r.user_id, r.title, r.tracker_id, r.timestamp, r.values, r.note, r.project_id, r.created_by, r.provenance_refs, r.created_at, r.updated_at, r.deleted_at, r.version, t.name AS tracker_name
+FROM records r
+JOIN trackers t ON t.id = r.tracker_id
+WHERE r.id = $1 AND r.deleted_at IS NULL
+FOR UPDATE OF r
+`
+
+type GetRecordForUpdateRow struct {
+	ID             string
+	UserID         string
+	Title          string
+	TrackerID      string
+	Timestamp      time.Time
+	Values         []byte
+	Note           *string
+	ProjectID      *string
+	CreatedBy      string
+	ProvenanceRefs []byte
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      *time.Time
+	Version        int32
+	TrackerName    string
+}
+
+func (q *Queries) GetRecordForUpdate(ctx context.Context, id string) (GetRecordForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getRecordForUpdate, id)
+	var i GetRecordForUpdateRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.TrackerID,
+		&i.Timestamp,
+		&i.Values,
+		&i.Note,
+		&i.ProjectID,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.TrackerName,
+	)
+	return i, err
+}
+
 const getTracker = `-- name: GetTracker :one
 SELECT id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule, archived_at FROM trackers WHERE id = $1 AND deleted_at IS NULL
 `
@@ -364,22 +413,53 @@ func (q *Queries) GetTracker(ctx context.Context, id string) (Tracker, error) {
 	return i, err
 }
 
+const getTrackerForUpdate = `-- name: GetTrackerForUpdate :one
+SELECT id, user_id, name, description, fields, status, color, icon, created_by, provenance_refs, created_at, updated_at, deleted_at, version, builtin_key, schedule, archived_at FROM trackers WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
+`
+
+func (q *Queries) GetTrackerForUpdate(ctx context.Context, id string) (Tracker, error) {
+	row := q.db.QueryRow(ctx, getTrackerForUpdate, id)
+	var i Tracker
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Description,
+		&i.Fields,
+		&i.Status,
+		&i.Color,
+		&i.Icon,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.BuiltinKey,
+		&i.Schedule,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
 const listRecords = `-- name: ListRecords :many
 SELECT r.id, r.user_id, r.title, r.tracker_id, r.timestamp, r.values, r.note, r.project_id, r.created_by, r.provenance_refs, r.created_at, r.updated_at, r.deleted_at, r.version, t.name AS tracker_name
 FROM records r
 JOIN trackers t ON t.id = r.tracker_id
 WHERE r.deleted_at IS NULL
   AND ($1::text IS NULL OR r.tracker_id = $1::text)
-  AND ($2::timestamptz IS NULL OR r.timestamp >= $2::timestamptz)
-  AND ($3::timestamptz IS NULL OR r.timestamp <= $3::timestamptz)
-  AND ($4::timestamptz IS NULL
-       OR (r.timestamp, r.id) < ($4::timestamptz, $5::text))
+  AND ($2::text IS NULL OR r.project_id = $2::text)
+  AND ($3::timestamptz IS NULL OR r.timestamp >= $3::timestamptz)
+  AND ($4::timestamptz IS NULL OR r.timestamp <= $4::timestamptz)
+  AND ($5::timestamptz IS NULL
+       OR (r.timestamp, r.id) < ($5::timestamptz, $6::text))
 ORDER BY r.timestamp DESC, r.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListRecordsParams struct {
 	TrackerID       *string
+	ProjectID       *string
 	FromAt          *time.Time
 	ToAt            *time.Time
 	CursorTimestamp *time.Time
@@ -408,6 +488,7 @@ type ListRecordsRow struct {
 func (q *Queries) ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error) {
 	rows, err := q.db.Query(ctx, listRecords,
 		arg.TrackerID,
+		arg.ProjectID,
 		arg.FromAt,
 		arg.ToAt,
 		arg.CursorTimestamp,

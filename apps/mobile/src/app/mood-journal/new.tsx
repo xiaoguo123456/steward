@@ -33,10 +33,13 @@ export default function NewMoodJournalScreen() {
         mood_level: value.moodLevel,
         energy_level: value.energyLevel,
         emotion_words: value.emotionWords,
+        context_words: value.contextWords,
+        exclude_from_ai: value.excludeFromAi,
+        include_in_memories: value.includeInMemories,
         polish_action_id: value.polishActionId,
       });
       await queryClient.invalidateQueries();
-      router.replace({ pathname: '/mood-journal/[id]', params: { id: response.data.id } });
+      router.replace({ pathname: '/mood-journal/[id]', params: { id: response.data.id, followUp: '1' } });
       return true;
     } catch (error) {
       setFailure(errorMessage(error, '这篇日记没能保存，请稍后再试。'));

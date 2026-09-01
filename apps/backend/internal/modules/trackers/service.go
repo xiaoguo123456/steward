@@ -7,7 +7,10 @@ package trackers
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -18,6 +21,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/httpx"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil"
 )
@@ -186,6 +190,16 @@ func (s *Service) CreateTracker(ctx context.Context, userID string, body httpapi
 
 	var out dbgen.Tracker
 	err = s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		replayBody, replayed, requestHash, err := beginTrackerReplay(ctx, q, userID, "trackers.create", body)
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &out); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
 		created, err := q.CreateTracker(ctx, dbgen.CreateTrackerParams{
 			ID:             idgen.New(idgen.PrefixTracker),
 			UserID:         userID,
@@ -213,7 +227,7 @@ func (s *Service) CreateTracker(ctx context.Context, userID string, body httpapi
 			return err
 		}
 		out = created
-		return nil
+		return saveTrackerReplay(ctx, q, userID, "trackers.create", requestHash, 201, created.ID, out)
 	})
 	return out, err
 }
@@ -233,7 +247,7 @@ func (s *Service) UpdateTracker(ctx context.Context, userID, trackerID string,
 
 	var out TrackerWithStats
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetTracker(ctx, trackerID)
+		current, err := q.GetTrackerForUpdate(ctx, trackerID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("记录项")
@@ -364,7 +378,18 @@ func (s *Service) RunArchiveCleanup(ctx context.Context, args ArchiveCleanupArgs
 func (s *Service) DeleteTracker(ctx context.Context, userID, trackerID string) (string, error) {
 	var batchID string
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetTracker(ctx, trackerID)
+		replayBody, replayed, requestHash, err := beginTrackerReplay(
+			ctx, q, userID, "trackers.delete", map[string]string{"tracker_id": trackerID})
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &batchID); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		current, err := q.GetTrackerForUpdate(ctx, trackerID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("记录项")
@@ -392,7 +417,10 @@ func (s *Service) DeleteTracker(ctx context.Context, userID, trackerID string) (
 				Title:        current.Name,
 				Summary:      "删除了记录项及其全部记录",
 			}})
-		return err
+		if err != nil {
+			return err
+		}
+		return saveTrackerReplay(ctx, q, userID, "trackers.delete", requestHash, 200, batchID, batchID)
 	})
 	return batchID, err
 }
@@ -400,6 +428,7 @@ func (s *Service) DeleteTracker(ctx context.Context, userID, trackerID string) (
 // RecordFilter 是 Record 列表查询条件。
 type RecordFilter struct {
 	TrackerID  *string
+	ProjectID  *string
 	From       *time.Time
 	To         *time.Time
 	CursorTime *time.Time
@@ -466,6 +495,7 @@ func (s *Service) ListRecords(ctx context.Context, userID string, f RecordFilter
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		rows, err := q.ListRecords(ctx, dbgen.ListRecordsParams{
 			TrackerID:       f.TrackerID,
+			ProjectID:       f.ProjectID,
 			FromAt:          f.From,
 			ToAt:            f.To,
 			CursorTimestamp: f.CursorTime,
@@ -502,6 +532,16 @@ func (s *Service) GetRecord(ctx context.Context, userID, recordID string) (dbgen
 func (s *Service) CreateRecord(ctx context.Context, userID string, body httpapi.CreateRecordRequest) (dbgen.GetRecordRow, error) {
 	var out dbgen.GetRecordRow
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		replayBody, replayed, requestHash, err := beginTrackerReplay(ctx, q, userID, "records.create", body)
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &out); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
 		tracker, err := q.GetTracker(ctx, body.TrackerId)
 		if err != nil {
 			if database.IsNoRows(err) {
@@ -562,7 +602,7 @@ func (s *Service) CreateRecord(ctx context.Context, userID string, body httpapi.
 			DeletedAt: created.DeletedAt, Version: created.Version,
 			TrackerName: tracker.Name,
 		}
-		return nil
+		return saveTrackerReplay(ctx, q, userID, "records.create", requestHash, 201, created.ID, out)
 	})
 	return out, err
 }
@@ -573,7 +613,7 @@ func (s *Service) UpdateRecord(ctx context.Context, userID, recordID string,
 
 	var out dbgen.GetRecordRow
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetRecord(ctx, recordID)
+		current, err := q.GetRecordForUpdate(ctx, recordID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("记录")
@@ -643,7 +683,18 @@ func (s *Service) UpdateRecord(ctx context.Context, userID, recordID string,
 func (s *Service) DeleteRecord(ctx context.Context, userID, recordID string) (string, error) {
 	var batchID string
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetRecord(ctx, recordID)
+		replayBody, replayed, requestHash, err := beginTrackerReplay(
+			ctx, q, userID, "records.delete", map[string]string{"record_id": recordID})
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &batchID); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		current, err := q.GetRecordForUpdate(ctx, recordID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("记录")
@@ -661,9 +712,65 @@ func (s *Service) DeleteRecord(ctx context.Context, userID, recordID string) (st
 				Title:        current.Title,
 				Summary:      "删除了一条记录",
 			}})
-		return err
+		if err != nil {
+			return err
+		}
+		return saveTrackerReplay(ctx, q, userID, "records.delete", requestHash, 200, batchID, batchID)
 	})
 	return batchID, err
+}
+
+func beginTrackerReplay(ctx context.Context, q *dbgen.Queries, userID, endpoint string,
+	request any) (responseBody []byte, replayed bool, requestHash []byte, err error) {
+	key := httpx.IdempotencyKey(ctx)
+	if key == "" {
+		return nil, false, nil, nil
+	}
+	body, err := json.Marshal(request)
+	if err != nil {
+		return nil, false, nil, apperr.Internal(err)
+	}
+	sum := sha256.Sum256(body)
+	requestHash = sum[:]
+	if err := q.AcquireIdempotencyLock(ctx, endpoint+":"+userID+":"+key); err != nil {
+		return nil, false, nil, apperr.Internal(err)
+	}
+	record, err := q.GetIdempotencyRecord(ctx, dbgen.GetIdempotencyRecordParams{
+		UserID: userID, Endpoint: endpoint, Key: key,
+	})
+	if database.IsNoRows(err) {
+		return nil, false, requestHash, nil
+	}
+	if err != nil {
+		return nil, false, nil, apperr.Internal(err)
+	}
+	if subtle.ConstantTimeCompare(record.RequestHash, requestHash) != 1 {
+		return nil, false, nil, apperr.New(apperr.CodeIdempotencyReused)
+	}
+	if len(record.ResponseBody) == 0 {
+		return nil, false, nil, apperr.Internal(errors.New("幂等记录缺少响应快照"))
+	}
+	return record.ResponseBody, true, requestHash, nil
+}
+
+func saveTrackerReplay(ctx context.Context, q *dbgen.Queries, userID, endpoint string,
+	requestHash []byte, status int32, resourceID string, response any) error {
+	key := httpx.IdempotencyKey(ctx)
+	if key == "" {
+		return nil
+	}
+	snapshot, err := json.Marshal(response)
+	if err != nil {
+		return apperr.Internal(err)
+	}
+	if err := q.SaveIdempotencyRecord(ctx, dbgen.SaveIdempotencyRecordParams{
+		UserID: userID, Endpoint: endpoint, Key: key, RequestHash: requestHash,
+		StatusCode: status, ResponseBody: snapshot, ResourceID: &resourceID,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}); err != nil {
+		return apperr.Internal(err)
+	}
+	return nil
 }
 
 // validateFields 校验 Tracker 字段定义。

@@ -24,6 +24,7 @@ export type ProposalType = typeof ProposalType[keyof typeof ProposalType];
 export const ProposalType = {
   task_create: 'task_create',
   task_update: 'task_update',
+  task_split: 'task_split',
   event_create: 'event_create',
   event_update: 'event_update',
   memory_upsert: 'memory_upsert',

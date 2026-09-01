@@ -13,6 +13,9 @@ LIMIT sqlc.arg(row_limit);
 -- name: GetProject :one
 SELECT * FROM projects WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
 
+-- name: GetProjectForUpdate :one
+SELECT * FROM projects WHERE id = sqlc.arg(id) AND deleted_at IS NULL FOR UPDATE;
+
 -- name: CreateProject :one
 INSERT INTO projects (
     id, user_id, title, description, status, start_date, target_date,

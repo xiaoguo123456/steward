@@ -40,6 +40,12 @@ type RefreshTokenRecord struct {
 	RevokedAt *time.Time
 }
 
+type refreshRotationResult struct {
+	Outcome  string
+	UserID   *string
+	FamilyID *string
+}
+
 const findUserByPhoneSQL = `
 SELECT id, phone, display_name, avatar_url, timezone, initialized, created_at, updated_at, account_status
 FROM auth_find_user_by_phone($1)`
@@ -51,6 +57,10 @@ FROM auth_create_user($1, $2, $3, $4)`
 const findRefreshTokenSQL = `
 SELECT id, user_id, expires_at, revoked_at
 FROM auth_find_refresh_token($1)`
+
+const rotateRefreshTokenSQL = `
+SELECT outcome, user_id, family_id
+FROM auth_rotate_refresh_token($1, $2, $3, $4)`
 
 // findUserByPhone 按手机号查找未删除用户。未找到时返回 pgx.ErrNoRows。
 func (s *Service) findUserByPhone(ctx context.Context, tx pgx.Tx, phone string) (UserRecord, error) {
@@ -77,6 +87,14 @@ func (s *Service) findRefreshToken(ctx context.Context, tx pgx.Tx, hash []byte) 
 	err := tx.QueryRow(ctx, findRefreshTokenSQL, hash).Scan(
 		&t.ID, &t.UserID, &t.ExpiresAt, &t.RevokedAt)
 	return t, err
+}
+
+func (s *Service) rotateRefreshToken(ctx context.Context, tx pgx.Tx, oldHash []byte,
+	newID string, newHash []byte, newExpiresAt time.Time) (refreshRotationResult, error) {
+	var result refreshRotationResult
+	err := tx.QueryRow(ctx, rotateRefreshTokenSQL, oldHash, newID, newHash, newExpiresAt).Scan(
+		&result.Outcome, &result.UserID, &result.FamilyID)
+	return result, err
 }
 
 // withAnonymousTx 在没有用户上下文的短事务中执行 fn。

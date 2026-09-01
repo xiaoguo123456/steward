@@ -41,6 +41,121 @@ func (q *Queries) AnswerCaptureQuestion(ctx context.Context, arg AnswerCaptureQu
 	return i, err
 }
 
+const appendEventCaptureProvenance = `-- name: AppendEventCaptureProvenance :execrows
+UPDATE events SET provenance_refs = provenance_refs || $1::jsonb
+WHERE id = $2 AND user_id = $3
+`
+
+type AppendEventCaptureProvenanceParams struct {
+	ProvenanceRefs []byte
+	ID             string
+	UserID         string
+}
+
+func (q *Queries) AppendEventCaptureProvenance(ctx context.Context, arg AppendEventCaptureProvenanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, appendEventCaptureProvenance, arg.ProvenanceRefs, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const appendNoteCaptureProvenance = `-- name: AppendNoteCaptureProvenance :execrows
+UPDATE notes SET provenance_refs = provenance_refs || $1::jsonb
+WHERE id = $2 AND user_id = $3
+`
+
+type AppendNoteCaptureProvenanceParams struct {
+	ProvenanceRefs []byte
+	ID             string
+	UserID         string
+}
+
+func (q *Queries) AppendNoteCaptureProvenance(ctx context.Context, arg AppendNoteCaptureProvenanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, appendNoteCaptureProvenance, arg.ProvenanceRefs, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const appendProjectCaptureProvenance = `-- name: AppendProjectCaptureProvenance :execrows
+UPDATE projects SET provenance_refs = provenance_refs || $1::jsonb
+WHERE id = $2 AND user_id = $3
+`
+
+type AppendProjectCaptureProvenanceParams struct {
+	ProvenanceRefs []byte
+	ID             string
+	UserID         string
+}
+
+func (q *Queries) AppendProjectCaptureProvenance(ctx context.Context, arg AppendProjectCaptureProvenanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, appendProjectCaptureProvenance, arg.ProvenanceRefs, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const appendRecordCaptureProvenance = `-- name: AppendRecordCaptureProvenance :execrows
+UPDATE records SET provenance_refs = provenance_refs || $1::jsonb
+WHERE id = $2 AND user_id = $3
+`
+
+type AppendRecordCaptureProvenanceParams struct {
+	ProvenanceRefs []byte
+	ID             string
+	UserID         string
+}
+
+func (q *Queries) AppendRecordCaptureProvenance(ctx context.Context, arg AppendRecordCaptureProvenanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, appendRecordCaptureProvenance, arg.ProvenanceRefs, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const appendTaskCaptureProvenance = `-- name: AppendTaskCaptureProvenance :execrows
+UPDATE tasks SET provenance_refs = provenance_refs || $1::jsonb
+WHERE id = $2 AND user_id = $3
+`
+
+type AppendTaskCaptureProvenanceParams struct {
+	ProvenanceRefs []byte
+	ID             string
+	UserID         string
+}
+
+// Capture 更新保留首次 created_from，并把本次 updated_from 追加到当前实体。
+func (q *Queries) AppendTaskCaptureProvenance(ctx context.Context, arg AppendTaskCaptureProvenanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, appendTaskCaptureProvenance, arg.ProvenanceRefs, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const appendTrackerCaptureProvenance = `-- name: AppendTrackerCaptureProvenance :execrows
+UPDATE trackers SET provenance_refs = provenance_refs || $1::jsonb
+WHERE id = $2 AND user_id = $3
+`
+
+type AppendTrackerCaptureProvenanceParams struct {
+	ProvenanceRefs []byte
+	ID             string
+	UserID         string
+}
+
+func (q *Queries) AppendTrackerCaptureProvenance(ctx context.Context, arg AppendTrackerCaptureProvenanceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, appendTrackerCaptureProvenance, arg.ProvenanceRefs, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const bumpCaptureRevision = `-- name: BumpCaptureRevision :one
 UPDATE captures SET revision = revision + 1, status = $1, updated_at = now()
 WHERE id = $2
@@ -406,6 +521,52 @@ func (q *Queries) CreateCaptureRelationCandidate(ctx context.Context, arg Create
 	return err
 }
 
+const getActiveRelationByIdentity = `-- name: GetActiveRelationByIdentity :one
+SELECT id, user_id, kind, from_type, from_id, to_type, to_id, created_by, provenance_refs, created_at, deleted_at FROM relations
+WHERE user_id = $1
+  AND kind = $2
+  AND from_type = $3
+  AND from_id = $4
+  AND to_type = $5
+  AND to_id = $6
+  AND deleted_at IS NULL
+`
+
+type GetActiveRelationByIdentityParams struct {
+	UserID   string
+	Kind     string
+	FromType string
+	FromID   string
+	ToType   string
+	ToID     string
+}
+
+func (q *Queries) GetActiveRelationByIdentity(ctx context.Context, arg GetActiveRelationByIdentityParams) (Relation, error) {
+	row := q.db.QueryRow(ctx, getActiveRelationByIdentity,
+		arg.UserID,
+		arg.Kind,
+		arg.FromType,
+		arg.FromID,
+		arg.ToType,
+		arg.ToID,
+	)
+	var i Relation
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.FromType,
+		&i.FromID,
+		&i.ToType,
+		&i.ToID,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getCapture = `-- name: GetCapture :one
 SELECT id, user_id, status, revision, origin, instruction_note, suggested_project_id, timezone, error, activity_batch_id, created_at, updated_at, confirmed_at FROM captures WHERE id = $1
 `
@@ -467,6 +628,33 @@ func (q *Queries) GetCaptureCandidate(ctx context.Context, arg GetCaptureCandida
 	return i, err
 }
 
+const getCaptureForUpdate = `-- name: GetCaptureForUpdate :one
+SELECT id, user_id, status, revision, origin, instruction_note, suggested_project_id, timezone, error, activity_batch_id, created_at, updated_at, confirmed_at FROM captures WHERE id = $1 FOR UPDATE
+`
+
+// Worker 在 Provider 返回后必须锁定权威 Capture，再校验 revision 与终态。
+// 这样迟到结果与用户放弃／确认／新 revision 的写入会被数据库串行化。
+func (q *Queries) GetCaptureForUpdate(ctx context.Context, id string) (Capture, error) {
+	row := q.db.QueryRow(ctx, getCaptureForUpdate, id)
+	var i Capture
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Status,
+		&i.Revision,
+		&i.Origin,
+		&i.InstructionNote,
+		&i.SuggestedProjectID,
+		&i.Timezone,
+		&i.Error,
+		&i.ActivityBatchID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ConfirmedAt,
+	)
+	return i, err
+}
+
 const getCaptureQuestion = `-- name: GetCaptureQuestion :one
 SELECT id, user_id, capture_id, revision, question, blocking, status, quick_answers, capture_summary, answer_text, created_at, answered_at FROM capture_questions WHERE id = $1
 `
@@ -508,6 +696,48 @@ type IgnoreUnprocessedPartsParams struct {
 func (q *Queries) IgnoreUnprocessedParts(ctx context.Context, arg IgnoreUnprocessedPartsParams) error {
 	_, err := q.db.Exec(ctx, ignoreUnprocessedParts, arg.CaptureID, arg.Revision)
 	return err
+}
+
+const listAllDayEventDuplicateCandidates = `-- name: ListAllDayEventDuplicateCandidates :many
+SELECT id, title, version FROM events
+WHERE user_id = $1
+  AND deleted_at IS NULL
+  AND all_day = true
+  AND start_date = $2::date
+  AND coalesce(end_date, start_date) = $3::date
+ORDER BY id
+`
+
+type ListAllDayEventDuplicateCandidatesParams struct {
+	UserID    string
+	StartDate time.Time
+	EndDate   time.Time
+}
+
+type ListAllDayEventDuplicateCandidatesRow struct {
+	ID      string
+	Title   string
+	Version int32
+}
+
+func (q *Queries) ListAllDayEventDuplicateCandidates(ctx context.Context, arg ListAllDayEventDuplicateCandidatesParams) ([]ListAllDayEventDuplicateCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listAllDayEventDuplicateCandidates, arg.UserID, arg.StartDate, arg.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllDayEventDuplicateCandidatesRow{}
+	for rows.Next() {
+		var i ListAllDayEventDuplicateCandidatesRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.Version); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCaptureCandidates = `-- name: ListCaptureCandidates :many
@@ -782,6 +1012,210 @@ func (q *Queries) ListCaptureRelationCandidates(ctx context.Context, arg ListCap
 	return items, nil
 }
 
+const listNoteDuplicateCandidates = `-- name: ListNoteDuplicateCandidates :many
+SELECT id, title, content, version FROM notes
+WHERE user_id = $1
+  AND deleted_at IS NULL
+ORDER BY updated_at DESC, id
+`
+
+type ListNoteDuplicateCandidatesRow struct {
+	ID      string
+	Title   string
+	Content string
+	Version int32
+}
+
+func (q *Queries) ListNoteDuplicateCandidates(ctx context.Context, userID string) ([]ListNoteDuplicateCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listNoteDuplicateCandidates, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListNoteDuplicateCandidatesRow{}
+	for rows.Next() {
+		var i ListNoteDuplicateCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Content,
+			&i.Version,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectDuplicateCandidates = `-- name: ListProjectDuplicateCandidates :many
+SELECT id, title, version FROM projects
+WHERE user_id = $1
+  AND deleted_at IS NULL
+  AND status <> 'archived'
+ORDER BY updated_at DESC, id
+`
+
+type ListProjectDuplicateCandidatesRow struct {
+	ID      string
+	Title   string
+	Version int32
+}
+
+func (q *Queries) ListProjectDuplicateCandidates(ctx context.Context, userID string) ([]ListProjectDuplicateCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listProjectDuplicateCandidates, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProjectDuplicateCandidatesRow{}
+	for rows.Next() {
+		var i ListProjectDuplicateCandidatesRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.Version); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecordDuplicateCandidates = `-- name: ListRecordDuplicateCandidates :many
+SELECT id, values, version FROM records
+WHERE user_id = $1
+  AND deleted_at IS NULL
+  AND tracker_id = $2
+  AND timestamp = $3
+ORDER BY id
+`
+
+type ListRecordDuplicateCandidatesParams struct {
+	UserID    string
+	TrackerID string
+	Timestamp time.Time
+}
+
+type ListRecordDuplicateCandidatesRow struct {
+	ID      string
+	Values  []byte
+	Version int32
+}
+
+func (q *Queries) ListRecordDuplicateCandidates(ctx context.Context, arg ListRecordDuplicateCandidatesParams) ([]ListRecordDuplicateCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listRecordDuplicateCandidates, arg.UserID, arg.TrackerID, arg.Timestamp)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRecordDuplicateCandidatesRow{}
+	for rows.Next() {
+		var i ListRecordDuplicateCandidatesRow
+		if err := rows.Scan(&i.ID, &i.Values, &i.Version); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskDuplicateCandidates = `-- name: ListTaskDuplicateCandidates :many
+
+SELECT id, title, project_id, version FROM tasks
+WHERE user_id = $1
+  AND deleted_at IS NULL
+  AND status IN ('todo', 'doing')
+  AND project_id IS NOT DISTINCT FROM $2::text
+ORDER BY updated_at DESC, id
+`
+
+type ListTaskDuplicateCandidatesParams struct {
+	UserID    string
+	ProjectID *string
+}
+
+type ListTaskDuplicateCandidatesRow struct {
+	ID        string
+	Title     string
+	ProjectID *string
+	Version   int32
+}
+
+// 以下查询只做确定性重复检测的范围裁剪。标题、正文与 values 的最终归一化比较
+// 仍由 Go Domain 完成，不能依赖数据库模糊匹配或 AI 相似度。
+func (q *Queries) ListTaskDuplicateCandidates(ctx context.Context, arg ListTaskDuplicateCandidatesParams) ([]ListTaskDuplicateCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listTaskDuplicateCandidates, arg.UserID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTaskDuplicateCandidatesRow{}
+	for rows.Next() {
+		var i ListTaskDuplicateCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ProjectID,
+			&i.Version,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTimedEventDuplicateCandidates = `-- name: ListTimedEventDuplicateCandidates :many
+SELECT id, title, version FROM events
+WHERE user_id = $1
+  AND deleted_at IS NULL
+  AND all_day = false
+  AND start_at BETWEEN $2::timestamptz - interval '15 minutes'
+                   AND $2::timestamptz + interval '15 minutes'
+ORDER BY abs(extract(epoch FROM (start_at - $2::timestamptz))), id
+`
+
+type ListTimedEventDuplicateCandidatesParams struct {
+	UserID  string
+	StartAt time.Time
+}
+
+type ListTimedEventDuplicateCandidatesRow struct {
+	ID      string
+	Title   string
+	Version int32
+}
+
+func (q *Queries) ListTimedEventDuplicateCandidates(ctx context.Context, arg ListTimedEventDuplicateCandidatesParams) ([]ListTimedEventDuplicateCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listTimedEventDuplicateCandidates, arg.UserID, arg.StartAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTimedEventDuplicateCandidatesRow{}
+	for rows.Next() {
+		var i ListTimedEventDuplicateCandidatesRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.Version); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markCaptureConfirmed = `-- name: MarkCaptureConfirmed :one
 UPDATE captures SET
     status            = 'confirmed',
@@ -816,6 +1250,46 @@ func (q *Queries) MarkCaptureConfirmed(ctx context.Context, arg MarkCaptureConfi
 		&i.ConfirmedAt,
 	)
 	return i, err
+}
+
+const relationEndpointExists = `-- name: RelationEndpointExists :one
+SELECT CASE $1::text
+    WHEN 'task' THEN EXISTS (
+        SELECT 1 FROM tasks t
+        WHERE t.user_id = $2 AND t.id = $3 AND t.deleted_at IS NULL
+    )
+    WHEN 'event' THEN EXISTS (
+        SELECT 1 FROM events e
+        WHERE e.user_id = $2 AND e.id = $3 AND e.deleted_at IS NULL
+    )
+    WHEN 'project' THEN EXISTS (
+        SELECT 1 FROM projects p
+        WHERE p.user_id = $2 AND p.id = $3 AND p.deleted_at IS NULL
+    )
+    WHEN 'note' THEN EXISTS (
+        SELECT 1 FROM notes n
+        WHERE n.user_id = $2 AND n.id = $3 AND n.deleted_at IS NULL
+    )
+    WHEN 'record' THEN EXISTS (
+        SELECT 1 FROM records r
+        WHERE r.user_id = $2 AND r.id = $3 AND r.deleted_at IS NULL
+    )
+    ELSE false
+END AS exists
+`
+
+type RelationEndpointExistsParams struct {
+	ObjectType       string
+	RelationUserID   string
+	RelationObjectID string
+}
+
+// Relation 端点必须是当前用户仍存在的正式 Object；Tracker 不是端点。
+func (q *Queries) RelationEndpointExists(ctx context.Context, arg RelationEndpointExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, relationEndpointExists, arg.ObjectType, arg.RelationUserID, arg.RelationObjectID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const supersedeCaptureQuestions = `-- name: SupersedeCaptureQuestions :exec
@@ -894,6 +1368,66 @@ func (q *Queries) UpdateCaptureStatus(ctx context.Context, arg UpdateCaptureStat
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ConfirmedAt,
+	)
+	return i, err
+}
+
+const upsertActiveRelation = `-- name: UpsertActiveRelation :one
+INSERT INTO relations (
+    id, user_id, kind, from_type, from_id, to_type, to_id, created_by, provenance_refs
+) VALUES (
+    $1, $2, $3,
+    $4, $5, $6, $7,
+    $8, $9
+)
+ON CONFLICT (user_id, kind, from_type, from_id, to_type, to_id)
+    WHERE deleted_at IS NULL
+DO UPDATE SET provenance_refs = CASE
+    WHEN relations.provenance_refs @> excluded.provenance_refs THEN relations.provenance_refs
+    ELSE relations.provenance_refs || excluded.provenance_refs
+END
+RETURNING id, user_id, kind, from_type, from_id, to_type, to_id, created_by, provenance_refs, created_at, deleted_at
+`
+
+type UpsertActiveRelationParams struct {
+	ID             string
+	UserID         string
+	Kind           string
+	FromType       string
+	FromID         string
+	ToType         string
+	ToID           string
+	CreatedBy      string
+	ProvenanceRefs []byte
+}
+
+// 部分唯一索引让不同 Capture 的并发确认也只生成一条正式关系。
+// 重放时只追加尚未包含的来源，避免同一来源重复膨胀。
+func (q *Queries) UpsertActiveRelation(ctx context.Context, arg UpsertActiveRelationParams) (Relation, error) {
+	row := q.db.QueryRow(ctx, upsertActiveRelation,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.FromType,
+		arg.FromID,
+		arg.ToType,
+		arg.ToID,
+		arg.CreatedBy,
+		arg.ProvenanceRefs,
+	)
+	var i Relation
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.FromType,
+		&i.FromID,
+		&i.ToType,
+		&i.ToID,
+		&i.CreatedBy,
+		&i.ProvenanceRefs,
+		&i.CreatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }

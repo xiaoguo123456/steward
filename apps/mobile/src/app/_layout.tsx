@@ -9,6 +9,7 @@ import { ApiProvider, useBootState } from '@/api/provider';
 import { ToastProvider } from '@/components/ui/toast';
 import { FocusPrototypeProvider } from '@/features/focus/focus-context';
 import { CaptureQueueProvider } from '@/features/capture/capture-queue-provider';
+import { AppLockProvider } from '@/features/app-lock/app-lock-provider';
 import { colors } from '@/theme/tokens';
 
 export default function RootLayout() {
@@ -37,7 +38,8 @@ function RootNavigator() {
   const boot = useBootState();
 
   return (
-    <Stack
+    <AppLockProvider active={boot === 'signed-in'}>
+      <Stack
       screenOptions={{
         headerShown: false,
         // Expo Router 57 的原生栈在隐藏 Header 时仍会监听高度变化；
@@ -79,6 +81,7 @@ function RootNavigator() {
         <Stack.Screen name="people/[id]/edit" />
         <Stack.Screen name="people/[id]/event/new" />
         <Stack.Screen name="me" />
+        <Stack.Screen name="notifications" />
         <Stack.Screen name="features/[slug]" />
         <Stack.Screen name="trips/index" />
         <Stack.Screen name="trips/new" />
@@ -89,7 +92,8 @@ function RootNavigator() {
         <Stack.Screen name="settings/preferences" />
         <Stack.Screen name="settings/phone" />
         <Stack.Screen name="settings/memories" />
-		<Stack.Screen name="settings/captures" />
+        <Stack.Screen name="settings/captures" />
+        <Stack.Screen name="settings/app-lock" />
         <Stack.Screen name="assistant/threads" />
         <Stack.Screen
           name="assistant/pending"
@@ -118,7 +122,8 @@ function RootNavigator() {
           }}
         />
       </Stack.Protected>
-    </Stack>
+      </Stack>
+    </AppLockProvider>
   );
 }
 

@@ -2,6 +2,7 @@ package objects
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -99,6 +100,17 @@ func (s *Service) CreateProject(ctx context.Context, userID string, body httpapi
 
 	var out ProjectWithProgress
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		replayBody, replayed, requestHash, err := beginObjectReplay(
+			ctx, q, userID, "projects.create", body)
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &out); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
 		created, err := q.CreateProject(ctx, dbgen.CreateProjectParams{
 			ID:             idgen.New(idgen.PrefixProject),
 			UserID:         userID,
@@ -125,7 +137,7 @@ func (s *Service) CreateProject(ctx context.Context, userID string, body httpapi
 			return err
 		}
 		out = ProjectWithProgress{Row: created}
-		return nil
+		return saveObjectReplay(ctx, q, userID, "projects.create", requestHash, 201, created.ID, out)
 	})
 	return out, err
 }
@@ -147,45 +159,9 @@ func (s *Service) UpdateProject(ctx context.Context, userID, projectID string, i
 			}
 			return apperr.Internal(err)
 		}
-		if in.ExpectedVersion != nil && *in.ExpectedVersion != current.Version {
-			return apperr.New(apperr.CodeVersionConflict)
-		}
-
-		body := in.Body
-		counts, err := q.CountTasksByProject(ctx, &projectID)
+		updated, err := s.updateProjectCommandInTx(ctx, q, userID, projectID, in.Body, in.ExpectedVersion)
 		if err != nil {
-			return apperr.Internal(err)
-		}
-
-		var status *string
-		if body.Status != nil {
-			next, err := resolveProjectStatus(projectStatusChange{
-				From:           current.Status,
-				Requested:      string(*body.Status),
-				BeforeArchived: current.StatusBeforeArchived,
-				Force:          body.Force != nil && *body.Force,
-				OpenTasks:      counts.Open,
-			})
-			if err != nil {
-				return err
-			}
-			status = &next
-		}
-
-		clear := projectClearFlagsOf(body.Clear)
-		updated, err := q.UpdateProject(ctx, dbgen.UpdateProjectParams{
-			ID:               projectID,
-			Title:            trimmedOrNil(body.Title),
-			Description:      body.Description,
-			ClearDescription: clear.Description,
-			Status:           status,
-			StartDate:        timePtrOfDate(body.StartDate),
-			ClearStartDate:   clear.StartDate,
-			TargetDate:       timePtrOfDate(body.TargetDate),
-			ClearTargetDate:  clear.TargetDate,
-		})
-		if err != nil {
-			return apperr.Internal(err)
+			return err
 		}
 
 		if _, err := s.activity.Record(ctx, q, userID, activity.SourceUserForm, nil,
@@ -201,10 +177,61 @@ func (s *Service) UpdateProject(ctx context.Context, userID, projectID string, i
 			return err
 		}
 
+		counts, err := q.CountTasksByProject(ctx, &projectID)
+		if err != nil {
+			return apperr.Internal(err)
+		}
 		out = ProjectWithProgress{Row: updated, Total: counts.Total, Done: counts.Done, Open: counts.Open}
 		return nil
 	})
 	return out, err
+}
+
+// UpdateProjectCommandInTx 在 Capture 确认事务内更新 Project，不单独创建 Activity 批次。
+func (s *Service) UpdateProjectCommandInTx(ctx context.Context, q *dbgen.Queries,
+	userID, projectID string, body httpapi.UpdateProjectRequest, expectedVersion int32) (dbgen.Project, error) {
+	return s.updateProjectCommandInTx(ctx, q, userID, projectID, body, &expectedVersion)
+}
+
+func (s *Service) updateProjectCommandInTx(ctx context.Context, q *dbgen.Queries,
+	userID, projectID string, body httpapi.UpdateProjectRequest, expectedVersion *int32) (dbgen.Project, error) {
+	current, err := q.GetProjectForUpdate(ctx, projectID)
+	if err != nil {
+		if database.IsNoRows(err) {
+			return dbgen.Project{}, apperr.NotFound("项目")
+		}
+		return dbgen.Project{}, apperr.Internal(err)
+	}
+	if expectedVersion != nil && *expectedVersion != current.Version {
+		return dbgen.Project{}, apperr.New(apperr.CodeVersionConflict)
+	}
+	counts, err := q.CountTasksByProject(ctx, &projectID)
+	if err != nil {
+		return dbgen.Project{}, apperr.Internal(err)
+	}
+	var status *string
+	if body.Status != nil {
+		next, err := resolveProjectStatus(projectStatusChange{
+			From: current.Status, Requested: string(*body.Status),
+			BeforeArchived: current.StatusBeforeArchived,
+			Force:          body.Force != nil && *body.Force, OpenTasks: counts.Open,
+		})
+		if err != nil {
+			return dbgen.Project{}, err
+		}
+		status = &next
+	}
+	clear := projectClearFlagsOf(body.Clear)
+	updated, err := q.UpdateProject(ctx, dbgen.UpdateProjectParams{
+		ID: projectID, Title: trimmedOrNil(body.Title), Description: body.Description,
+		ClearDescription: clear.Description, Status: status,
+		StartDate: timePtrOfDate(body.StartDate), ClearStartDate: clear.StartDate,
+		TargetDate: timePtrOfDate(body.TargetDate), ClearTargetDate: clear.TargetDate,
+	})
+	if err != nil {
+		return dbgen.Project{}, apperr.Internal(err)
+	}
+	return updated, nil
 }
 
 // DeleteProject 软删除 Project，并清空关联对象的 project_id。
@@ -212,7 +239,18 @@ func (s *Service) UpdateProject(ctx context.Context, userID, projectID string, i
 func (s *Service) DeleteProject(ctx context.Context, userID, projectID string) (string, error) {
 	var batchID string
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetProject(ctx, projectID)
+		replayBody, replayed, requestHash, err := beginObjectReplay(
+			ctx, q, userID, "projects.delete", map[string]string{"project_id": projectID})
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &batchID); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		current, err := q.GetProjectForUpdate(ctx, projectID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("项目")
@@ -242,7 +280,10 @@ func (s *Service) DeleteProject(ctx context.Context, userID, projectID string) (
 				Title:        current.Title,
 				Summary:      "删除了项目",
 			}})
-		return err
+		if err != nil {
+			return err
+		}
+		return saveObjectReplay(ctx, q, userID, "projects.delete", requestHash, 200, batchID, batchID)
 	})
 	return batchID, err
 }

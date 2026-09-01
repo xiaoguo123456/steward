@@ -26,6 +26,11 @@ type TokenService struct {
 	refreshTTL time.Duration
 }
 
+type accessClaims struct {
+	SessionID string `json:"sid,omitempty"`
+	jwt.RegisteredClaims
+}
+
 // NewTokenService 构造令牌服务。secret 必须由 API 与 Worker 共享。
 func NewTokenService(secret string, accessTTL, refreshTTL time.Duration) *TokenService {
 	return &TokenService{secret: []byte(secret), accessTTL: accessTTL, refreshTTL: refreshTTL}
@@ -65,14 +70,32 @@ func (s *TokenService) DeriveDeletionUserFingerprint(userID string) []byte {
 	return mac.Sum(nil)
 }
 
+// DeriveChangePhoneRequestFingerprint 为换绑幂等比较生成带密钥指纹。
+// 手机号与验证码都不能使用可离线枚举的普通哈希落库。
+func (s *TokenService) DeriveChangePhoneRequestFingerprint(
+	userID, newPhone, currentCode, newCode string,
+) []byte {
+	mac := hmac.New(sha256.New, s.secret)
+	_, _ = mac.Write([]byte("change-phone-request:v1\x00" + userID + "\x00" +
+		newPhone + "\x00" + currentCode + "\x00" + newCode))
+	return mac.Sum(nil)
+}
+
 // IssueAccessToken 为用户签发 Access Token。
 func (s *TokenService) IssueAccessToken(userID string, now time.Time) (string, time.Time, error) {
+	return s.IssueAccessTokenForSession(userID, "", now)
+}
+
+// IssueAccessTokenForSession 签发绑定 Refresh Session 的 Access Token。
+// sid 只保存服务端随机 ID，不包含 Refresh Token 本身。
+func (s *TokenService) IssueAccessTokenForSession(userID, sessionID string, now time.Time) (string, time.Time, error) {
 	expiresAt := now.Add(s.accessTTL)
-	claims := jwt.RegisteredClaims{
-		Subject:   userID,
-		IssuedAt:  jwt.NewNumericDate(now),
-		ExpiresAt: jwt.NewNumericDate(expiresAt),
-		Issuer:    "steward",
+	claims := accessClaims{
+		SessionID: sessionID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject: userID, IssuedAt: jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(expiresAt), Issuer: "steward",
+		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString(s.secret)
@@ -84,7 +107,15 @@ func (s *TokenService) IssueAccessToken(userID string, now time.Time) (string, t
 
 // ParseAccessToken 校验 Access Token 并返回其中的用户 ID。
 func (s *TokenService) ParseAccessToken(raw string) (string, error) {
-	token, err := jwt.ParseWithClaims(raw, &jwt.RegisteredClaims{},
+	userID, _, err := s.ParseAccessTokenWithSession(raw)
+	return userID, err
+}
+
+// ParseAccessTokenWithSession 同时返回签发该 Access Token 的 Refresh Session ID。
+// 旧版 Token 没有 sid 时 sessionID 为空，普通接口仍可使用；需要精确识别当前设备的
+// 高风险操作必须拒绝空 sid 并要求重新登录或刷新。
+func (s *TokenService) ParseAccessTokenWithSession(raw string) (userID, sessionID string, err error) {
+	token, err := jwt.ParseWithClaims(raw, &accessClaims{},
 		func(t *jwt.Token) (any, error) {
 			// 只接受 HMAC，拒绝 alg=none 与非对称算法混淆攻击。
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -96,13 +127,13 @@ func (s *TokenService) ParseAccessToken(raw string) (string, error) {
 		jwt.WithIssuer("steward"),
 	)
 	if err != nil || !token.Valid {
-		return "", ErrInvalidToken
+		return "", "", ErrInvalidToken
 	}
-	claims, ok := token.Claims.(*jwt.RegisteredClaims)
+	claims, ok := token.Claims.(*accessClaims)
 	if !ok || claims.Subject == "" {
-		return "", ErrInvalidToken
+		return "", "", ErrInvalidToken
 	}
-	return claims.Subject, nil
+	return claims.Subject, claims.SessionID, nil
 }
 
 // GenerateRefreshToken 返回随机的 Refresh Token 明文及其哈希。

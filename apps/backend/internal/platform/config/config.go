@@ -90,7 +90,7 @@ type StreamConfig struct {
 // 业务代码只引用逻辑用途（解析、视觉、转写），具体模型名在这里配置，
 // 换模型不需要改动任何业务模块。
 type AIConfig struct {
-	// Provider 取 fake 或 openai。
+	// Provider 取 fake 或 openai。fake 只允许开发和测试环境使用。
 	Provider string
 	BaseURL  string
 	APIKey   string
@@ -210,7 +210,7 @@ func Load() (Config, error) {
 		return Config{}, errors.New("必须设置 STEWARD_MEMORY_FINGERPRINT_KEY")
 	}
 
-	if err := cfg.AI.validate(); err != nil {
+	if err := cfg.AI.validate(cfg.Environment); err != nil {
 		return Config{}, err
 	}
 	if err := cfg.SMS.validate(cfg.DevSMSCode, cfg.Environment); err != nil {
@@ -271,9 +271,12 @@ func (c SMSConfig) validate(devCode, environment string) error {
 //
 // 宁可启动失败也不要带着半套配置跑起来：那样第一次真实调用才会暴露问题，
 // 而那时用户已经在等一个永远不会成功的解析。
-func (c AIConfig) validate() error {
+func (c AIConfig) validate(environment string) error {
 	switch c.Provider {
 	case "", "fake":
+		if environment == "production" {
+			return errors.New("生产环境禁止使用 STEWARD_AI_PROVIDER=fake，必须显式配置真实模型 Provider")
+		}
 		return nil
 	case "openai":
 		if c.APIKey == "" {

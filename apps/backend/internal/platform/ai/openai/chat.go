@@ -152,8 +152,7 @@ func (p *Provider) Complete(ctx context.Context, req ai.CompletionRequest) (ai.C
 	}
 	if resp.StatusCode >= 400 {
 		p.logger.Error("对话服务返回错误",
-			"status", resp.StatusCode, "model", p.cfg.ChatModel,
-			"body", truncate(string(raw), 500))
+			"status", resp.StatusCode, "model", p.cfg.ChatModel)
 		return ai.CompletionResult{}, fmt.Errorf("%w: HTTP %d", ai.ErrProviderUnavailable, resp.StatusCode)
 	}
 
@@ -163,7 +162,7 @@ func (p *Provider) Complete(ctx context.Context, req ai.CompletionRequest) (ai.C
 	}
 	if parsed.Error != nil {
 		p.logger.Error("对话服务返回业务错误",
-			"message", parsed.Error.Message, "type", parsed.Error.Type)
+			"type", parsed.Error.Type)
 		return ai.CompletionResult{}, fmt.Errorf("%w: %s", ai.ErrProviderUnavailable, parsed.Error.Type)
 	}
 	if len(parsed.Choices) == 0 {

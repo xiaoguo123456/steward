@@ -2,6 +2,7 @@ package objects
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -91,6 +92,17 @@ func (s *Service) GetEvent(ctx context.Context, userID, eventID string) (dbgen.E
 func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.CreateEventRequest) (dbgen.Event, error) {
 	var out dbgen.Event
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		replayBody, replayed, requestHash, err := beginObjectReplay(
+			ctx, q, userID, "events.create", body)
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &out); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
 		created, err := s.CreateUserEventInTx(ctx, q, userID, body)
 		if err != nil {
 			return err
@@ -107,7 +119,7 @@ func (s *Service) CreateEvent(ctx context.Context, userID string, body httpapi.C
 			return err
 		}
 		out = created
-		return nil
+		return saveObjectReplay(ctx, q, userID, "events.create", requestHash, 201, created.ID, out)
 	})
 	return out, err
 }
@@ -226,8 +238,23 @@ func (s *Service) UpdateEvent(ctx context.Context, userID, eventID string, in Ev
 // UpdateEventInTx 在调用方事务内修改 Event，并复用同一套时间、版本和处理状态校验。
 func (s *Service) UpdateEventInTx(ctx context.Context, q *dbgen.Queries, userID, eventID string,
 	in EventUpdate, source activity.Source, sourceID *string) (dbgen.Event, string, error) {
+	return s.updateEventInTx(ctx, q, userID, eventID, in, source, sourceID, true)
+}
 
-	current, err := q.GetEvent(ctx, eventID)
+// UpdateEventCommandInTx 在 Capture 确认事务内执行 Event 更新。
+// Activity 由 Capture 按一次确认统一记录。
+func (s *Service) UpdateEventCommandInTx(ctx context.Context, q *dbgen.Queries,
+	userID, eventID string, body httpapi.UpdateEventRequest, expectedVersion int32) (dbgen.Event, error) {
+	updated, _, err := s.updateEventInTx(ctx, q, userID, eventID, EventUpdate{
+		Body: body, ExpectedVersion: &expectedVersion,
+	}, activity.SourceCaptureConfirm, nil, false)
+	return updated, err
+}
+
+func (s *Service) updateEventInTx(ctx context.Context, q *dbgen.Queries, userID, eventID string,
+	in EventUpdate, source activity.Source, sourceID *string, recordActivity bool) (dbgen.Event, string, error) {
+
+	current, err := q.GetEventForUpdate(ctx, eventID)
 	if err != nil {
 		if database.IsNoRows(err) {
 			return dbgen.Event{}, "", apperr.NotFound("日程")
@@ -363,6 +390,9 @@ func (s *Service) UpdateEventInTx(ctx context.Context, q *dbgen.Queries, userID,
 		return dbgen.Event{}, "", apperr.Internal(err)
 	}
 
+	if !recordActivity {
+		return updated, "", nil
+	}
 	batchID, err := s.activity.Record(ctx, q, userID, source, sourceID,
 		[]activity.EntryInput{{
 			Action:       "updated",
@@ -383,7 +413,18 @@ func (s *Service) UpdateEventInTx(ctx context.Context, q *dbgen.Queries, userID,
 func (s *Service) DeleteEvent(ctx context.Context, userID, eventID string) (string, error) {
 	var batchID string
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		current, err := q.GetEvent(ctx, eventID)
+		replayBody, replayed, requestHash, err := beginObjectReplay(
+			ctx, q, userID, "events.delete", map[string]string{"event_id": eventID})
+		if err != nil {
+			return err
+		}
+		if replayed {
+			if err := json.Unmarshal(replayBody, &batchID); err != nil {
+				return apperr.Internal(err)
+			}
+			return nil
+		}
+		current, err := q.GetEventForUpdate(ctx, eventID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("日程")
@@ -402,7 +443,10 @@ func (s *Service) DeleteEvent(ctx context.Context, userID, eventID string) (stri
 				Summary:      "删除了日程",
 				BeforeState:  eventUndoState(current),
 			}})
-		return err
+		if err != nil {
+			return err
+		}
+		return saveObjectReplay(ctx, q, userID, "events.delete", requestHash, 200, batchID, batchID)
 	})
 	return batchID, err
 }

@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './views.zod';
 import {
   useMutation,
   useQuery
@@ -99,6 +100,7 @@ export const getToday = async ( options?: Parameters<typeof stewardFetch>[1]): P
 
 
   }
+, StewardResponseSchemas.GetTodayResponse
 );}
 
 
@@ -206,6 +208,7 @@ export const getCalendar = async (params: GetCalendarParams, options?: Parameter
 
 
   }
+, StewardResponseSchemas.GetCalendarResponse
 );}
 
 
@@ -308,6 +311,7 @@ export const getProjectItinerary = async (projectId: string, options?: Parameter
 
 
   }
+, StewardResponseSchemas.GetProjectItineraryResponse
 );}
 
 
@@ -413,6 +417,7 @@ export const listPendingReminders = async ( options?: Parameters<typeof stewardF
 
 
   }
+, StewardResponseSchemas.ListPendingRemindersResponse
 );}
 
 
@@ -514,6 +519,7 @@ export const dismissReminder = async (dismissReminderRequest: DismissReminderReq
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(dismissReminderRequest)
   }
+, StewardResponseSchemas.DismissReminderResponse
 );}
 
 
@@ -596,6 +602,7 @@ export const getImportantDates = async (params?: GetImportantDatesParams, option
 
 
   }
+, StewardResponseSchemas.GetImportantDatesResponse
 );}
 
 
@@ -705,6 +712,7 @@ export const getWeeklyReview = async (params?: GetWeeklyReviewParams, options?: 
 
 
   }
+, StewardResponseSchemas.GetWeeklyReviewResponse
 );}
 
 
@@ -808,6 +816,7 @@ export const generateWeeklyReview = async (generateWeeklyReviewBody?: GenerateWe
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(generateWeeklyReviewBody)
   }
+, StewardResponseSchemas.GenerateWeeklyReviewResponse
 );}
 
 
@@ -886,6 +895,7 @@ export const search = async (params: SearchParams, options?: Parameters<typeof s
 
 
   }
+, StewardResponseSchemas.SearchResponse
 );}
 
 

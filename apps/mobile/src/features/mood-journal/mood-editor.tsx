@@ -15,6 +15,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -33,6 +34,7 @@ import {
 import { blocksPlaintext, compactMoodJournalDraft, createBlocksDocument, moodOptions } from './model';
 
 const emotionSuggestions = ['松弛', '笃定', '疲惫', '期待', '安心', '烦躁', '感激', '孤单'];
+const contextSuggestions = ['工作', '学习', '家庭', '朋友', '独处', '运动', '出行', '休息'];
 
 export type MoodEditorValue = {
   title: string;
@@ -40,6 +42,9 @@ export type MoodEditorValue = {
   moodLevel?: MoodLevel;
   energyLevel?: EnergyLevel;
   emotionWords: string[];
+  contextWords: string[];
+  excludeFromAi: boolean;
+  includeInMemories: boolean;
   polishActionId?: string;
 };
 
@@ -72,6 +77,9 @@ export function MoodEditor({
   const [moodLevel, setMoodLevel] = useState<MoodLevel | undefined>(initial?.moodLevel);
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel | undefined>(initial?.energyLevel);
   const [emotionWords, setEmotionWords] = useState(initial?.emotionWords ?? []);
+  const [contextWords, setContextWords] = useState(initial?.contextWords ?? []);
+  const [excludeFromAi, setExcludeFromAi] = useState(initial?.excludeFromAi ?? false);
+  const [includeInMemories, setIncludeInMemories] = useState(initial?.includeInMemories ?? true);
   const [polishActionId, setPolishActionId] = useState(initial?.polishActionId);
   const [polishing, setPolishing] = useState(false);
   const [undoPolish, setUndoPolish] = useState<{
@@ -106,6 +114,9 @@ export function MoodEditor({
           setMoodLevel(draft.moodLevel);
           setEnergyLevel(draft.energyLevel);
           setEmotionWords(draft.emotionWords ?? []);
+          setContextWords(draft.contextWords ?? []);
+          setExcludeFromAi(draft.excludeFromAi ?? false);
+          setIncludeInMemories(draft.includeInMemories ?? true);
           setPolishActionId(draft.polishActionId);
         }
       } catch {
@@ -125,18 +136,20 @@ export function MoodEditor({
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       void SecureStore.setItemAsync(draftKey, JSON.stringify({
-        title, content, moodLevel, energyLevel, emotionWords, polishActionId,
+        title, content, moodLevel, energyLevel, emotionWords, contextWords,
+        excludeFromAi, includeInMemories, polishActionId,
       }));
     }, 450);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [busy, content, draftKey, draftReady, emotionWords, energyLevel, moodLevel, polishActionId, title]);
+  }, [busy, content, contextWords, draftKey, draftReady, emotionWords, energyLevel, excludeFromAi, includeInMemories, moodLevel, polishActionId, title]);
 
   const submit = async () => {
     if (!canSubmit) return;
     const succeeded = await onSubmit({
-      title, content, moodLevel, energyLevel, emotionWords, polishActionId,
+      title, content, moodLevel, energyLevel, emotionWords, contextWords,
+      excludeFromAi, includeInMemories, polishActionId,
     });
     if (succeeded && draftKey) await SecureStore.deleteItemAsync(draftKey);
   };
@@ -160,6 +173,12 @@ export function MoodEditor({
       : current.length < 3 ? [...current, word] : current);
   };
 
+  const toggleContext = (word: string) => {
+    setContextWords((current) => current.includes(word)
+      ? current.filter((item) => item !== word)
+      : current.length < 5 ? [...current, word] : current);
+  };
+
   const polish = async () => {
     if (!onPolish || !polishReady) return;
     Keyboard.dismiss();
@@ -168,7 +187,8 @@ export function MoodEditor({
     setPolishing(true);
     try {
       const candidate = await onPolish({
-        title, content, moodLevel, energyLevel, emotionWords, polishActionId,
+        title, content, moodLevel, energyLevel, emotionWords, contextWords,
+        excludeFromAi, includeInMemories, polishActionId,
       });
       if (attempt !== polishAttempt.current || !candidate) return;
       const next = applyMoodJournalPolish(content, candidate);
@@ -340,6 +360,41 @@ export function MoodEditor({
                     );
                   })}
                 </View>
+
+                <Text style={[styles.optionLabel, styles.optionLabelSpacing]}>此刻场景，最多 5 个</Text>
+                <View style={styles.wordOptions}>
+                  {contextSuggestions.map((word) => {
+                    const selected = contextWords.includes(word);
+                    return (
+                      <Pressable
+                        accessibilityLabel={word}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: selected }}
+                        disabled={busy}
+                        key={word}
+                        onPress={() => toggleContext(word)}
+                        style={({ pressed }) => [styles.wordOption, selected && styles.wordOptionSelected, pressed && styles.pressed]}
+                      >
+                        <Text style={[styles.wordText, selected && styles.wordTextSelected]}>{word}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.privacyOptions}>
+                  <PrivacyToggle
+                    disabled={busy}
+                    label="不参与 AI 回望"
+                    onValueChange={setExcludeFromAi}
+                    value={excludeFromAi}
+                  />
+                  <PrivacyToggle
+                    disabled={busy}
+                    label="出现在往日回忆"
+                    onValueChange={setIncludeInMemories}
+                    value={includeInMemories}
+                  />
+                </View>
               </View>
             ) : null}
           </View>
@@ -392,6 +447,27 @@ export function MoodEditor({
         ) : null}
       </KeyboardAvoidingView>
     </AppScreen>
+  );
+}
+
+function PrivacyToggle({ disabled, label, onValueChange, value }: {
+  disabled: boolean;
+  label: string;
+  onValueChange: (value: boolean) => void;
+  value: boolean;
+}) {
+  return (
+    <View style={styles.privacyRow}>
+      <Text style={styles.privacyLabel}>{label}</Text>
+      <Switch
+        accessibilityLabel={label}
+        disabled={disabled}
+        onValueChange={onValueChange}
+        thumbColor={colors.background}
+        trackColor={{ false: colors.borderStrong, true: moodColors.accent }}
+        value={value}
+      />
+    </View>
   );
 }
 
@@ -487,6 +563,9 @@ const styles = StyleSheet.create({
   energyOptionSelected: { borderColor: moodColors.border, backgroundColor: moodColors.soft },
   energyText: { color: colors.textSecondary, fontFamily, ...typography.meta },
   energyTextSelected: { color: moodColors.accentPressed, fontWeight: '600' },
+  privacyOptions: { marginTop: 18, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  privacyRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  privacyLabel: { flex: 1, color: colors.text, fontFamily, ...typography.body },
   failure: { marginTop: 12, color: colors.danger, fontFamily, ...typography.meta },
   polishBar: {
     paddingHorizontal: 16, paddingTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8,

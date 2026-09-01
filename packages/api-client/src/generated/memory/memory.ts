@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './memory.zod';
 import {
   useMutation,
   useQuery
@@ -99,6 +100,7 @@ export const listMemories = async (params?: ListMemoriesParams, options?: Parame
 
 
   }
+, StewardResponseSchemas.ListMemoriesResponse
 );}
 
 
@@ -199,6 +201,7 @@ export const getMemory = async (memoryId: string, options?: Parameters<typeof st
 
 
   }
+, StewardResponseSchemas.GetMemoryResponse
 );}
 
 
@@ -301,6 +304,7 @@ export const updateMemory = async (memoryId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updateMemoryRequest)
   }
+, StewardResponseSchemas.UpdateMemoryResponse
 );}
 
 
@@ -374,6 +378,7 @@ export const deleteMemory = async (memoryId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(deleteMemoryRequest)
   }
+, StewardResponseSchemas.DeleteMemoryResponse
 );}
 
 
@@ -444,6 +449,7 @@ export const listRelearnBlocks = async ( options?: Parameters<typeof stewardFetc
 
 
   }
+, StewardResponseSchemas.ListRelearnBlocksResponse
 );}
 
 
@@ -544,6 +550,7 @@ export const deleteRelearnBlock = async (blockId: string, options?: Parameters<t
 
 
   }
+, StewardResponseSchemas.DeleteRelearnBlockResponse
 );}
 
 

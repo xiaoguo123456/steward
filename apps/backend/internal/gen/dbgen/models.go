@@ -310,12 +310,14 @@ type AsyncOperation struct {
 }
 
 type AuthRefreshToken struct {
-	ID        string
-	UserID    string
-	TokenHash []byte
-	ExpiresAt time.Time
-	RevokedAt *time.Time
-	CreatedAt time.Time
+	ID                string
+	UserID            string
+	TokenHash         []byte
+	ExpiresAt         time.Time
+	RevokedAt         *time.Time
+	CreatedAt         time.Time
+	FamilyID          string
+	ReplacedByTokenID *string
 }
 
 type AuthVerificationCode struct {
@@ -612,6 +614,19 @@ type Note struct {
 	Version         int32
 	NoteKind        string
 	ContentDocument []byte
+}
+
+type Notification struct {
+	ID               string
+	UserID           string
+	NotificationType string
+	Title            string
+	Body             string
+	SourceType       string
+	SourceID         string
+	OccurredAt       time.Time
+	ReadAt           *time.Time
+	CreatedAt        time.Time
 }
 
 type Person struct {

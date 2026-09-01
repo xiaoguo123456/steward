@@ -23,6 +23,11 @@ var CaptureParsePromptV2 string
 //go:embed prompts/capture-parse/v3.md
 var CaptureParsePromptV3 string
 
+// CaptureParsePromptV4 增加更新目标、重复检测与候选关系引用规则。
+//
+//go:embed prompts/capture-parse/v4.md
+var CaptureParsePromptV4 string
+
 // VisionExtractPromptV1 是图片信息提取的系统提示词。
 //
 //go:embed prompts/vision-extract/v1.md
@@ -48,6 +53,16 @@ var NotePolishPromptV1 string
 //go:embed prompts/mood-journal-polish/v1.md
 var MoodJournalPolishPromptV1 string
 
+// MoodJournalFollowUpPromptV1 是单篇日记保存后追问的系统提示词。
+//
+//go:embed prompts/mood-journal-follow-up/v1.md
+var MoodJournalFollowUpPromptV1 string
+
+// MoodReflectionPromptV1 是用户主动选择日记后的阶段回望系统提示词。
+//
+//go:embed prompts/mood-reflection/v1.md
+var MoodReflectionPromptV1 string
+
 // CaptureParseSchemaV1 是解析结果的完整 JSON Schema。
 //
 // 模型返回的原始 JSON 属于不可信输入，必须先通过它再进入 Domain 校验。
@@ -65,6 +80,11 @@ var CaptureParseSchemaV2 []byte
 //go:embed schemas/capture/capture-parse-result.v3.schema.json
 var CaptureParseSchemaV3 []byte
 
+// CaptureParseSchemaV4 增加稳定候选引用、更新目标与候选关系。
+//
+//go:embed schemas/capture/capture-parse-result.v4.schema.json
+var CaptureParseSchemaV4 []byte
+
 // ReviewNarrativeSchemaV2 是周复盘模型输出的完整 JSON Schema。
 //
 //go:embed schemas/review/review-narrative-result.v2.schema.json
@@ -80,16 +100,30 @@ var NotePolishSchemaV1 []byte
 //go:embed schemas/mood-journal/mood-journal-polish-result.v1.schema.json
 var MoodJournalPolishSchemaV1 []byte
 
+// MoodJournalFollowUpSchemaV1 是保存后追问结果的 JSON Schema。
+//
+//go:embed schemas/mood-journal/mood-journal-follow-up-result.v1.schema.json
+var MoodJournalFollowUpSchemaV1 []byte
+
+// MoodReflectionSchemaV1 是阶段回望结果的 JSON Schema。
+//
+//go:embed schemas/mood-journal/mood-reflection-result.v1.schema.json
+var MoodReflectionSchemaV1 []byte
+
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion      = "capture-parse@v3"
-	VisionExtractPromptVersion     = "vision-extract@v1"
-	AssistantPolicyVersion         = "assistant@v1"
-	ReviewNarrativePromptVersion   = "review-narrative@v2"
-	ReviewNarrativeSchemaVersion   = "review-narrative-result.v2"
-	NotePolishPromptVersion        = "note-polish@v1"
-	NotePolishSchemaVersion        = "note-polish-result.v1"
-	MoodJournalPolishPromptVersion = "mood-journal-polish@v1"
-	MoodJournalPolishSchemaVersion = "mood-journal-polish-result.v1"
-	CaptureParseSchemaVersion      = "capture-parse-result.v3"
+	CaptureParsePromptVersion        = "capture-parse@v4"
+	VisionExtractPromptVersion       = "vision-extract@v1"
+	AssistantPolicyVersion           = "assistant@v1"
+	ReviewNarrativePromptVersion     = "review-narrative@v2"
+	ReviewNarrativeSchemaVersion     = "review-narrative-result.v2"
+	NotePolishPromptVersion          = "note-polish@v1"
+	NotePolishSchemaVersion          = "note-polish-result.v1"
+	MoodJournalPolishPromptVersion   = "mood-journal-polish@v1"
+	MoodJournalPolishSchemaVersion   = "mood-journal-polish-result.v1"
+	MoodJournalFollowUpPromptVersion = "mood-journal-follow-up@v1"
+	MoodJournalFollowUpSchemaVersion = "mood-journal-follow-up-result.v1"
+	MoodReflectionPromptVersion      = "mood-reflection@v1"
+	MoodReflectionSchemaVersion      = "mood-reflection-result.v1"
+	CaptureParseSchemaVersion        = "capture-parse-result.v4"
 )

@@ -12,8 +12,8 @@
 
 - 查询与 CRUD：`ListTasks` / `CreateTask` / `UpdateTask` / `DeleteTask`，Event、Project、Note 同理。
 - Note 草稿润色：`PolishNoteDraft` 只生成待检查草稿，不直接写 Note；用户保存时校验并记录 AI Action 来源。
-- 事务内 Command：`CreateTaskInTx` / `CreateEventInTx` / `CreateNoteInTx` / `CreateProjectInTx`，
-  供 Capture 确认在同一事务中写入。
+- 事务内 Command：`Create*InTx` 与 `Update*CommandInTx`，供 Capture 确认在同一事务中创建或更新。
+  更新命令强制校验 `expected_version`，并由 Capture 对整次确认统一记录 Activity 批次。
 - 撤销：实现 `activity.Undoer`。
 - 映射：`MapTask` / `MapEvent` / `MapProject` / `MapNote` / `ProjectYearlyEvents`。
 

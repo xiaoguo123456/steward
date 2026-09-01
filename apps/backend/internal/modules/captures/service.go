@@ -32,6 +32,10 @@ type ObjectCommands interface {
 	CreateEventInTx(ctx context.Context, q *dbgen.Queries, userID string, cmd objects.CreateEventCommand) (dbgen.Event, error)
 	CreateNoteInTx(ctx context.Context, q *dbgen.Queries, userID string, cmd objects.CreateNoteCommand) (dbgen.Note, error)
 	CreateProjectInTx(ctx context.Context, q *dbgen.Queries, userID string, cmd objects.CreateProjectCommand) (dbgen.Project, error)
+	UpdateTaskCommandInTx(ctx context.Context, q *dbgen.Queries, userID, taskID string, body httpapi.UpdateTaskRequest, expectedVersion int32) (dbgen.Task, error)
+	UpdateEventCommandInTx(ctx context.Context, q *dbgen.Queries, userID, eventID string, body httpapi.UpdateEventRequest, expectedVersion int32) (dbgen.Event, error)
+	UpdateNoteCommandInTx(ctx context.Context, q *dbgen.Queries, userID, noteID string, body httpapi.UpdateNoteRequest, expectedVersion int32) (dbgen.Note, error)
+	UpdateProjectCommandInTx(ctx context.Context, q *dbgen.Queries, userID, projectID string, body httpapi.UpdateProjectRequest, expectedVersion int32) (dbgen.Project, error)
 }
 
 // ListResolver 是 lists 模块公开的能力。
@@ -99,6 +103,10 @@ type TrackerCommands interface {
 		fields []httpapi.TrackerField, provenance []byte) (dbgen.Tracker, error)
 	CreateRecordInTx(ctx context.Context, q *dbgen.Queries, userID, trackerID string,
 		ts time.Time, values []httpapi.RecordValue, note *string, provenance []byte) (dbgen.Record, error)
+	UpdateTrackerCommandInTx(ctx context.Context, q *dbgen.Queries, userID, trackerID string,
+		body httpapi.UpdateTrackerRequest, expectedVersion int32) (dbgen.Tracker, error)
+	UpdateRecordCommandInTx(ctx context.Context, q *dbgen.Queries, userID, recordID string,
+		body httpapi.UpdateRecordRequest, expectedVersion int32) (dbgen.GetRecordRow, error)
 }
 
 // New 构造 Service。
@@ -388,6 +396,9 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 	// 第二步：事务外完成媒体预处理。
 	// 这一步对应状态机里的 preprocessing：先把图片与音频转成文字，再统一理解。
 	parts = s.preprocessMedia(ctx, args, parts)
+	if status := mediaPreprocessStatus(parts); status != "" {
+		return s.finishMediaPreprocessBlocked(ctx, args, capture, status)
+	}
 
 	// 第三步：事务外调用 Provider 做结构化解析。
 	req := ai.CaptureParseRequest{
@@ -437,6 +448,23 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 
 	// 第四步：短事务保存结果。
 	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+		current, err := q.GetCaptureForUpdate(ctx, args.CaptureID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return nil
+			}
+			return apperr.Internal(err)
+		}
+		// Provider 调用期间用户可能放弃、确认，或补充说明推进 revision。
+		// 必须在持有行锁时重新校验，迟到结果只能结束自己的 Operation，不能覆盖权威状态。
+		if int(current.Revision) != args.Revision || isCaptureTerminal(current.Status) {
+			resultRef, _ := json.Marshal(map[string]any{
+				"type": "capture_parse_superseded", "capture_id": args.CaptureID,
+				"requested_revision": args.Revision, "active_revision": current.Revision,
+			})
+			return s.finishOperation(ctx, q, args, "succeeded", nil, resultRef)
+		}
+		capture = current
 		if parseErr != nil {
 			errBody, _ := json.Marshal(map[string]any{
 				"code":      string(apperr.CodeAIProviderUnavailable),
@@ -458,6 +486,57 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 	})
 }
 
+// finishMediaPreprocessBlocked 在媒体失败时结束本轮 Operation，并阻断解析器。
+//
+// partially_failed 是一次成功抵达、但需要用户处理的业务状态，因此 Operation
+// 正常结束并返回 Capture 引用；全部媒体均不可用时才把 Operation 标记为 failed。
+func (s *Service) finishMediaPreprocessBlocked(ctx context.Context, args CaptureParseArgs,
+	capture dbgen.Capture, status string) error {
+
+	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+		current, err := q.GetCaptureForUpdate(ctx, capture.ID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return nil
+			}
+			return apperr.Internal(err)
+		}
+		if int(current.Revision) != args.Revision || isCaptureTerminal(current.Status) {
+			resultRef, _ := json.Marshal(map[string]any{
+				"type": "capture_parse_superseded", "capture_id": args.CaptureID,
+				"requested_revision": args.Revision, "active_revision": current.Revision,
+			})
+			return s.finishOperation(ctx, q, args, "succeeded", nil, resultRef)
+		}
+		capture = current
+
+		var errBody []byte
+		if status == "failed" {
+			errBody, _ = json.Marshal(map[string]any{
+				"code":      string(apperr.CodeValidationFailed),
+				"message":   "所有媒体都处理失败了，请重试或替换失败项。",
+				"retryable": true,
+			})
+		}
+		if _, err := q.UpdateCaptureStatus(ctx, dbgen.UpdateCaptureStatusParams{
+			ID: capture.ID, Status: status, Error: errBody,
+		}); err != nil {
+			return apperr.Internal(err)
+		}
+
+		resultRef, _ := json.Marshal(map[string]any{
+			"type":       "capture",
+			"capture_id": capture.ID,
+			"revision":   capture.Revision,
+		})
+		operationStatus := "succeeded"
+		if status == "failed" {
+			operationStatus = "failed"
+		}
+		return s.finishOperation(ctx, q, args, operationStatus, errBody, resultRef)
+	})
+}
+
 // finishWithoutParse 在用户关闭智能整理时收尾。
 //
 // 原始输入照常保留，只是没有候选：确认页会是一张空表单，
@@ -466,6 +545,21 @@ func (s *Service) finishWithoutParse(ctx context.Context, args CaptureParseArgs,
 	capture dbgen.Capture) error {
 
 	return s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+		current, err := q.GetCaptureForUpdate(ctx, capture.ID)
+		if err != nil {
+			if database.IsNoRows(err) {
+				return nil
+			}
+			return apperr.Internal(err)
+		}
+		if int(current.Revision) != args.Revision || isCaptureTerminal(current.Status) {
+			resultRef, _ := json.Marshal(map[string]any{
+				"type": "capture_parse_superseded", "capture_id": args.CaptureID,
+				"requested_revision": args.Revision, "active_revision": current.Revision,
+			})
+			return s.finishOperation(ctx, q, args, "succeeded", nil, resultRef)
+		}
+		capture = current
 		// 媒体项标记为 ignored：它们没有被识别过，界面不该显示成"处理中"。
 		if err := q.IgnoreUnprocessedParts(ctx, dbgen.IgnoreUnprocessedPartsParams{
 			CaptureID: capture.ID, Revision: capture.Revision,
@@ -498,6 +592,7 @@ func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 		defaultListID = id
 	}
 	sourceMedia := make(map[string]string, len(parts))
+	candidateRefs := make(map[string]string, len(result.Candidates))
 	for _, part := range parts {
 		if part.Kind == "image" && part.MediaID != nil && *part.MediaID != "" {
 			sourceMedia[part.ID] = *part.MediaID
@@ -508,6 +603,22 @@ func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 		payload, missing, err := buildPayload(c, defaultListID, loc, sourceMedia, trackers)
 		if err != nil {
 			return err
+		}
+		if c.Action == "" {
+			c.Action = "create"
+		}
+		var duplicateOf *string
+		if c.Action == "create" {
+			match, err := s.detectDuplicate(ctx, q, args.UserID, c.Type, decodePayload(payload))
+			if err != nil {
+				return err
+			}
+			if match != nil {
+				duplicateOf = &match.id
+				// 保存用户看到重复提示时的版本；选择“更新原内容”必须按此版本 CAS。
+				c.TargetID = match.id
+				c.TargetExpectedVersion = &match.version
+			}
 		}
 		confidences, err := json.Marshal(mapConfidences(c.Confidences))
 		if err != nil {
@@ -525,20 +636,57 @@ func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 			missing = []string{}
 		}
 
+		candidateID := idgen.New(idgen.PrefixCandidate)
+		if strings.TrimSpace(c.Ref) != "" {
+			if _, exists := candidateRefs[c.Ref]; exists {
+				return apperr.Validation(apperr.Field("candidates", "候选引用不能重复。"))
+			}
+			candidateRefs[c.Ref] = candidateID
+		}
+		if c.Action == "update" && (strings.TrimSpace(c.TargetID) == "" || c.TargetExpectedVersion == nil) {
+			missing = appendMissing(missing, "target_id")
+		}
 		if _, err := q.CreateCaptureCandidate(ctx, dbgen.CreateCaptureCandidateParams{
-			ID:               idgen.New(idgen.PrefixCandidate),
-			UserID:           args.UserID,
-			CaptureID:        capture.ID,
-			Revision:         capture.Revision,
-			CandidateType:    c.Type,
-			Action:           c.Action,
-			Selected:         len(missing) == 0,
-			Payload:          payload,
-			FieldConfidences: confidences,
-			SourceRefs:       sources,
-			MissingFields:    missing,
-			Warnings:         warnings,
-			Position:         int32(i),
+			ID:                    candidateID,
+			UserID:                args.UserID,
+			CaptureID:             capture.ID,
+			Revision:              capture.Revision,
+			CandidateType:         c.Type,
+			Action:                c.Action,
+			TargetID:              optional(strings.TrimSpace(c.TargetID)),
+			TargetExpectedVersion: c.TargetExpectedVersion,
+			Selected:              len(missing) == 0,
+			Payload:               payload,
+			FieldConfidences:      confidences,
+			SourceRefs:            sources,
+			MissingFields:         missing,
+			Warnings:              warnings,
+			DuplicateOf:           duplicateOf,
+			Position:              int32(i),
+		}); err != nil {
+			return apperr.Internal(err)
+		}
+	}
+
+	for _, relation := range result.Relations {
+		fromRef := relation.FromRef
+		if mapped, ok := candidateRefs[fromRef]; ok {
+			fromRef = mapped
+		}
+		toRef := relation.ToRef
+		if mapped, ok := candidateRefs[toRef]; ok {
+			toRef = mapped
+		}
+		if fromRef == "" || toRef == "" || fromRef == toRef {
+			return apperr.Validation(apperr.Field("relations", "关系端点不合法。"))
+		}
+		if relation.Kind != "requires" && relation.Kind != "related_to" {
+			return apperr.Validation(apperr.Field("relations", "关系类型不合法。"))
+		}
+		if err := q.CreateCaptureRelationCandidate(ctx, dbgen.CreateCaptureRelationCandidateParams{
+			ID: idgen.New(idgen.PrefixRelation), UserID: args.UserID,
+			CaptureID: capture.ID, Revision: capture.Revision,
+			Kind: relation.Kind, FromRef: fromRef, ToRef: toRef,
 		}); err != nil {
 			return apperr.Internal(err)
 		}
@@ -639,6 +787,7 @@ type Detail struct {
 	Capture    dbgen.Capture
 	Parts      []dbgen.CapturePart
 	Candidates []dbgen.CaptureCandidate
+	Relations  []dbgen.CaptureRelationCandidate
 	Questions  []dbgen.CaptureQuestion
 	Conflicts  []dbgen.CaptureConflict
 	Created    []httpapi.AffectedResource
@@ -667,6 +816,11 @@ func (s *Service) Get(ctx context.Context, userID, captureID string) (Detail, er
 		}); err != nil {
 			return apperr.Internal(err)
 		}
+		if out.Relations, err = q.ListCaptureRelationCandidates(ctx, dbgen.ListCaptureRelationCandidatesParams{
+			CaptureID: captureID, Revision: capture.Revision,
+		}); err != nil {
+			return apperr.Internal(err)
+		}
 		if out.Questions, err = q.ListCaptureQuestionsForCapture(ctx, dbgen.ListCaptureQuestionsForCaptureParams{
 			CaptureID: captureID, Revision: capture.Revision,
 		}); err != nil {
@@ -685,7 +839,8 @@ func (s *Service) Get(ctx context.Context, userID, captureID string) (Detail, er
 // Discard 放弃本次输入。
 func (s *Service) Discard(ctx context.Context, userID, captureID string) error {
 	return s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		capture, err := q.GetCapture(ctx, captureID)
+		// 与确认和 Worker 收尾共用 Capture 行锁，避免检查状态后被并发写入穿透。
+		capture, err := q.GetCaptureForUpdate(ctx, captureID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("这次输入")
@@ -711,6 +866,15 @@ func valueOrEmpty(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func isCaptureTerminal(status string) bool {
+	switch status {
+	case "confirmed", "discarded", "expired":
+		return true
+	default:
+		return false
+	}
 }
 
 // partIDs 取输入项 ID，用于把审计指回具体的分片。ID 不是正文。

@@ -1987,10 +1987,12 @@ Primary Provider
 Fallback 规则：
 
 - 只有相同 Output Contract 和能力集的 Provider 才能作为 fallback。
+- 本地 `fake` 规则解析器只是开发与测试替身，不是产品级 Provider，永远不得成为生产 fallback；生产环境配置为 `fake` 必须拒绝启动。
 - 切换后仍使用项目完整 Schema 校验。
 - 一次 Run 最多执行明确次数的 Provider 尝试。
 - 不能在用户不知情时把高敏数据发送给未获准 Provider。
 - Capture／Proposal 已生成后不因 fallback 自动写入。
+- 当前 Capture 实现在真实 Provider 不可用或两次 Schema 校验失败时返回可重试失败，保留用户原始输入，不静默产出规则候选。
 
 ## 18.5 熔断与限流
 

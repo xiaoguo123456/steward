@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './auth.zod';
 import {
   useMutation
 } from '@tanstack/react-query';
@@ -67,6 +68,7 @@ export const requestPhoneCode = async (phoneCodeRequest: PhoneCodeRequest, optio
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(phoneCodeRequest)
   }
+, StewardResponseSchemas.RequestPhoneCodeResponse
 );}
 
 
@@ -137,6 +139,7 @@ export const login = async (loginRequest: LoginRequest, options?: Parameters<typ
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(loginRequest)
   }
+, StewardResponseSchemas.LoginResponse
 );}
 
 
@@ -207,6 +210,7 @@ export const refreshToken = async (refreshRequest: RefreshRequest, options?: Par
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(refreshRequest)
   }
+, StewardResponseSchemas.RefreshTokenResponse
 );}
 
 
@@ -277,6 +281,7 @@ export const logout = async ( options?: Parameters<typeof stewardFetch>[1]): Pro
 
 
   }
+, StewardResponseSchemas.LogoutResponse
 );}
 
 
@@ -347,6 +352,7 @@ export const requestAccountDeletionCode = async ( options?: Parameters<typeof st
 
 
   }
+, StewardResponseSchemas.RequestAccountDeletionCodeResponse
 );}
 
 
@@ -417,6 +423,7 @@ export const reauthenticateAccountDeletion = async (accountDeletionReauthRequest
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(accountDeletionReauthRequest)
   }
+, StewardResponseSchemas.ReauthenticateAccountDeletionResponse
 );}
 
 

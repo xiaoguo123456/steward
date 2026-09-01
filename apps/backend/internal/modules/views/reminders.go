@@ -260,7 +260,7 @@ func decodeReminders(raw []byte) []httpapi.Reminder {
 // 每次现算而不是查一张排好的表：用户改时区、改截止日期、把事项删了，
 // 结果立刻跟着变，不需要去清理任何预先排好的东西。
 func (s *Service) PendingReminders(ctx context.Context, userID string) ([]DueReminder, error) {
-	now := time.Now()
+	now := s.now()
 
 	var out []DueReminder
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {

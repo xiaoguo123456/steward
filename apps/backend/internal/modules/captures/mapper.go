@@ -363,6 +363,14 @@ func MapCapture(d Detail) httpapi.Capture {
 		Parts:           make([]httpapi.CapturePart, 0, len(d.Parts)),
 		Candidates:      make([]httpapi.CaptureCandidate, 0, len(d.Candidates)),
 	}
+	relations := make([]httpapi.CaptureRelationCandidate, 0, len(d.Relations))
+	for _, relation := range d.Relations {
+		relations = append(relations, httpapi.CaptureRelationCandidate{
+			Id: relation.ID, Kind: httpapi.RelationKind(relation.Kind),
+			FromRef: relation.FromRef, ToRef: relation.ToRef,
+		})
+	}
+	out.RelationCandidates = &relations
 	if d.Capture.ActivityBatchID != nil {
 		out.ActivityBatchId = d.Capture.ActivityBatchID
 	}

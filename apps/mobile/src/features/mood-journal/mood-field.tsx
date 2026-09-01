@@ -6,12 +6,13 @@ type MoodFieldProps = {
   seeds: number[];
   height?: number;
   compact?: boolean;
+  onSelect?: (index: number) => void;
 };
 
 /**
  * 日记视觉种子的确定性只读投影。它只画几何节点与轨迹，不表达奖励、健康判断或枯萎状态。
  */
-export function MoodField({ seeds, height = 190, compact = false }: MoodFieldProps) {
+export function MoodField({ seeds, height = 190, compact = false, onSelect }: MoodFieldProps) {
   const safeSeeds = seeds.length > 0 ? seeds.slice(0, compact ? 12 : 32) : [17, 43, 71];
   return (
     <Svg accessibilityLabel={seeds.length ? `本月 ${seeds.length} 个日记节点` : '本月还没有日记节点'} height={height} viewBox="0 0 340 190" width="100%">
@@ -46,11 +47,14 @@ export function MoodField({ seeds, height = 190, compact = false }: MoodFieldPro
         const opacity = seeds.length ? 0.28 + (seed % 5) * 0.1 : 0.12;
         return (
           <Circle
+            accessibilityLabel={onSelect ? `打开第 ${index + 1} 篇日记` : undefined}
+            accessible={Boolean(onSelect)}
             cx={x}
             cy={y}
             fill={index % 3 === 0 ? moodColors.accent : moodColors.atmosphere}
             key={`node-${seed}-${index}`}
             opacity={opacity}
+            onPress={onSelect ? () => onSelect(index) : undefined}
             r={radius}
           />
         );

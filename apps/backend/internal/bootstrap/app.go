@@ -22,6 +22,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memory"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memorymoments"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/moodjournal"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/notifications"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/recipes"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/relationships"
@@ -68,6 +69,7 @@ type Server struct {
 	*recipes.RecipeAPI
 	*moodjournal.API
 	*relationships.RelationshipAPI
+	*notifications.NotificationAPI
 }
 
 var _ httpapi.StrictServerInterface = (*Server)(nil)
@@ -148,6 +150,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	moodJournalSvc := moodjournal.New(db, objectsSvc, usersSvc, activitySvc)
 	trackersSvc := trackers.New(db, usersSvc, activitySvc)
 	viewsSvc := views.New(db, usersSvc)
+	notificationsSvc := notifications.New(db, viewsSvc)
 	recipesSvc := recipes.New(db, usersSvc, listsSvc, objectsSvc)
 
 	trackersSvc.WithJobs(enqueuer)
@@ -246,6 +249,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 			RecipeAPI:       recipes.NewRecipeAPI(recipesSvc),
 			API:             moodjournal.NewAPI(moodJournalSvc),
 			RelationshipAPI: relationships.NewAPI(relationshipsSvc, objects.MapEvent),
+			NotificationAPI: notifications.NewAPI(notificationsSvc),
 		},
 		Jobs:          runtime,
 		Parser:        parser,
@@ -462,8 +466,8 @@ func (unavailableEngine) Version() string { return "unavailable" }
 
 // newParser 按配置选择 Capture 解析实现。
 //
-// 未配置任何 Provider 时使用确定性的本地实现：
-// 即使所有 Provider 关闭，用户仍可用表单管理全部正式内容。
+// fake 只允许显式用于开发和测试；生产环境已在配置校验阶段禁止启用。
+// 真实 Provider 不可用时必须返回可恢复的失败，不能用规则替身冒充 AI 成功。
 func newParser(cfg config.Config, logger *slog.Logger) (ai.CaptureParser, error) {
 	switch cfg.AI.Provider {
 	case "", "fake":
@@ -481,7 +485,6 @@ func newParser(cfg config.Config, logger *slog.Logger) (ai.CaptureParser, error)
 			TranscribeModel: cfg.AI.ModelTranscribe,
 			Timeout:         cfg.AI.Timeout,
 			MaxOutputTokens: cfg.AI.MaxOutputTokens,
-			Fallback:        fake.New(),
 			Logger:          logger,
 		})
 	default:

@@ -100,6 +100,35 @@ func TestProposeTaskUpdateSupportsFocusDate(t *testing.T) {
 	}
 }
 
+func TestProposeTaskSplitBuildsSingleBatchProposal(t *testing.T) {
+	stub := &taskQueriesStub{task: dbgen.Task{
+		ID: "tsk_parent", Title: "准备发布", Status: "todo", Priority: "high", Version: 4,
+	}}
+	result, err := (CapabilityDeps{Tasks: stub}).proposeTaskSplit(
+		context.Background(), ai.CapabilityContext{UserID: "usr_me", Timezone: "Asia/Shanghai"},
+		map[string]any{
+			"task_id": "tsk_parent", "expected_version": float64(4),
+			"tasks": []any{
+				map[string]any{"title": "整理发布说明", "estimated_minutes": float64(30)},
+				map[string]any{"title": "执行发布检查"},
+			},
+			"reason": "需要分步骤完成", "source_refs": []any{"task:tsk_parent"},
+		},
+	)
+	if err != nil {
+		t.Fatalf("生成拆分建议失败：%v", err)
+	}
+	if len(result.Proposals) != 1 || result.Proposals[0].Type != "task_split" {
+		t.Fatalf("应生成单条批量拆分建议：%+v", result.Proposals)
+	}
+	if result.Proposals[0].TargetExpectedVersion == nil || *result.Proposals[0].TargetExpectedVersion != 4 {
+		t.Fatalf("拆分建议没有绑定原任务版本：%+v", result.Proposals[0])
+	}
+	if len(result.Proposals[0].EditableFields) != 1 || result.Proposals[0].EditableFields[0] != "selected_tasks" {
+		t.Fatalf("拆分建议应允许确认页删选和修改标题：%+v", result.Proposals[0])
+	}
+}
+
 func TestBuildTaskUpdateBodyMapsDateFields(t *testing.T) {
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
@@ -119,6 +148,20 @@ func TestBuildTaskUpdateBodyMapsDateFields(t *testing.T) {
 	}
 	if body.DueTimezone == nil || *body.DueTimezone != "Asia/Shanghai" {
 		t.Fatalf("due_timezone 映射错误：%v", body.DueTimezone)
+	}
+}
+
+func TestBuildTaskUpdateBodyAddsScheduledTimezone(t *testing.T) {
+	loc := time.FixedZone("CST", 8*60*60)
+	body, err := buildTaskUpdateBody(map[string]any{
+		"scheduled_start_at": "2026-09-08T02:00:00Z",
+		"scheduled_end_at":   "2026-09-08T03:00:00Z",
+	}, loc, "Asia/Shanghai")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if body.ScheduledTimezone == nil || *body.ScheduledTimezone != "Asia/Shanghai" {
+		t.Fatalf("智能安排必须保留计划时区：%+v", body.ScheduledTimezone)
 	}
 }
 

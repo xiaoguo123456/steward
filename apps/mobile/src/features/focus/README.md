@@ -17,7 +17,7 @@
 - 可关联任务来自正式 Today API，只读取服务端返回的 Task 引用，不复制 Task 领域类型。
 - 用户点击“保存专注记录”后，通过生成 Client 写入内置 `builtin_key=focus` Tracker 的 Record；列表和统计读取同一份正式数据。
 - 计时、暂停、休息状态和暂存想法只属于当前页面会话，不自动创建 Note、Task 或 Capture。
-- 当前 Record 只保留关联任务标题，不复制 Task 状态；专注完成不会自动完成关联 Task。
+- 当前 Record 只保留关联任务标题，不复制 Task 状态；用户在总结页明确选择“标记任务完成”时，页面先通过带 `If-Match` 的正式 Task Command 完成任务，再等待专注 Record 保存成功。任一步失败都保留总结页供重试。
 - 本地 `FocusRecord` 是展示模型，不是网络 DTO。时长以分钟写入，服务端仍负责 Tracker Schema 校验和时间语义。
 
 ## 视觉与组件

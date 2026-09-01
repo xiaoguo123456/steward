@@ -48,6 +48,8 @@ test('账号删除在响应丢失后保留短期重放凭证', async () => {
   const storage = await readFile(new URL('./account-deletion-storage.ts', import.meta.url), 'utf8');
 
   assert.match(screen, /savePendingAccountDeletion/);
+  assert.match(screen, /本次尚未提交账号删除/);
+  assert.doesNotMatch(screen, /savePendingAccountDeletion\(resumable\)\.catch/);
   assert.match(screen, /deletionIdempotencyKey: deletionKey\.current/);
   assert.match(screen, /reauth_token: resumable\.reauthToken/);
   assert.match(screen, /继续查询受理结果/);
@@ -55,4 +57,16 @@ test('账号删除在响应丢失后保留短期重放凭证', async () => {
   assert.match(storage, /Number\.isFinite\(expiresAt\)/);
   assert.match(storage, /Date\.now\(\) >= expiresAt/);
   assert.match(storage, /sessionStorage/);
+});
+
+test('旧账号迟到的 refresh 响应不会覆盖新账号会话', async () => {
+  const source = await readFile(new URL('../../api/session.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /private generation = 0/);
+  assert.match(source, /const sourceGeneration = this\.generation/);
+  assert.match(source, /this\.generation !== sourceGeneration \|\| this\.session !== source/);
+  assert.match(source, /this\.generation \+= 1/g);
+  assert.match(source, /if \(this\.refreshing === request\)/);
+  assert.match(source, /private persistence: Promise<void> = Promise\.resolve\(\)/);
+  assert.match(source, /this\.persistence\.then\(operation, operation\)/);
 });

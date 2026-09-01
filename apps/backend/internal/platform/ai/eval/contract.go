@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var moodEntryIDPattern = regexp.MustCompile(`^mood_[A-Za-z0-9_-]+$`)
+var moodEntryIDPattern = regexp.MustCompile(`^(mood|note)_[A-Za-z0-9_-]+$`)
 
 // CheckContractCase 检查尚未开放运行时链路的 Prompt／Schema 安全契约。
 //

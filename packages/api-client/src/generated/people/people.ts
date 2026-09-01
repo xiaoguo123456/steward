@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './people.zod';
 import {
   useMutation,
   useQuery
@@ -103,6 +104,7 @@ export const listPeople = async (params?: ListPeopleParams, options?: Parameters
 
 
   }
+, StewardResponseSchemas.ListPeopleResponse
 );}
 
 
@@ -203,6 +205,7 @@ export const createPerson = async (createPersonRequest: CreatePersonRequest, opt
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createPersonRequest)
   }
+, StewardResponseSchemas.CreatePersonResponse
 );}
 
 
@@ -273,6 +276,7 @@ export const getPerson = async (personId: string, options?: Parameters<typeof st
 
 
   }
+, StewardResponseSchemas.GetPersonResponse
 );}
 
 
@@ -374,6 +378,7 @@ export const updatePerson = async (personId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(updatePersonRequest)
   }
+, StewardResponseSchemas.UpdatePersonResponse
 );}
 
 
@@ -445,6 +450,7 @@ export const deletePerson = async (personId: string, options?: Parameters<typeof
 
 
   }
+, StewardResponseSchemas.DeletePersonResponse
 );}
 
 
@@ -526,6 +532,7 @@ export const listPersonInteractions = async (personId: string,
 
 
   }
+, StewardResponseSchemas.ListPersonInteractionsResponse
 );}
 
 
@@ -636,6 +643,7 @@ export const createPersonInteraction = async (personId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createPersonInteractionRequest)
   }
+, StewardResponseSchemas.CreatePersonInteractionResponse
 );}
 
 
@@ -716,6 +724,7 @@ export const listPersonEvents = async (personId: string,
 
 
   }
+, StewardResponseSchemas.ListPersonEventsResponse
 );}
 
 
@@ -823,6 +832,7 @@ export const createPersonEvent = async (personId: string,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createEventRequest)
   }
+, StewardResponseSchemas.CreatePersonEventResponse
 );}
 
 

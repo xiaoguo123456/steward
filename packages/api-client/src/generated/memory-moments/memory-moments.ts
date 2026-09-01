@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import * as StewardResponseSchemas from './memory-moments.zod';
 import {
   useMutation,
   useQuery
@@ -95,6 +96,7 @@ export const listMemoryMoments = async (params?: ListMemoryMomentsParams, option
 
 
   }
+, StewardResponseSchemas.ListMemoryMomentsResponse
 );}
 
 
@@ -197,6 +199,7 @@ export const createMemoryMoment = async (createMemoryMomentRequest: CreateMemory
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(createMemoryMomentRequest)
   }
+, StewardResponseSchemas.CreateMemoryMomentResponse
 );}
 
 
@@ -267,6 +270,7 @@ export const getMemoryMoment = async (momentId: string, options?: Parameters<typ
 
 
   }
+, StewardResponseSchemas.GetMemoryMomentResponse
 );}
 
 
@@ -368,6 +372,7 @@ export const deleteMemoryMoment = async (momentId: string, options?: Parameters<
 
 
   }
+, StewardResponseSchemas.DeleteMemoryMomentResponse
 );}
 
 

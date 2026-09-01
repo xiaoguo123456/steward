@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 
-import type { ShoppingCategory } from '@steward/api-client';
+import { errorMessage, type ShoppingCategory } from '@steward/api-client';
 
 import {
   useShoppingList,
@@ -132,11 +132,15 @@ function ShoppingItemSheet({
   item,
   onClose,
   onSave,
+  busy,
+  failure,
 }: {
   visible: boolean;
   item?: ShoppingItem;
   onClose: () => void;
   onSave: (draft: ShoppingItemDraft) => void;
+  busy: boolean;
+  failure?: string | null;
 }) {
   const [title, setTitle] = useState(item?.title ?? '');
   const [quantity, setQuantity] = useState(item?.quantity ?? '1');
@@ -161,7 +165,7 @@ function ShoppingItemSheet({
       transparent
       visible={visible}
     >
-      <ModalSheet maxHeight="72%" onClose={onClose}>
+      <ModalSheet maxHeight="72%" onClose={() => { if (!busy) onClose(); }}>
         <View style={styles.sheetLayout}>
           <ScrollView
             contentContainerStyle={styles.sheetContent}
@@ -176,6 +180,7 @@ function ShoppingItemSheet({
               <Pressable
                 accessibilityLabel="关闭商品编辑"
                 accessibilityRole="button"
+                disabled={busy}
                 onPress={onClose}
                 style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
               >
@@ -186,6 +191,7 @@ function ShoppingItemSheet({
             <Text style={styles.fieldLabel}>商品名称</Text>
             <TextInput
               accessibilityLabel="商品名称"
+              editable={!busy}
               maxLength={30}
               onChangeText={setTitle}
               placeholder="例如：苹果"
@@ -199,6 +205,7 @@ function ShoppingItemSheet({
             <Text style={styles.fieldLabel}>数量／规格</Text>
             <TextInput
               accessibilityLabel="商品数量或规格"
+              editable={!busy}
               maxLength={20}
               onChangeText={setQuantity}
               placeholder="例如：2 盒、500 克"
@@ -215,6 +222,7 @@ function ShoppingItemSheet({
             </View>
             <TextInput
               accessibilityLabel="商品备注"
+              editable={!busy}
               maxLength={40}
               onChangeText={setNote}
               placeholder="品牌、规格或口味"
@@ -227,10 +235,11 @@ function ShoppingItemSheet({
           </ScrollView>
 
           <View style={styles.sheetFooter}>
+            {failure ? <Text accessibilityRole="alert" style={styles.failureText}>{failure}</Text> : null}
             <AppButton
-              disabled={!canSave}
+              disabled={!canSave || busy}
               icon={item ? 'checkmark' : 'add'}
-              label={item ? '保存修改' : '加入购物清单'}
+              label={busy ? '保存中…' : item ? '保存修改' : '加入购物清单'}
               onPress={save}
             />
           </View>
@@ -281,12 +290,16 @@ export function ShoppingContent({
   const progress = totalCount === 0 ? 0 : completedCount / totalCount;
   const progressWidth = `${Math.round(progress * 100)}%` as `${number}%`;
 
-  const toggleItem = (itemId: string) => {
+  const toggleItem = async (itemId: string) => {
     const item = items.find((entry) => entry.id === itemId);
     if (!item) return;
     if (!item.done) setCompletedExpanded(true);
     setFailure(null);
-    shopping.toggle(item);
+    try {
+      await shopping.toggle(item);
+    } catch (error) {
+      setFailure(errorMessage(error, '购物状态没有保存，请重试。'));
+    }
   };
 
   const closeSheet = () => {
@@ -294,19 +307,35 @@ export function ShoppingContent({
     onCreateVisibleChange(false);
   };
 
-  const saveItem = (draft: ShoppingItemDraft) => {
+  const saveItem = async (draft: ShoppingItemDraft) => {
     setFailure(null);
     // 品类由服务端算，这里不传：同一件东西在两台设备上必须归到同一类。
-    if (editingItem) {
-      shopping.update(editingItem, draft);
-    } else {
-      shopping.create(draft);
+    try {
+      if (editingItem) {
+        await shopping.update(editingItem, draft);
+      } else {
+        await shopping.create(draft);
+      }
+      closeSheet();
+    } catch (error) {
+      setFailure(errorMessage(error, '商品没有保存，请重试。'));
     }
-    closeSheet();
   };
 
   return (
     <>
+      {shopping.failed ? (
+        <StatePanel
+          actionLabel="重试"
+          compact
+          icon="cloud-offline-outline"
+          message={errorMessage(shopping.queryError, '购物清单暂时无法读取。')}
+          onAction={() => void shopping.refetch()}
+          title="购物清单加载失败"
+        />
+      ) : shopping.loading ? (
+        <StatePanel compact icon="time-outline" message="正在读取购物清单…" title="加载中" />
+      ) : <>
       <View style={styles.listStatus}>
         <View style={styles.statusCopy}>
           <Text accessibilityRole="header" style={styles.statusTitle}>
@@ -393,7 +422,7 @@ export function ShoppingContent({
                   item={item}
                   key={item.id}
                   onEdit={() => setEditingItemId(item.id)}
-                  onToggle={() => toggleItem(item.id)}
+                  onToggle={() => void toggleItem(item.id)}
                 />
               ))}
             </View>
@@ -401,12 +430,16 @@ export function ShoppingContent({
         </View>
       ) : null}
 
+      </>}
+
       {createVisible || editingItem ? (
         <ShoppingItemSheet
+          busy={shopping.pending}
+          failure={failure}
           item={editingItem}
           key={editingItem?.id ?? 'new-shopping-item'}
           onClose={closeSheet}
-          onSave={saveItem}
+          onSave={(draft) => void saveItem(draft)}
           visible
         />
       ) : null}

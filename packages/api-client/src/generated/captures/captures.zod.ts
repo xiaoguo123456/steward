@@ -415,7 +415,8 @@ export const ConfirmCaptureBody = zod.object({
   "note": zod.string().nullish()
 }).optional()
 }).optional().describe('候选内容的判别联合快照。只有与 candidate_type 对应的那一个字段非空。\n确认请求复用同一结构提交用户编辑后的值。\n'),
-  "list_id": zod.string().nullish().describe('Task 候选在确认页选择的目标清单。')
+  "list_id": zod.string().nullish().describe('Task 候选在确认页选择的目标清单。'),
+  "duplicate_resolution": zod.enum(['create', 'update']).nullish().describe('候选命中 duplicate_of 时必须明确选择：create 表示仍然创建，\nupdate 表示更新命中的已有实体。未命中重复候选时不得提交。\n')
 }).describe('用户勾选保存的一个候选项。payload 为用户编辑后的值，\n缺省表示采用服务端候选的原值；服务端始终重新校验，不信任客户端提交的结果。\n')).min(1).describe('用户勾选并确认保存的候选项。未列出的候选视为放弃。')
 })
 

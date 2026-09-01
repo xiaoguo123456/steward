@@ -38,9 +38,7 @@ type Config struct {
 	Timeout         time.Duration
 	MaxOutputTokens int
 
-	// Fallback 在 Provider 不可用时接管解析，保证功能降级而不是整体失败。
-	Fallback ai.CaptureParser
-	Logger   *slog.Logger
+	Logger *slog.Logger
 }
 
 // Provider 实现 ai.CaptureParser、ai.MediaProcessor 与 ai.StreamingChatProvider。
@@ -193,10 +191,9 @@ func (p *Provider) chat(ctx context.Context, model string, messages []chatMessag
 		return "", ai.Usage{}, ai.ErrRateLimited
 	}
 	if resp.StatusCode >= 400 {
-		// 不把服务商的原始错误正文透出给用户，只记录到服务端日志。
+		// Provider 原始正文可能回显用户输入或内部请求，不进入日志。
 		p.logger.Error("模型服务返回错误",
-			"status", resp.StatusCode, "model", model,
-			"body", truncate(string(raw), 500))
+			"status", resp.StatusCode, "model", model)
 		return "", ai.Usage{}, fmt.Errorf("%w: HTTP %d", ai.ErrProviderUnavailable, resp.StatusCode)
 	}
 
@@ -205,7 +202,7 @@ func (p *Provider) chat(ctx context.Context, model string, messages []chatMessag
 		return "", ai.Usage{}, fmt.Errorf("%w: 响应不是合法 JSON", ai.ErrProviderUnavailable)
 	}
 	if parsed.Error != nil {
-		p.logger.Error("模型服务返回业务错误", "message", parsed.Error.Message, "type", parsed.Error.Type)
+		p.logger.Error("模型服务返回业务错误", "type", parsed.Error.Type)
 		return "", ai.Usage{}, fmt.Errorf("%w: %s", ai.ErrProviderUnavailable, parsed.Error.Type)
 	}
 	if len(parsed.Choices) == 0 {
@@ -297,7 +294,7 @@ func (p *Provider) Transcribe(ctx context.Context, input ai.MediaInput) (string,
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode >= 400 {
 		p.logger.Error("转写服务返回错误",
-			"status", resp.StatusCode, "body", truncate(string(raw), 300))
+			"status", resp.StatusCode)
 		return "", ai.Usage{}, fmt.Errorf("%w: HTTP %d", ai.ErrProviderUnavailable, resp.StatusCode)
 	}
 
