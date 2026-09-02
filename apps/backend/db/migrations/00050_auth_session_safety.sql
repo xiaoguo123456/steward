@@ -5,7 +5,13 @@ ALTER TABLE auth_refresh_tokens
     ADD COLUMN family_id text,
     ADD COLUMN replaced_by_token_id text;
 
+-- 00006 对本表启用了 FORCE ROW LEVEL SECURITY。存量环境的迁移账号同时是
+-- 表所有者，但在 FORCE 模式下也会被用户隔离策略过滤，未设置 app.user_id 时
+-- 普通 UPDATE 会静默更新 0 行。迁移事务内暂时恢复表所有者绕过能力，完成旧
+-- Token 的 family 回填后立即重新强制 RLS；API／Worker 要等迁移成功后才启动。
+ALTER TABLE auth_refresh_tokens NO FORCE ROW LEVEL SECURITY;
 UPDATE auth_refresh_tokens SET family_id = id WHERE family_id IS NULL;
+ALTER TABLE auth_refresh_tokens FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE auth_refresh_tokens
     ALTER COLUMN family_id SET NOT NULL,
