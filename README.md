@@ -46,10 +46,24 @@ Android APK 由 GitHub Actions 自行编译和签名，Expo 账号不参与 APK 
 | Expo Project ID | `fcbe4a6d-5cbc-4bad-954b-2079fbdb3bbd` |
 | 项目控制台 | [Expo steward Project](https://expo.dev/accounts/qionghaihuixiangtu/projects/steward) |
 | GitHub Actions Robot | `steward-github-actions`，角色为 `Developer` |
+| 首个正式移动端版本 | `1.0.0`；根目录及其他 workspace 的包版本不作为 App 上架版本 |
 | OTA 频道 | 测试 `steward-test`；生产 `steward-production` |
 | EAS 环境 | `preview` 注入测试 API；`production` 注入生产 API |
 
 `EXPO_TOKEN`、OTA 私钥、Keystore 和密码不得进入 README、Git、Issue、日志或聊天记录。`EXPO_TOKEN` 已保存在 GitHub `test`、`production` Environment Secrets；其他签名材料也按环境隔离保存。Robot Token 失效时，由 Expo 组织管理员在组织的 **Access tokens** 页面为 `steward-github-actions` 重新生成，再同步更新两个 GitHub Environment。生产 OTA 仍须确认 EAS 套餐支持端到端代码签名，并完成测试频道、灰度和回滚演练。
+
+### 生产签名材料位置
+
+下表只记录文件位置和 Secret 名称，不记录任何密码、私钥正文或 Base64 内容。`.local/` 已被 Git 忽略；GitHub Environment Secret 的值写入后不能重新查看，因此不能替代原始文件备份。
+
+| 材料 | 当前开发机文件位置 | GitHub `production` Environment Secret |
+|---|---|---|
+| Android 生产 Keystore | `.local/signing/steward-production.jks` | `ANDROID_PRODUCTION_KEYSTORE_BASE64` |
+| Android 生产 Keystore 密码 | `.local/signing/steward-production.password` | `ANDROID_PRODUCTION_KEYSTORE_PASSWORD` |
+| OTA 签名私钥 | `.local/signing/expo-updates/private-key.pem` | `EXPO_UPDATES_PRIVATE_KEY_BASE64` |
+| OTA 验签证书 | `.local/signing/expo-updates/certificate.pem` | `EXPO_UPDATES_CERTIFICATE_BASE64` |
+
+Android 生产签名别名固定为 `steward-production`。GitHub 配置入口为仓库 **Settings → Environments → production**。截至当前，原始文件保存在上述本机目录，CI 使用副本保存在 GitHub Environment；尚未建立独立备份，后续备份完成前不要删除或重建 `.local/signing` 中的生产文件。
 
 ## 工程结构
 

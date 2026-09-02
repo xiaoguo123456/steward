@@ -69,7 +69,7 @@ pnpm --filter mobile test:h5
 - 测试 APK、生产 APK 和服务器部署由独立 GitHub Actions 工作流负责，触发方式、签名和产物见 [部署说明](../../docs/部署说明.md)。
 - OTA 只允许发布与已安装原生 runtime 兼容的 JavaScript、样式和专用资源，且只能经仓库工作流执行；runtime、频道、签名、灰度与回滚规则见 [ADR-028：移动端 OTA 更新](../../docs/ADR-028-移动端OTA更新.md)。
 - 新增原生依赖、权限、App Config、图标、启动图或普通原生资源时必须提升 App 版本并重新构建 APK。
-- `expo-local-authentication` 从 `1.0.1`／Android `versionCode=2` 起进入原生运行时；该版本需真机验证首次开启、取消、失败、系统锁定、后台预览遮挡和重新解锁，并同步核对 iOS Face ID 用途说明与商店隐私申报。
+- 首个正式移动端版本统一为 `1.0.0`，并已包含 `expo-local-authentication` 原生代码和生物识别权限；该版本需真机验证首次开启、取消、失败、系统锁定、后台预览遮挡和重新解锁，并同步核对 iOS Face ID 用途说明与商店隐私申报。
 - Expo Project、验签证书、Secrets、首个原生包和回滚演练完成前，不得声称 OTA 已对用户生效。
 
 ## 依赖补丁
