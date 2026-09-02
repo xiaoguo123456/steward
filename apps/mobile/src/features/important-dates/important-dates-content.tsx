@@ -11,7 +11,6 @@ import {
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -22,6 +21,7 @@ import {
 } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { DateWheel } from '@/components/ui/date-wheel';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
@@ -699,17 +699,17 @@ export function ImportantDatesContent({
     }
   };
 
-  const confirmDeleteSelected = () => {
+  const confirmDeleteSelected = async () => {
     if (!selectedItem || actionPending) return;
     const item = selectedItem;
-    Alert.alert(
-      `删除“${item.title}”？`,
-      '删除后将从重要日和日历中移除。',
-      [
-        { text: '保留', style: 'cancel' },
-        { text: '删除重要日', style: 'destructive', onPress: () => void removeItem(item) },
-      ],
-    );
+    const confirmed = await confirmAction({
+      title: `删除“${item.title}”？`,
+      message: '删除后将从重要日和日历中移除。',
+      confirmLabel: '删除重要日',
+      cancelLabel: '保留',
+      destructive: true,
+    });
+    if (confirmed) await removeItem(item);
   };
 
   if (importantDates.isError) {

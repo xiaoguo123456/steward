@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { session } from '@/api/session';
 import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -90,6 +91,14 @@ export default function CaptureDraftsScreen() {
   const remove = async (draft: CaptureDraft) => {
     const accountId = session.userId();
     if (!accountId || busyId) return;
+    const confirmed = await confirmAction({
+      title: '删除这条最近输入？',
+      message: '设备草稿、离线上传状态和关联的本地媒体都会一起删除，删除后无法恢复。',
+      cancelLabel: '保留',
+      confirmLabel: '删除',
+      destructive: true,
+    });
+    if (!confirmed) return;
     setBusyId(draft.id);
     await deleteCaptureDraft(accountId, draft.id).catch(() => {
       setError('这条输入没能删除，请重试。');

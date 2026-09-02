@@ -10,10 +10,11 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { buildEventEditRequest, eventEditDraft, type EventEditDraft } from '@/features/events/event-edit-model';
@@ -51,12 +52,15 @@ export default function EventDetailScreen() {
     finally { setBusy(false); }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!event || busy) return;
-    Alert.alert('删除日程？', '删除后会取消尚未发送的提醒，且无法撤销。', [
-      { text: '取消', style: 'cancel' },
-      { text: '删除', style: 'destructive', onPress: () => void remove() },
-    ]);
+    const confirmed = await confirmAction({
+      title: '删除日程？',
+      message: '删除后会取消尚未发送的提醒，且无法撤销。',
+      confirmLabel: '删除',
+      destructive: true,
+    });
+    if (confirmed) await remove();
   };
   const remove = async () => {
     if (!event) return;

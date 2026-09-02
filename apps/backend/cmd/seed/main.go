@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/domain/notecontent"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
@@ -237,7 +238,7 @@ func seedAll(ctx context.Context, q *dbgen.Queries, userID string) error {
 		ID: idgen.New(idgen.PrefixEvent), UserID: userID,
 		Title: "需求评审会", EventKind: "schedule", AllDay: false,
 		StartAt: &meetingStart, EndAt: &meetingEnd, Timezone: tz,
-		Location: strPtr("三楼会议室"), Participants: emptyArray,
+		Location: strPtr("三楼会议室"), ItineraryDetails: emptyObject, Participants: emptyArray,
 		ProjectID: &projectID, Reminders: emptyArray, Recurrence: "none",
 		CreatedBy: "user", ProvenanceRefs: emptyArray,
 	}); err != nil {
@@ -250,7 +251,7 @@ func seedAll(ctx context.Context, q *dbgen.Queries, userID string) error {
 	if _, err := q.CreateEvent(ctx, dbgen.CreateEventParams{
 		ID: idgen.New(idgen.PrefixEvent), UserID: userID,
 		Title: "妈妈生日", EventKind: "important_date", AllDay: true,
-		StartDate: &birthday, Timezone: tz, Participants: emptyArray,
+		StartDate: &birthday, Timezone: tz, ItineraryDetails: emptyObject, Participants: emptyArray,
 		Reminders: emptyArray, Recurrence: "yearly", OriginalMonthDay: &monthDay,
 		CreatedBy: "user", ProvenanceRefs: emptyArray,
 	}); err != nil {
@@ -280,9 +281,17 @@ func seedAll(ctx context.Context, q *dbgen.Queries, userID string) error {
 		},
 	}
 	for _, spec := range noteSpecs {
+		contentDocument, plaintext, err := notecontent.EncodePlainText(httpapi.NoteContentPlainText{
+			Format: httpapi.PlainText,
+			Text:   spec.content,
+		})
+		if err != nil {
+			return fmt.Errorf("编码笔记 %s 失败：%w", spec.title, err)
+		}
 		if _, err := q.CreateNote(ctx, dbgen.CreateNoteParams{
 			ID: idgen.New(idgen.PrefixNote), UserID: userID,
-			Title: spec.title, Content: spec.content,
+			NoteKind: "general", Title: spec.title,
+			Content: plaintext, ContentDocument: contentDocument,
 			Attachments: emptyArray, Tags: spec.tags,
 			CreatedBy: "user", ProvenanceRefs: emptyArray,
 		}); err != nil {
@@ -360,6 +369,7 @@ func seedAll(ctx context.Context, q *dbgen.Queries, userID string) error {
 }
 
 var emptyArray = []byte("[]")
+var emptyObject = []byte("{}")
 
 func strPtr(v string) *string { return &v }
 

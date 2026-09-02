@@ -1,5 +1,6 @@
 import {
   useGetTracker,
+  useListTaskLists,
   useListTrackers,
   type CaptureCandidate,
   type CaptureDraftPayload,
@@ -19,11 +20,16 @@ export function CaptureCandidateEditor({
   onChange: (payload: CaptureDraftPayload) => void;
   payload: CaptureDraftPayload;
 }) {
+  const taskLists = useListTaskLists({ list_kind: 'tasks' }, {
+    query: { enabled: candidate.candidate_type === 'task' },
+  });
   const setField = (field: string, value: unknown) => {
     onChange(updateCandidateField(payload, candidate.candidate_type, field, value));
   };
 
   if (candidate.candidate_type === 'task' && payload.task) {
+    const availableLists = (taskLists.data?.data ?? []).filter((list) => !list.archived_at);
+    const listMatched = availableLists.some((list) => list.id === payload.task?.list_id);
     return (
       <View style={styles.editor}>
         <EditorField label="标题" onChangeText={(value) => setField('title', value)} value={payload.task.title} />
@@ -46,6 +52,19 @@ export function CaptureCandidateEditor({
             placeholder="ISO 时间，例如 2026-09-02T15:00:00+08:00"
             value={payload.task.due_at ?? ''}
           />
+        ) : null}
+        {availableLists.length > 0 ? (
+          <>
+            <ChoiceField
+              label="所属清单"
+              onSelect={(value) => setField('list_id', value)}
+              options={availableLists.map((list) => ({ label: list.name, value: list.id }))}
+              value={payload.task.list_id ?? ''}
+            />
+            {payload.task.list_id && !listMatched ? (
+              <Text style={styles.blockedCopy}>AI 没有匹配到有效清单，请重新选择。</Text>
+            ) : null}
+          </>
         ) : null}
       </View>
     );

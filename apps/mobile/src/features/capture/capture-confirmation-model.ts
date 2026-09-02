@@ -8,7 +8,12 @@ import type {
 type DraftObject = Record<string, unknown>;
 
 export function cloneCapturePayload(payload: CaptureDraftPayload): CaptureDraftPayload {
-  return JSON.parse(JSON.stringify(payload)) as CaptureDraftPayload;
+  const next = JSON.parse(JSON.stringify(payload)) as CaptureDraftPayload;
+  // 精确截止时刻已经包含日期；模型若同时给出两者，提交前保留更精确的 due_at。
+  if (next.task?.due_at && next.task.due_date) {
+    next.task.due_date = null;
+  }
+  return next;
 }
 
 export function initialCandidateSelection(candidates: CaptureCandidate[]): Record<string, boolean> {
@@ -25,6 +30,12 @@ export function updateCandidateField(
   const object = draftObject(next, candidateType);
   if (!object) return next;
   writePath(object, field, value === '' ? null : value);
+  if (candidateType === 'task' && field === 'due_at' && hasMeaningfulValue(value)) {
+    writePath(object, 'due_date', null);
+  }
+  if (candidateType === 'task' && field === 'due_date' && hasMeaningfulValue(value)) {
+    writePath(object, 'due_at', null);
+  }
   return next;
 }
 

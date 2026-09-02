@@ -26,6 +26,7 @@ import (
 const seedTimezone = "Asia/Shanghai"
 
 var emptyArray = []byte(`[]`)
+var emptyObject = []byte(`{}`)
 
 type calendarEventSpec struct {
 	day               int
@@ -318,7 +319,8 @@ func newSeedEventParams(
 	params := dbgen.CreateEventParams{
 		ID: idgen.New(idgen.PrefixEvent), UserID: userID,
 		Title: spec.title, EventKind: spec.eventKind, Timezone: seedTimezone,
-		Participants: emptyArray, Reminders: emptyArray, Recurrence: spec.recurrence,
+		ItineraryDetails: emptyObject, Participants: emptyArray,
+		Reminders: emptyArray, Recurrence: spec.recurrence,
 		CreatedBy: "user", ProvenanceRefs: emptyArray,
 	}
 	if spec.eventKind == "important_date" {

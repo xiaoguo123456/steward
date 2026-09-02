@@ -10,9 +10,10 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -83,19 +84,19 @@ export default function MoodJournalDetailScreen() {
     }
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!entry) return;
-    Alert.alert('删除这篇日记？', '删除后无法恢复。', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: () => void deleteMoodJournalEntry(entry.id)
-          .then(() => queryClient.invalidateQueries())
-          .then(() => router.back())
-          .catch((error) => setFailure(errorMessage(error, '删除没有完成。'))),
-      },
-    ]);
+    const confirmed = await confirmAction({
+      title: '删除这篇日记？',
+      message: '删除后无法恢复。',
+      confirmLabel: '删除',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    await deleteMoodJournalEntry(entry.id)
+      .then(() => queryClient.invalidateQueries())
+      .then(() => router.back())
+      .catch((error) => setFailure(errorMessage(error, '删除没有完成。')));
   };
 
   if (query.isPending) {

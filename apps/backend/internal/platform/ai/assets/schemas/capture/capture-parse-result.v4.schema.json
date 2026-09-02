@@ -110,6 +110,11 @@
           "description": "只有日期没有时刻的截止日；不得擅自补成当天 23:59。"
         },
         "due_at": { "type": "string", "format": "date-time" },
+        "list_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "用户明确指定的已有任务清单稳定 ID；不得填写清单名称。"
+        },
         "all_day": { "type": "boolean" },
         "start_at": { "type": "string", "format": "date-time" },
         "end_at": { "type": "string", "format": "date-time" },

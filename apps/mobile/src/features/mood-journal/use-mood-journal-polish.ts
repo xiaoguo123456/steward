@@ -6,7 +6,8 @@ import {
   updateAiSettings,
 } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { Alert } from 'react-native';
+
+import { confirmAction } from '@/components/ui/confirm-action';
 
 import type { MoodEditorValue } from './mood-editor';
 import type { MoodJournalPolishCandidate } from './mood-journal-polish';
@@ -45,15 +46,11 @@ export function useMoodJournalPolish() {
 }
 
 function requestMoodJournalAiConsent(): Promise<boolean> {
-  return new Promise((resolve) => {
-    Alert.alert(
-      '允许 AI 排版润色？',
-      '只会发送当前这篇日记的正文和排版结构，不发送心情、精力、其他日记或长期偏好。结果只回到草稿，仍需你点击“完成”才会保存；之后可随时在 AI 设置中关闭。',
-      [
-        { text: '暂不使用', style: 'cancel', onPress: () => resolve(false) },
-        { text: '同意并继续', onPress: () => resolve(true) },
-      ],
-      { cancelable: true, onDismiss: () => resolve(false) },
-    );
+  const message = '只会发送当前这篇日记的正文和排版结构，不发送心情、精力、其他日记或长期偏好。结果只回到草稿，仍需你点击“完成”才会保存；之后可随时在 AI 设置中关闭。';
+  return confirmAction({
+    title: '允许 AI 排版润色？',
+    message,
+    cancelLabel: '暂不使用',
+    confirmLabel: '同意并继续',
   });
 }

@@ -12,7 +12,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +22,7 @@ import {
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { useToast } from '@/components/ui/toast';
@@ -76,40 +76,35 @@ export default function MemoryDetailScreen() {
   const date = formatMemoryDateParts(moment.date);
   const photoWidth = Math.max(280, width - 32);
 
-  const confirmDelete = () => {
-    Alert.alert(
-      '删除这段时光？',
-      `${date.full}的 ${moment.photos.length} 张服务端照片副本将一并删除，不会影响系统相册中的原文件。删除后无法恢复。`,
-      [
-        { text: '保留时光', style: 'cancel' },
-        {
-          text: '删除这段时光',
-          style: 'destructive',
-          onPress: () => {
-            setDeleting(true);
-            deleteKeyRef.current ??= newIdempotencyKey();
-            void deleteMemoryMoment(moment.id, {
-              headers: { 'Idempotency-Key': deleteKeyRef.current },
-            })
-              .then(async () => {
-                queryClient.removeQueries({
-                  queryKey: getGetMemoryMomentQueryKey(moment.id),
-                  exact: true,
-                });
-                await queryClient.invalidateQueries({
-                  queryKey: getListMemoryMomentsQueryKey(),
-                });
-              })
-              .then(() => {
-                showToast('时光已删除');
-                router.back();
-              })
-              .catch((error) => showToast(errorMessage(error, '删除没有完成，请稍后重试。')))
-              .finally(() => setDeleting(false));
-          },
-        },
-      ],
-    );
+  const confirmDelete = async () => {
+    const confirmed = await confirmAction({
+      title: '删除这段时光？',
+      message: `${date.full}的 ${moment.photos.length} 张服务端照片副本将一并删除，不会影响系统相册中的原文件。删除后无法恢复。`,
+      confirmLabel: '删除这段时光',
+      cancelLabel: '保留时光',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    setDeleting(true);
+    deleteKeyRef.current ??= newIdempotencyKey();
+    await deleteMemoryMoment(moment.id, {
+      headers: { 'Idempotency-Key': deleteKeyRef.current },
+    })
+      .then(async () => {
+        queryClient.removeQueries({
+          queryKey: getGetMemoryMomentQueryKey(moment.id),
+          exact: true,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: getListMemoryMomentsQueryKey(),
+        });
+      })
+      .then(() => {
+        showToast('时光已删除');
+        router.back();
+      })
+      .catch((error) => showToast(errorMessage(error, '删除没有完成，请稍后重试。')))
+      .finally(() => setDeleting(false));
   };
 
   return (

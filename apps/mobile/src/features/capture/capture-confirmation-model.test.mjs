@@ -3,11 +3,28 @@ import test from 'node:test';
 
 import {
   applyConflictChoice,
+  cloneCapturePayload,
   initialCandidateSelection,
   unresolvedCandidateFields,
   updateCandidateField,
   updateRecordCandidateValue,
 } from './capture-confirmation-model.ts';
+
+test('精确截止时间与截止日期互斥，提交时保留更精确的时间', () => {
+  const source = {
+    task: {
+      title: '提交季度报告',
+      due_date: '2026-09-04',
+      due_at: '2026-09-04T18:00:00+08:00',
+    },
+  };
+  assert.equal(cloneCapturePayload(source).task.due_date, null);
+
+  const dateOnly = updateCandidateField(source, 'task', 'due_date', '2026-09-05');
+  assert.equal(dateOnly.task.due_at, null);
+  const precise = updateCandidateField(dateOnly, 'task', 'due_at', '2026-09-05T17:00:00+08:00');
+  assert.equal(precise.task.due_date, null);
+});
 
 test('服务端未默认勾选的候选仍可由用户主动选择', () => {
   const selection = initialCandidateSelection([

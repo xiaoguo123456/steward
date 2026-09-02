@@ -8,7 +8,6 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
-  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
 } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { useToast } from '@/components/ui/toast';
@@ -180,15 +180,14 @@ export function TaskListActionSheet({
     }
   };
 
-  const requestDelete = () => {
-    Alert.alert(
-      '删除清单？',
-      '其中的任务会移至默认清单，删除后无法恢复。',
-      [
-        { text: '取消', style: 'cancel' },
-        { text: '删除', style: 'destructive', onPress: () => void remove() },
-      ],
-    );
+  const requestDelete = async () => {
+    const confirmed = await confirmAction({
+      title: '删除清单？',
+      message: '其中的任务会移至默认清单，删除后无法恢复。',
+      confirmLabel: '删除',
+      destructive: true,
+    });
+    if (confirmed) await remove();
   };
 
   const identityChanged = name.trim() !== list.name

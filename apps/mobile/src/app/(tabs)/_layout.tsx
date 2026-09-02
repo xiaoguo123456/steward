@@ -154,6 +154,7 @@ export default function TabsLayout() {
           const {
             android_ripple: androidRipple,
             children,
+            href,
             hoverEffect,
             pressOpacity,
             ref: buttonRef,
@@ -162,6 +163,9 @@ export default function TabsLayout() {
           } = props;
 
           void androidRipple;
+          // React Navigation 的默认 Web 按钮会拦截 href 并改走客户端导航；
+          // 自定义 Pressable 直接透传 href 会触发整页刷新，内存会话随之丢失。
+          void href;
           void hoverEffect;
           void pressOpacity;
           void buttonRef;

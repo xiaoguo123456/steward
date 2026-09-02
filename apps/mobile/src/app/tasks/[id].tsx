@@ -13,7 +13,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +22,7 @@ import {
 } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -87,15 +87,19 @@ export default function TaskDetailScreen() {
     );
   };
 
-  const removeTask = () => {
+  const removeTask = async () => {
     if (!task) return;
-    Alert.alert('删除任务？', '删除后不可撤销，相关页面也将不再显示这条任务。', [
-      { text: '取消', style: 'cancel' },
-      { text: '删除', style: 'destructive', onPress: () => void runAction(async () => {
-        await deleteTask(task.id);
-        router.back();
-      }) },
-    ]);
+    const confirmed = await confirmAction({
+      title: '删除任务？',
+      message: '删除后不可撤销，相关页面也将不再显示这条任务。',
+      confirmLabel: '删除',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    await runAction(async () => {
+      await deleteTask(task.id);
+      router.back();
+    });
   };
 
   if (taskQuery.isPending) {

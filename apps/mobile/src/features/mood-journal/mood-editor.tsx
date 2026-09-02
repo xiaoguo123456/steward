@@ -4,7 +4,6 @@ import type {
   NoteBlock,
   NoteContentBlocksV1,
 } from '@steward/api-client';
-import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -31,6 +30,7 @@ import {
   canPolishMoodJournal,
   type MoodJournalPolishCandidate,
 } from './mood-journal-polish';
+import { deleteMoodDraft, readMoodDraft, writeMoodDraft } from './mood-draft-storage';
 import { blocksPlaintext, compactMoodJournalDraft, createBlocksDocument, moodOptions } from './model';
 
 const emotionSuggestions = ['松弛', '笃定', '疲惫', '期待', '安心', '烦躁', '感激', '孤单'];
@@ -99,7 +99,7 @@ export function MoodEditor({
   useEffect(() => {
     if (!draftKey) return;
     let active = true;
-    void SecureStore.getItemAsync(draftKey).then((raw) => {
+    void readMoodDraft(draftKey).then((raw) => {
       if (!active) return;
       if (!raw || initial) {
         setDraftReady(true);
@@ -135,7 +135,7 @@ export function MoodEditor({
     if (!draftKey || !draftReady || busy) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void SecureStore.setItemAsync(draftKey, JSON.stringify({
+      void writeMoodDraft(draftKey, JSON.stringify({
         title, content, moodLevel, energyLevel, emotionWords, contextWords,
         excludeFromAi, includeInMemories, polishActionId,
       }));
@@ -151,7 +151,7 @@ export function MoodEditor({
       title, content, moodLevel, energyLevel, emotionWords, contextWords,
       excludeFromAi, includeInMemories, polishActionId,
     });
-    if (succeeded && draftKey) await SecureStore.deleteItemAsync(draftKey);
+    if (succeeded && draftKey) await deleteMoodDraft(draftKey);
   };
 
   const updateBlock = (id: string, patch: Partial<NoteBlock>) => {

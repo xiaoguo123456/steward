@@ -12,10 +12,11 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { NavHeader } from '@/components/ui/nav-header';
 import {
   ChoiceChips,
@@ -81,27 +82,25 @@ function EditPersonForm({ person }: { person: Person }) {
     }
   };
 
-  const confirmDelete = () => {
-    Alert.alert('删除这位亲友？', '互动记录和人物关联会一起删除，已有日程仍会保留。', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: () => {
-          deleteKeyRef.current ??= newIdempotencyKey();
-          setSaving(true);
-          void deletePerson(person.id, { headers: { 'Idempotency-Key': deleteKeyRef.current } })
-            .then(async () => {
-              queryClient.removeQueries({ queryKey: getGetPersonQueryKey(person.id), exact: true });
-              await queryClient.invalidateQueries({ queryKey: getListPeopleQueryKey() });
-              router.dismissAll();
-              router.replace({ pathname: '/(tabs)/today', params: { homeTab: 'relationships' } });
-            })
-            .catch((error) => setFailure(errorMessage(error, '没有删除成功，请稍后重试。')))
-            .finally(() => setSaving(false));
-        },
-      },
-    ]);
+  const confirmDelete = async () => {
+    const confirmed = await confirmAction({
+      title: '删除这位亲友？',
+      message: '互动记录和人物关联会一起删除，已有日程仍会保留。',
+      confirmLabel: '删除',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    deleteKeyRef.current ??= newIdempotencyKey();
+    setSaving(true);
+    await deletePerson(person.id, { headers: { 'Idempotency-Key': deleteKeyRef.current } })
+      .then(async () => {
+        queryClient.removeQueries({ queryKey: getGetPersonQueryKey(person.id), exact: true });
+        await queryClient.invalidateQueries({ queryKey: getListPeopleQueryKey() });
+        router.dismissAll();
+        router.replace({ pathname: '/(tabs)/today', params: { homeTab: 'relationships' } });
+      })
+      .catch((error) => setFailure(errorMessage(error, '没有删除成功，请稍后重试。')))
+      .finally(() => setSaving(false));
   };
 
   return (

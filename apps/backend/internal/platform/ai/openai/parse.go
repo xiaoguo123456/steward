@@ -135,6 +135,7 @@ type rawResult struct {
 		Priority              string               `json:"priority"`
 		DueDate               string               `json:"due_date"`
 		DueAt                 string               `json:"due_at"`
+		ListID                string               `json:"list_id"`
 		AllDay                bool                 `json:"all_day"`
 		StartAt               string               `json:"start_at"`
 		EndAt                 string               `json:"end_at"`
@@ -248,10 +249,11 @@ func buildUserPrompt(req ai.CaptureParseRequest) string {
 		b.WriteString("\n已有清单：")
 		names := make([]string, 0, len(req.Lists))
 		for _, l := range req.Lists {
-			label := l.Name
+			label := fmt.Sprintf("%s（ID：%s", l.Name, l.ID)
 			if l.IsDefault {
-				label += "（默认）"
+				label += "，默认"
 			}
+			label += "）"
 			names = append(names, label)
 		}
 		b.WriteString(strings.Join(names, "、") + "\n")
@@ -338,6 +340,7 @@ func mapToNeutral(parsed rawResult, req ai.CaptureParseRequest) ai.CaptureParseR
 			ProjectKind:           c.ProjectKind,
 			Destination:           strings.TrimSpace(c.Destination),
 			Priority:              c.Priority,
+			ListID:                strings.TrimSpace(c.ListID),
 			AllDay:                c.AllDay,
 			EventKind:             c.EventKind,
 			Location:              strings.TrimSpace(c.Location),

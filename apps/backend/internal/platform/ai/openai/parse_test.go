@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -115,6 +116,38 @@ func TestMapToNeutralKeepsTripFields(t *testing.T) {
 	}
 	if candidate.StartDate == nil || candidate.TargetDate == nil {
 		t.Fatalf("行程日期丢失：start=%v target=%v", candidate.StartDate, candidate.TargetDate)
+	}
+}
+
+func TestCaptureParseKeepsExplicitTaskListID(t *testing.T) {
+	validator, err := captureParseSchema()
+	if err != nil {
+		t.Fatalf("加载 Schema 失败：%v", err)
+	}
+	parsed, err := decodeAndValidate(`{
+		"candidates": [{
+			"type": "task",
+			"action": "create",
+			"title": "提交季度报告",
+			"list_id": "tls_work",
+			"sources": [{"part_id": "part_1"}]
+		}]
+	}`, validator)
+	if err != nil {
+		t.Fatalf("带清单 ID 的任务候选不应被拒绝：%v", err)
+	}
+	result := mapToNeutral(parsed, ai.CaptureParseRequest{
+		Parts: []ai.InputPart{{ID: "part_1", Kind: ai.PartText, Text: "归到工作清单"}},
+	})
+	if len(result.Candidates) != 1 || result.Candidates[0].ListID != "tls_work" {
+		t.Fatalf("任务清单 ID 映射不完整：%+v", result.Candidates)
+	}
+
+	prompt := buildUserPrompt(ai.CaptureParseRequest{
+		Lists: []ai.ListRef{{ID: "tls_work", Name: "工作", IsDefault: false}},
+	})
+	if !strings.Contains(prompt, "工作（ID：tls_work）") {
+		t.Fatalf("已有清单上下文必须包含稳定 ID：%s", prompt)
 	}
 }
 

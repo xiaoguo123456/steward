@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
 
 import { moodColors } from '@/theme/tokens';
@@ -48,7 +49,7 @@ export function MoodField({ seeds, height = 190, compact = false, onSelect }: Mo
         return (
           <Circle
             accessibilityLabel={onSelect ? `打开第 ${index + 1} 篇日记` : undefined}
-            accessible={Boolean(onSelect)}
+            accessible={Platform.OS === 'web' ? undefined : Boolean(onSelect)}
             cx={x}
             cy={y}
             fill={index % 3 === 0 ? moodColors.accent : moodColors.atmosphere}

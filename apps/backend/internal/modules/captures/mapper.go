@@ -18,7 +18,7 @@ import (
 func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
 	sourceMedia map[string]string, trackers []ai.TrackerRef) ([]byte, []string, error) {
 	var payload httpapi.CaptureDraftPayload
-	missing := append([]string(nil), c.Missing...)
+	missing := normalizeMissingFields(c.Type, c.Missing)
 
 	switch c.Type {
 	case "task":
@@ -37,7 +37,9 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
 			p := httpapi.TaskPriority(c.Priority)
 			draft.Priority = &p
 		}
-		if c.DueDate != nil {
+		// 精确截止时刻已经包含日期。模型偶尔会同时返回 due_date 与 due_at，
+		// 在进入领域层前确定性归一化，避免确认页看似可保存却被互斥校验挡住。
+		if c.DueDate != nil && c.DueAt == nil {
 			draft.DueDate = &openapi_types.Date{Time: *c.DueDate}
 		}
 		draft.DueAt = c.DueAt
@@ -295,6 +297,54 @@ func appendMissing(fields []string, field string) []string {
 		}
 	}
 	return append(fields, field)
+}
+
+// normalizeMissingFields 把模型可能返回的展示文案收敛为确认页可编辑的契约字段。
+// 未知字段不能直接进入 missing，否则用户会看到一个永远无法补全的确认门禁。
+func normalizeMissingFields(candidateType string, fields []string) []string {
+	if candidateType == "record" {
+		out := make([]string, 0, len(fields))
+		for _, field := range fields {
+			field = strings.TrimSpace(field)
+			if field != "" {
+				out = appendMissing(out, field)
+			}
+		}
+		return out
+	}
+
+	aliases := map[string]string{
+		"处理内容": "title", "任务内容": "title", "具体内容": "title",
+		"具体截止日期": "due_date", "截止日期": "due_date",
+		"具体截止时间": "due_at", "截止时间": "due_at",
+	}
+	allowed := map[string]map[string]struct{}{
+		"task":    fieldSet("title", "description", "due_date", "due_at", "date", "time", "list_id"),
+		"event":   fieldSet("title", "start_date", "end_date", "start_at", "end_at", "location", "date", "time", "project_ref", "itinerary_details.kind", "itinerary_details.booking_status", "itinerary_details.transport_mode", "itinerary_details.origin", "itinerary_details.destination"),
+		"project": fieldSet("title", "destination", "start_date", "target_date"),
+		"note":    fieldSet("content", "title"),
+		"tracker": fieldSet("name", "fields"),
+	}
+
+	out := make([]string, 0, len(fields))
+	for _, raw := range fields {
+		field := strings.TrimSpace(raw)
+		if alias := aliases[field]; alias != "" {
+			field = alias
+		}
+		if _, ok := allowed[candidateType][field]; ok {
+			out = appendMissing(out, field)
+		}
+	}
+	return out
+}
+
+func fieldSet(fields ...string) map[string]struct{} {
+	out := make(map[string]struct{}, len(fields))
+	for _, field := range fields {
+		out[field] = struct{}{}
+	}
+	return out
 }
 
 func mapConfidences(in []ai.Confidence) []httpapi.CaptureFieldConfidence {

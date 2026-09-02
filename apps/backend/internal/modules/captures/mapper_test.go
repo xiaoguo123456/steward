@@ -151,3 +151,49 @@ func TestBuildPayloadMarksMissingRequiredRecordFields(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildPayloadPrefersPreciseTaskDueAt(t *testing.T) {
+	loc := time.FixedZone("CST", 8*60*60)
+	dueDate := time.Date(2026, 9, 4, 0, 0, 0, 0, loc)
+	dueAt := time.Date(2026, 9, 4, 18, 0, 0, 0, loc)
+
+	raw, missing, err := buildPayload(ai.CandidateDraft{
+		Type: "task", Title: "提交季度报告", DueDate: &dueDate, DueAt: &dueAt,
+	}, "tls_work", loc, nil, nil)
+	if err != nil {
+		t.Fatalf("映射失败：%v", err)
+	}
+	if len(missing) != 0 {
+		t.Fatalf("完整任务不应缺少字段：%v", missing)
+	}
+	payload := decodePayload(raw)
+	if payload.Task == nil || payload.Task.DueAt == nil {
+		t.Fatal("应保留精确截止时刻")
+	}
+	if payload.Task.DueDate != nil {
+		t.Fatal("due_at 存在时不应同时保留 due_date")
+	}
+}
+
+func TestBuildPayloadNormalizesEditableMissingFields(t *testing.T) {
+	loc := time.FixedZone("CST", 8*60*60)
+	_, missing, err := buildPayload(ai.CandidateDraft{
+		Type: "task", Title: "处理一下",
+		Missing: []string{"处理内容", "具体截止日期", "无法编辑的说明"},
+	}, "tls_default", loc, nil, nil)
+	if err != nil {
+		t.Fatalf("映射失败：%v", err)
+	}
+	want := map[string]bool{"title": false, "due_date": false}
+	for _, field := range missing {
+		if _, ok := want[field]; !ok {
+			t.Fatalf("不应保留确认页无法编辑的缺失字段 %q：%v", field, missing)
+		}
+		want[field] = true
+	}
+	for field, found := range want {
+		if !found {
+			t.Errorf("应保留规范字段 %s，实际 %v", field, missing)
+		}
+	}
+}

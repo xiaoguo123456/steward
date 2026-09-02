@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
+import { confirmAction } from '@/components/ui/confirm-action';
 import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -50,6 +51,14 @@ export default function NoteDetailScreen() {
 
   const remove = async () => {
     if (!note) return;
+    const confirmed = await confirmAction({
+      title: '删除这篇笔记？',
+      message: '删除后无法恢复。',
+      cancelLabel: '保留笔记',
+      confirmLabel: '删除',
+      destructive: true,
+    });
+    if (!confirmed) return;
     setError(null);
     try {
       await deleteNote(note.id);
