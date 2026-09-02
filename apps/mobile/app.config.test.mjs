@@ -6,16 +6,39 @@ import { resolveAppName, resolveUpdateConfig } from './app.config.ts';
 
 const projectId = '123e4567-e89b-42d3-a456-426614174000';
 
+function readPngInfo(relativePath) {
+  const data = readFileSync(new URL(relativePath, import.meta.url));
+  assert.equal(data.subarray(1, 4).toString('ascii'), 'PNG', `${relativePath} 必须是 PNG`);
+  return {
+    width: data.readUInt32BE(16),
+    height: data.readUInt32BE(20),
+    colorType: data[25],
+  };
+}
+
 test('原生配置声明应用锁、面容识别用途并统一移动端版本', () => {
   const app = JSON.parse(readFileSync(new URL('./app.json', import.meta.url), 'utf8'));
   const mobilePackage = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
   const plugin = app.expo.plugins.find((item) => Array.isArray(item) && item[0] === 'expo-local-authentication');
+  const icon = readPngInfo('./assets/images/icon.png');
+  const foreground = readPngInfo('./assets/images/android-icon-foreground.png');
+  const monochrome = readPngInfo('./assets/images/android-icon-monochrome.png');
+  const storeIcon = readPngInfo('./assets/store/google-play-icon.png');
+  const iconComposer = JSON.parse(
+    readFileSync(new URL('./assets/expo.icon/icon.json', import.meta.url), 'utf8'),
+  );
 
   assert.ok(plugin, '必须注册 expo-local-authentication Config Plugin');
   assert.match(plugin[1].faceIDPermission, /解锁/);
   assert.equal(app.expo.name, '序事');
   assert.equal(resolveAppName('production', app.expo.name), '序事');
   assert.equal(resolveAppName('test', app.expo.name), '序事测试');
+  assert.deepEqual(icon, { width: 1024, height: 1024, colorType: 2 });
+  assert.deepEqual(foreground, { width: 1024, height: 1024, colorType: 6 });
+  assert.deepEqual(monochrome, { width: 1024, height: 1024, colorType: 6 });
+  assert.deepEqual(storeIcon, { width: 512, height: 512, colorType: 2 });
+  assert.equal(iconComposer.groups[0].layers[0]['image-name'], 'sequence-path.png');
+  assert.equal(app.expo.android.adaptiveIcon.backgroundColor, '#FCFCFA');
   assert.equal(app.expo.version, '1.0.0');
   assert.equal(app.expo.version, mobilePackage.version, 'Expo App 版本必须与移动端包版本一致');
   assert.equal(app.expo.android.versionCode, 2);

@@ -7,7 +7,7 @@
 | 文档类型 | 移动端工程说明 |
 | 适用范围 | `apps/mobile` |
 | 当前状态 | 维护中 |
-| 更新日期 | 2026-08-30 |
+| 更新日期 | 2026-09-02 |
 
 本目录是基于 Expo SDK 57、React Native 0.86、React 19 与 Expo Router 的移动端应用。全局功能进度只在 [实现状态](../../docs/实现状态.md) 维护；本页说明移动端工程边界和开发方式，不重复逐页需求。
 
@@ -58,6 +58,12 @@ pnpm --filter mobile lint
 pnpm --filter mobile typecheck
 pnpm --filter mobile test
 pnpm --filter mobile test:h5
+```
+
+修改 `assets/brand` 中的高分辨率 PNG 母版后，使用下面的命令重新生成构建与商店使用的各尺寸 PNG；本机需要安装 ImageMagick：
+
+```bash
+pnpm --filter mobile run brand:render
 ```
 
 `test:h5` 用于测试环境结构检查；`test:h5:production` 在占位信息未补齐时应当失败。生产 Web、APK 和 OTA 工作流均会执行生产门禁。

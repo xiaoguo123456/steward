@@ -14,7 +14,7 @@
       "package": "com.aisteward.mobile",
       "versionCode": 2,
       "adaptiveIcon": {
-        "backgroundColor": "#ECFBF3",
+        "backgroundColor": "#FCFCFA",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -37,9 +37,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#10B981",
+          "backgroundColor": "#FCFCFA",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 72
+          "imageWidth": 88
         }
       ],
       [

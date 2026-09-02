@@ -63,6 +63,7 @@
     "web": "EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL:-http://localhost:8787} expo start --web",
     "lint": "expo lint",
     "preview:web": "node scripts/serve-preview.mjs --host 0.0.0.0 --port 4174 --dir dist",
+    "brand:render": "bash scripts/render-brand-assets.sh",
     "test": "pnpm run test:config && pnpm run test:app-lock && pnpm run test:life-regression && pnpm run test:important-dates && pnpm run test:notifications && pnpm run test:review && pnpm run test:recipes && pnpm run test:trips && pnpm run test:workouts && pnpm run test:assistant && pnpm run test:calendar && pnpm run test:memories && pnpm run test:mood-journal && pnpm run test:notes && pnpm run test:plan && pnpm run test:trackers && pnpm run test:ui && pnpm run test:auth",
     "test:app-lock": "node --experimental-strip-types --test src/features/app-lock/model.test.mjs",
     "test:life-regression": "node --test src/features/life-regression.test.mjs",
