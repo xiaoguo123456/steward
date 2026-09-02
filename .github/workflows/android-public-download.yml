@@ -1,0 +1,181 @@
+name: 发布 Android 公共下载
+run-name: 公共下载 ${{ github.event.release.tag_name || inputs.release_tag }} · ${{ github.actor }}
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "要公开同步的正式 Android Release Tag，例如 android-v1.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steward-android-public-download
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: 同步正式 APK 到生产下载地址
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+    steps:
+      - name: 检出当前生产下载配置
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: 校验 Release 并下载产物
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$(printf '%s' "$RELEASE_TAG" | tr '[:upper:]' '[:lower:]')"
+          if [[ ! "$tag" =~ ^android-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-z]+([.-][0-9a-z]+)*)?$ ]]; then
+            echo "Release Tag 格式错误：$RELEASE_TAG" >&2
+            exit 1
+          fi
+          if [ "$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease --jq '.isDraft or .isPrerelease')" != "false" ]; then
+            echo "只允许同步已发布且非预发布的正式 Release：$tag" >&2
+            exit 1
+          fi
+
+          mkdir -p output/public-download
+          gh release download "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.apk' \
+            --pattern '*.apk.sha256' \
+            --dir output/public-download
+
+          shopt -s nullglob
+          apk_files=(output/public-download/*.apk)
+          checksum_files=(output/public-download/*.apk.sha256)
+          if [ "${#apk_files[@]}" -ne 1 ] || [ "${#checksum_files[@]}" -ne 1 ]; then
+            echo "正式 Release 必须且只能包含一个 APK 和对应的 SHA256 文件" >&2
+            exit 1
+          fi
+
+          apk_name="$(basename "${apk_files[0]}")"
+          checksum_name="$(basename "${checksum_files[0]}")"
+          if [[ ! "$apk_name" =~ ^[A-Za-z0-9._-]+\.apk$ ]]; then
+            echo "APK 文件名包含公共下载入口不允许的字符：$apk_name" >&2
+            exit 1
+          fi
+          if [ "$checksum_name" != "$apk_name.sha256" ]; then
+            echo "SHA256 文件名与 APK 不匹配" >&2
+            exit 1
+          fi
+          (cd output/public-download && sha256sum --check "$checksum_name")
+
+          echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "apk_name=$apk_name" >> "$GITHUB_OUTPUT"
+
+      - name: 备份生产下载入口配置
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -eu
+            cd /opt/steward-prod
+            mkdir -p .public-download-backup downloads
+            cp docker-compose.prod.yml .public-download-backup/docker-compose.prod.yml
+            cp deploy/nginx.conf .public-download-backup/nginx.conf
+
+      - name: 同步生产下载入口配置
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          source: "docker-compose.prod.yml,deploy/nginx.conf"
+          target: /opt/steward-prod
+          overwrite: true
+
+      - name: 上传 APK 与校验文件到生产服务器
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          source: "output/public-download/*.apk,output/public-download/*.apk.sha256"
+          target: /opt/steward-prod/downloads
+          strip_components: 2
+          overwrite: true
+
+      - name: 校验文件并增量启用下载入口
+        uses: appleboy/ssh-action@v1
+        env:
+          APK_NAME: ${{ steps.release.outputs.apk_name }}
+          ACR_PULL_REGISTRY: ${{ secrets.ACR_PULL_REGISTRY }}
+          ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          envs: APK_NAME,ACR_PULL_REGISTRY,ACR_NAMESPACE
+          script: |
+            set -eu
+            cd /opt/steward-prod
+            export ACR_REGISTRY="$ACR_PULL_REGISTRY"
+            export ACR_NAMESPACE
+            compose="docker compose --project-name steward-prod -f docker-compose.prod.yml"
+
+            rollback() {
+              cp .public-download-backup/docker-compose.prod.yml docker-compose.prod.yml
+              cp .public-download-backup/nginx.conf deploy/nginx.conf
+              $compose up -d --no-deps --force-recreate nginx || true
+            }
+            trap rollback EXIT
+
+            download_dir=/opt/steward-prod/downloads
+            test -f "$download_dir/$APK_NAME"
+            test -f "$download_dir/$APK_NAME.sha256"
+            chmod 0644 "$download_dir/$APK_NAME" "$download_dir/$APK_NAME.sha256"
+            cd "$download_dir"
+            sha256sum --check "$APK_NAME.sha256"
+
+            cd /opt/steward-prod
+            $compose run --rm --no-deps nginx nginx -t
+            $compose up -d --no-deps --force-recreate nginx
+
+            ready=0
+            for i in $(seq 1 12); do
+              if curl -fsSI http://127.0.0.1:8088/healthz >/dev/null \
+                && curl -fsSI "http://127.0.0.1:8088/downloads/$APK_NAME" >/dev/null; then
+                ready=1
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+            trap - EXIT
+
+      - name: 验证公开下载地址
+        env:
+          APK_NAME: ${{ steps.release.outputs.apk_name }}
+        run: |
+          set -euo pipefail
+          apk_url="https://steward.qhzhiyin.com/downloads/$APK_NAME"
+          checksum_url="$apk_url.sha256"
+          curl --fail --silent --show-error --head --retry 6 --retry-delay 5 "$apk_url"
+          curl --fail --silent --show-error --head --retry 6 --retry-delay 5 "$checksum_url"
+          {
+            echo "### Android 公共下载已发布"
+            echo
+            echo "- Release：${{ steps.release.outputs.release_tag }}"
+            echo "- APK：$apk_url"
+            echo "- SHA256：$checksum_url"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -14,6 +14,7 @@ on:
         type: string
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -194,3 +195,13 @@ jobs:
             --target "$RELEASE_SHA" \
             --title "Android $APP_VERSION" \
             --notes "生产环境 Android APK，来源提交：$RELEASE_SHA"
+
+      - name: 发布无需登录的公共下载
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.vars.outputs.release_tag }}
+        run: |
+          gh workflow run android-public-download.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "${{ github.event.repository.default_branch }}" \
+            -f "release_tag=$RELEASE_TAG"
