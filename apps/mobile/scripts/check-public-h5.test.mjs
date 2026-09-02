@@ -22,11 +22,12 @@ test('公开 H5 固定路径完整且测试环境结构校验通过', async () =
   assert.deepEqual(result.blockers, []);
 });
 
-test('占位与 noindex 会阻断生产发布', async () => {
+test('送审门禁与 noindex 会阻断生产发布', async () => {
   const result = await validatePublicH5({ production: true });
   assert.equal(result.errors.length, 0);
   assert.ok(result.blockers.length > 0);
-  assert.ok(result.blockers.some((item) => item.includes('待确认')));
+  assert.ok(result.blockers.some((item) => item.includes('noindex')));
+  assert.ok(result.blockers.some((item) => item.includes('data-release-blocker')));
 });
 
 test('公开页面拒绝脚本、用户 API 与伪删除表单', () => {

@@ -12,12 +12,19 @@
     <header class="site-header"><div class="site-header__inner"><a class="brand" href="../">AI事管家</a><a class="header-link" href="../../support/">帮助与联系</a></div></header>
     <main class="page">
       <p class="eyebrow">Personal Information</p><h1>个人信息收集清单</h1>
-      <p class="lead">清单按真实功能场景维护。未上线、未授权或仅存在于规划中的字段不得提前写成正在收集。</p>
-      <div class="meta"><span>清单版本：<span class="todo">待确认</span></span><span>更新日期：<span class="todo">待确认</span></span></div>
-      <aside class="release-blocker" data-release-blocker="true"><strong>测试内容，禁止生产发布</strong><p>正式保留期限、权限单独同意版本、诊断字段与发行地区适用项仍待确认。</p></aside>
-      <section class="section"><h2>当前功能数据</h2><div class="table-wrap"><table><thead><tr><th>场景</th><th>信息类型</th><th>目的与方式</th><th>保存期限</th></tr></thead><tbody><tr><td>手机号登录</td><td>手机号、验证码校验结果、会话令牌摘要</td><td>验证账号、保持登录与防止滥用</td><td class="todo">待确认</td></tr><tr><td>事务管理</td><td>任务、日程、笔记、项目、记录及用户主动填写的字段</td><td>提供创建、查询、修改、提醒与跨模块展示</td><td class="todo">待确认</td></tr><tr><td>Capture 输入</td><td>用户主动提交的文字、图片、音频、转写、OCR、候选与来源</td><td>生成可编辑候选；确认前不进入正式内容</td><td class="todo">待确认；未完成 Capture 目标策略为 30 天</td></tr><tr><td>AI Assistant</td><td>用户消息、最小上下文、建议、来源引用与运行元数据</td><td>回答问题和生成需确认的 Proposal</td><td class="todo">待确认</td></tr><tr><td>设备与诊断</td><td>App 版本、操作系统、请求与错误标识、性能数据</td><td>安全、故障定位与服务稳定性</td><td class="todo">待确认字段和期限</td></tr></tbody></table></div></section>
-      <section class="section"><h2>权限与敏感信息</h2><p>相机、相册、麦克风、位置等仅在用户主动使用相应功能时请求。应用锁由 iOS 或 Android 的系统身份验证完成，App 只接收验证成功或失败结果，不读取、保存或上传面容、指纹模板。精确位置、媒体和敏感正文发送给第三方 AI 前，需要与实际 Provider 一致的场景告知和单独同意；相关版本号与撤回方式：<span class="todo">待确认并实现</span>。</p></section>
-      <section class="section"><h2>不应收集的内容</h2><p>日志、埋点和测试快照不得包含 Token、验证码、完整原始媒体或不必要的用户正文。服务端按当前用户隔离数据；客户端不得把未确认候选混入正式列表。</p></section>
+      <p class="lead">本清单仅列出当前功能实际需要的信息。关闭某项可选功能后，不再为该功能发起新的处理。</p>
+      <div class="meta"><span>清单版本：1.0</span><span>更新日期：2026 年 9 月 2 日</span></div>
+      <section class="section"><h2>当前功能数据</h2><div class="table-wrap"><table><thead><tr><th>场景</th><th>信息类型</th><th>目的与方式</th><th>保存期限</th></tr></thead><tbody>
+        <tr><td>手机号登录</td><td>手机号、验证码校验结果、会话令牌摘要、登录时间和必要安全标识</td><td>注册登录、保持会话、身份核验和防止滥用</td><td>验证码哈希 5 分钟；Access Token 2 小时；Refresh Token 最长 30 天；账号资料保存至账号删除</td></tr>
+        <tr><td>事务与生活管理</td><td>任务、日程、笔记、清单、项目、打卡、账目、行程、人物关系及用户主动填写的字段</td><td>提供创建、查询、修改、提醒、统计和跨模块展示</td><td>保存至用户删除相应内容或删除账号</td></tr>
+        <tr><td>Capture 输入</td><td>用户主动提交的文字、图片、音频、转写、OCR、候选和来源</td><td>理解本次输入并生成可编辑候选；确认前不进入正式业务列表</td><td>在完成处理、故障恢复和安全审计所需期间保存；用户删除输入或账号时清理</td></tr>
+        <tr><td>AI Assistant</td><td>用户消息、最小上下文、建议、来源引用、Proposal 和运行元数据</td><td>回答问题，生成需用户确认的查询或写入建议</td><td>消息随对应会话保存，直至用户删除会话或账号；未执行建议按状态规则失效</td></tr>
+        <tr><td>媒体与定位</td><td>用户主动选择的图片、音频、相机或相册内容、精确位置和运动路线</td><td>完成媒体识别、记录地点、路线或用户明确发起的相关功能</td><td>保存至用户删除对应内容或账号；系统相册原文件不受影响</td></tr>
+        <tr><td>设备与安全日志</td><td>App 版本、操作系统、IP 地址、请求和错误标识、访问时间、网络与性能数据</td><td>保障安全、限流、防止攻击、定位故障和保持服务稳定</td><td>网络与安全日志依法保存不少于 6 个月；不记录验证码、令牌、完整媒体或不必要的正文</td></tr>
+        <tr><td>账号删除</td><td>删除请求 ID、不可逆账号指纹、请求摘要和状态凭证摘要</td><td>防止重复删除、展示处理状态和满足必要安全审计</td><td>在线数据在删除任务完成时清理；加密备份最长 30 天自然过期；最小不可逆审计按法律要求保存</td></tr>
+      </tbody></table></div></section>
+      <section class="section"><h2>权限与敏感信息</h2><p>相机、相册、麦克风、位置和通知权限仅在你主动使用对应功能时请求；拒绝权限不会影响不依赖该权限的其他功能。应用锁由操作系统完成，本 App 不读取或保存面容、指纹模板。</p><p>精确位置、音频、图片和心情日记等可能包含敏感信息。发送给阿里云百炼前，应用会按具体场景说明处理目的、数据类型和影响；需要单独同意的能力默认关闭。你可以在系统权限设置或 App 的“AI 设置”中撤回授权，撤回后不再发起新的相关处理。</p></section>
+      <section class="section"><h2>不收集或不记录的内容</h2><p>日志、埋点和测试快照不得包含短信验证码、Access Token、Refresh Token、私钥、完整原始媒体或不必要的用户正文。客户端不会把未确认的 AI 候选混入正式业务列表，服务端按当前登录用户隔离数据。</p></section>
     </main>
     <footer class="site-footer"><div class="site-footer__inner"><p><a href="../privacy/">查看隐私政策</a> · <a href="../third-parties/">查看第三方清单</a></p><p>运营主体：琼海绘象图数字科技有限公司</p></div></footer>
   </body>

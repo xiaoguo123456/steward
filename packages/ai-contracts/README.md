@@ -34,9 +34,10 @@ schemas/mood-journal/mood-journal-polish-result.v1.schema.json
 与块文档上限，新增拆分块由服务端生成正式 ID；保存时同样通过 AI Action 保留来源。
 
 心情日记回望契约只用于用户主动选择范围并单独同意后的深度回望，输出为摘要、
-带日记来源的观察、反思问题和温和建议。当前运营主体、Provider 处理地区、保留与
-删除策略尚未确认，因此客户端只开放 Go 确定性统计，真实日记正文不会进入
-Provider；Schema、Prompt 和契约安全 Eval 已先固化。当前 Eval 只确定性检查输入边界、
+带日记来源的观察、反思问题和温和建议。运营主体与目标 Provider 已确定为
+琼海绘象图数字科技有限公司和阿里云百炼；在敏感正文处理的合同登记、真实模型回归与
+部署门禁完成前，客户端只开放 Go 确定性统计，真实日记正文不会进入 Provider。
+Schema、Prompt 和契约安全 Eval 已先固化。当前 Eval 只确定性检查输入边界、
 来源字段、诊断禁令和输出上限，不冒充真实模型质量评测；待合规与 Provider 敏感等级
 门禁完成后，再接正式 Operation、保存确认链路和 Provider 运行时 Eval。
 
