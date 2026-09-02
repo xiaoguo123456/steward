@@ -39,6 +39,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 释放 Android 构建磁盘空间
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          if [ -d "$ANDROID_SDK_ROOT/ndk" ]; then
+            sudo find "$ANDROID_SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 -type d -exec rm -rf -- {} +
+          fi
+          docker system prune --all --force
+          sudo apt-get clean
+          df -h /
+
       - name: 校验并检出 main 中的指定提交
         id: vars
         env:
