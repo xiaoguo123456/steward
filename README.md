@@ -32,6 +32,25 @@ curl -s localhost:8787/healthz
 
 生产环境将公共 API、Worker 和管理 API 作为独立进程运行，具体配置见 [部署说明](./docs/部署说明.md)。
 
+## Expo／EAS 账号与 OTA
+
+Android APK 由 GitHub Actions 自行编译和签名，Expo 账号不参与 APK 构建；Expo 仅用于 EAS Update 的项目身份、测试／生产频道和 OTA 托管。完整安全边界与操作流程见 [ADR-028：移动端 OTA 更新](./docs/ADR-028-移动端OTA更新.md) 和 [部署说明](./docs/部署说明.md)。
+
+| 项目 | 当前配置 |
+|---|---|
+| 登录方式 | 在 [Expo 登录页](https://expo.dev/login) 选择 GitHub 登录；不要在仓库记录 GitHub／Expo 密码 |
+| Expo 个人账号 | `xiaoguo456` |
+| 公司组织标识 | `qionghaihuixiangtu` |
+| 公司组织名称 | 琼海绘象图数字科技有限公司 |
+| Expo Project | `qionghaihuixiangtu/steward` |
+| Expo Project ID | `fcbe4a6d-5cbc-4bad-954b-2079fbdb3bbd` |
+| 项目控制台 | [Expo steward Project](https://expo.dev/accounts/qionghaihuixiangtu/projects/steward) |
+| GitHub Actions Robot | `steward-github-actions`，角色为 `Developer` |
+| OTA 频道 | 测试 `steward-test`；生产 `steward-production` |
+| EAS 环境 | `preview` 注入测试 API；`production` 注入生产 API |
+
+`EXPO_TOKEN`、OTA 私钥、Keystore 和密码不得进入 README、Git、Issue、日志或聊天记录。`EXPO_TOKEN` 已保存在 GitHub `test`、`production` Environment Secrets；其他签名材料也按环境隔离保存。Robot Token 失效时，由 Expo 组织管理员在组织的 **Access tokens** 页面为 `steward-github-actions` 重新生成，再同步更新两个 GitHub Environment。生产 OTA 仍须确认 EAS 套餐支持端到端代码签名，并完成测试频道、灰度和回滚演练。
+
 ## 工程结构
 
 ```text

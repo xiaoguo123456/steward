@@ -36,9 +36,9 @@
 - [ ] 将 `.local/signing` 中的生产签名和密码备份到安全的离线位置。
 - [ ] 公司 Expo 组织下已创建并绑定 `steward` Project，取得真实 `EXPO_PROJECT_ID`；仍需确认当前套餐支持端到端代码签名及预期发布量。
 - [ ] OTA 签名证书和私钥已生成，明文只位于 Git 忽略的 `.local/signing`，并已写入 GitHub Environment；仍需把私钥保存到受控离线备份并登记轮换／吊销责任人。
-- [ ] GitHub `test`／`production` Environment 已配置 `EXPO_PROJECT_ID`、OTA 证书和私钥，EAS `preview`／`production` 也已配置隔离的 `EXPO_PUBLIC_API_URL`；仍缺公司 Robot 的 `EXPO_TOKEN`。
+- [x] GitHub `test`／`production` Environment 已配置 `EXPO_PROJECT_ID`、公司 Robot 的 `EXPO_TOKEN`、OTA 证书和私钥；EAS `preview`／`production` 也已配置隔离的 `EXPO_PUBLIC_API_URL`。
 - [ ] 已把 Expo／EAS Update 的主体、操作系统、Project ID、随机安装 Token 和必要网络日志写入第三方信息共享清单；仍需完成跨境评估、合同与 iOS／Google Play 隐私申报核对。
-- [ ] 发布首个包含 `expo-updates` 验签证书的测试 APK，完成测试频道更新、生产 10% 灰度、回到上一更新和回到安装包内置版本演练。
+- [ ] GitHub Actions 已生成首个包含 `expo-updates` 验签证书的测试 APK；仍需安装该 APK，并完成测试频道更新、生产 10% 灰度、回到上一更新和回到安装包内置版本演练。
 - [ ] 使用中国移动、中国联通、中国电信的 4G／5G 和常用家庭 Wi-Fi 真机验证 EAS Update：覆盖冷启动、无更新、下载中断、弱网、离线和更新服务不可达，确认失败时仍能使用缓存或安装包内置版本；未达到生产可用性要求时改用国内请求代理或自建更新服务。
-- [ ] 手工生成并安装测试 APK，完成真机验收。
+- [ ] 下载并安装 GitHub Actions 生成的测试 APK，完成真机验收。
 - [ ] 验证登录、核心功能、图片上传、公开 H5 和管理台。
