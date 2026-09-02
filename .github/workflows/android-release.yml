@@ -24,7 +24,7 @@ jobs:
   build-and-release:
     name: 构建并发布 Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     environment: production
     steps:
       - uses: actions/checkout@v4

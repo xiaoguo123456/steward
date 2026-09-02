@@ -77,8 +77,12 @@ perl -0pi -e 's/^\s*signingConfig signingConfigs\.debug\s*$//mg' "$build_gradle"
 
 (
   cd "$mobile_dir/android"
+  gradle_max_workers="${GRADLE_MAX_WORKERS:-2}"
+  gradle_jvm_args="${GRADLE_JVM_ARGS:--Xmx4g -XX:MaxMetaspaceSize=2g -XX:+UseParallelGC -Dfile.encoding=UTF-8}"
   ./gradlew :app:assembleRelease \
     -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+    --max-workers="$gradle_max_workers" \
+    "-Dorg.gradle.jvmargs=$gradle_jvm_args" \
     --no-daemon
 )
 

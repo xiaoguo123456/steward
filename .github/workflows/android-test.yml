@@ -24,7 +24,7 @@ jobs:
   build:
     name: 构建 Android 测试 APK
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     environment: test
     env:
       ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
