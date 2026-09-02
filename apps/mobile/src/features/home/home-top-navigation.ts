@@ -14,7 +14,7 @@ export function isHomeTopTabId(value: string | undefined): value is HomeTopTabId
     || value === 'mood';
 }
 
-/** 每次进入首页默认回到“今天”，明确的页内回跳参数只覆盖本次进入。 */
+/** App 初次进入首页默认显示“今天”；明确的页内回跳参数可以指定分区。 */
 export function resolveHomeEntryTab(value: string | undefined): HomeTopTabId {
   return isHomeTopTabId(value) ? value : 'today';
 }

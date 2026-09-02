@@ -16,7 +16,7 @@ test('首页顶部导航保持固定顺序和短标签', () => {
   );
 });
 
-test('每次进入首页默认定位到今天，明确回跳仍可单次指定分区', async () => {
+test('首次进入首页默认定位到今天，二级页返回时保留离开前的分区', async () => {
   assert.equal(resolveHomeEntryTab(undefined), 'today');
   assert.equal(resolveHomeEntryTab('unknown'), 'today');
   assert.equal(resolveHomeEntryTab('memories'), 'memories');
@@ -25,7 +25,9 @@ test('每次进入首页默认定位到今天，明确回跳仍可单次指定�
 
   const home = await readFile(new URL('../../app/(tabs)/today.tsx', import.meta.url), 'utf8');
   assert.match(home, /useFocusEffect\(/);
-  assert.match(home, /resolveHomeEntryTab\(entryParams\.homeTab\)/);
+  assert.match(home, /if \(params\.homeTab === undefined && params\.date === undefined\) return/);
+  assert.match(home, /setActiveHomeTab\(resolveHomeEntryTab\(params\.homeTab\)\)/);
+  assert.doesNotMatch(home, /setActiveHomeTab\('today'\)/);
   assert.match(home, /router\.setParams\(\{ homeTab: undefined, date: undefined \}\)/);
 });
 
@@ -45,6 +47,7 @@ test('亲友首页使用正式人物查询和添加入口', async () => {
   assert.doesNotMatch(relationships, /style=\{styles\.pageTitle\}>亲友/);
   assert.doesNotMatch(relationships, /PreviewNoticeSheet|showPreviewNotice|新增亲友将在正式版开放/);
   assert.match(relationships, /style=\{styles\.toolbarRow\}/);
+  assert.match(relationships, /page: \{ gap: 18, paddingTop: spacing\.md \}/);
   assert.doesNotMatch(relationships, /style=\{styles\.actionRow\}/);
 });
 

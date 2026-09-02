@@ -1,5 +1,5 @@
 import { errorMessage } from '@steward/api-client';
-import { useRouter, type Href } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Modal,
@@ -27,8 +27,7 @@ import {
   useCurrentUser,
   useUserPreferences,
 } from '@/features/account/use-account';
-import { openPublicPage } from '@/features/legal/open-public-page';
-import { publicPagePaths, type PublicPagePath } from '@/features/legal/public-pages';
+import { publicPageRoute, type PublicPageKey } from '@/features/legal/public-pages';
 import {
   deleteAccountCaptureDrafts,
   listCaptureDrafts,
@@ -53,10 +52,8 @@ export default function MeScreen() {
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [deviceDraftCount, setDeviceDraftCount] = useState(0);
 
-  const openPage = (path: PublicPagePath) => {
-    void openPublicPage(path).catch(() => {
-      toast.showToast('公开页面暂时打不开，请稍后重试');
-    });
+  const openPage = (page: PublicPageKey) => {
+    router.push(publicPageRoute(page));
   };
 
   const openProfileEditor = () => {
@@ -141,26 +138,9 @@ export default function MeScreen() {
           <FlatListRow
             icon="bookmark-outline"
             onPress={() => router.push('/settings/memories')}
+            showDivider={false}
             subtitle="助理记住的长期偏好"
             title="长期记忆"
-          />
-          <FlatListRow
-            icon="timer-outline"
-            onPress={() => router.push('/focus')}
-            showDivider={false}
-            title="专注设置"
-          />
-        </FlatListGroup>
-
-        <Text accessibilityRole="header" style={styles.groupTitle}>
-          隐私与安全
-        </Text>
-        <FlatListGroup>
-          <FlatListRow
-            icon="lock-closed-outline"
-            onPress={() => router.push('/settings/app-lock' as Href)}
-            showDivider={false}
-            title="应用锁"
           />
         </FlatListGroup>
 
@@ -189,27 +169,27 @@ export default function MeScreen() {
         <FlatListGroup>
           <FlatListRow
             icon="shield-checkmark-outline"
-            onPress={() => openPage(publicPagePaths.privacy)}
+            onPress={() => openPage('privacy')}
             title="隐私政策"
           />
           <FlatListRow
             icon="document-text-outline"
-            onPress={() => openPage(publicPagePaths.terms)}
+            onPress={() => openPage('terms')}
             title="用户协议"
           />
           <FlatListRow
             icon="list-outline"
-            onPress={() => openPage(publicPagePaths.personalInformation)}
+            onPress={() => openPage('personalInformation')}
             title="个人信息收集清单"
           />
           <FlatListRow
             icon="link"
-            onPress={() => openPage(publicPagePaths.thirdParties)}
+            onPress={() => openPage('thirdParties')}
             title="第三方信息共享清单"
           />
           <FlatListRow
             icon="information-circle-outline"
-            onPress={() => openPage(publicPagePaths.support)}
+            onPress={() => openPage('support')}
             showDivider={false}
             title="帮助与联系我们"
           />

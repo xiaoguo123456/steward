@@ -1,6 +1,12 @@
-import { configureApiClient, refreshToken, type TokenPair } from '@steward/api-client';
+import {
+  configureApiClient,
+  isUnauthenticated,
+  refreshToken,
+  type TokenPair,
+} from '@steward/api-client';
 
 import { resolveApiBaseUrl } from './config';
+import { shouldRefreshAccessToken } from './session-policy';
 import { clearSession, loadSession, saveSession, type StoredSession } from './token-storage';
 
 type Listener = (loggedIn: boolean) => void;
@@ -25,6 +31,15 @@ class SessionStore {
     this.session = await loadSession();
     this.generation += 1;
     this.refreshing = null;
+
+    if (this.session && shouldRefreshAccessToken(this.session.accessExpiresAt)) {
+      try {
+        await this.refresh();
+      } catch {
+        // 断网或服务暂时不可用时保留 Refresh Token。页面仍按已登录恢复，
+        // 下次请求或回到前台会继续续期；只有服务端明确拒绝才会退出。
+      }
+    }
     return this.session !== null;
   }
 
@@ -88,13 +103,23 @@ class SessionStore {
     const sourceGeneration = this.generation;
     const request = this.refreshSession(source, sourceGeneration);
     this.refreshing = request;
-    void request.finally(() => {
+    const clearRefreshing = () => {
       if (this.refreshing === request) {
         this.refreshing = null;
       }
-    });
+    };
+    // 不能用一个无人接收的 finally Promise；续期失败时它会形成未处理拒绝。
+    void request.then(clearRefreshing, clearRefreshing);
 
     return request;
+  }
+
+  /** 仅在 Access Token 即将到期时续期；已有可用令牌时不增加网络请求。 */
+  async refreshIfNeeded(): Promise<boolean> {
+    const current = this.session;
+    if (!current) return false;
+    if (!shouldRefreshAccessToken(current.accessExpiresAt)) return true;
+    return this.refresh();
   }
 
   private async refreshSession(source: StoredSession, sourceGeneration: number): Promise<boolean> {
@@ -107,13 +132,15 @@ class SessionStore {
       }
       await this.signIn(response.data, source.userId);
       return true;
-    } catch {
+    } catch (error) {
       if (this.generation !== sourceGeneration || this.session !== source) {
         return false;
       }
-      // 刷新失败说明登录态确实失效了，清理后由 UI 跳回登录页。
-      await this.signOut();
-      return false;
+      if (isUnauthenticated(error)) {
+        await this.signOut();
+        return false;
+      }
+      throw error;
     }
   }
 

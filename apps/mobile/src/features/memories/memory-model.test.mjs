@@ -84,6 +84,8 @@ test('时光使用正式查询与上传，发布后只保留整段删除', async
   assert.match(editor, /void pickImages\(\)/);
   assert.match(editor, /createMemoryMoment/);
   assert.match(editor, /useMediaUpload/);
+  assert.match(editor, /router\.dismissTo\(\{[\s\S]*homeTab: 'memories'/);
+  assert.doesNotMatch(editor, /router\.replace\(\{ pathname: '\/memories\/\[id\]'/);
   assert.match(editor, /<Field label="描述">/);
   assert.match(editor, /styles\.photoGrid/);
   assert.match(editor, /width: photoTileSize, height: photoTileSize/);

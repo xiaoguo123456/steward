@@ -18,7 +18,7 @@ import {
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { StatePanel } from '@/components/ui/state-panel';
-import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { colors, fontFamily, radius, spacing, typography } from '@/theme/tokens';
 
 type RelationshipFilter = 'all' | RelationshipGroup;
 
@@ -166,7 +166,7 @@ function PersonRow({ divider, onPress, person }: { divider: boolean; onPress: ()
 }
 
 const styles = StyleSheet.create({
-  page: { gap: 18 },
+  page: { gap: 18, paddingTop: spacing.md },
   toolbarRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchField: {
     minHeight: 44,

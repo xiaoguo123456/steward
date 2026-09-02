@@ -25,8 +25,7 @@ import {
   phoneCodeErrorMessage,
   resolvePhoneCodeDelivery,
 } from '@/features/auth/phone-code';
-import { openPublicPage } from '@/features/legal/open-public-page';
-import { publicPagePaths } from '@/features/legal/public-pages';
+import { publicPageRoute, type PublicPageKey } from '@/features/legal/public-pages';
 import { colors, fontFamily, typography } from '@/theme/tokens';
 
 export default function LoginScreen() {
@@ -36,7 +35,6 @@ export default function LoginScreen() {
   const [codeRequested, setCodeRequested] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [legalError, setLegalError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -82,14 +80,8 @@ export default function LoginScreen() {
   const canSubmit = agreementAccepted && phoneValid && code.length === 6 && !sending && !submitting;
   const primaryDisabled = codeRequested ? !canSubmit : !canRequestCode;
 
-  const openLegalPage = async (path: typeof publicPagePaths.privacy | typeof publicPagePaths.terms) => {
-    try {
-      await openPublicPage(path);
-    } catch {
-      if (mounted.current) {
-        setLegalError('暂时无法打开协议页面，请稍后重试。');
-      }
-    }
+  const openLegalPage = (page: Extract<PublicPageKey, 'privacy' | 'terms'>) => {
+    router.push(publicPageRoute(page));
   };
 
   const handleSendCode = async () => {
@@ -143,7 +135,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <AuthShell heading="欢迎回来" subtitle="手机号验证后即可继续">
+    <AuthShell heading="欢迎回来">
       <AuthInput
         accessibilityLabel="手机号"
         autoComplete="tel"
@@ -161,7 +153,6 @@ export default function LoginScreen() {
           setCode('');
           setRequestError(null);
           setLoginError(null);
-          setLegalError(null);
           setHint(null);
           if (phoneChanged && codeRequested) {
             setCodeRequested(false);
@@ -250,7 +241,6 @@ export default function LoginScreen() {
           hitSlop={6}
           onPress={() => {
             setAgreementAccepted((current) => !current);
-            setLegalError(null);
             setRequestError(null);
             setLoginError(null);
           }}
@@ -266,7 +256,7 @@ export default function LoginScreen() {
           我已阅读并同意
           <Text
             accessibilityRole="link"
-            onPress={() => void openLegalPage(publicPagePaths.terms)}
+            onPress={() => openLegalPage('terms')}
             style={styles.agreementLink}
           >
             《用户协议》
@@ -274,19 +264,13 @@ export default function LoginScreen() {
           和
           <Text
             accessibilityRole="link"
-            onPress={() => void openLegalPage(publicPagePaths.privacy)}
+            onPress={() => openLegalPage('privacy')}
             style={styles.agreementLink}
           >
             《隐私政策》
           </Text>
         </Text>
       </View>
-      {legalError ? (
-        <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.legalError}>
-          {legalError}
-        </Text>
-      ) : null}
-
       <View style={styles.buttonWrap}>
         <PrimaryButton
           accessibilityHint={!agreementAccepted ? '请先阅读并同意用户协议与隐私政策' : undefined}
@@ -359,13 +343,6 @@ const styles = StyleSheet.create({
   agreementLink: {
     color: colors.primaryStrong,
     fontWeight: '600',
-  },
-  legalError: {
-    marginTop: 4,
-    marginLeft: 33,
-    color: colors.danger,
-    fontFamily,
-    ...typography.meta,
   },
   codeRow: {
     flexDirection: 'row',

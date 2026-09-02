@@ -8,13 +8,15 @@ test('“我的”直接收纳资料、手机号和退出登录，不再进入�
   assert.match(source, /title="我的"/);
   assert.match(source, /router\.push\('\/settings\/phone'\)/);
   assert.match(source, /label="退出登录"/);
-  assert.match(source, /publicPagePaths\.privacy/);
-  assert.match(source, /publicPagePaths\.terms/);
-  assert.match(source, /publicPagePaths\.personalInformation/);
-  assert.match(source, /publicPagePaths\.thirdParties/);
+  assert.match(source, /openPage\('privacy'\)/);
+  assert.match(source, /openPage\('terms'\)/);
+  assert.match(source, /openPage\('personalInformation'\)/);
+  assert.match(source, /openPage\('thirdParties'\)/);
   assert.match(source, /router\.push\('\/account-deletion'\)/);
   assert.match(source, /router\.push\('\/settings\/captures'\)/);
-  assert.match(source, /publicPagePaths\.support/);
+  assert.match(source, /openPage\('support'\)/);
+  assert.match(source, /router\.push\(publicPageRoute\(page\)\)/);
+  assert.doesNotMatch(source, /专注设置|应用锁|settings\/app-lock/);
   assert.doesNotMatch(source, /\/settings\/profile|\/settings\/account|router\.push\('\/settings'\)/);
 });
 
@@ -23,12 +25,18 @@ test('根导航不再登记“全部设置”、资料和账号中转页', async
 
   assert.doesNotMatch(source, /settings\/(?:index|profile|account)"/);
   assert.match(source, /settings\/phone"/);
+  assert.match(source, /Stack\.Screen name="public-page"/);
   assert.match(source, /Stack\.Protected guard=\{boot === 'signed-out'\}/);
   assert.match(source, /Stack\.Protected guard=\{boot === 'signed-in'\}/);
+  assert.doesNotMatch(source, /AppLockProvider|settings\/app-lock/);
 });
 
 test('短信登录采用两阶段流程并保留系统自动填充语义', async () => {
   const source = await readFile(new URL('../../app/(auth)/login.tsx', import.meta.url), 'utf8');
+  const shell = await readFile(
+    new URL('../auth/components/auth-shell.tsx', import.meta.url),
+    'utf8',
+  );
 
   assert.match(source, /autoComplete="tel"/);
   assert.match(source, /textContentType="oneTimeCode"/);
@@ -37,8 +45,13 @@ test('短信登录采用两阶段流程并保留系统自动填充语义', async
   assert.match(source, /codeRequested \? \(/);
   assert.match(source, /useState\(false\).*agreementAccepted|agreementAccepted.*useState\(false\)/s);
   assert.match(source, /agreementAccepted && phoneValid/);
-  assert.match(source, /publicPagePaths\.terms/);
-  assert.match(source, /publicPagePaths\.privacy/);
+  assert.match(source, /openLegalPage\('terms'\)/);
+  assert.match(source, /openLegalPage\('privacy'\)/);
+  assert.match(source, /router\.push\(publicPageRoute\(page\)\)/);
+  assert.match(shell, /assets\/images\/icon\.png/);
+  assert.match(shell, />序事<\/Text>/);
+  assert.doesNotMatch(shell, />清单<\/Text>/);
+  assert.doesNotMatch(source, /手机号验证后即可继续/);
   assert.doesNotMatch(source, /手机号会在发送验证码时开始处理/);
   assert.doesNotMatch(source, /本机号码一键登录/);
 });

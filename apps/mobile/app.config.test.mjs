@@ -16,7 +16,7 @@ function readPngInfo(relativePath) {
   };
 }
 
-test('原生配置声明应用锁、面容识别用途并统一移动端版本', () => {
+test('原生配置移除应用锁权限、加入受控 H5 容器并统一移动端版本', () => {
   const app = JSON.parse(readFileSync(new URL('./app.json', import.meta.url), 'utf8'));
   const mobilePackage = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
   const plugin = app.expo.plugins.find((item) => Array.isArray(item) && item[0] === 'expo-local-authentication');
@@ -28,8 +28,10 @@ test('原生配置声明应用锁、面容识别用途并统一移动端版本',
     readFileSync(new URL('./assets/expo.icon/icon.json', import.meta.url), 'utf8'),
   );
 
-  assert.ok(plugin, '必须注册 expo-local-authentication Config Plugin');
-  assert.match(plugin[1].faceIDPermission, /解锁/);
+  assert.equal(plugin, undefined, '移除应用锁后不能继续声明生物识别权限');
+  assert.equal(mobilePackage.dependencies['expo-local-authentication'], undefined);
+  assert.equal(mobilePackage.dependencies['expo-web-browser'], undefined);
+  assert.equal(mobilePackage.dependencies['react-native-webview'], '13.16.1');
   assert.equal(app.expo.name, '序事');
   assert.equal(resolveAppName('production', app.expo.name), '序事');
   assert.equal(resolveAppName('test', app.expo.name), '序事测试');

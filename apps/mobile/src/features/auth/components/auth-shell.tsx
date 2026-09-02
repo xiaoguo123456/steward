@@ -1,4 +1,5 @@
 import type { ComponentProps, PropsWithChildren, ReactNode, Ref } from 'react';
+import { Image } from 'expo-image';
 import {
   Platform,
   ScrollView,
@@ -16,7 +17,7 @@ import { colors, fontFamily, radius } from '@/theme/tokens';
 
 type AuthShellProps = PropsWithChildren<{
   heading: string;
-  subtitle: string;
+  subtitle?: string;
   compactLogo?: boolean;
 }>;
 
@@ -30,14 +31,17 @@ export function AuthShell({ children, heading, subtitle, compactLogo = false }: 
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.brand}>
-          <View style={styles.logo}>
-            <AppIcon color={colors.background} name="checkmark" size={43} />
-          </View>
-          <Text style={styles.brandName}>清单</Text>
+          <Image
+            accessibilityLabel="序事应用图标"
+            contentFit="contain"
+            source={require('../../../../assets/images/icon.png')}
+            style={styles.logo}
+          />
+          <Text style={styles.brandName}>序事</Text>
         </View>
         <View style={styles.copy}>
           <Text style={styles.heading}>{heading}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
         {children}
       </ScrollView>
@@ -85,9 +89,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
   },
   brandName: {
     marginTop: 14,

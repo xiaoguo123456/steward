@@ -104,10 +104,14 @@ export function ApiProvider({ children }: PropsWithChildren) {
   }, [boot, syncTimezone]);
 
   useEffect(() => {
-    // 回到前台时刷新服务端事实，避免展示过期的 Today。
+    // 回到前台时先续期临近过期的令牌，再刷新服务端事实。
+    // 临时断网只让本次数据刷新失败，不能清掉设备上的长期会话。
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active' && session.isLoggedIn()) {
-        void syncTimezone().finally(() => queryClient.invalidateQueries());
+        void session.refreshIfNeeded()
+          .catch(() => false)
+          .then(() => syncTimezone())
+          .finally(() => queryClient.invalidateQueries());
       }
     });
     return () => subscription.remove();

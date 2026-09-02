@@ -1,6 +1,6 @@
 import { errorMessage, useGetToday, type TodayTask } from '@steward/api-client';
 import { type Href, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AI_FAB_TAB_BAR_INSET, AiFab } from '@/components/ui/ai-fab';
@@ -104,28 +104,28 @@ const groupLabels: Record<TodayTask['group'], string> = {
 export default function HomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ homeTab?: string; date?: string }>();
-  const entryParamsRef = useRef(params);
   const initialHomeTab = resolveHomeEntryTab(params.homeTab);
   const [activeHomeTab, setActiveHomeTab] = useState<HomeTopTabId>(initialHomeTab);
+  const [moodEntryDate, setMoodEntryDate] = useState(params.date);
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const today = useGetToday();
   const toggleDone = useToggleTaskDone();
 
-  useEffect(() => {
-    entryParamsRef.current = params;
-  }, [params]);
-
   useFocusEffect(
     useCallback(() => {
-      const entryParams = entryParamsRef.current;
-      setActiveHomeTab(resolveHomeEntryTab(entryParams.homeTab));
+      if (params.homeTab === undefined && params.date === undefined) return;
+
+      if (params.homeTab !== undefined) {
+        setActiveHomeTab(resolveHomeEntryTab(params.homeTab));
+      } else if (params.date !== undefined) {
+        setActiveHomeTab('mood');
+      }
+      if (params.date !== undefined) setMoodEntryDate(params.date);
       setTasksExpanded(false);
 
-      // 日历或详情可以显式回跳到某个首页分区；消费后清理，避免下次进入继续命中。
-      if (entryParams.homeTab !== undefined || entryParams.date !== undefined) {
-        router.setParams({ homeTab: undefined, date: undefined });
-      }
-    }, [router]),
+      // 只消费显式回跳参数。普通二级页返回时没有参数，因此保留用户离开前的分区。
+      router.setParams({ homeTab: undefined, date: undefined });
+    }, [params.date, params.homeTab, router]),
   );
 
   const tasks = useMemo(() => today.data?.data.tasks ?? [], [today.data]);
@@ -285,7 +285,10 @@ export default function HomeScreen() {
         ) : activeHomeTab === 'relationships' ? (
           <RelationshipsContent />
         ) : (
-          <MoodJournalContent initialDate={params.date} key="mood-journal-content" />
+          <MoodJournalContent
+            initialDate={moodEntryDate}
+            key={`mood-journal-content-${moodEntryDate ?? 'today'}`}
+          />
         )}
       </ScrollView>
       <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />

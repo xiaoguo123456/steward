@@ -102,9 +102,15 @@ export function useTurnStream(turnId: string) {
       request.setRequestHeader('Authorization', `Bearer ${token}`);
       request.onprogress = drain;
       request.onload = async () => {
-        if (request.status === 401 && allowRefresh && await session.refresh()) {
-          if (!cancelled) void start(false);
-          return;
+        if (request.status === 401 && allowRefresh) {
+          try {
+            if (await session.refresh()) {
+              if (!cancelled) void start(false);
+              return;
+            }
+          } catch {
+            // 临时续期失败时由现有轮询接管，不能因此清除长期登录态。
+          }
         }
         drain();
         update({ finished: true });

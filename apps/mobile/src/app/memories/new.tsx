@@ -9,7 +9,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
@@ -165,7 +165,10 @@ export default function MemoryEditorScreen() {
       });
       queryClient.setQueryData(getGetMemoryMomentQueryKey(response.data.id), response);
       await queryClient.invalidateQueries({ queryKey: getListMemoryMomentsQueryKey() });
-      router.replace({ pathname: '/memories/[id]', params: { id: response.data.id } });
+      router.dismissTo({
+        pathname: '/today',
+        params: { homeTab: 'memories' },
+      } as Href);
     } catch (error) {
       setFailure(errorMessage(error, '发布没有完成，请检查网络后重试。'));
     } finally {

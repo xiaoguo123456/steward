@@ -17,7 +17,7 @@
 - 服务端事实使用 TanStack Query；网络请求必须通过 `@steward/api-client` 的生成 Client 和 Zod 校验器，不手写 URL、网络 DTO 或第二套错误码。
 - 当前跨组件状态使用 React Context／Reducer／页面状态；凭证和心情日记草稿使用 `expo-secure-store`。仓库当前没有 Zustand、React Hook Form 或通用 SQLite 草稿层。
 - Hugeicons 只能经 `src/components/ui/icon.tsx` 的语义名称使用。Expo UI 与 Slider 只能经 `src/components/ui/selection-controls.tsx` 适配后使用；Feature 不直接绑定底层组件库。
-- MapLibre、Location、Image Picker、Speech、Keep Awake、Local Authentication、Secure Store 和 Updates 都包含平台或生命周期边界。新增原生依赖、权限或 Plugin 后必须重新构建原生包，不能只发布 JavaScript 更新。应用锁通过系统面容、指纹或设备密码验证，App 不读取或上传生物识别模板。
+- MapLibre、Location、Image Picker、Speech、Keep Awake、WebView、Secure Store 和 Updates 都包含平台或生命周期边界。新增或移除原生依赖、权限或 Plugin 后必须重新构建原生包，不能只发布 JavaScript 更新。当前版本不提供应用锁，也不声明面容或指纹用途权限。
 
 ## 当前能力边界
 
@@ -75,7 +75,7 @@ pnpm --filter mobile run brand:render
 - 测试 APK、生产 APK 和服务器部署由独立 GitHub Actions 工作流负责，触发方式、签名和产物见 [部署说明](../../docs/部署说明.md)。
 - OTA 只允许发布与已安装原生 runtime 兼容的 JavaScript、样式和专用资源，且只能经仓库工作流执行；runtime、频道、签名、灰度与回滚规则见 [ADR-028：移动端 OTA 更新](../../docs/ADR-028-移动端OTA更新.md)。
 - 新增原生依赖、权限、App Config、图标、启动图或普通原生资源时必须提升 App 版本并重新构建 APK。
-- 首个正式移动端版本统一为 `1.0.0`，并已包含 `expo-local-authentication` 原生代码和生物识别权限；该版本需真机验证首次开启、取消、失败、系统锁定、后台预览遮挡和重新解锁，并同步核对 iOS Face ID 用途说明与商店隐私申报。
+- 首个正式移动端版本统一为 `1.0.0`。后续版本已移除 `expo-local-authentication`，并加入 `react-native-webview` 作为唯一公开 H5 容器；发布时必须重新构建原生包，真机验证同源白名单、外链、离线、错误、重试和返回，同时从 iOS／Android 商店权限申报中移除不再使用的生物识别用途。
 - Expo Project、验签证书、Secrets、首个原生包和回滚演练完成前，不得声称 OTA 已对用户生效。
 
 ## 依赖补丁

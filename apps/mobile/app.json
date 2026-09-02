@@ -60,12 +60,6 @@
         {
           "useSQLCipher": true
         }
-      ],
-      [
-        "expo-local-authentication",
-        {
-          "faceIDPermission": "使用面容识别解锁序事，避免任务、日记和草稿在你离开设备时被他人查看。"
-        }
       ]
     ],
     "experiments": {

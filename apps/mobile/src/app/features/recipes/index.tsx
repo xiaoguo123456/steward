@@ -139,11 +139,7 @@ function WeekHome() {
     void generateWeek();
   };
 
-  const confirmOrCreateShoppingList = () => {
-    if (hasPendingPlan) {
-      void confirmPlan();
-      return;
-    }
+  const createShoppingList = () => {
     router.push('/features/recipes/shopping?scope=day' as Href);
   };
 
@@ -196,6 +192,27 @@ function WeekHome() {
       <View style={styles.dateBlock}>
         <WeekDateSelector days={days} onSelect={setSelectedDayId} selectedDayId={selectedDayId} />
       </View>
+
+      {hasPendingPlan ? (
+        <View style={styles.pendingPlanNotice}>
+          <View style={styles.pendingPlanHeading}>
+            <View style={styles.pendingPlanIcon}>
+              <AppIcon color={colors.primaryStrong} name="sparkles-outline" size={20} />
+            </View>
+            <View style={styles.pendingPlanCopy}>
+              <Text style={styles.pendingPlanTitle}>本周食谱待确认</Text>
+              <Text style={styles.pendingPlanBody}>先检查菜单，确认后才能生成购物清单。</Text>
+            </View>
+          </View>
+          <RecipePrimaryButton
+            disabled={planSaving}
+            icon="checkmark-circle-outline"
+            label={planSaving ? '正在确认…' : '确认食谱'}
+            onPress={() => void confirmPlan()}
+          />
+          {planFailure ? <Text style={styles.pendingPlanError}>{planFailure}</Text> : null}
+        </View>
+      ) : null}
 
       <RecipeSectionTitle
         aside="查看整周"
@@ -250,17 +267,15 @@ function WeekHome() {
           style={styles.homeActionButton}
           tone="secondary"
         />
-        <RecipePrimaryButton
-          icon={hasPendingPlan ? 'checkmark-circle-outline' : 'cart-outline'}
-          disabled={hasPendingPlan && planSaving}
-          label={hasPendingPlan ? (planSaving ? '正在确认…' : '确认食谱') : '生成购物清单'}
-          onPress={confirmOrCreateShoppingList}
-          style={styles.homeActionButton}
-        />
+        {!hasPendingPlan ? (
+          <RecipePrimaryButton
+            icon="cart-outline"
+            label="生成购物清单"
+            onPress={createShoppingList}
+            style={styles.homeActionButton}
+          />
+        ) : null}
       </View>
-      {hasPendingPlan && dayRecipes.length > 0 && planFailure ? (
-        <Text style={styles.homeActionError}>{planFailure}</Text>
-      ) : null}
     </>
   );
 }
@@ -571,6 +586,50 @@ const styles = StyleSheet.create({
     fontFamily,
     fontSize: 13,
   },
+  pendingPlanNotice: {
+    marginBottom: 20,
+    padding: 16,
+    gap: 14,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+  },
+  pendingPlanHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+  pendingPlanIcon: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
+  },
+  pendingPlanCopy: {
+    minWidth: 0,
+    flex: 1,
+    gap: 2,
+  },
+  pendingPlanTitle: {
+    color: recipeColors.ink,
+    fontFamily,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  pendingPlanBody: {
+    color: recipeColors.muted,
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  pendingPlanError: {
+    color: colors.danger,
+    fontFamily,
+    fontSize: 13,
+    lineHeight: 19,
+  },
   homeActions: {
     marginTop: 22,
     flexDirection: 'row',
@@ -579,13 +638,6 @@ const styles = StyleSheet.create({
   homeActionButton: {
     flex: 1,
     paddingHorizontal: 10,
-  },
-  homeActionError: {
-    marginTop: 8,
-    color: colors.danger,
-    fontFamily,
-    fontSize: 13,
-    lineHeight: 19,
   },
   searchField: {
     minHeight: 48,

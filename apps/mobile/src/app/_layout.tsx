@@ -7,9 +7,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiProvider, useBootState } from '@/api/provider';
 import { ToastProvider } from '@/components/ui/toast';
-import { FocusPrototypeProvider } from '@/features/focus/focus-context';
 import { CaptureQueueProvider } from '@/features/capture/capture-queue-provider';
-import { AppLockProvider } from '@/features/app-lock/app-lock-provider';
+import { FocusPrototypeProvider } from '@/features/focus/focus-context';
 import { colors } from '@/theme/tokens';
 
 export default function RootLayout() {
@@ -38,8 +37,7 @@ function RootNavigator() {
   const boot = useBootState();
 
   return (
-    <AppLockProvider active={boot === 'signed-in'}>
-      <Stack
+    <Stack
       screenOptions={{
         headerShown: false,
         // Expo Router 57 的原生栈在隐藏 Header 时仍会监听高度变化；
@@ -51,7 +49,8 @@ function RootNavigator() {
       }}
     >
       <Stack.Screen name="index" />
-	  <Stack.Screen name="account-deletion" />
+      <Stack.Screen name="account-deletion" />
+      <Stack.Screen name="public-page" />
 
       <Stack.Protected guard={boot === 'signed-out'}>
         <Stack.Screen name="(auth)" />
@@ -93,7 +92,6 @@ function RootNavigator() {
         <Stack.Screen name="settings/phone" />
         <Stack.Screen name="settings/memories" />
         <Stack.Screen name="settings/captures" />
-        <Stack.Screen name="settings/app-lock" />
         <Stack.Screen name="assistant/threads" />
         <Stack.Screen
           name="assistant/pending"
@@ -122,8 +120,7 @@ function RootNavigator() {
           }}
         />
       </Stack.Protected>
-      </Stack>
-    </AppLockProvider>
+    </Stack>
   );
 }
 
