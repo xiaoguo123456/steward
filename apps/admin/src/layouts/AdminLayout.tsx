@@ -34,7 +34,7 @@ export function AdminLayout({ children }: PropsWithChildren) {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Layout.Sider width={200} theme="light">
-        <div style={{ padding: '20px 16px 12px', fontWeight: 600 }}>AI事管家 后台</div>
+        <div style={{ padding: '20px 16px 12px', fontWeight: 600 }}>序事后台</div>
         <Menu
           mode="inline"
           items={items}

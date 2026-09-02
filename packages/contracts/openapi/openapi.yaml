@@ -1,10 +1,10 @@
 openapi: 3.0.3
 
 info:
-  title: AI事管家 API
+  title: 序事 API
   version: 1.0.0
   description: |
-    AI事管家的唯一网络契约来源。前后端不得在任一侧手写 DTO、URL、枚举或错误码。
+    序事的唯一网络契约来源。前后端不得在任一侧手写 DTO、URL、枚举或错误码。
 
     约定：
     - 所有成功响应统一为 `{data, meta}`，集合额外带 `page`。

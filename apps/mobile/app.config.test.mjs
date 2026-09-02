@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { resolveUpdateConfig } from './app.config.ts';
+import { resolveAppName, resolveUpdateConfig } from './app.config.ts';
 
 const projectId = '123e4567-e89b-42d3-a456-426614174000';
 
@@ -13,6 +13,9 @@ test('原生配置声明应用锁、面容识别用途并统一移动端版本',
 
   assert.ok(plugin, '必须注册 expo-local-authentication Config Plugin');
   assert.match(plugin[1].faceIDPermission, /解锁/);
+  assert.equal(app.expo.name, '序事');
+  assert.equal(resolveAppName('production', app.expo.name), '序事');
+  assert.equal(resolveAppName('test', app.expo.name), '序事测试');
   assert.equal(app.expo.version, '1.0.0');
   assert.equal(app.expo.version, mobilePackage.version, 'Expo App 版本必须与移动端包版本一致');
   assert.equal(app.expo.android.versionCode, 2);

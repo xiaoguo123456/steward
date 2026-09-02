@@ -101,7 +101,7 @@ export function AppLockProvider({
     const sourceAccountId = accountIdRef.current;
     if (!sourceAccountId || !enabledRef.current) return;
 
-    const result = await authenticate('解锁 AI 事管家');
+    const result = await authenticate('解锁序事');
     if (accountIdRef.current !== sourceAccountId || !enabledRef.current) return;
     if (result.success) {
       setSnapshot((current) => ({ ...current, locked: false, failure: null }));
@@ -320,7 +320,7 @@ function LockCurtain({ snapshot, onRetry }: { snapshot: Snapshot; onRetry: () =>
           <AppIcon color={colors.primaryStrong} name="lock-closed-outline" size={28} />
         </View>
         <Text accessibilityRole="header" style={styles.title}>
-          {snapshot.ready ? 'AI 事管家已锁定' : '正在检查设备保护'}
+          {snapshot.ready ? '序事已锁定' : '正在检查设备保护'}
         </Text>
         <Text style={styles.message}>
           {snapshot.failure ??

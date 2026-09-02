@@ -12,7 +12,7 @@
 
 ## 背景
 
-AI事管家使用 Expo SDK 57 与 React Native，并通过 GitHub Actions 自行生成 Android APK。产品需要在两次应用商店发布之间快速修复 JavaScript、样式和文案问题，但远程更新不能把不兼容的原生代码发给旧安装包，也不能绕过商店审核、隐私告知和用户状态机。
+序事使用 Expo SDK 57 与 React Native，并通过 GitHub Actions 自行生成 Android APK。产品需要在两次应用商店发布之间快速修复 JavaScript、样式和文案问题，但远程更新不能把不兼容的原生代码发给旧安装包，也不能绕过商店审核、隐私告知和用户状态机。
 
 ## 决策
 
@@ -52,7 +52,7 @@ pnpm --filter mobile exec expo-updates codesigning:generate \
 
 ## 隐私与合规
 
-App 启动检查会向 Expo 请求更新。根据 Expo 官方说明，请求包含操作系统、Expo Project ID 和用于判断安装是否请求过更新的随机 Token，并产生必要的 IP／网络与性能日志；不发送 AI事管家的用户正文、手机号、Token 或业务数据库内容。正式启用前必须把 Expo 列入第三方信息共享清单，核对隐私政策、App Store Privacy Details 与 Google Play Data safety。
+App 启动检查会向 Expo 请求更新。根据 Expo 官方说明，请求包含操作系统、Expo Project ID 和用于判断安装是否请求过更新的随机 Token，并产生必要的 IP／网络与性能日志；不发送序事的用户正文、手机号、Token 或业务数据库内容。正式启用前必须把 Expo 列入第三方信息共享清单，核对隐私政策、App Store Privacy Details 与 Google Play Data safety。
 
 OTA 只用于与已审核原生能力一致的 JavaScript、样式、文案和资源变更。新增权限、SDK、订阅付费、隐私处理或改变 App 核心用途的变化即使技术上可以打包，也必须重新完成产品、合规和应用商店评审。
 

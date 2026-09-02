@@ -249,7 +249,7 @@ func seedRecipeContent(ctx context.Context, db *database.DB, userID string) erro
 				Allergens:      r.Allergens,
 				Ingredients:    ingredients,
 				Steps:          steps,
-				SourceName:     "AI事管家示例内容",
+				SourceName:     "序事示例内容",
 				License:        "平台自有内容",
 				ImageCredit:    &credit,
 				ContentVersion: "sample-v1",

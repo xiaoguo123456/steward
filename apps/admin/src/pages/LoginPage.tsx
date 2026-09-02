@@ -27,7 +27,7 @@ export function LoginPage() {
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
       <Card style={{ width: 380 }}>
         <Typography.Title level={4} style={{ marginTop: 0 }}>
-          AI事管家 后台
+          序事后台
         </Typography.Title>
         {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
         <Form layout="vertical" onFinish={onFinish} disabled={submitting}>

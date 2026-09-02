@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: AI事管家 后台管理 API
+  title: 序事后台管理 API
   version: 0.1.0
   description: |
     后台管理接口。**与公共 API 完全分开**：独立进程、独立端口、

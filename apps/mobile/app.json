@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "清单",
+    "name": "序事",
     "slug": "ai-steward",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -64,7 +64,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "使用面容识别解锁 AI 事管家，避免任务、日记和草稿在你离开设备时被他人查看。"
+          "faceIDPermission": "使用面容识别解锁序事，避免任务、日记和草稿在你离开设备时被他人查看。"
         }
       ]
     ],

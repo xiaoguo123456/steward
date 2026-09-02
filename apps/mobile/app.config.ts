@@ -12,6 +12,11 @@ type UpdateEnvironment = {
 
 export type StewardVariant = 'test' | 'production';
 
+/** 用户可见品牌名与构建变体绑定，避免测试包和生产包混淆。 */
+export function resolveAppName(variant: StewardVariant, configuredName?: string): string {
+  return variant === 'test' ? '序事测试' : configuredName || '序事';
+}
+
 export function resolveUpdateConfig(
   variant: StewardVariant,
   env: UpdateEnvironment,
@@ -85,7 +90,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: isTest ? '清单测试' : config.name || '清单',
+    name: resolveAppName(variant, config.name),
     slug: config.slug || 'ai-steward',
     version,
     scheme: isTest ? 'aisteward-test' : config.scheme,
