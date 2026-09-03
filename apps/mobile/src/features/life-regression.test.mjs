@@ -53,16 +53,16 @@ test('复盘总是展示确定性指标并等待感受保存', async () => {
   assert.match(hook, /review\.error \? errorMessage/);
 });
 
-test('心情隐私字段双向接入契约且花园节点可以打开日记', async () => {
+test('心情隐私字段双向接入契约且回望轨迹可以打开日记', async () => {
   const editor = await read('./mood-journal/mood-editor.tsx');
   const create = await read('../app/mood-journal/new.tsx');
   const detail = await read('../app/mood-journal/[id].tsx');
-  const garden = await read('../app/mood-journal/garden.tsx');
+  const reflection = await read('../app/mood-journal/reflections/[period].tsx');
   for (const source of [editor, create, detail]) {
     assert.match(source, /contextWords|context_words/);
     assert.match(source, /excludeFromAi|exclude_from_ai/);
     assert.match(source, /includeInMemories|include_in_memories/);
   }
-  assert.match(garden, /onSelect=\{\(index\)/);
-  assert.match(garden, /pathname: '\/mood-journal\/\[id\]'/);
+  assert.match(reflection, /onSelect=\{\(index\)/);
+  assert.match(reflection, /pathname: '\/mood-journal\/\[id\]'/);
 });

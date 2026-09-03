@@ -17,7 +17,6 @@ import {
   localDateKey,
   monthRange,
 } from './model';
-import { MoodField } from './mood-field';
 import { MoodJournalEntryRow } from './mood-journal-entry-row';
 
 export function MoodJournalContent() {
@@ -26,12 +25,10 @@ export function MoodJournalContent() {
   const currentMonth = useMemo(() => monthRange(), []);
 
   const entriesQuery = useListMoodJournalEntries({ from: today, to: today, limit: 50 });
-  const monthEntriesQuery = useListMoodJournalEntries({ ...currentMonth, limit: 100 });
   const statisticsQuery = useGetMoodJournalStatistics(currentMonth);
   const entries = entriesQuery.data?.data ?? [];
   const grouped = groupEntriesByDate(entries);
   const monthCount = statisticsQuery.data?.data.entry_count ?? 0;
-  const monthEntries = monthEntriesQuery.data?.data ?? [];
   const writeLabel = entries.length > 0 ? '再记一件事' : '写下此刻';
 
   return (
@@ -100,7 +97,7 @@ export function MoodJournalContent() {
         <Pressable
           accessibilityLabel={`打开本月回望，本月写了 ${monthCount} 篇`}
           accessibilityRole="button"
-          onPress={() => router.push('/mood-journal/garden')}
+          onPress={() => router.push({ pathname: '/mood-journal/reflections/[period]', params: { period: 'month' } })}
           style={({ pressed }) => [styles.reflectionRow, pressed && styles.pressed]}
         >
           <View style={styles.reflectionIcon}>
@@ -108,28 +105,11 @@ export function MoodJournalContent() {
           </View>
           <View style={styles.reflectionCopy}>
             <Text style={styles.reflectionTitle}>本月回望</Text>
-            <Text style={styles.reflectionMeta}>本月写了 {monthCount} 篇</Text>
+            <Text style={styles.reflectionMeta}>共 {monthCount} 篇日记</Text>
           </View>
           <AppIcon color={colors.textTertiary} name="chevron-forward" size={18} />
         </Pressable>
       ) : null}
-
-      <View style={styles.gardenSection}>
-        <View style={styles.gardenHeader}>
-          <Text style={styles.gardenTitle}>{new Date().getMonth() + 1}月 · 心情花园</Text>
-          <Pressable
-            accessibilityLabel="查看心情花园"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={() => router.push('/mood-journal/garden')}
-          >
-            <Text style={styles.gardenLink}>查看花园</Text>
-          </Pressable>
-        </View>
-        <View style={styles.gardenPreview}>
-          <MoodField compact height={90} seeds={monthEntries.map((entry) => entry.visual_seed)} />
-        </View>
-      </View>
     </View>
   );
 }
@@ -162,10 +142,5 @@ const styles = StyleSheet.create({
   reflectionCopy: { flex: 1 },
   reflectionTitle: { color: colors.text, fontFamily, ...typography.bodyStrong },
   reflectionMeta: { marginTop: 1, color: colors.textSecondary, fontFamily, ...typography.meta },
-  gardenSection: { paddingTop: 20 },
-  gardenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  gardenTitle: { color: colors.text, fontFamily, ...typography.section },
-  gardenLink: { color: moodColors.accentPressed, fontFamily, ...typography.label },
-  gardenPreview: { marginTop: 6, height: 90, overflow: 'hidden' },
   pressed: { opacity: 0.58 },
 });

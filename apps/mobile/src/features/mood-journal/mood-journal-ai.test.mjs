@@ -11,13 +11,23 @@ test('保存后追问只在保存后的详情页主动触发', async () => {
 });
 
 test('周月回望要求逐篇选择并展示来源', async () => {
-  const garden = await readFile(new URL('../../app/mood-journal/garden.tsx', import.meta.url), 'utf8');
-  assert.match(garden, /period === 'week'/);
-  assert.match(garden, /entry_ids: selected/);
-  assert.match(garden, /source_entry_ids\.map/);
-  assert.match(garden, /exclude_from_ai/);
-  assert.match(garden, /mostFrequentMood/);
-  assert.doesNotMatch(garden, /\.toSorted\(/);
+  const reflection = await readFile(new URL('../../app/mood-journal/reflections/[period].tsx', import.meta.url), 'utf8');
+  assert.match(reflection, /period === 'week'/);
+  assert.match(reflection, /entry_ids: selected/);
+  assert.match(reflection, /source_entry_ids\.map/);
+  assert.match(reflection, /exclude_from_ai/);
+  assert.match(reflection, /mostFrequentMood/);
+  assert.match(reflection, /NavHeader title="心情回望"/);
+  assert.match(reflection, /仅分析你勾选的日记/);
+  assert.doesNotMatch(reflection, /每篇日记，汇成|较常出现|常出现的感受|未选择或未同意时/);
+  assert.doesNotMatch(reflection, /\.toSorted\(/);
+});
+
+test('心情首页只保留一个本月回望入口', async () => {
+  const content = await readFile(new URL('./mood-journal-content.tsx', import.meta.url), 'utf8');
+  assert.match(content, /本月回望/);
+  assert.match(content, /mood-journal\/reflections\/\[period\]/);
+  assert.doesNotMatch(content, /心情花园|查看花园|mood-journal\/garden/);
 });
 
 test('心情草稿按平台隔离且 Web 不持久化敏感正文', async () => {

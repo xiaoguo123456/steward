@@ -6,7 +6,7 @@ import {
   type MoodJournalReflectionResult,
 } from '@steward/api-client';
 import { useMemo, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/app-screen';
@@ -23,10 +23,11 @@ import {
 import { useMoodJournalAiConsent } from '@/features/mood-journal/use-mood-journal-ai-consent';
 import { colors, fontFamily, moodColors, radius, typography } from '@/theme/tokens';
 
-export default function MoodJournalGardenScreen() {
+export default function MoodJournalReflectionScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ period?: string }>();
   const ensureAiConsent = useMoodJournalAiConsent();
-  const [period, setPeriod] = useState<'week' | 'month'>('month');
+  const [period, setPeriod] = useState<'week' | 'month'>(params.period === 'week' ? 'week' : 'month');
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const range = useMemo(() => period === 'month' ? monthRange(month) : currentWeekRange(), [month, period]);
   const entriesQuery = useListMoodJournalEntries({ ...range, limit: 100 });
@@ -54,7 +55,7 @@ export default function MoodJournalGardenScreen() {
       const response = await generateMoodJournalReflection({ period_start: range.from, period_end: range.to, entry_ids: selected });
       setReflection(response.data);
     } catch (error) {
-      setReflectionFailure(errorMessage(error, '深度回望暂时不可用；上方确定性统计仍然有效。'));
+      setReflectionFailure(errorMessage(error, '深度回望暂时不可用，你仍可以查看上方统计。'));
     } finally {
       setReflecting(false);
     }
@@ -62,20 +63,21 @@ export default function MoodJournalGardenScreen() {
 
   return (
     <AppScreen>
-      <NavHeader title="心情花园" />
+      <NavHeader title="心情回望" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.monthHeader}>
-          <Pressable accessibilityLabel="上个月" accessibilityRole="button" onPress={() => moveMonth(-1)} style={styles.monthButton}>
-            <AppIcon color={colors.text} name="chevron-back" size={20} />
-          </Pressable>
-          <View style={styles.monthCopy}>
-            <Text accessibilityRole="header" style={styles.monthTitle}>{month.getFullYear()}年{month.getMonth() + 1}月</Text>
-            <Text style={styles.monthMeta}>一篇日记，成为一个安静的节点</Text>
+        {period === 'month' ? (
+          <View style={styles.monthHeader}>
+            <Pressable accessibilityLabel="上个月" accessibilityRole="button" onPress={() => moveMonth(-1)} style={styles.monthButton}>
+              <AppIcon color={colors.text} name="chevron-back" size={20} />
+            </Pressable>
+            <View style={styles.monthCopy}>
+              <Text accessibilityRole="header" style={styles.monthTitle}>{month.getFullYear()}年{month.getMonth() + 1}月</Text>
+            </View>
+            <Pressable accessibilityLabel="下个月" accessibilityRole="button" onPress={() => moveMonth(1)} style={styles.monthButton}>
+              <AppIcon color={colors.text} name="chevron-forward" size={20} />
+            </Pressable>
           </View>
-          <Pressable accessibilityLabel="下个月" accessibilityRole="button" onPress={() => moveMonth(1)} style={styles.monthButton}>
-            <AppIcon color={colors.text} name="chevron-forward" size={20} />
-          </Pressable>
-        </View>
+        ) : null}
         <View style={styles.periodTabs}>
           {(['week', 'month'] as const).map((value) => (
             <Pressable accessibilityRole="button" key={value} onPress={() => { setPeriod(value); setSelected([]); setReflection(null); }} style={[styles.periodTab, period === value && styles.periodTabActive]}>
@@ -90,7 +92,7 @@ export default function MoodJournalGardenScreen() {
           <StatePanel
             actionLabel="重试"
             icon="cloud-offline-outline"
-            message={errorMessage(entriesQuery.error ?? statisticsQuery.error, '这个月的回望暂时没有加载出来。')}
+            message={errorMessage(entriesQuery.error ?? statisticsQuery.error, '请稍后重试。')}
             onAction={() => { void entriesQuery.refetch(); void statisticsQuery.refetch(); }}
             title="回望没有加载出来"
           />
@@ -120,12 +122,12 @@ export default function MoodJournalGardenScreen() {
               <View style={styles.summaryDivider} />
               <View style={styles.summaryItem}>
                 <Text numberOfLines={1} style={styles.summaryWord}>{dominantMood ? moodLabels[dominantMood.mood_level] : '—'}</Text>
-                <Text style={styles.summaryLabel}>较常出现</Text>
+                <Text style={styles.summaryLabel}>常见心情</Text>
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>常出现的感受</Text>
+              <Text style={styles.sectionTitle}>常用感受词</Text>
               {topWords.length > 0 ? (
                 <View style={styles.words}>
                   {topWords.map((word) => (
@@ -135,14 +137,14 @@ export default function MoodJournalGardenScreen() {
                     </View>
                   ))}
                 </View>
-              ) : <Text style={styles.emptyText}>写日记时可以顺手选择感受词，回望会更清晰。</Text>}
+              ) : <Text style={styles.emptyText}>记录感受词后会显示在这里。</Text>}
             </View>
 
             <View style={styles.aiSection}>
               <View style={styles.aiIcon}><AppIcon color={moodColors.accent} name="sparkles-outline" size={18} /></View>
               <View style={styles.aiCopy}>
                 <Text style={styles.aiTitle}>深度回望</Text>
-                <Text style={styles.aiText}>先选择允许用于本次回望的日记。未选择或未同意时，只展示上方由服务端确定性计算的统计。</Text>
+                <Text style={styles.aiText}>仅分析你勾选的日记。</Text>
               </View>
             </View>
             <View style={styles.entryChoices}>
@@ -206,7 +208,6 @@ const styles = StyleSheet.create({
   monthButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   monthCopy: { flex: 1, alignItems: 'center' },
   monthTitle: { color: colors.text, fontFamily, ...typography.section },
-  monthMeta: { marginTop: 2, color: colors.textSecondary, fontFamily, ...typography.meta },
   loading: { minHeight: 300, alignItems: 'center', justifyContent: 'center' },
   field: { minHeight: 224, marginTop: 6, justifyContent: 'center', overflow: 'hidden' },
   summary: { minHeight: 86, flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
