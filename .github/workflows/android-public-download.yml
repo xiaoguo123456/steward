@@ -172,10 +172,51 @@ jobs:
           checksum_url="$apk_url.sha256"
           curl --fail --silent --show-error --head --retry 6 --retry-delay 5 "$apk_url"
           curl --fail --silent --show-error --head --retry 6 --retry-delay 5 "$checksum_url"
+
+      - name: 清理旧正式安装包
+        uses: appleboy/ssh-action@v1
+        env:
+          APK_NAME: ${{ steps.release.outputs.apk_name }}
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          envs: APK_NAME
+          script: |
+            set -eu
+            download_dir=/opt/steward-prod/downloads
+            test -f "$download_dir/$APK_NAME"
+            test -f "$download_dir/$APK_NAME.sha256"
+
+            kept=1
+            candidates="$(find "$download_dir" -maxdepth 1 -type f \
+              -name 'steward-[0-9]*.apk' ! -name "$APK_NAME" \
+              -printf '%T@ %f\n' | sort -nr | cut -d' ' -f2-)"
+            for candidate in $candidates; do
+              if [ "$kept" -lt 2 ]; then
+                kept=$((kept + 1))
+                continue
+              fi
+              rm -f -- "$download_dir/$candidate" "$download_dir/$candidate.sha256"
+            done
+
+            remaining="$(find "$download_dir" -maxdepth 1 -type f -name 'steward-[0-9]*.apk' | wc -l | tr -d ' ')"
+            test "$remaining" -le 2
+            echo "正式 APK 保留数量：$remaining"
+
+      - name: 汇总正式包下载信息
+        env:
+          APK_NAME: ${{ steps.release.outputs.apk_name }}
+        run: |
+          set -euo pipefail
+          apk_url="https://steward.qhzhiyin.com/downloads/$APK_NAME"
+          checksum_url="$apk_url.sha256"
           {
             echo "### Android 公共下载已发布"
             echo
             echo "- Release：${{ steps.release.outputs.release_tag }}"
             echo "- APK：$apk_url"
             echo "- SHA256：$checksum_url"
+            echo "- 保留策略：服务器保留当前正式包和最近一个旧正式包，最多 2 个"
           } >> "$GITHUB_STEP_SUMMARY"

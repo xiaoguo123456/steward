@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: steward-android-test
@@ -26,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     environment: test
+    outputs:
+      apk_name: ${{ steps.vars.outputs.apk_name }}
     env:
       ANDROID_BUILD_TOOLS_VERSION: "36.0.0"
       EXPO_PUBLIC_API_URL: https://test-steward.qhzhiyin.com
@@ -166,3 +169,164 @@ jobs:
           retention-days: 30
           if-no-files-found: error
           overwrite: true
+
+  publish:
+    name: 发布测试 APK 公共下载
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: test
+    env:
+      APK_NAME: ${{ needs.build.outputs.apk_name }}
+    steps:
+      - name: 检出当前测试下载配置
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: 下载本次构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.apk_name }}
+          path: output/public-download
+
+      - name: 校验待发布文件
+        run: |
+          set -euo pipefail
+          test -f "output/public-download/$APK_NAME"
+          test -f "output/public-download/$APK_NAME.sha256"
+          (cd output/public-download && sha256sum --check "$APK_NAME.sha256")
+
+      - name: 备份测试下载入口配置
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -eu
+            cd /opt/steward-test
+            mkdir -p .public-download-backup downloads
+            cp docker-compose.test.yml .public-download-backup/docker-compose.test.yml
+            cp deploy/nginx.conf .public-download-backup/nginx.conf
+
+      - name: 同步测试下载入口配置
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          source: "docker-compose.test.yml,deploy/nginx.conf"
+          target: /opt/steward-test
+          overwrite: true
+
+      - name: 上传测试 APK 与校验文件
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          source: "output/public-download/*.apk,output/public-download/*.apk.sha256"
+          target: /opt/steward-test/downloads
+          strip_components: 2
+          overwrite: true
+
+      - name: 校验并启用测试下载入口
+        uses: appleboy/ssh-action@v1
+        env:
+          APK_NAME: ${{ needs.build.outputs.apk_name }}
+          ACR_PULL_REGISTRY: ${{ secrets.ACR_PULL_REGISTRY }}
+          ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          envs: APK_NAME,ACR_PULL_REGISTRY,ACR_NAMESPACE
+          script: |
+            set -eu
+            cd /opt/steward-test
+            export ACR_REGISTRY="$ACR_PULL_REGISTRY"
+            export ACR_NAMESPACE
+            compose="docker compose --project-name steward-test -f docker-compose.test.yml"
+
+            rollback() {
+              cp .public-download-backup/docker-compose.test.yml docker-compose.test.yml
+              cp .public-download-backup/nginx.conf deploy/nginx.conf
+              $compose up -d --no-deps --force-recreate nginx || true
+            }
+            trap rollback EXIT
+
+            download_dir=/opt/steward-test/downloads
+            test -f "$download_dir/$APK_NAME"
+            test -f "$download_dir/$APK_NAME.sha256"
+            chmod 0644 "$download_dir/$APK_NAME" "$download_dir/$APK_NAME.sha256"
+            cd "$download_dir"
+            sha256sum --check "$APK_NAME.sha256"
+
+            cd /opt/steward-test
+            $compose run --rm --no-deps nginx nginx -t
+            $compose up -d --no-deps --force-recreate nginx
+
+            ready=0
+            for i in $(seq 1 12); do
+              if curl -fsSI http://127.0.0.1:8088/healthz >/dev/null \
+                && curl -fsSI "http://127.0.0.1:8088/downloads/$APK_NAME" >/dev/null; then
+                ready=1
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+
+            trap - EXIT
+
+      - name: 验证测试包公开下载地址
+        run: |
+          set -euo pipefail
+          apk_url="https://test-steward.qhzhiyin.com/downloads/$APK_NAME"
+          checksum_url="$apk_url.sha256"
+          curl --fail --silent --show-error --head --retry 6 --retry-delay 5 "$apk_url"
+          curl --fail --silent --show-error --head --retry 6 --retry-delay 5 "$checksum_url"
+
+      - name: 清理旧测试安装包
+        uses: appleboy/ssh-action@v1
+        env:
+          APK_NAME: ${{ needs.build.outputs.apk_name }}
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          envs: APK_NAME
+          script: |
+            set -eu
+            download_dir=/opt/steward-test/downloads
+            test -f "$download_dir/$APK_NAME"
+            test -f "$download_dir/$APK_NAME.sha256"
+
+            for old_apk in "$download_dir"/steward-test-*.apk; do
+              test -e "$old_apk" || continue
+              test "$(basename "$old_apk")" = "$APK_NAME" && continue
+              rm -f -- "$old_apk" "$old_apk.sha256"
+            done
+
+            remaining="$(find "$download_dir" -maxdepth 1 -type f -name 'steward-test-*.apk' | wc -l | tr -d ' ')"
+            test "$remaining" -eq 1
+            echo "测试 APK 保留数量：$remaining"
+
+      - name: 汇总测试包下载信息
+        run: |
+          set -euo pipefail
+          apk_url="https://test-steward.qhzhiyin.com/downloads/$APK_NAME"
+          checksum_url="$apk_url.sha256"
+          {
+            echo "### Android 测试包公共下载已发布"
+            echo
+            echo "- APK：$apk_url"
+            echo "- SHA256：$checksum_url"
+            echo "- 保留策略：服务器只保留最新 1 个测试包；GitHub Artifact 保留 30 天"
+          } >> "$GITHUB_STEP_SUMMARY"
