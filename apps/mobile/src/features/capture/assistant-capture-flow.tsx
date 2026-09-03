@@ -35,6 +35,7 @@ import { CaptureCandidateEditor } from './capture-candidate-editor';
 import type { CaptureAssistantSession } from './capture-assistant-session';
 import {
   captureConversationPhase,
+  capturePartStatusItems,
   captureProcessingCopy,
 } from './capture-conversation-model';
 import {
@@ -616,13 +617,14 @@ function SourceSummary({ candidate, parts }: { candidate: CaptureCandidate; part
 
 function CapturePartStatuses({ parts }: { parts: CapturePart[] }) {
   if (parts.length === 0) return null;
+  const items = capturePartStatusItems(parts);
   return (
     <View style={styles.partStatuses}>
-      {parts.map((part) => {
-        const failed = part.status === 'failed';
-        const complete = part.status === 'succeeded' || part.status === 'ignored';
+      {items.map((item) => {
+        const failed = item.status === 'failed';
+        const complete = item.status === 'succeeded' || item.status === 'ignored';
         return (
-          <View key={part.id} style={styles.partStatus}>
+          <View key={item.key} style={styles.partStatus}>
             {complete ? (
               <AppIcon color={colors.primaryStrong} name="checkmark-circle-outline" size={17} />
             ) : failed ? (
@@ -631,7 +633,7 @@ function CapturePartStatuses({ parts }: { parts: CapturePart[] }) {
               <ActivityIndicator color={colors.textSecondary} size="small" />
             )}
             <Text style={[styles.partStatusText, failed && styles.partStatusFailed]}>
-              {capturePartLabel(part)}
+              {capturePartStatusLabel(item)}
             </Text>
           </View>
         );
@@ -640,20 +642,15 @@ function CapturePartStatuses({ parts }: { parts: CapturePart[] }) {
   );
 }
 
-function capturePartLabel(part: CapturePart): string {
-  const kind = part.kind === 'text'
-    ? '文字'
-    : part.kind === 'audio'
-      ? '语音'
-      : `图片 ${part.position + 1}`;
-  const status = part.status === 'succeeded'
+function capturePartStatusLabel(item: ReturnType<typeof capturePartStatusItems>[number]): string {
+  const status = item.status === 'succeeded'
     ? '已读取'
-    : part.status === 'failed'
-      ? (part.error?.message ?? '处理失败')
-      : part.status === 'ignored'
+    : item.status === 'failed'
+      ? (item.errorMessage ?? '处理失败')
+      : item.status === 'ignored'
         ? '已按你的选择忽略'
         : '正在处理';
-  return `${kind} · ${status}`;
+  return `${item.label} · ${status}`;
 }
 
 function sourceLabel(part: CapturePart, source: CaptureSourceRef): string {

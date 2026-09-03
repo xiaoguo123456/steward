@@ -302,11 +302,12 @@ func (s *Service) Create(ctx context.Context, userID, idempotencyKey string, bod
 func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 	// 第一步：短事务读取上下文。
 	var (
-		capture  dbgen.Capture
-		parts    []dbgen.CapturePart
-		lists    []ai.ListRef
-		trackers []ai.TrackerRef
-		skip     bool
+		capture        dbgen.Capture
+		parts          []dbgen.CapturePart
+		clarifications []dbgen.CaptureQuestion
+		lists          []ai.ListRef
+		trackers       []ai.TrackerRef
+		skip           bool
 		// parseEnabled 为 false 时整轮不调用模型：用户在设置里关掉了智能整理，
 		// 那就只保留原始输入，让他自己填。
 		parseEnabled bool
@@ -344,6 +345,13 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 		parts, err = q.ListCaptureParts(ctx, dbgen.ListCapturePartsParams{
 			CaptureID: args.CaptureID, Revision: c.Revision,
 		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		clarifications, err = q.ListAnsweredCaptureQuestionsForCapture(ctx,
+			dbgen.ListAnsweredCaptureQuestionsForCaptureParams{
+				CaptureID: args.CaptureID, ActiveRevision: c.Revision,
+			})
 		if err != nil {
 			return apperr.Internal(err)
 		}
@@ -402,11 +410,12 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 
 	// 第三步：事务外调用 Provider 做结构化解析。
 	req := ai.CaptureParseRequest{
-		RunID:    idgen.New(idgen.PrefixRun),
-		Timezone: capture.Timezone,
-		Now:      time.Now(),
-		Lists:    lists,
-		Trackers: trackers,
+		RunID:          idgen.New(idgen.PrefixRun),
+		Timezone:       capture.Timezone,
+		Now:            time.Now(),
+		Lists:          lists,
+		Trackers:       trackers,
+		Clarifications: buildCaptureClarifications(parts, clarifications),
 	}
 	if capture.SuggestedProjectID != nil {
 		req.SuggestedProjectID = *capture.SuggestedProjectID
@@ -439,7 +448,7 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 		PromptVersion: result.PromptVersion,
 		SchemaVersion: result.SchemaVersion,
 		InputRefs:     partIDs(parts),
-		InputHash:     aiaudit.Hash(inputTexts(req.Parts)...),
+		InputHash:     aiaudit.Hash(captureParseInputTexts(req)...),
 		OutputHash:    hashCandidates(result.Candidates),
 		Status:        aiaudit.StatusFor(parseErr),
 		ErrorClass:    aiaudit.ClassifyError(parseErr),
@@ -484,6 +493,64 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 		}
 		return nil
 	})
+}
+
+const clarificationPartPositionBase int32 = 1000
+
+func clarificationPartPosition(questionRevision int32) int32 {
+	return clarificationPartPositionBase + questionRevision
+}
+
+// buildCaptureClarifications 恢复按时间正序的“问题—回答”上下文。
+//
+// 新数据使用 1000 + Question revision 精确绑定回答 Part。旧数据曾把所有回答都放在
+// position=1000，这里按回答正文匹配尚未使用的 Part，使升级后的首轮重试也不会继续把
+// 历史回答倒序送给模型。正文只在内存中比较，不进入日志。
+func buildCaptureClarifications(parts []dbgen.CapturePart,
+	questions []dbgen.CaptureQuestion) []ai.CaptureClarification {
+
+	used := make(map[string]struct{}, len(questions))
+	findPart := func(question dbgen.CaptureQuestion) *dbgen.CapturePart {
+		if question.AnswerText == nil {
+			return nil
+		}
+		expectedPosition := clarificationPartPosition(question.Revision)
+		for i := range parts {
+			part := &parts[i]
+			if part.Kind == "text" && part.Position == expectedPosition &&
+				part.Text != nil && *part.Text == *question.AnswerText {
+				return part
+			}
+		}
+		for i := range parts {
+			part := &parts[i]
+			if _, exists := used[part.ID]; exists {
+				continue
+			}
+			if part.Kind == "text" && part.Position >= clarificationPartPositionBase &&
+				part.Text != nil && *part.Text == *question.AnswerText {
+				return part
+			}
+		}
+		return nil
+	}
+
+	out := make([]ai.CaptureClarification, 0, len(questions))
+	for _, question := range questions {
+		if question.AnswerText == nil || strings.TrimSpace(*question.AnswerText) == "" {
+			continue
+		}
+		item := ai.CaptureClarification{
+			Question: question.Question,
+			Answer:   *question.AnswerText,
+		}
+		if part := findPart(question); part != nil {
+			item.AnswerPartID = part.ID
+			used[part.ID] = struct{}{}
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 // finishMediaPreprocessBlocked 在媒体失败时结束本轮 Operation，并阻断解析器。
@@ -886,11 +953,15 @@ func partIDs(parts []dbgen.CapturePart) []string {
 	return out
 }
 
-// inputTexts 取输入正文，**只用于当场算哈希**，不会被存下来。
-func inputTexts(parts []ai.InputPart) []string {
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
+// captureParseInputTexts 取完整解析上下文，**只用于当场算哈希**，不会被存下来。
+// 问题也属于模型输入；纳入哈希后，相同回答针对不同问题不会被误判为同一次输入。
+func captureParseInputTexts(req ai.CaptureParseRequest) []string {
+	out := make([]string, 0, len(req.Parts)+len(req.Clarifications)*2)
+	for _, p := range req.Parts {
 		out = append(out, p.Text)
+	}
+	for _, clarification := range req.Clarifications {
+		out = append(out, clarification.Question, clarification.Answer)
 	}
 	return out
 }

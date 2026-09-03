@@ -28,6 +28,11 @@ var CaptureParsePromptV3 string
 //go:embed prompts/capture-parse/v4.md
 var CaptureParsePromptV4 string
 
+// CaptureParsePromptV5 明确按时间正序处理澄清问答，禁止把回答当成独立事项。
+//
+//go:embed prompts/capture-parse/v5.md
+var CaptureParsePromptV5 string
+
 // VisionExtractPromptV1 是图片信息提取的系统提示词。
 //
 //go:embed prompts/vision-extract/v1.md
@@ -112,7 +117,7 @@ var MoodReflectionSchemaV1 []byte
 
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion        = "capture-parse@v4"
+	CaptureParsePromptVersion        = "capture-parse@v5"
 	VisionExtractPromptVersion       = "vision-extract@v1"
 	AssistantPolicyVersion           = "assistant@v1"
 	ReviewNarrativePromptVersion     = "review-narrative@v2"

@@ -32,7 +32,7 @@ POST /assistant/threads/{id}/turns
   Respond
   ├ 短事务：StartTurn → 读时区、历史、待确认建议数
   ├ 事务外：buildContextBlocks（记忆检索走自己的短事务）
-  ├ 事务外：DirectEngine.RunTurn
+  ├ 事务外：OrchestrationEngine.RunTurn（DirectEngine 或 EinoEngine）
   │    └ 每个工具调用各自开一个短 RLS 事务
   └ 短事务：写工具审计 → 写回复消息 → 写建议 → FinishTurn → 完成 Operation
 ```
@@ -42,12 +42,21 @@ POST /assistant/threads/{id}/turns
 ## 能力的授权边界
 
 `ai.Registry` 只接受在代码里显式登记过的 Capability，不支持按名字反射任意 Go 方法。
-`Allowed(allowProposals)` 计算本轮交给模型的工具列表，但那只是**提示**——
-`DirectEngine.executeCall` 在每次调用前重新按名字查找并授权，模型请求列表外的工具
-一律被拒（`AI_TOOL_NOT_ALLOWED`）并留下审计。
+`Allowed(allowProposals)` 计算本轮交给模型的工具列表，但那只是**提示**——编排引擎
+只执行本轮显式注入的能力，模型请求列表外的工具一律被拒（`AI_TOOL_NOT_ALLOWED`）
+并留下审计。
 
 `user_id` 只来自 `CapabilityContext`，即服务端已验证的身份；模型自报的任何身份信息
 都被忽略。
+
+## 编排引擎切换
+
+- `STEWARD_AI_ENGINE=direct` 使用项目自有薄 Tool Loop，是开发与生产默认值，也是回滚路径。
+- `STEWARD_AI_ENGINE=eino` 使用固定版本 Eino 的单 `ChatModelAgent`；它只管理单次 Turn 内的模型—工具循环，不保存权威状态。
+- 两个实现共享 Engine Conformance Test。切换只需要部署后端，不需要修改 OpenAPI、数据库结构或重新构建移动端。
+- 当前测试环境模板使用 `eino`，生产在测试账号完成连续追问、查询、Proposal、取消与 SSE 验收前保持 `direct`。
+
+详细边界见 `docs/ADR-029-Eino单Agent编排.md`。
 
 ## 与 captures 的分工
 

@@ -81,7 +81,7 @@ func (s *Service) loadSeed(ctx context.Context, args RespondArgs) (contextSeed, 
 			return apperr.Internal(err)
 		}
 		if err := q.SetTurnEngine(ctx, dbgen.SetTurnEngineParams{
-			EngineVersion: s.engineVersion(), ID: turn.ID,
+			EngineType: s.engineType(), EngineVersion: s.engineVersion(), ID: turn.ID,
 		}); err != nil {
 			return apperr.Internal(err)
 		}
@@ -245,8 +245,10 @@ func resourceLabel(kind string) string {
 
 // engineVersion 返回编排引擎版本，写入 Turn 审计。
 func (s *Service) engineVersion() string {
-	if v, ok := s.engine.(interface{ Version() string }); ok {
-		return v.Version()
-	}
-	return "unknown"
+	return ai.EngineVersion(s.engine)
+}
+
+// engineType 返回当前实际编排实现，创建 Turn 与运行审计都使用同一来源。
+func (s *Service) engineType() string {
+	return ai.EngineType(s.engine)
 }

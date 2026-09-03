@@ -26,7 +26,7 @@ test('周月回望要求逐篇选择并展示来源', async () => {
 test('心情首页只保留一个本月回望入口', async () => {
   const content = await readFile(new URL('./mood-journal-content.tsx', import.meta.url), 'utf8');
   assert.match(content, /本月回望/);
-  assert.match(content, /mood-journal\/reflections\/\[period\]/);
+  assert.match(content, /mood-journal\/reflections\/month/);
   assert.doesNotMatch(content, /心情花园|查看花园|mood-journal\/garden/);
 });
 

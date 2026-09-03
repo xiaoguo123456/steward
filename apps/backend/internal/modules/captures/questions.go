@@ -90,8 +90,8 @@ func (s *Service) AnswerQuestion(ctx context.Context, userID, questionID, answer
 			return apperr.Internal(err)
 		}
 
-		// 复制原有输入项到新 revision，保留已有处理结果。
-		if err := q.CopyCapturePartsToRevision(ctx, dbgen.CopyCapturePartsToRevisionParams{
+		// 只复制最初提交的素材；旧澄清回答会在下面按 Question revision 正序重建。
+		if err := q.CopyCaptureBasePartsToRevision(ctx, dbgen.CopyCaptureBasePartsToRevisionParams{
 			IDPrefix:    fmt.Sprintf("r%d-", bumped.Revision),
 			CaptureID:   capture.ID,
 			OldRevision: capture.Revision,
@@ -100,18 +100,29 @@ func (s *Service) AnswerQuestion(ctx context.Context, userID, questionID, answer
 			return apperr.Internal(err)
 		}
 
-		// 用户的补充说明本身也是一条文字输入。
-		if _, err := q.CreateCapturePart(ctx, dbgen.CreateCapturePartParams{
-			ID:        idgen.New(idgen.PrefixCapturePart),
-			UserID:    userID,
-			CaptureID: capture.ID,
-			Revision:  bumped.Revision,
-			Kind:      "text",
-			Status:    "succeeded",
-			Position:  1000,
-			Text:      &answer,
-		}); err != nil {
+		answered, err := q.ListAnsweredCaptureQuestionsForCapture(ctx,
+			dbgen.ListAnsweredCaptureQuestionsForCaptureParams{
+				CaptureID: capture.ID, ActiveRevision: bumped.Revision,
+			})
+		if err != nil {
 			return apperr.Internal(err)
+		}
+		for _, item := range answered {
+			if item.AnswerText == nil || strings.TrimSpace(*item.AnswerText) == "" {
+				continue
+			}
+			if _, err := q.CreateCapturePart(ctx, dbgen.CreateCapturePartParams{
+				ID:        idgen.New(idgen.PrefixCapturePart),
+				UserID:    userID,
+				CaptureID: capture.ID,
+				Revision:  bumped.Revision,
+				Kind:      "text",
+				Status:    "succeeded",
+				Position:  clarificationPartPosition(item.Revision),
+				Text:      item.AnswerText,
+			}); err != nil {
+				return apperr.Internal(err)
+			}
 		}
 
 		if err := q.SupersedeCaptureQuestions(ctx, dbgen.SupersedeCaptureQuestionsParams{

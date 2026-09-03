@@ -92,8 +92,10 @@ type StreamConfig struct {
 type AIConfig struct {
 	// Provider 取 fake 或 openai。fake 只允许开发和测试环境使用。
 	Provider string
-	BaseURL  string
-	APIKey   string
+	// Engine 取 direct 或 eino。direct 保留为生产回滚实现，eino 使用单 Agent 工具循环。
+	Engine  string
+	BaseURL string
+	APIKey  string
 
 	ModelParse      string
 	ModelVision     string
@@ -133,11 +135,12 @@ type StorageConfig struct {
 func Load() (Config, error) {
 	// .env 只在本地存在；缺失不是错误。
 	_ = godotenv.Load(findEnvFile()...)
+	environment := strings.ToLower(strings.TrimSpace(env("STEWARD_ENVIRONMENT", "development")))
 
 	cfg := Config{
 		HTTPAddr:               env("STEWARD_HTTP_ADDR", ":8787"),
 		CORSOrigins:            splitAndTrim(env("STEWARD_CORS_ORIGINS", "http://localhost:8081,http://localhost:4174")),
-		Environment:            strings.ToLower(strings.TrimSpace(env("STEWARD_ENVIRONMENT", "development"))),
+		Environment:            environment,
 		PublicBaseURL:          env("STEWARD_PUBLIC_BASE_URL", "http://localhost:8787"),
 		DatabaseURL:            env("STEWARD_DATABASE_URL", ""),
 		JWTSecret:              env("STEWARD_JWT_SECRET", ""),
@@ -146,6 +149,7 @@ func Load() (Config, error) {
 		AdminReportingTimezone: env("STEWARD_ADMIN_REPORTING_TIMEZONE", "Asia/Shanghai"),
 		AI: AIConfig{
 			Provider:        env("STEWARD_AI_PROVIDER", "fake"),
+			Engine:          strings.ToLower(strings.TrimSpace(env("STEWARD_AI_ENGINE", defaultAIEngine(environment)))),
 			BaseURL:         strings.TrimRight(env("STEWARD_AI_BASE_URL", ""), "/"),
 			APIKey:          env("STEWARD_AI_API_KEY", ""),
 			ModelParse:      env("STEWARD_AI_MODEL_PARSE", ""),
@@ -237,6 +241,15 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
+// defaultAIEngine 让测试环境在服务器尚未补变量时也进入 Eino 灰度；
+// 开发与生产继续使用 DirectEngine，生产切换必须显式配置。
+func defaultAIEngine(environment string) string {
+	if environment == "test" {
+		return "eino"
+	}
+	return "direct"
+}
+
 func (c SMSConfig) validate(devCode, environment string) error {
 	switch c.Provider {
 	case "dev":
@@ -284,6 +297,12 @@ func (c SMSConfig) validate(devCode, environment string) error {
 // 宁可启动失败也不要带着半套配置跑起来：那样第一次真实调用才会暴露问题，
 // 而那时用户已经在等一个永远不会成功的解析。
 func (c AIConfig) validate(environment string) error {
+	switch c.Engine {
+	case "", "direct", "eino":
+	default:
+		return errors.New("STEWARD_AI_ENGINE 只能是 direct 或 eino")
+	}
+
 	switch c.Provider {
 	case "", "fake":
 		if environment == "production" {

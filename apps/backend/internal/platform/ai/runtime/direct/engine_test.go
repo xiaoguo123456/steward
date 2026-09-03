@@ -10,12 +10,19 @@ import (
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
+	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/internal/conformancetest"
 )
 
 // Engine Conformance Test（后端指南 23.3）。
 //
 // 这些用例检查的是编排层的硬不变量，与具体 Provider 无关：
 // 换成任何一个实现 ai.OrchestrationEngine 的引擎，都应当同样通过。
+
+func TestEngineConformance(t *testing.T) {
+	conformancetest.Run(t, func(provider ai.ChatProvider, logger *slog.Logger) ai.OrchestrationEngine {
+		return New(provider, logger)
+	})
+}
 
 // scriptedProvider 按脚本依次返回预设结果，用于精确控制轮次。
 type scriptedProvider struct {

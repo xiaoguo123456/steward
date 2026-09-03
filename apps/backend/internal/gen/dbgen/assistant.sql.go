@@ -709,16 +709,19 @@ func (q *Queries) SetThreadTitleIfDefault(ctx context.Context, arg SetThreadTitl
 }
 
 const setTurnEngine = `-- name: SetTurnEngine :exec
-UPDATE assistant_turns SET engine_version = $1 WHERE id = $2
+UPDATE assistant_turns
+SET engine_type = $1, engine_version = $2
+WHERE id = $3
 `
 
 type SetTurnEngineParams struct {
+	EngineType    string
 	EngineVersion string
 	ID            string
 }
 
 func (q *Queries) SetTurnEngine(ctx context.Context, arg SetTurnEngineParams) error {
-	_, err := q.db.Exec(ctx, setTurnEngine, arg.EngineVersion, arg.ID)
+	_, err := q.db.Exec(ctx, setTurnEngine, arg.EngineType, arg.EngineVersion, arg.ID)
 	return err
 }
 

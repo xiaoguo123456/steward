@@ -188,26 +188,30 @@ func (q *Queries) BumpCaptureRevision(ctx context.Context, arg BumpCaptureRevisi
 	return i, err
 }
 
-const copyCapturePartsToRevision = `-- name: CopyCapturePartsToRevision :exec
+const copyCaptureBasePartsToRevision = `-- name: CopyCaptureBasePartsToRevision :exec
 INSERT INTO capture_parts (
     id, user_id, capture_id, revision, kind, status, position, text, media_id, media_url, duration_ms
 )
 SELECT $1::text || p.id, p.user_id, p.capture_id, $2,
        p.kind, p.status, p.position, p.text, p.media_id, p.media_url, p.duration_ms
 FROM capture_parts p
-WHERE p.capture_id = $3 AND p.revision = $4
+WHERE p.capture_id = $3
+  AND p.revision = $4
+  AND p.position < 1000
 `
 
-type CopyCapturePartsToRevisionParams struct {
+type CopyCaptureBasePartsToRevisionParams struct {
 	IDPrefix    string
 	NewRevision int32
 	CaptureID   string
 	OldRevision int32
 }
 
-// 追加说明后生成新 revision 时，保留原有输入项并复用其处理结果。
-func (q *Queries) CopyCapturePartsToRevision(ctx context.Context, arg CopyCapturePartsToRevisionParams) error {
-	_, err := q.db.Exec(ctx, copyCapturePartsToRevision,
+// 追加说明后生成新 revision 时，只复制最初提交的素材。
+// 位置从 1000 开始的文字 Part 是澄清回答，必须按 Question revision 重新建立，
+// 不能层层复制后再依赖随机 ID 排序，否则问答顺序会逐轮倒置。
+func (q *Queries) CopyCaptureBasePartsToRevision(ctx context.Context, arg CopyCaptureBasePartsToRevisionParams) error {
+	_, err := q.db.Exec(ctx, copyCaptureBasePartsToRevision,
 		arg.IDPrefix,
 		arg.NewRevision,
 		arg.CaptureID,
@@ -730,6 +734,52 @@ func (q *Queries) ListAllDayEventDuplicateCandidates(ctx context.Context, arg Li
 	for rows.Next() {
 		var i ListAllDayEventDuplicateCandidatesRow
 		if err := rows.Scan(&i.ID, &i.Title, &i.Version); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAnsweredCaptureQuestionsForCapture = `-- name: ListAnsweredCaptureQuestionsForCapture :many
+SELECT id, user_id, capture_id, revision, question, blocking, status, quick_answers, capture_summary, answer_text, created_at, answered_at FROM capture_questions
+WHERE capture_id = $1
+  AND status = 'answered'
+  AND revision < $2
+ORDER BY revision, created_at, id
+`
+
+type ListAnsweredCaptureQuestionsForCaptureParams struct {
+	CaptureID      string
+	ActiveRevision int32
+}
+
+func (q *Queries) ListAnsweredCaptureQuestionsForCapture(ctx context.Context, arg ListAnsweredCaptureQuestionsForCaptureParams) ([]CaptureQuestion, error) {
+	rows, err := q.db.Query(ctx, listAnsweredCaptureQuestionsForCapture, arg.CaptureID, arg.ActiveRevision)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CaptureQuestion{}
+	for rows.Next() {
+		var i CaptureQuestion
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CaptureID,
+			&i.Revision,
+			&i.Question,
+			&i.Blocking,
+			&i.Status,
+			&i.QuickAnswers,
+			&i.CaptureSummary,
+			&i.AnswerText,
+			&i.CreatedAt,
+			&i.AnsweredAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

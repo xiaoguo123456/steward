@@ -34,6 +34,9 @@ func New(provider ai.ChatProvider, logger *slog.Logger) *Engine {
 	return &Engine{provider: provider, logger: logger}
 }
 
+// Type 返回引擎类型，写入 Turn 与 AI Action 审计。
+func (e *Engine) Type() string { return "direct" }
+
 // Version 返回引擎版本，写入 Turn 审计。
 func (e *Engine) Version() string { return "direct@v1" }
 

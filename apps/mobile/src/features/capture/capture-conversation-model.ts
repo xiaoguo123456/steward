@@ -1,4 +1,4 @@
-import type { CaptureStatus, OperationStatus } from '@steward/api-client';
+import type { CapturePart, CaptureStatus, OperationStatus } from '@steward/api-client';
 
 export type CaptureConversationPhase =
   | 'processing'
@@ -59,4 +59,52 @@ export function captureProcessingCopy(status?: CaptureStatus): string {
     default:
       return '正在理解你的输入…';
   }
+}
+
+export type CapturePartStatusItem = {
+  key: string;
+  label: string;
+  status: CapturePart['status'];
+  errorMessage?: string;
+};
+
+/**
+ * 处理中只展示用户能据此采取行动的状态。
+ * 多轮澄清会产生多个文字 Part，但它们共同属于同一段文字上下文，不逐行制造重复噪音；
+ * 图片仍逐张展示，因为失败时用户需要知道该重试或替换哪一张。
+ */
+export function capturePartStatusItems(parts: CapturePart[]): CapturePartStatusItem[] {
+  const textParts = parts.filter((part) => part.kind === 'text');
+  const textItem = textParts.length > 0 ? aggregateTextStatus(textParts) : null;
+  const rows: CapturePartStatusItem[] = [];
+  let insertedText = false;
+
+  for (const part of parts) {
+    if (part.kind === 'text') {
+      if (!insertedText && textItem) rows.push(textItem);
+      insertedText = true;
+      continue;
+    }
+    rows.push({
+      key: part.id,
+      label: part.kind === 'audio' ? '语音' : `图片 ${part.position + 1}`,
+      status: part.status,
+      errorMessage: part.error?.message,
+    });
+  }
+  return rows;
+}
+
+function aggregateTextStatus(parts: CapturePart[]): CapturePartStatusItem {
+  const failed = parts.find((part) => part.status === 'failed');
+  const processing = parts.find(
+    (part) => part.status === 'pending' || part.status === 'processing',
+  );
+  const allIgnored = parts.every((part) => part.status === 'ignored');
+  return {
+    key: 'text-context',
+    label: parts.length > 1 ? '文字与补充说明' : '文字',
+    status: failed ? 'failed' : processing?.status ?? (allIgnored ? 'ignored' : 'succeeded'),
+    errorMessage: failed?.error?.message,
+  };
 }

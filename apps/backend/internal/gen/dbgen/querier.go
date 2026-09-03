@@ -91,8 +91,10 @@ type Querier interface {
 	ClearProjectFromTasks(ctx context.Context, projectID *string) error
 	ConsumeAccountDeletionReauthToken(ctx context.Context, id string) error
 	ConsumeVerificationCode(ctx context.Context, id string) error
-	// 追加说明后生成新 revision 时，保留原有输入项并复用其处理结果。
-	CopyCapturePartsToRevision(ctx context.Context, arg CopyCapturePartsToRevisionParams) error
+	// 追加说明后生成新 revision 时，只复制最初提交的素材。
+	// 位置从 1000 开始的文字 Part 是澄清回答，必须按 Question revision 重新建立，
+	// 不能层层复制后再依赖随机 ID 排序，否则问答顺序会逐轮倒置。
+	CopyCaptureBasePartsToRevision(ctx context.Context, arg CopyCaptureBasePartsToRevisionParams) error
 	CountCompletedTasksBetween(ctx context.Context, arg CountCompletedTasksBetweenParams) (int32, error)
 	CountCreatedTasksBetween(ctx context.Context, arg CountCreatedTasksBetweenParams) (int32, error)
 	CountMoodJournalEmotionWords(ctx context.Context, arg CountMoodJournalEmotionWordsParams) ([]CountMoodJournalEmotionWordsRow, error)
@@ -291,6 +293,7 @@ type Querier interface {
 	ListActivityEntriesForBatches(ctx context.Context, batchIds []string) ([]ActivityEntry, error)
 	ListAdminAudit(ctx context.Context, arg ListAdminAuditParams) ([]AdminAuditLog, error)
 	ListAllDayEventDuplicateCandidates(ctx context.Context, arg ListAllDayEventDuplicateCandidatesParams) ([]ListAllDayEventDuplicateCandidatesRow, error)
+	ListAnsweredCaptureQuestionsForCapture(ctx context.Context, arg ListAnsweredCaptureQuestionsForCaptureParams) ([]CaptureQuestion, error)
 	ListCaptureCandidates(ctx context.Context, arg ListCaptureCandidatesParams) ([]CaptureCandidate, error)
 	ListCaptureConflicts(ctx context.Context, arg ListCaptureConflictsParams) ([]CaptureConflict, error)
 	ListCaptureParts(ctx context.Context, arg ListCapturePartsParams) ([]CapturePart, error)

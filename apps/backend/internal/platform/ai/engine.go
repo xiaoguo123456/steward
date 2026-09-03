@@ -173,3 +173,28 @@ type TurnResult struct {
 type OrchestrationEngine interface {
 	RunTurn(ctx context.Context, req TurnRequest) (TurnResult, error)
 }
+
+// EngineDescriptor 是编排实现的可选运行标识。
+//
+// 业务模块仍只依赖 OrchestrationEngine；审计与灰度代码通过这个窄接口读取
+// 实际实现，避免把 Eino 等框架类型扩散到 Domain、OpenAPI 或数据库公共字段。
+type EngineDescriptor interface {
+	Type() string
+	Version() string
+}
+
+// EngineType 返回编排实现类型；测试桩或旧实现未声明时返回 unknown。
+func EngineType(engine OrchestrationEngine) string {
+	if descriptor, ok := engine.(EngineDescriptor); ok {
+		return descriptor.Type()
+	}
+	return "unknown"
+}
+
+// EngineVersion 返回编排实现版本；测试桩或旧实现未声明时返回 unknown。
+func EngineVersion(engine OrchestrationEngine) string {
+	if descriptor, ok := engine.(EngineDescriptor); ok {
+		return descriptor.Version()
+	}
+	return "unknown"
+}

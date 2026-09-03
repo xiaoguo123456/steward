@@ -394,7 +394,7 @@ func (s *Service) CreateTurn(ctx context.Context, userID, threadID string,
 			TurnSeq:       seq.LastTurnSeq,
 			UserMessageID: &message.ID,
 			OperationID:   &op.ID,
-			EngineType:    "direct",
+			EngineType:    s.engineType(),
 			ModelPolicy:   "assistant.chat",
 		})
 		if err != nil {
@@ -564,7 +564,7 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		UserID:     args.UserID,
 		Feature:    aiaudit.FeatureAssistant,
 		RunID:      runID,
-		EngineType: "direct",
+		EngineType: s.engineType(),
 		// 一轮里可能调了好几次工具，这里记的是整轮的合计用量。
 		ModelPolicy:   "chat",
 		Provider:      result.Provider,

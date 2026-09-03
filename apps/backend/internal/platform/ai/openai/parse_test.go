@@ -151,6 +151,36 @@ func TestCaptureParseKeepsExplicitTaskListID(t *testing.T) {
 	}
 }
 
+func TestBuildUserPromptKeepsClarificationPairsInChronologicalOrder(t *testing.T) {
+	prompt := buildUserPrompt(ai.CaptureParseRequest{
+		Parts: []ai.InputPart{
+			{ID: "part_original", Kind: ai.PartText, Position: 0, Text: "帮我安排一次复诊"},
+			// 故意把回答 Part 逆序传入，Prompt 仍必须服从 Clarifications 的时间顺序。
+			{ID: "part_answer_2", Kind: ai.PartText, Position: 1002, Text: "上午十点"},
+			{ID: "part_answer_1", Kind: ai.PartText, Position: 1001, Text: "下周三"},
+		},
+		Clarifications: []ai.CaptureClarification{
+			{Question: "哪一天？", Answer: "下周三", AnswerPartID: "part_answer_1"},
+			{Question: "几点？", Answer: "上午十点", AnswerPartID: "part_answer_2"},
+		},
+		Timezone: "Asia/Shanghai",
+		Now:      time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC),
+	})
+
+	first := strings.Index(prompt, "<澄清 序号=\"1\">")
+	second := strings.Index(prompt, "<澄清 序号=\"2\">")
+	if first < 0 || second <= first {
+		t.Fatalf("澄清问答没有按时间正序：%s", prompt)
+	}
+	if strings.Count(prompt, "下周三") != 1 || strings.Count(prompt, "上午十点") != 1 {
+		t.Fatalf("回答不应再作为普通文字素材重复出现：%s", prompt)
+	}
+	if !strings.Contains(prompt, "回答来源素材ID：part_answer_1") ||
+		!strings.Contains(prompt, "已经明确回答过的信息不得重复追问") {
+		t.Fatalf("Prompt 缺少回答来源或防重复追问语义：%s", prompt)
+	}
+}
+
 func TestMapToNeutralFallsBackToInputSources(t *testing.T) {
 	validator, err := captureParseSchema()
 	if err != nil {
@@ -183,7 +213,7 @@ func TestMapToNeutralFallsBackToInputSources(t *testing.T) {
 	}
 }
 
-func TestCaptureParseV4MapsUpdateTargetAndRelations(t *testing.T) {
+func TestCaptureParseV5MapsUpdateTargetAndRelations(t *testing.T) {
 	validator, err := captureParseSchema()
 	if err != nil {
 		t.Fatalf("加载 Schema 失败：%v", err)

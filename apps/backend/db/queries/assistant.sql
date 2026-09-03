@@ -178,7 +178,9 @@ UPDATE assistant_turns SET provider_state = sqlc.arg(provider_state)
 WHERE id = sqlc.arg(id);
 
 -- name: SetTurnEngine :exec
-UPDATE assistant_turns SET engine_version = sqlc.arg(engine_version) WHERE id = sqlc.arg(id);
+UPDATE assistant_turns
+SET engine_type = sqlc.arg(engine_type), engine_version = sqlc.arg(engine_version)
+WHERE id = sqlc.arg(id);
 
 -- name: SetThreadTitleIfDefault :exec
 -- 首条消息定标题。只在标题还是默认值时写，用户改过就不再覆盖。

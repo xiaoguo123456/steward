@@ -34,6 +34,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/fake"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/openai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/direct"
+	einoruntime "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/eino"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
@@ -191,7 +192,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	chat := newChatProvider(parser)
 	objectsSvc.WithNotePolisher(chat, auditor)
 	moodJournalSvc.WithPolisher(chat, auditor, cfg.AI.ApprovedSensitiveContent)
-	engine := newEngine(chat, logger)
+	engine := newEngine(chat, cfg.AI.Engine, logger)
 	stream, streamLimit, err := newStreamTransport(ctx, cfg, db, logger)
 	if err != nil {
 		db.Close()
@@ -446,10 +447,15 @@ func newChatProvider(parser ai.CaptureParser) ai.ChatProvider {
 }
 
 // newEngine 构造编排引擎。
-func newEngine(chat ai.ChatProvider, logger *slog.Logger) ai.OrchestrationEngine {
+func newEngine(chat ai.ChatProvider, engineType string, logger *slog.Logger) ai.OrchestrationEngine {
 	if chat == nil {
 		return unavailableEngine{}
 	}
+	if engineType == "eino" {
+		logger.Info("Assistant 使用 Eino 单 Agent 编排", "engine_version", "eino-adk@v0.9.19")
+		return einoruntime.New(chat, logger)
+	}
+	logger.Info("Assistant 使用 DirectEngine 编排")
 	return direct.New(chat, logger)
 }
 
@@ -461,6 +467,8 @@ type unavailableEngine struct{}
 func (unavailableEngine) RunTurn(context.Context, ai.TurnRequest) (ai.TurnResult, error) {
 	return ai.TurnResult{}, ai.ErrProviderUnavailable
 }
+
+func (unavailableEngine) Type() string { return "unavailable" }
 
 func (unavailableEngine) Version() string { return "unavailable" }
 

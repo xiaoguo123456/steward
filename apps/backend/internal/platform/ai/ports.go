@@ -58,6 +58,17 @@ type InputPart struct {
 	MediaID  string
 }
 
+// CaptureClarification 是 Capture 解析过程中已经发生的一轮澄清问答。
+//
+// Question 来自上一轮模型输出，Answer 是用户针对该问题给出的补充；二者必须成对、
+// 按时间正序传给 Provider，不能把 Answer 扁平化成一条新的独立素材。
+// AnswerPartID 指向保存用户回答的 Capture Part，用于候选字段来源追溯。
+type CaptureClarification struct {
+	Question     string
+	Answer       string
+	AnswerPartID string
+}
+
 // ListRef 是可供候选绑定的已有清单。
 type ListRef struct {
 	ID        string
@@ -85,6 +96,7 @@ type TrackerFieldRef struct {
 type CaptureParseRequest struct {
 	RunID              string
 	Parts              []InputPart
+	Clarifications     []CaptureClarification
 	InstructionNote    string
 	SuggestedProjectID string
 	Timezone           string

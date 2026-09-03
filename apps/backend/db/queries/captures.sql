@@ -58,15 +58,19 @@ ORDER BY position, id;
 UPDATE capture_parts SET status = sqlc.arg(status), text = sqlc.narg(text), error = sqlc.narg(error)
 WHERE id = sqlc.arg(id);
 
--- name: CopyCapturePartsToRevision :exec
--- 追加说明后生成新 revision 时，保留原有输入项并复用其处理结果。
+-- name: CopyCaptureBasePartsToRevision :exec
+-- 追加说明后生成新 revision 时，只复制最初提交的素材。
+-- 位置从 1000 开始的文字 Part 是澄清回答，必须按 Question revision 重新建立，
+-- 不能层层复制后再依赖随机 ID 排序，否则问答顺序会逐轮倒置。
 INSERT INTO capture_parts (
     id, user_id, capture_id, revision, kind, status, position, text, media_id, media_url, duration_ms
 )
 SELECT sqlc.arg(id_prefix)::text || p.id, p.user_id, p.capture_id, sqlc.arg(new_revision),
        p.kind, p.status, p.position, p.text, p.media_id, p.media_url, p.duration_ms
 FROM capture_parts p
-WHERE p.capture_id = sqlc.arg(capture_id) AND p.revision = sqlc.arg(old_revision);
+WHERE p.capture_id = sqlc.arg(capture_id)
+  AND p.revision = sqlc.arg(old_revision)
+  AND p.position < 1000;
 
 -- name: CreateCaptureCandidate :one
 INSERT INTO capture_candidates (
@@ -177,6 +181,13 @@ LIMIT sqlc.arg(row_limit);
 SELECT * FROM capture_questions
 WHERE capture_id = sqlc.arg(capture_id) AND revision = sqlc.arg(revision)
 ORDER BY created_at, id;
+
+-- name: ListAnsweredCaptureQuestionsForCapture :many
+SELECT * FROM capture_questions
+WHERE capture_id = sqlc.arg(capture_id)
+  AND status = 'answered'
+  AND revision < sqlc.arg(active_revision)
+ORDER BY revision, created_at, id;
 
 -- name: AnswerCaptureQuestion :one
 UPDATE capture_questions SET status = 'answered', answer_text = sqlc.arg(answer_text), answered_at = now()

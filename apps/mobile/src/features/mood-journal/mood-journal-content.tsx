@@ -97,7 +97,7 @@ export function MoodJournalContent() {
         <Pressable
           accessibilityLabel={`打开本月回望，本月写了 ${monthCount} 篇`}
           accessibilityRole="button"
-          onPress={() => router.push({ pathname: '/mood-journal/reflections/[period]', params: { period: 'month' } })}
+          onPress={() => router.push('/mood-journal/reflections/month')}
           style={({ pressed }) => [styles.reflectionRow, pressed && styles.pressed]}
         >
           <View style={styles.reflectionIcon}>
