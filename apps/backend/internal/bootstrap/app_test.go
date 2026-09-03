@@ -9,24 +9,22 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 )
 
-func TestNewEngineFollowsConfiguration(t *testing.T) {
+func TestNewEngineUsesEino(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	provider := bootstrapTestProvider{}
 
 	tests := []struct {
-		name       string
-		provider   ai.ChatProvider
-		engineType string
-		want       string
+		name     string
+		provider ai.ChatProvider
+		want     string
 	}{
-		{name: "默认薄循环", provider: provider, engineType: "direct", want: "direct"},
-		{name: "Eino 单 Agent", provider: provider, engineType: "eino", want: "eino"},
-		{name: "Provider 不可用", provider: nil, engineType: "eino", want: "unavailable"},
+		{name: "Eino 单 Agent", provider: provider, want: "eino"},
+		{name: "Provider 不可用", provider: nil, want: "unavailable"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			engine := newEngine(tc.provider, tc.engineType, logger)
+			engine := newEngine(tc.provider, logger)
 			if got := ai.EngineType(engine); got != tc.want {
 				t.Fatalf("引擎类型不对：want=%s got=%s", tc.want, got)
 			}

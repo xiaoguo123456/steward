@@ -45,7 +45,7 @@
 - Go HTTP API、Go River Worker 和 PostgreSQL 的职责划分。
 - Assistant 对话、Capture 解析、Search Answer、建议和 Review 的共用 AI 基础设施。
 - 官方 Provider SDK 与自建薄编排层的边界。
-- 已接入 Eino 单 Agent Runtime 的使用边界、灰度与替换条件。
+- 已接入 Eino 单 Agent Runtime 的使用边界、发布观测与替换条件。
 - 自由对话、查询、Capture 和修改建议四类交互如何共存。
 - 意图识别、能力选择、工具执行、来源追溯和确认写入。
 - 用户短期上下文、显式偏好、长期记忆和派生摘要。
@@ -83,7 +83,7 @@
 | 大文件 | 私有 S3 兼容对象存储 | 只保存图片、音频、导出包等二进制资产 |
 | 网络契约 | `packages/contracts/openapi` 唯一来源 | 前后端不重复声明 DTO、URL、枚举和错误码 |
 | AI 契约 | `packages/ai-contracts/schemas` 唯一来源 | Provider 输出必须再次通过完整 Schema 校验 |
-| 当前 AI Runtime | 现有 Provider Adapter + 可切换的 DirectEngine／Eino 单 Agent | 测试环境灰度 Eino，生产保留 Direct 回滚；业务层不感知框架 |
+| 当前 AI Runtime | 现有 Provider Adapter + Eino v0.9.19 单 Agent | 所有环境使用唯一编排实现；业务层不感知框架 |
 | 编排扩展 | 继续通过自有 `OrchestrationEngine` 隔离框架 | 当前不引入多 Agent、远程插件或持久 Graph，降低迁移与安全范围 |
 | 对话方式 | 自由对话与受控事务分轨 | 对话不固化，写入仍安全、可确认 |
 | 模型工具 | 只开放登记过的只读工具和“生成建议”工具 | 不向模型暴露数据库、网络或直接写入能力 |
@@ -128,9 +128,7 @@ flowchart LR
     AM --> OE["OrchestrationEngine"]
     CB --> QP["各领域公开 Query Port"]
     CR --> QP
-    OE --> DE["DirectEngine（默认／回滚）"]
-    OE --> EE["EinoEngine（测试灰度）"]
-    DE --> PA["Provider Adapters"]
+    OE --> EE["EinoEngine（唯一实现）"]
     EE --> PA
     PA --> LLM["模型 / 转写 / 视觉 / Embedding Provider"]
     AM --> AP["ActionProposal"]
@@ -216,8 +214,8 @@ apps/backend/internal/
     │   │   ├── openai/
     │   │   └── ...
     │   ├── runtime/
-    │   │   ├── direct/
-    │   │   └── eino/          # 满足替换条件后再引入
+    │   │   ├── eino/          # 唯一编排实现
+    │   │   └── internal/conformancetest/ # 项目自有行为契约
     │   ├── schemacompiler/
     │   ├── modelpolicy/
     │   └── telemetry/
@@ -381,28 +379,9 @@ type TurnResult struct {
 
 以上类型不能包含 OpenAI、Eino 或其他框架的具体类型。
 
-## 6.2 `DirectEngine`
+## 6.2 `EinoEngine`
 
-第一阶段实现 `DirectEngine`：
-
-- 使用官方 Provider SDK。
-- 把 `CapabilitySpec` 编译成 Provider 支持的 Function Tool Schema。
-- 支持普通回答、结构化输出和有限 Tool Loop。
-- 每次 Tool Call 都先经过 Capability Registry 重新授权。
-- 达到轮数、工具数、token、耗时或成本上限时立即停止。
-- 把 Provider 输出映射回项目中立类型。
-
-`DirectEngine` 不负责：
-
-- 直接查询 PostgreSQL。
-- 判断用户是否拥有某个资源。
-- 生成业务 ID 或执行写入。
-- 计算 Today、任务状态、金额合计或日历投影。
-- 决定一个建议是否已被用户确认。
-
-## 6.3 `EinoEngine`
-
-当前已固定 `github.com/cloudwego/eino v0.9.19`，在 `platform/ai/runtime/eino` 实现可选 `EinoEngine`。第一版只使用一个 ADK `ChatModelAgent` 承接单次 Turn 的 Tool Loop，不使用 Multi-Agent、DeepAgent、MCP、Graph Checkpoint 或实验性 Agentic Model。选择由 `STEWARD_AI_ENGINE=direct|eino` 控制；生产默认仍为 `direct`，测试环境先启用 `eino`。
+当前固定 `github.com/cloudwego/eino v0.9.19`，在 `platform/ai/runtime/eino` 实现 Assistant 唯一可用的 `OrchestrationEngine`。它只使用一个 ADK `ChatModelAgent` 承接单次 Turn 的 Tool Loop，不使用 Multi-Agent、DeepAgent、MCP、Graph Checkpoint 或实验性 Agentic Model。Bootstrap 在 Provider 可用时直接构造 Eino，不读取 `STEWARD_AI_ENGINE`，所有环境使用同一路径。
 
 它必须实现同一个 `OrchestrationEngine`，并遵守：
 
@@ -410,12 +389,18 @@ type TurnResult struct {
 - 当前不保存 Eino Checkpoint；以后若证明有必要，只能作为可删除的优化另立 ADR。
 - 系统始终根据 PostgreSQL 中的 Message、Turn、Tool Call 和 Proposal 重建下一轮上下文。
 - Capability 权限、写入确认和 Domain 校验不能被 Graph Node 替代。
-- 同一套 Engine Conformance Test 必须同时验证 `DirectEngine` 和 `EinoEngine`。
+- Engine Conformance Test 必须持续验证 Eino 对项目中立接口、安全边界与审计语义的实现；未来替换框架时复用同一套测试。
 - Eino Tool 只适配本轮允许的项目 `Capability`，模型请求列表外能力仍记 `AI_TOOL_NOT_ALLOWED`。
 - 阿里云 Provider、工具名映射、流式 usage 和 `enable_thinking=false` 继续由现有 Provider Adapter 负责。
 - ADK 只提供单 Agent 循环；多 Agent、远程插件和实验性能力需要独立 ADR、Eval 与发布开关。
 
 完整决策见 [ADR-029：Eino 单 Agent 编排](./ADR-029-Eino单Agent编排.md)。
+
+## 6.3 行为契约与替换边界
+
+`runtime/internal/conformancetest` 是项目拥有的行为契约，不属于 Eino 私有测试。它覆盖直接回答、上下文、流式输出、Capability 允许集合、未授权与重复调用拦截、Proposal 草稿、单轮预算、取消、Provider 故障、来源和用量审计。删除旧编排实现不等于删除这套契约；Eino 升级或未来引入替代 Runtime 都必须先通过它。
+
+编排实现不负责直接查询 PostgreSQL、判断资源归属、生成业务 ID、执行写入、计算 Today／任务状态／金额／日历投影，也不决定 Proposal 是否已确认。这些职责继续留在项目 Domain 与 Application。
 
 ## 6.4 Provider Port 与 Runtime 分离
 
@@ -1963,7 +1948,7 @@ fallback policy
 
 ## 18.2 当前推荐实现
 
-- `DirectEngine` 使用首选 Provider 的官方 Go SDK。
+- Eino 单 Agent 通过项目自有 Provider Adapter 使用首选 Provider 的官方 Go SDK 或兼容协议。
 - 多轮文本、结构化输出和 Function Tool 优先使用 Provider 当前推荐的统一响应接口。
 - 官方 SDK 只存在于 `platform/ai/providers/<provider>`。
 - SDK 默认重试、超时和遥测全部在 Adapter 初始化时显式配置。
@@ -2396,7 +2381,7 @@ AI 质量：Schema、来源、Tool、Eval、模型版本
 | Repository Integration | PostgreSQL、RLS、唯一键、锁、sqlc 和迁移 |
 | Worker Integration | River 重试、幂等、取消、崩溃恢复和 supersede |
 | Adapter Contract | 官方 SDK 映射、错误分类、usage 和 tool call |
-| Engine Conformance | Direct／Eino 对同一中立用例的行为一致性 |
+| Engine Conformance | Eino 对项目中立接口、安全边界和审计语义的符合性；未来替换实现复用同一套用例 |
 | Mobile Contract／E2E | Operation、Message、Proposal、Confirm、离线和冲突 |
 | AI Eval | 意图、结构、来源、Tool、回答和安全质量 |
 
@@ -2530,7 +2515,6 @@ inappropriate-mutation rate
 |---|---|---|
 | 同一 Engine 内更换模型 | 低 | 配置 + Eval + Canary |
 | 更换同能力 Provider | 低到中 | 新 Adapter、Schema 编译和错误映射 |
-| `DirectEngine` → `EinoEngine` | 中 | 编排实现变化，业务／API／数据库不变 |
 | Eino → 自研其他 Go Runtime | 中 | 实现同一接口和 Conformance Test |
 | Go Runtime → Python LangGraph 服务 | 中到高 | 增加内部网络、部署和跨语言可观测成本；业务域仍不变 |
 
@@ -2547,30 +2531,30 @@ inappropriate-mutation rate
 同时出现多项真实需求时再评估：
 
 - 多个生产流程反复实现分支、并行、Interrupt／Resume 和 Checkpoint。
-- DirectEngine 的通用 Tool Loop 已稳定，但编排代码重复且难以观察。
+- 现有通用 Tool Loop 已稳定，但编排代码重复且难以观察。
 - 需要共享 Graph 级 Callback、可视化或统一恢复机制。
 - Eino 当前稳定版本、Go 版本和依赖满足生产要求。
 - 团队可以维护 Eino Adapter 和 Conformance Test，而不是把框架类型扩散到业务层。
 
-2026-09-03 的结论是：Assistant 已出现多轮工具、SSE、取消、预算、错误恢复和统一审计等真实复杂度，具备引入一个精简单 Agent Runtime 的条件；但当前没有多 Agent、持久 Graph 或远程插件需求。因此只实现 `ChatModelAgent` 适配器并进入测试环境灰度，不能把“已引入 Eino”等同于允许继续扩张框架范围。
+2026-09-03 的结论是：Assistant 已出现多轮工具、SSE、取消、预算、错误恢复和统一审计等真实复杂度，具备使用一个精简单 Agent Runtime 的条件；但当前没有多 Agent、持久 Graph 或远程插件需求。因此只保留 `ChatModelAgent` 适配器作为唯一实现，不能把“已引入 Eino”等同于允许继续扩张框架范围。
 
-## 24.5 `DirectEngine` 到 `EinoEngine` 的步骤
+## 24.5 收敛到 Eino 单 Agent 的步骤
 
 1. [已完成] 冻结 `OrchestrationEngine` 和项目中立类型。
-2. [已完成] 把 Direct 行为纳入双引擎共享 Conformance Test。
+2. [已完成] 把原有编排行为提取为框架中立的 Engine Conformance Test。
 3. [已完成] 在 `platform/ai/runtime/eino` 实现同一接口。
 4. [已完成] 用 Adapter 把本轮 `Capability` 允许集合映射为 Eino Tool。
 5. [已完成] 保持 PostgreSQL 为唯一权威状态，不引入 Checkpoint Store。
-6. [已完成] 使用脚本 Provider 和合成 Fixture 比较两种 `TurnResult`；不双跑真实用户正文。
-7. [待部署验收] 测试服务器启用 `STEWARD_AI_ENGINE=eino`，验证连续追问、查询、Proposal、取消和 SSE。
-8. [待观测] 比较工具失败率、降级率、延迟和 token，再决定是否开放生产流量。
-9. [已完成] 保留 `STEWARD_AI_ENGINE=direct` 作为立即回滚路径。
+6. [已完成] 使用脚本 Provider 和合成 Fixture 验证中立 `TurnResult`；不双跑真实用户正文。
+7. [已完成] 删除旧自研引擎及其测试，评测栈和 Bootstrap 统一构造 Eino。
+8. [已完成] 删除 `STEWARD_AI_ENGINE` 配置、校验和环境示例，所有环境使用同一装配路径。
+9. [待部署验收] 在测试服务器验证连续追问、查询、Proposal、取消和 SSE，并观察工具失败率、降级率、延迟和 token。
 
 ## 24.6 数据迁移
 
 正常情况下不需要迁移 Thread、Message、Proposal 或 Memory。仅需：
 
-- 新增 `engine_type/engine_version` 枚举值。
+- 保留 `engine_type/engine_version` 审计字段与既有历史值；新增 Turn 写入 `eino` 和当前适配器版本。
 - 可选地清空／过期旧 Provider State。
 - 对未完成 Turn 选择继续旧 Engine、重排新 Engine 或标记可重试。
 - 保留旧 AI Action 供审计，不把历史结果重写成新 Engine。
@@ -2620,7 +2604,7 @@ inappropriate-mutation rate
 交付：
 
 - Provider Ports 与首选官方 SDK Adapter。
-- `DirectEngine`、Model Policy、Schema Compiler、AI Action Recorder。
+- `OrchestrationEngine` 中立边界、Eino 单 Agent、Model Policy、Schema Compiler、AI Action Recorder。
 - Fake Provider、Adapter Contract Test、Eval Runner。
 - timeout、retry、circuit breaker、usage 和 cost 记录。
 
@@ -2696,7 +2680,7 @@ inappropriate-mutation rate
 - 删除后 Prompt、Search 和向量均不可召回。
 - 关闭偏好学习后不生成新 Suggestion。
 
-## 25.9 阶段 8：优化与 Eino 灰度
+## 25.9 阶段 8：优化与 Eino 运行观测
 
 其余优化只有运行数据证明需要时再实施：
 
@@ -2704,7 +2688,7 @@ inappropriate-mutation rate
 - Thread Summary 优化。
 - HNSW 或检索调优。
 - 多 Provider 路由。
-- EinoEngine 已完成本地契约验证；测试 Canary 与生产切换仍以运行指标为准。
+- EinoEngine 已完成本地契约验证并成为唯一实现；版本升级与生产发布仍以运行指标为准。
 
 不把这些优化作为阶段 0 的前置依赖。
 
@@ -2724,7 +2708,7 @@ inappropriate-mutation rate
 6. 新增 Goose 向前迁移并运行 sqlc；不修改旧迁移和 dbgen。
 7. 在 Objects／Lists 暴露最小 Task Query 和 Task Command。
 8. 在 Assistant 注册 `tasks.search` 和 `tasks.propose_update`。
-9. DirectEngine 只调用中立 Capability。
+9. EinoEngine 只调用本轮注入的中立 Capability。
 10. Confirm Application 重读 Task version 并执行 Command。
 11. 移动端只使用生成 Client，覆盖 loading／error／stale／offline。
 12. 增加 Contract Fixture、RLS Integration、Worker Idempotency 和 E2E。
@@ -2816,7 +2800,7 @@ River Job
 | 单用户／全局 AI 预算 | 生产压测前 | Model Policy 和告警阈值 |
 | 第一批可写 Proposal 类型 | Assistant 写入阶段前 | 功能规格、确认页和 Domain Command |
 | SSE 是否进入第一版 Assistant | 移动端联调前 | 网络恢复与真机压测结果 |
-| Eino 是否满足引入条件 | DirectEngine 出现真实复杂度后 | ADR、Conformance、Shadow 报告 |
+| Eino 升级或替换 Runtime 是否安全 | 每次框架升级或替换前 | ADR、Conformance、Eval 与部署回滚方案 |
 
 未确定项不允许由开发者在局部代码中写成永久默认规则。
 
@@ -2827,7 +2811,7 @@ River Job
 以下资料用于核对第三方能力，项目内部边界仍以本文和 ADR 为准：
 
 - [OpenAI Responses API Reference](https://platform.openai.com/docs/api-reference/responses)：统一响应、结构化输出与 Function Tool 能力。
-- [OpenAI 官方 Go SDK](https://github.com/openai/openai-go)：`DirectEngine` 的一个 Provider Adapter 实现来源。
+- [OpenAI 官方 Go SDK](https://github.com/openai/openai-go)：项目 Provider Adapter 的实现参考。
 - [CloudWeGo Eino Overview](https://www.cloudwego.io/docs/eino/overview/)：Go AI 组件、Graph、Workflow、Interrupt／Resume 和 Checkpoint。
 - [CloudWeGo Eino User Manual](https://www.cloudwego.io/docs/eino/)：Eino 组件与编排文档。
 - [River](https://github.com/riverqueue/river)：Go + PostgreSQL Job 与事务内入队。
@@ -3004,14 +2988,14 @@ type MemoryCommand interface {
 
 | ADR | 决策 |
 |---|---|
-| ADR-019 | 使用官方 Provider SDK + 自建 `DirectEngine`，业务只依赖中立 Runtime |
+| ADR-019 | 初始采用官方 Provider SDK + 自研编排；自研实现已由 ADR-029 取代，业务仍只依赖中立 Runtime |
 | ADR-020 | 自由对话与受控事务分轨，模型只生成 Action Proposal |
 | ADR-021 | Assistant Thread／Message／Turn 使用项目自有 PostgreSQL 状态 |
 | ADR-022 | 用户长期记忆使用 PostgreSQL 结构化存储，Markdown 仅作派生输出 |
 | ADR-023 | 显式设置、长期记忆、领域事实和派生摘要分层 |
 | ADR-024 | Capability Registry 只开放只读和 Proposal 能力 |
-| ADR-025 | Eino 作为可选 `OrchestrationEngine`，Checkpoint 非权威 |
+| ADR-025 | 评估 Eino 作为 `OrchestrationEngine`，Checkpoint 非权威；“可选实现”已由 ADR-029 更新为唯一实现 |
 | ADR-026 | 模型按逻辑 Model Policy 路由，业务代码不绑定具体模型 ID |
-| ADR-029 | 使用 Eino v0.9.19 单 Agent 实现可选编排，DirectEngine 保留为默认与回滚路径 |
+| ADR-029 | 使用 Eino v0.9.19 单 Agent 作为唯一编排实现，保留项目边界、确认、审计与行为契约 |
 
 每个 ADR 必须写背景、选项、选择、后果、替换条件和回滚方式，不能只复制本文结论。

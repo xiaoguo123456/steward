@@ -23,21 +23,9 @@ func TestAIConfigValidateFakeEnvironmentGate(t *testing.T) {
 	}
 }
 
-func TestDefaultAIEngine(t *testing.T) {
-	if got := defaultAIEngine("test"); got != "eino" {
-		t.Fatalf("测试环境应默认灰度 Eino，实际 %q", got)
-	}
-	for _, environment := range []string{"development", "production"} {
-		if got := defaultAIEngine(environment); got != "direct" {
-			t.Fatalf("%s 环境应默认 DirectEngine，实际 %q", environment, got)
-		}
-	}
-}
-
 func TestAIConfigValidateOpenAI(t *testing.T) {
 	valid := AIConfig{
 		Provider:           "openai",
-		Engine:             "eino",
 		APIKey:             "test-key",
 		BaseURL:            "https://ai.example.com",
 		ModelParse:         "parse-model",
@@ -65,11 +53,5 @@ func TestAIConfigValidateOpenAI(t *testing.T) {
 	invalid.ThinkingMode = "slow"
 	if err := invalid.validate("production"); err == nil {
 		t.Fatal("未知思考模式必须启动失败")
-	}
-
-	invalid = valid
-	invalid.Engine = "multi-agent"
-	if err := invalid.validate("production"); err == nil {
-		t.Fatal("未知编排引擎必须启动失败")
 	}
 }

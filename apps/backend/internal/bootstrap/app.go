@@ -33,7 +33,6 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/fake"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/openai"
-	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/direct"
 	einoruntime "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/eino"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit"
 	authpkg "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth"
@@ -192,7 +191,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger, opts Optio
 	chat := newChatProvider(parser)
 	objectsSvc.WithNotePolisher(chat, auditor)
 	moodJournalSvc.WithPolisher(chat, auditor, cfg.AI.ApprovedSensitiveContent)
-	engine := newEngine(chat, cfg.AI.Engine, logger)
+	engine := newEngine(chat, logger)
 	stream, streamLimit, err := newStreamTransport(ctx, cfg, db, logger)
 	if err != nil {
 		db.Close()
@@ -446,17 +445,13 @@ func newChatProvider(parser ai.CaptureParser) ai.ChatProvider {
 	return chat
 }
 
-// newEngine 构造编排引擎。
-func newEngine(chat ai.ChatProvider, engineType string, logger *slog.Logger) ai.OrchestrationEngine {
+// newEngine 构造唯一支持的 Eino 单 Agent 编排引擎。
+func newEngine(chat ai.ChatProvider, logger *slog.Logger) ai.OrchestrationEngine {
 	if chat == nil {
 		return unavailableEngine{}
 	}
-	if engineType == "eino" {
-		logger.Info("Assistant 使用 Eino 单 Agent 编排", "engine_version", "eino-adk@v0.9.19")
-		return einoruntime.New(chat, logger)
-	}
-	logger.Info("Assistant 使用 DirectEngine 编排")
-	return direct.New(chat, logger)
+	logger.Info("Assistant 使用 Eino 单 Agent 编排", "engine_version", "eino-adk@v0.9.19")
+	return einoruntime.New(chat, logger)
 }
 
 // unavailableEngine 在没有配置模型服务时接管对话。

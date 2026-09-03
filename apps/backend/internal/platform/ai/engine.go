@@ -8,7 +8,7 @@ import (
 // ---- 编排引擎的自有接口。业务模块只依赖这里的类型。 ----
 //
 // 这些类型不包含任何 Provider SDK 或编排框架的具体类型，
-// 因此将来换 Provider 或引入 Eino 时，业务层不需要改动。
+// 因此将来更换 Provider 或编排框架时，业务层不需要改动。
 
 // Role 是消息角色。
 type Role string
@@ -176,7 +176,7 @@ type OrchestrationEngine interface {
 
 // EngineDescriptor 是编排实现的可选运行标识。
 //
-// 业务模块仍只依赖 OrchestrationEngine；审计与灰度代码通过这个窄接口读取
+// 业务模块仍只依赖 OrchestrationEngine；审计代码通过这个窄接口读取
 // 实际实现，避免把 Eino 等框架类型扩散到 Domain、OpenAPI 或数据库公共字段。
 type EngineDescriptor interface {
 	Type() string

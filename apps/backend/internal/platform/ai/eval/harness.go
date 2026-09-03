@@ -19,7 +19,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/users"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/modules/views"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
-	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/direct"
+	einoruntime "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/eino"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 )
 
@@ -64,7 +64,7 @@ func NewStack(db *database.DB) *Stack {
 	assistant.RegisterProposals(registry, deps)
 
 	provider := &scriptedProvider{}
-	engine := direct.New(provider, logger)
+	engine := einoruntime.New(provider, logger)
 
 	// 队列不参与评测：这里直接调 Respond，不经过 River。
 	assistantSvc := assistant.New(db, engine, registry,

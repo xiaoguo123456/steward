@@ -74,7 +74,7 @@ apps/backend/
     └── platform/                      # config database auth httpx timeutil idgen apperr jobs storage
         └── ai/                        # ports capability engine assets
             ├── fake/ openai/          # Provider 适配器，SDK 与线上协议只出现在这里
-            └── runtime/direct/        # 薄工具循环，实现 ai.OrchestrationEngine
+            └── runtime/eino/          # Eino 单 Agent，实现 ai.OrchestrationEngine
 ```
 
 模块之间只通过各自声明的窄接口通信，具体实现在 `bootstrap` 注入，因此没有跨模块直接依赖。
@@ -294,11 +294,11 @@ APNs/FCM 配置与真机构建，不在代码。
 
 - `ai.Registry` 只接受代码里显式登记过的 Capability，**不支持按名字反射任意 Go 方法**。
 - `Allowed(allowProposals)` 算出的工具列表只是给模型的**提示**；
-  `direct.Engine.executeCall` 每次调用前都会重新按名字授权，
+  `eino` Capability 适配器每次调用前都会重新按名字授权，
   列表外的工具一律拒绝（`AI_TOOL_NOT_ALLOWED`）并留审计。
 - `user_id` 只来自服务端已验证身份（`ai.CapabilityContext`），忽略模型自报的任何身份。
-- 工具循环的停止条件都在 `direct.Engine.RunTurn` 里，
-  `internal/platform/ai/runtime/direct/engine_test.go` 是它们的 Conformance Test。
+- 工具循环的停止条件由 `eino.Engine.RunTurn` 与单轮状态共同执行，
+  `internal/platform/ai/runtime/internal/conformancetest` 是项目自有的行为契约。
 - 模型产出的建议只落 `action_proposals`；写入发生在
   `assistant.ProposalService.Confirm` 的那一个事务里，并在其中重新读目标、重跑校验。
 - 无来源的结论一律丢弃：复盘建议、Action Proposal 都要求 `source_refs` 非空

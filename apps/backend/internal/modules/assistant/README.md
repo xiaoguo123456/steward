@@ -32,7 +32,7 @@ POST /assistant/threads/{id}/turns
   Respond
   ├ 短事务：StartTurn → 读时区、历史、待确认建议数
   ├ 事务外：buildContextBlocks（记忆检索走自己的短事务）
-  ├ 事务外：OrchestrationEngine.RunTurn（DirectEngine 或 EinoEngine）
+  ├ 事务外：OrchestrationEngine.RunTurn（EinoEngine）
   │    └ 每个工具调用各自开一个短 RLS 事务
   └ 短事务：写工具审计 → 写回复消息 → 写建议 → FinishTurn → 完成 Operation
 ```
@@ -49,12 +49,12 @@ POST /assistant/threads/{id}/turns
 `user_id` 只来自 `CapabilityContext`，即服务端已验证的身份；模型自报的任何身份信息
 都被忽略。
 
-## 编排引擎切换
+## 编排引擎
 
-- `STEWARD_AI_ENGINE=direct` 使用项目自有薄 Tool Loop，是开发与生产默认值，也是回滚路径。
-- `STEWARD_AI_ENGINE=eino` 使用固定版本 Eino 的单 `ChatModelAgent`；它只管理单次 Turn 内的模型—工具循环，不保存权威状态。
-- 两个实现共享 Engine Conformance Test。切换只需要部署后端，不需要修改 OpenAPI、数据库结构或重新构建移动端。
-- 当前测试环境模板使用 `eino`，生产在测试账号完成连续追问、查询、Proposal、取消与 SSE 验收前保持 `direct`。
+- Assistant 固定使用 Eino v0.9.19 的单 `ChatModelAgent`，只管理单次 Turn 内的模型—工具循环，不保存权威状态。
+- 项目继续保留自有 `ai.OrchestrationEngine` 边界；Assistant、Domain、OpenAPI 和数据库不依赖 Eino 类型。
+- `runtime/internal/conformancetest` 持续验证直接回答、工具循环、权限、Proposal、预算、取消、Provider 故障、来源和用量审计等共享行为。
+- 不提供 `STEWARD_AI_ENGINE` 运行时开关。编排实现变更必须通过代码评审、契约测试和部署完成，不能由环境变量切回已删除的实现。
 
 详细边界见 `docs/ADR-029-Eino单Agent编排.md`。
 

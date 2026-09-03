@@ -12,10 +12,10 @@
 
 ## 验证
 
-`runtime/internal/conformancetest` 是 DirectEngine 与 EinoEngine 共用的行为契约。修改适配器后至少运行：
+`runtime/internal/conformancetest` 是项目自有 `OrchestrationEngine` 的行为契约，防止框架升级或未来替换实现时破坏安全与审计边界。修改适配器后至少运行：
 
 ```bash
-go test ./internal/platform/ai/runtime/eino ./internal/platform/ai/runtime/direct
+go test ./internal/platform/ai/runtime/eino
 ```
 
-架构选择、灰度与回滚规则见 `docs/ADR-029-Eino单Agent编排.md`。
+架构边界、发布与回滚规则见 `docs/ADR-029-Eino单Agent编排.md`。
