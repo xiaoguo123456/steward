@@ -83,11 +83,11 @@ test('时光与心情首页不展示重复标题或研发提示', async () => {
   assert.doesNotMatch(memories, /本地交互预览，不会上传这些照片/);
   assert.doesNotMatch(mood, />心情日记<\/Text>/);
   assert.doesNotMatch(mood, /今天已写/);
-  assert.doesNotMatch(mood, /label="日历"|\/mood-journal\/calendar/);
-  assert.doesNotMatch(layout, /mood-journal\/calendar/);
   assert.match(mood, /label="搜索日记"/);
-  assert.match(mood, /<MoodCalendar/);
-  assert.match(mood, /accessibilityState=\{\{ expanded:/);
+  assert.match(mood, /label="按日期"/);
+  assert.match(mood, /router\.push\('\/mood-journal\/calendar'\)/);
+  assert.match(layout, /name="mood-journal\/calendar"/);
+  assert.doesNotMatch(mood, /<MoodCalendar|calendarExpanded|recentSevenDays|dateRail|calendarSection/);
 });
 
 test('首页分区已开放的紧凑操作复用统一按钮及全局操作色', async () => {
@@ -104,8 +104,9 @@ test('首页分区已开放的紧凑操作复用统一按钮及全局操作色',
   assert.match(relationships, /toolbarRow:\s*\{[^}]*minHeight:\s*44,/s);
   assert.match(relationships, /searchField:\s*\{[^}]*minHeight:\s*44,/s);
   assert.match(relationships, /<AppButton[\s\S]*compact[\s\S]*label="添加"[\s\S]*variant="secondary"/);
-  assert.equal((mood.match(/variant="neutral"/g) ?? []).length, 1);
+  assert.equal((mood.match(/variant="neutral"/g) ?? []).length, 2);
   assert.match(mood, /searchButton:\s*\{[^}]*flex:\s*1,/s);
+  assert.match(mood, /toolsRow:\s*\{[^}]*alignItems:\s*'center'[^}]*gap:\s*8/s);
 });
 
 test('首页不再保留灵感分区或专属页面入口', async () => {

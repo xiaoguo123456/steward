@@ -16,6 +16,8 @@ test('周月回望要求逐篇选择并展示来源', async () => {
   assert.match(garden, /entry_ids: selected/);
   assert.match(garden, /source_entry_ids\.map/);
   assert.match(garden, /exclude_from_ai/);
+  assert.match(garden, /mostFrequentMood/);
+  assert.doesNotMatch(garden, /\.toSorted\(/);
 });
 
 test('心情草稿按平台隔离且 Web 不持久化敏感正文', async () => {

@@ -14,7 +14,12 @@ import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { MoodField } from '@/features/mood-journal/mood-field';
-import { localDateKey, moodLabels, monthRange } from '@/features/mood-journal/model';
+import {
+  localDateKey,
+  moodLabels,
+  monthRange,
+  mostFrequentMood,
+} from '@/features/mood-journal/model';
 import { useMoodJournalAiConsent } from '@/features/mood-journal/use-mood-journal-ai-consent';
 import { colors, fontFamily, moodColors, radius, typography } from '@/theme/tokens';
 
@@ -30,7 +35,7 @@ export default function MoodJournalGardenScreen() {
   const entries = entriesQuery.data?.data ?? [];
   const failed = entriesQuery.isError || statisticsQuery.isError;
   const pending = entriesQuery.isPending || statisticsQuery.isPending;
-  const dominantMood = statistics?.mood_distribution.toSorted((a, b) => b.count - a.count)[0];
+  const dominantMood = mostFrequentMood(statistics?.mood_distribution ?? []);
   const topWords = statistics?.emotion_words.slice(0, 5) ?? [];
   const eligibleEntries = entries.filter((entry) => !entry.exclude_from_ai);
   const [selected, setSelected] = useState<string[]>([]);

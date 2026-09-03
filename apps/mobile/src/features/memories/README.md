@@ -37,5 +37,6 @@
 - `memory-picker.ts`：选图转换、MIME 归一、按选择顺序去重和九张上限。
 - `memories-home.tsx`：正式查询驱动的首页时间线。
 - `memory-moment-row.tsx`、`memory-photo-grid.tsx`：可复用照片与日期组件。
+- 月份导航、年份／月份选择和 6×7 日期格复用 `features/calendar` 公共组件；时光只提供日期计数、圆点样式和条目列表，公共层不读取 Memory Moments API。
 
 路由位于 `src/app/memories`：`calendar.tsx`、`new.tsx` 和 `[id].tsx`。

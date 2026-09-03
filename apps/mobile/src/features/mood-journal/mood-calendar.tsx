@@ -1,16 +1,11 @@
 import { errorMessage, useGetMoodJournalCalendar } from '@steward/api-client';
 import { useMemo } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { StatePanel } from '@/components/ui/state-panel';
-import {
-  buildCalendarMonthCells,
-  calendarMonthRange,
-} from '@/features/calendar/calendar-month';
-import { colors, fontFamily, moodColors, radius, typography } from '@/theme/tokens';
-import { localDateKey } from './model';
-
-const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+import { calendarMonthRange } from '@/features/calendar/calendar-month';
+import { CalendarMonthGrid } from '@/features/calendar/calendar-month-grid';
+import { colors, moodColors, radius } from '@/theme/tokens';
 
 type MoodCalendarProps = {
   monthAnchor: Date;
@@ -18,11 +13,8 @@ type MoodCalendarProps = {
   selectedDate: string;
 };
 
-/**
- * 日期条的内联月历。它只读取正式日历投影，不复制日记事实，选中日期后由首页负责收起。
- */
+/** 独立日期查找页中的月历，只读取正式日历投影，不复制日记事实。 */
 export function MoodCalendar({ monthAnchor, onSelectDate, selectedDate }: MoodCalendarProps) {
-  const cells = useMemo(() => buildCalendarMonthCells(monthAnchor), [monthAnchor]);
   const range = useMemo(() => calendarMonthRange(monthAnchor), [monthAnchor]);
   const query = useGetMoodJournalCalendar(range, {
     query: { staleTime: 3 * 60 * 1000 },
@@ -50,48 +42,20 @@ export function MoodCalendar({ monthAnchor, onSelectDate, selectedDate }: MoodCa
           />
         </View>
       ) : (
-        <>
-          <View style={styles.weekRow}>
-            {weekDays.map((label) => <Text key={label} style={styles.weekLabel}>{label}</Text>)}
-          </View>
-          <View style={styles.grid}>
-            {cells.map((cell) => {
-              const count = counts.get(cell.date) ?? 0;
-              const selected = cell.date === selectedDate;
-              const today = cell.date === localDateKey(new Date());
-              return (
-                <Pressable
-                  accessibilityLabel={`${cell.date}，${count ? `${count} 篇日记` : '没有日记'}`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  key={cell.date}
-                  onPress={() => onSelectDate(cell.date)}
-                  style={({ pressed }) => [styles.dayCell, pressed && styles.dayCellPressed]}
-                >
-                  <View style={[styles.dayCircle, selected && styles.dayCircleSelected]}>
-                    <Text
-                      style={[
-                        styles.dayText,
-                        cell.muted && styles.dayTextMuted,
-                        today && styles.todayText,
-                        selected && styles.dayTextSelected,
-                      ]}
-                    >
-                      {cell.day}
-                    </Text>
-                  </View>
-                  <View style={styles.countSlot}>
-                    {count > 0 ? (
-                      <View style={styles.countBadge}>
-                        <Text style={styles.countText}>{count}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </>
+        <CalendarMonthGrid
+          accessibilityLabel="心情日记月历"
+          countLabel={(count) => `${count} 篇日记`}
+          counts={counts}
+          monthAnchor={monthAnchor}
+          onSelectDate={onSelectDate}
+          palette={{
+            indicator: moodColors.accentPressed,
+            selectedBackground: moodColors.atmosphere,
+            selectedText: moodColors.text,
+            todayText: moodColors.accentPressed,
+          }}
+          selectedDate={selectedDate}
+        />
       )}
     </View>
   );
@@ -108,39 +72,4 @@ const styles = StyleSheet.create({
   },
   loading: { minHeight: 268, alignItems: 'center', justifyContent: 'center' },
   errorState: { paddingHorizontal: 8, paddingVertical: 24 },
-  weekRow: { minHeight: 28, flexDirection: 'row', alignItems: 'center' },
-  weekLabel: {
-    width: '14.285%',
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
-    textAlign: 'center',
-  },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  dayCell: {
-    width: '14.285%',
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-  },
-  dayCellPressed: { backgroundColor: moodColors.soft },
-  dayCircle: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
-  dayCircleSelected: { backgroundColor: moodColors.atmosphere },
-  dayText: { color: colors.text, fontFamily, ...typography.label },
-  dayTextMuted: { color: colors.textTertiary },
-  todayText: { color: moodColors.accentPressed, fontWeight: '700' },
-  dayTextSelected: { color: moodColors.text, fontWeight: '700' },
-  countSlot: { height: 16, alignItems: 'center', justifyContent: 'center' },
-  countBadge: {
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: moodColors.atmosphere,
-  },
-  countText: { color: moodColors.text, fontFamily, fontSize: 10, lineHeight: 14, fontWeight: '700' },
-  pressed: { opacity: 0.56 },
 });

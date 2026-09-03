@@ -4,7 +4,10 @@ export async function resolve(specifier, context, nextResolve) {
   try {
     return await nextResolve(specifier, context);
   } catch (error) {
-    if (!specifier.startsWith('.') || /\.[a-z]+$/i.test(specifier)) throw error;
+    // Orval 会生成 `./auth.zod` 这类模块名；`.zod` 是文件名的一部分而不是
+    // JavaScript 运行时扩展名，仍需继续尝试补全为 `.zod.ts`。
+    const hasRuntimeExtension = /\.(?:[cm]?[jt]sx?|json|node)$/i.test(specifier);
+    if (!specifier.startsWith('.') || hasRuntimeExtension) throw error;
     for (const candidate of [`${specifier}.ts`, `${specifier}/index.ts`]) {
       try {
         return await nextResolve(candidate, context);
