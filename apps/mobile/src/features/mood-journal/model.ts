@@ -60,22 +60,20 @@ export function parseLocalDateKey(value: string): Date {
   return new Date(year, month - 1, day, 12);
 }
 
-export function recentSevenDays(today = new Date()) {
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - 6 + index);
-    return {
-      key: localDateKey(date),
-      day: date.getDate(),
-      weekday: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()],
-    };
-  });
-}
-
 export function monthRange(date = new Date()) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
   return { from: localDateKey(start), to: localDateKey(end) };
+}
+
+/**
+ * 返回计数最高的一项；计数相同时保留服务端原顺序。
+ * 使用 reduce 避免依赖部分 Android Hermes 运行时尚未提供的 Array#toSorted。
+ */
+export function mostFrequentMood<T extends { count: number }>(items: readonly T[]): T | undefined {
+  return items.reduce<T | undefined>((current, item) => (
+    current === undefined || item.count > current.count ? item : current
+  ), undefined);
 }
 
 export function dateTimeForEntry(dateKey: string, original = new Date()): string {

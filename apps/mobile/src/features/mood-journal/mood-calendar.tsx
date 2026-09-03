@@ -18,9 +18,7 @@ type MoodCalendarProps = {
   selectedDate: string;
 };
 
-/**
- * 日期条的内联月历。它只读取正式日历投影，不复制日记事实，选中日期后由首页负责收起。
- */
+/** 独立日期查找页中的月历，只读取正式日历投影，不复制日记事实。 */
 export function MoodCalendar({ monthAnchor, onSelectDate, selectedDate }: MoodCalendarProps) {
   const cells = useMemo(() => buildCalendarMonthCells(monthAnchor), [monthAnchor]);
   const range = useMemo(() => calendarMonthRange(monthAnchor), [monthAnchor]);
