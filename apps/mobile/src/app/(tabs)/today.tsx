@@ -103,29 +103,23 @@ const groupLabels: Record<TodayTask['group'], string> = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ homeTab?: string; date?: string }>();
+  const params = useLocalSearchParams<{ homeTab?: string }>();
   const initialHomeTab = resolveHomeEntryTab(params.homeTab);
   const [activeHomeTab, setActiveHomeTab] = useState<HomeTopTabId>(initialHomeTab);
-  const [moodEntryDate, setMoodEntryDate] = useState(params.date);
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const today = useGetToday();
   const toggleDone = useToggleTaskDone();
 
   useFocusEffect(
     useCallback(() => {
-      if (params.homeTab === undefined && params.date === undefined) return;
+      if (params.homeTab === undefined) return;
 
-      if (params.homeTab !== undefined) {
-        setActiveHomeTab(resolveHomeEntryTab(params.homeTab));
-      } else if (params.date !== undefined) {
-        setActiveHomeTab('mood');
-      }
-      if (params.date !== undefined) setMoodEntryDate(params.date);
+      setActiveHomeTab(resolveHomeEntryTab(params.homeTab));
       setTasksExpanded(false);
 
       // 只消费显式回跳参数。普通二级页返回时没有参数，因此保留用户离开前的分区。
-      router.setParams({ homeTab: undefined, date: undefined });
-    }, [params.date, params.homeTab, router]),
+      router.setParams({ homeTab: undefined });
+    }, [params.homeTab, router]),
   );
 
   const tasks = useMemo(() => today.data?.data.tasks ?? [], [today.data]);
@@ -285,10 +279,7 @@ export default function HomeScreen() {
         ) : activeHomeTab === 'relationships' ? (
           <RelationshipsContent />
         ) : (
-          <MoodJournalContent
-            initialDate={moodEntryDate}
-            key={`mood-journal-content-${moodEntryDate ?? 'today'}`}
-          />
+          <MoodJournalContent />
         )}
       </ScrollView>
       <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />

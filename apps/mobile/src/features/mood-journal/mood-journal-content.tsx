@@ -20,23 +20,19 @@ import {
 import { MoodField } from './mood-field';
 import { MoodJournalEntryRow } from './mood-journal-entry-row';
 
-export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
+export function MoodJournalContent() {
   const router = useRouter();
   const today = localDateKey(new Date());
-  const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(initialDate ?? '') ? initialDate! : today;
   const currentMonth = useMemo(() => monthRange(), []);
 
-  const entriesQuery = useListMoodJournalEntries({ from: selectedDate, to: selectedDate, limit: 50 });
+  const entriesQuery = useListMoodJournalEntries({ from: today, to: today, limit: 50 });
   const monthEntriesQuery = useListMoodJournalEntries({ ...currentMonth, limit: 100 });
   const statisticsQuery = useGetMoodJournalStatistics(currentMonth);
   const entries = entriesQuery.data?.data ?? [];
   const grouped = groupEntriesByDate(entries);
   const monthCount = statisticsQuery.data?.data.entry_count ?? 0;
   const monthEntries = monthEntriesQuery.data?.data ?? [];
-  const todayCount = selectedDate === today ? entries.length : 0;
-  const writeLabel = selectedDate === today
-    ? todayCount > 0 ? '再记一件事' : '写下此刻'
-    : '补写这一天';
+  const writeLabel = entries.length > 0 ? '再记一件事' : '写下此刻';
 
   return (
     <View style={styles.root}>
@@ -63,7 +59,7 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
       <Pressable
         accessibilityLabel={writeLabel}
         accessibilityRole="button"
-        onPress={() => router.push({ pathname: '/mood-journal/new', params: { date: selectedDate } })}
+        onPress={() => router.push('/mood-journal/new')}
         style={({ pressed }) => [styles.prompt, pressed && styles.promptPressed]}
       >
         <View style={styles.writeIcon}>
@@ -85,7 +81,7 @@ export function MoodJournalContent({ initialDate }: { initialDate?: string }) {
         />
       ) : entries.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>{selectedDate === today ? '今天还没有记录' : '这一天还没有记录'}</Text>
+          <Text style={styles.emptyTitle}>今天还没有记录</Text>
         </View>
       ) : (
         <View style={styles.timeline}>

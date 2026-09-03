@@ -76,12 +76,6 @@ export function mostFrequentMood<T extends { count: number }>(items: readonly T[
   ), undefined);
 }
 
-export function dateTimeForEntry(dateKey: string, original = new Date()): string {
-  const date = parseLocalDateKey(dateKey);
-  date.setHours(original.getHours(), original.getMinutes(), 0, 0);
-  return date.toISOString();
-}
-
 export function entryDateKey(entry: MoodJournalEntry): string {
   return localDateKey(new Date(entry.occurred_at));
 }

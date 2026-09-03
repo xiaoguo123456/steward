@@ -25,10 +25,11 @@ test('首次进入首页默认定位到今天，二级页返回时保留离开�
 
   const home = await readFile(new URL('../../app/(tabs)/today.tsx', import.meta.url), 'utf8');
   assert.match(home, /useFocusEffect\(/);
-  assert.match(home, /if \(params\.homeTab === undefined && params\.date === undefined\) return/);
+  assert.match(home, /if \(params\.homeTab === undefined\) return/);
   assert.match(home, /setActiveHomeTab\(resolveHomeEntryTab\(params\.homeTab\)\)/);
   assert.doesNotMatch(home, /setActiveHomeTab\('today'\)/);
-  assert.match(home, /router\.setParams\(\{ homeTab: undefined, date: undefined \}\)/);
+  assert.match(home, /router\.setParams\(\{ homeTab: undefined \}\)/);
+  assert.doesNotMatch(home, /params\.date|moodEntryDate|initialDate=/);
 });
 
 test('亲友首页使用正式人物查询和添加入口', async () => {

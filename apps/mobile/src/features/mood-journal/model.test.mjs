@@ -6,8 +6,6 @@ import {
   blocksPlaintext,
   compactMoodJournalDraft,
   createBlocksDocument,
-  dateTimeForEntry,
-  localDateKey,
   monthRange,
   mostFrequentMood,
 } from './model.ts';
@@ -50,17 +48,11 @@ test('常见心情选择不修改服务端原顺序并兼容 Android 运行时',
   assert.equal(mostFrequentMood([]), undefined);
 });
 
-test('补写日期保留当前时刻但使用目标当地日期', () => {
-  const result = new Date(dateTimeForEntry('2026-08-20', new Date(2026, 7, 28, 21, 35)));
-  assert.equal(localDateKey(result), '2026-08-20');
-  assert.equal(result.getHours(), 21);
-  assert.equal(result.getMinutes(), 35);
-});
-
-test('心情首页通过对齐按钮进入独立日期查找页', async () => {
+test('新日记按实际保存时间归档，独立日期查找页只读浏览', async () => {
   const content = await readFile(new URL('./mood-journal-content.tsx', import.meta.url), 'utf8');
   const calendar = await readFile(new URL('./mood-calendar.tsx', import.meta.url), 'utf8');
   const calendarScreen = await readFile(new URL('../../app/mood-journal/calendar.tsx', import.meta.url), 'utf8');
+  const createScreen = await readFile(new URL('../../app/mood-journal/new.tsx', import.meta.url), 'utf8');
   const layout = await readFile(new URL('../../app/_layout.tsx', import.meta.url), 'utf8');
 
   assert.match(content, /label="搜索日记"/);
@@ -75,7 +67,15 @@ test('心情首页通过对齐按钮进入独立日期查找页', async () => {
   assert.match(calendarScreen, /<MoodCalendar/);
   assert.match(calendarScreen, /useListMoodJournalEntries/);
   assert.match(calendarScreen, /<CalendarMonthNavigator/);
-  assert.match(calendarScreen, /pathname: '\/mood-journal\/new', params: \{ date: selectedDate \}/);
+  assert.match(calendarScreen, /entriesQuery\.isPending/);
+  assert.match(calendarScreen, /entriesQuery\.isError/);
+  assert.match(calendarScreen, /entries\.length > 0/);
+  assert.match(calendarScreen, /这一天还没有记录/);
+  assert.doesNotMatch(calendarScreen, /写日记|补写|mood-journal\/new/);
+  assert.match(content, /router\.push\('\/mood-journal\/new'\)/);
+  assert.doesNotMatch(content, /补写|initialDate|params: \{ date:/);
+  assert.match(createScreen, /occurred_at: new Date\(\)\.toISOString\(\)/);
+  assert.doesNotMatch(createScreen, /useLocalSearchParams|dateTimeForEntry|parseLocalDateKey|localDateKey/);
   assert.match(calendar, /day\.count/);
   assert.doesNotMatch(calendar, /fixture|__DEV__/i);
 });

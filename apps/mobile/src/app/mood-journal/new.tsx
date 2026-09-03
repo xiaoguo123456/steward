@@ -1,24 +1,16 @@
 import { createMoodJournalEntry, errorMessage } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
 
 import { MoodEditor, type MoodEditorValue } from '@/features/mood-journal/mood-editor';
-import { dateTimeForEntry, localDateKey, parseLocalDateKey } from '@/features/mood-journal/model';
 import { useMoodJournalPolish } from '@/features/mood-journal/use-mood-journal-polish';
 
 export default function NewMoodJournalScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const polish = useMoodJournalPolish();
-  const { date } = useLocalSearchParams<{ date?: string }>();
-  const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(date ?? '') ? date! : localDateKey(new Date());
-  const occurredAt = useMemo(() => {
-    const value = parseLocalDateKey(dateKey);
-    const now = new Date();
-    value.setHours(now.getHours(), now.getMinutes(), 0, 0);
-    return value;
-  }, [dateKey]);
+  const [startedAt] = useState(() => new Date());
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -29,7 +21,7 @@ export default function NewMoodJournalScreen() {
       const response = await createMoodJournalEntry({
         title: value.title.trim() || null,
         content: value.content,
-        occurred_at: dateTimeForEntry(dateKey, occurredAt),
+        occurred_at: new Date().toISOString(),
         mood_level: value.moodLevel,
         energy_level: value.energyLevel,
         emotion_words: value.emotionWords,
@@ -51,9 +43,9 @@ export default function NewMoodJournalScreen() {
 
   return (
     <MoodEditor
-      draftKey={`steward.mood-journal.draft.${dateKey}`}
+      draftKey="steward.mood-journal.draft.new"
       failure={failure}
-      occurredAt={occurredAt}
+      occurredAt={startedAt}
       onPolish={polish}
       onSubmit={submit}
       saving={saving}

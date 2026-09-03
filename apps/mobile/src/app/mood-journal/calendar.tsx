@@ -1,9 +1,7 @@
 import { errorMessage, useListMoodJournalEntries } from '@steward/api-client';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
 import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
@@ -19,7 +17,6 @@ import { MoodJournalEntryRow } from '@/features/mood-journal/mood-journal-entry-
 import { colors, fontFamily, moodColors, typography } from '@/theme/tokens';
 
 export default function MoodJournalCalendarScreen() {
-  const router = useRouter();
   const today = localDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const [monthAnchor, setMonthAnchor] = useState(() => monthAnchorFromDateKey(today));
@@ -60,25 +57,15 @@ export default function MoodJournalCalendarScreen() {
         />
 
         <View style={styles.daySection}>
-          <View style={styles.dayHeading}>
-            <View style={styles.dayHeadingCopy}>
-              <Text accessibilityRole="header" style={styles.dayTitle}>
-                {formatCalendarDayTitle(selectedDate)}
-              </Text>
-              <Text style={styles.dayCount}>
-                {entriesQuery.isPending
-                  ? '正在加载'
-                  : entries.length > 0 ? `${entries.length} 篇日记` : '暂无日记'}
-              </Text>
-            </View>
-            <AppButton
-              accessibilityLabel={`${selectedDate === today ? '写下此刻' : '补写这一天'}，${formatCalendarDayTitle(selectedDate)}`}
-              compact
-              icon="create-outline"
-              label={selectedDate === today ? '写日记' : '补写'}
-              onPress={() => router.push({ pathname: '/mood-journal/new', params: { date: selectedDate } })}
-              variant="secondary"
-            />
+          <View>
+            <Text accessibilityRole="header" style={styles.dayTitle}>
+              {formatCalendarDayTitle(selectedDate)}
+            </Text>
+            <Text style={styles.dayCount}>
+              {entriesQuery.isPending
+                ? '正在加载'
+                : entries.length > 0 ? `${entries.length} 篇日记` : '暂无日记'}
+            </Text>
           </View>
 
           {entriesQuery.isPending ? (
@@ -121,13 +108,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  dayHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  dayHeadingCopy: { flex: 1 },
   dayTitle: { color: colors.text, fontFamily, fontSize: 18, lineHeight: 26, fontWeight: '600' },
   dayCount: { marginTop: 2, color: moodColors.text, fontFamily, ...typography.meta },
   dayLoading: { minHeight: 150, alignItems: 'center', justifyContent: 'center' },
