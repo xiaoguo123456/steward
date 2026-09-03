@@ -31,6 +31,7 @@ import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { useToast } from '@/components/ui/toast';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { formatMinuteDateTime } from '@/utils/date-time';
 import { CaptureCandidateEditor } from './capture-candidate-editor';
 import type { CaptureAssistantSession } from './capture-assistant-session';
 import {
@@ -708,9 +709,9 @@ function candidateTitle(payload: CaptureDraftPayload): string {
 }
 
 function candidateDetail(payload: CaptureDraftPayload): string {
-  if (payload.task?.due_at) return `截止 ${new Date(payload.task.due_at).toLocaleString('zh-CN')}`;
+  if (payload.task?.due_at) return `截止 ${formatMinuteDateTime(payload.task.due_at)}`;
   if (payload.task?.due_date) return `截止 ${payload.task.due_date}`;
-  if (payload.event?.start_at) return new Date(payload.event.start_at).toLocaleString('zh-CN');
+  if (payload.event?.start_at) return formatMinuteDateTime(payload.event.start_at, payload.event.timezone ?? undefined);
   if (payload.event?.start_date) return `${payload.event.start_date} · 全天`;
   if (payload.project?.destination) return payload.project.destination;
   if (payload.note) return payload.note.content;

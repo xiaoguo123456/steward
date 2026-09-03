@@ -20,8 +20,8 @@ export function eventEditDraft(event: Event): EventEditDraft {
   return {
     title: event.title,
     allDay: event.all_day,
-    start: event.all_day ? event.start_date ?? '' : event.start_at ? formatLocalDateTime(event.start_at) : '',
-    end: event.all_day ? event.end_date ?? '' : event.end_at ? formatLocalDateTime(event.end_at) : '',
+    start: event.all_day ? event.start_date ?? '' : event.start_at ? formatLocalDateTime(event.start_at, event.timezone) : '',
+    end: event.all_day ? event.end_date ?? '' : event.end_at ? formatLocalDateTime(event.end_at, event.timezone) : '',
     timezone: event.timezone,
     location: event.location ?? '',
     participants: (event.participants ?? []).join('，'),
@@ -125,8 +125,13 @@ export function parseZonedLocalDateTime(value: string, timezone: string): string
   return new Date(instant).toISOString();
 }
 
-function formatLocalDateTime(value: string): string {
+function formatLocalDateTime(value: string, timezone: string): string {
   const date = new Date(value);
-  const part = (number: number) => String(number).padStart(2, '0');
-  return `${date.getFullYear()}-${part(date.getMonth() + 1)}-${part(date.getDate())} ${part(date.getHours())}:${part(date.getMinutes())}`;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const read = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value ?? '';
+  return `${read('year')}-${read('month')}-${read('day')} ${read('hour')}:${read('minute')}`;
 }
