@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -61,4 +62,23 @@ test('周历生成周日至周六七天并支持跨周导航', () => {
   assert.equal(shiftCalendarDateKey('2026-08-28', 7), '2026-09-04');
   assert.equal(formatCalendarWeekTitle('2026-08-28'), '8月23日—29日');
   assert.equal(formatCalendarWeekTitle('2026-09-01'), '8月30日—9月5日');
+});
+
+test('时光与心情复用月历导航和日期格，内容标记保持在日期圈内', async () => {
+  const navigator = await readFile(new URL('./calendar-month-navigator.tsx', import.meta.url), 'utf8');
+  const grid = await readFile(new URL('./calendar-month-grid.tsx', import.meta.url), 'utf8');
+  const memories = await readFile(new URL('../../app/memories/calendar.tsx', import.meta.url), 'utf8');
+  const mood = await readFile(new URL('../mood-journal/mood-calendar.tsx', import.meta.url), 'utf8');
+  const moodScreen = await readFile(new URL('../../app/mood-journal/calendar.tsx', import.meta.url), 'utf8');
+
+  assert.match(navigator, /<ModalSheet/);
+  assert.match(memories, /<CalendarMonthNavigator/);
+  assert.match(memories, /<CalendarMonthGrid/);
+  assert.doesNotMatch(memories, /memoryDot|styles\.dayCircle|styles\.monthOption/);
+  assert.match(moodScreen, /<CalendarMonthNavigator/);
+  assert.match(mood, /<CalendarMonthGrid/);
+  assert.doesNotMatch(mood, /countBadge|indicator="count"/);
+  assert.match(grid, /<View style=\{\[\s*styles\.dayCircle/);
+  assert.match(grid, /count > 0 \? \(\s*<View style=\{\[styles\.dot/s);
+  assert.match(grid, /styles\.dot[\s\S]*position: 'absolute',[\s\S]*bottom: 5/);
 });

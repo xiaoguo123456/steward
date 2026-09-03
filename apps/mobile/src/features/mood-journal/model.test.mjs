@@ -74,7 +74,7 @@ test('心情首页通过对齐按钮进入独立日期查找页', async () => {
   assert.match(calendar, /useGetMoodJournalCalendar/);
   assert.match(calendarScreen, /<MoodCalendar/);
   assert.match(calendarScreen, /useListMoodJournalEntries/);
-  assert.match(calendarScreen, /formatCalendarMonthTitle\(monthAnchor\)/);
+  assert.match(calendarScreen, /<CalendarMonthNavigator/);
   assert.match(calendarScreen, /pathname: '\/mood-journal\/new', params: \{ date: selectedDate \}/);
   assert.match(calendar, /day\.count/);
   assert.doesNotMatch(calendar, /fixture|__DEV__/i);
