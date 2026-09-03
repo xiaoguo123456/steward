@@ -197,29 +197,6 @@ export default function TaskDetailScreen() {
           </View>
         ) : null}
 
-        <View style={styles.aiSection}>
-          <Text style={styles.sectionTitle}>AI 操作</Text>
-          <View style={styles.aiActions}>
-            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/ai', params: { taskAction: 'split', taskId: task.id } })} style={({ pressed }) => [styles.aiAction, pressed && styles.pressed]}>
-              <AppIcon color={colors.primaryStrong} name="sparkles-outline" size={19} />
-              <Text style={styles.aiActionText}>AI 帮我拆</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/ai', params: { taskAction: 'schedule', taskId: task.id } })} style={({ pressed }) => [styles.aiAction, pressed && styles.pressed]}>
-              <AppIcon color={colors.primaryStrong} name="calendar-outline" size={19} />
-              <Text style={styles.aiActionText}>智能安排</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.aiHint}>AI 只生成待确认建议；确认后才会创建子任务或写入计划时间。</Text>
-        </View>
-
-        {task.created_by !== 'user' ? (
-          <View style={styles.provenance}>
-            <AppIcon color={colors.primaryStrong} name="sparkles-outline" size={16} />
-            <Text style={styles.provenanceText}>
-              这条任务由 AI 从一次输入整理生成，并经过你的确认。
-            </Text>
-          </View>
-        ) : null}
       </ScrollView>
     </AppScreen>
   );
@@ -301,11 +278,6 @@ function scheduleLabel(task: Task): string {
 const styles = StyleSheet.create({
   headerActions: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 18 },
   editLabel: { color: colors.primaryStrong, fontFamily, ...typography.bodyStrong },
-  aiSection: { marginTop: 22, gap: 10 },
-  aiActions: { flexDirection: 'row', gap: 10 },
-  aiAction: { minHeight: 50, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: radius.md, backgroundColor: colors.primarySoft },
-  aiActionText: { color: colors.primaryStrong, fontFamily, ...typography.label, fontWeight: '600' },
-  aiHint: { color: colors.textSecondary, fontFamily, ...typography.meta },
   reminderControl: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -394,20 +366,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily,
     ...typography.body,
-  },
-  provenance: {
-    marginTop: 20,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
-  },
-  provenanceText: {
-    flex: 1,
-    color: colors.primaryStrong,
-    fontFamily,
-    ...typography.meta,
   },
 });
