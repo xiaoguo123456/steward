@@ -29,6 +29,7 @@ func TestAIConfigValidateOpenAI(t *testing.T) {
 		APIKey:             "test-key",
 		BaseURL:            "https://ai.example.com",
 		ModelParse:         "parse-model",
+		ThinkingMode:       "disabled",
 		TranscribeProtocol: "chat-completions",
 		ModelTranscribe:    "qwen3-asr-flash",
 	}
@@ -46,5 +47,11 @@ func TestAIConfigValidateOpenAI(t *testing.T) {
 	invalid.TranscribeProtocol = "unknown"
 	if err := invalid.validate("production"); err == nil {
 		t.Fatal("未知语音转写协议必须启动失败")
+	}
+
+	invalid = valid
+	invalid.ThinkingMode = "slow"
+	if err := invalid.validate("production"); err == nil {
+		t.Fatal("未知思考模式必须启动失败")
 	}
 }

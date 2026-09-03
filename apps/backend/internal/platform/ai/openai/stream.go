@@ -71,6 +71,7 @@ func (p *Provider) CompleteStream(ctx context.Context, req ai.CompletionRequest,
 		MaxCompletionTokens: maxTokens,
 		Stream:              true,
 		StreamOptions:       &streamOptions{IncludeUsage: true},
+		EnableThinking:      thinkingFlag(p.cfg.ThinkingMode),
 	}
 	// 线上名 → 能力名。模型回传的工具名按它还原，
 	// 否则引擎会拿着 tasks_search 去授权表里找 tasks.search，一律拒绝。

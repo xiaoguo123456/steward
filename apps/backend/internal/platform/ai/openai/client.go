@@ -33,6 +33,9 @@ type Config struct {
 	ParseModel      string
 	VisionModel     string
 	TranscribeModel string
+	// ThinkingMode 取 provider-default、disabled 或 enabled。
+	// 非默认值会映射为兼容接口顶层的 enable_thinking 布尔字段。
+	ThinkingMode string
 	// TranscribeProtocol 取 audio-transcriptions 或 chat-completions。
 	TranscribeProtocol string
 	ChatModel          string
@@ -75,6 +78,12 @@ func New(cfg Config) (*Provider, error) {
 	}
 	if cfg.ChatModel == "" {
 		cfg.ChatModel = cfg.ParseModel
+	}
+	if cfg.ThinkingMode == "" {
+		cfg.ThinkingMode = "provider-default"
+	}
+	if cfg.ThinkingMode != "provider-default" && cfg.ThinkingMode != "disabled" && cfg.ThinkingMode != "enabled" {
+		return nil, errors.New("不支持的模型思考模式")
 	}
 	if cfg.TranscribeProtocol == "" {
 		cfg.TranscribeProtocol = "audio-transcriptions"
@@ -126,6 +135,7 @@ type chatRequest struct {
 	Temperature         float64         `json:"temperature"`
 	MaxCompletionTokens int             `json:"max_completion_tokens,omitempty"`
 	ResponseFormat      *responseFormat `json:"response_format,omitempty"`
+	EnableThinking      *bool           `json:"enable_thinking,omitempty"`
 }
 
 type asrChatRequest struct {
@@ -171,8 +181,9 @@ type chatResponse struct {
 // 它只负责传输与错误分类，不解释业务语义。
 func (p *Provider) chat(ctx context.Context, model string, messages []chatMessage, wantJSON bool) (string, ai.Usage, error) {
 	body := chatRequest{
-		Model:    model,
-		Messages: messages,
+		Model:          model,
+		Messages:       messages,
+		EnableThinking: thinkingFlag(p.cfg.ThinkingMode),
 		// 结构化抽取要可复现，温度固定为 0。
 		Temperature:         0,
 		MaxCompletionTokens: p.cfg.MaxOutputTokens,
@@ -182,6 +193,19 @@ func (p *Provider) chat(ctx context.Context, model string, messages []chatMessag
 		body.Messages = ensureJSONMention(body.Messages)
 	}
 	return p.doChat(ctx, model, body)
+}
+
+func thinkingFlag(mode string) *bool {
+	switch mode {
+	case "disabled":
+		value := false
+		return &value
+	case "enabled":
+		value := true
+		return &value
+	default:
+		return nil
+	}
 }
 
 // doChat 发送一次非流式 Chat Completions 请求并统一解析响应。

@@ -56,6 +56,7 @@ type toolChatRequest struct {
 	Temperature         float64           `json:"temperature"`
 	MaxCompletionTokens int               `json:"max_completion_tokens,omitempty"`
 	Stream              bool              `json:"stream,omitempty"`
+	EnableThinking      *bool             `json:"enable_thinking,omitempty"`
 	// StreamOptions 只在流式时带上。
 	StreamOptions *streamOptions `json:"stream_options,omitempty"`
 }
@@ -108,8 +109,9 @@ func (p *Provider) Complete(ctx context.Context, req ai.CompletionRequest) (ai.C
 	}
 
 	body := toolChatRequest{
-		Model:    p.cfg.ChatModel,
-		Messages: toWireMessages(req.Messages),
+		Model:          p.cfg.ChatModel,
+		Messages:       toWireMessages(req.Messages),
+		EnableThinking: thinkingFlag(p.cfg.ThinkingMode),
 		// 对话需要自然一点，但仍偏保守，避免自由发挥出不存在的事实。
 		Temperature:         0.3,
 		MaxCompletionTokens: maxTokens,

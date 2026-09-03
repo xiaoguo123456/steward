@@ -99,6 +99,9 @@ type AIConfig struct {
 	ModelVision     string
 	ModelChat       string
 	ModelTranscribe string
+	// ThinkingMode 取 provider-default、disabled 或 enabled。
+	// 阿里云 Qwen 混合思考模型默认开启思考；线上低延迟策略显式使用 disabled。
+	ThinkingMode string
 	// TranscribeProtocol 取 audio-transcriptions 或 chat-completions。
 	// 后者用于通过 OpenAI 兼容 Chat Completions 接入 Qwen-ASR 的 input_audio。
 	TranscribeProtocol string
@@ -149,6 +152,9 @@ func Load() (Config, error) {
 			ModelVision:     env("STEWARD_AI_MODEL_VISION", ""),
 			ModelChat:       env("STEWARD_AI_MODEL_CHAT", ""),
 			ModelTranscribe: env("STEWARD_AI_MODEL_TRANSCRIBE", ""),
+			ThinkingMode: strings.ToLower(strings.TrimSpace(
+				env("STEWARD_AI_THINKING_MODE", "provider-default"),
+			)),
 			TranscribeProtocol: strings.ToLower(strings.TrimSpace(
 				env("STEWARD_AI_TRANSCRIBE_PROTOCOL", "audio-transcriptions"),
 			)),
@@ -293,6 +299,11 @@ func (c AIConfig) validate(environment string) error {
 		}
 		if c.ModelParse == "" {
 			return errors.New("STEWARD_AI_PROVIDER=openai 时必须设置 STEWARD_AI_MODEL_PARSE")
+		}
+		switch c.ThinkingMode {
+		case "", "provider-default", "disabled", "enabled":
+		default:
+			return errors.New("STEWARD_AI_THINKING_MODE 只能是 provider-default、disabled 或 enabled")
 		}
 		switch c.TranscribeProtocol {
 		case "", "audio-transcriptions", "chat-completions":

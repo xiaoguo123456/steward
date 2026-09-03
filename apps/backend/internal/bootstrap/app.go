@@ -483,6 +483,7 @@ func newParser(cfg config.Config, logger *slog.Logger) (ai.CaptureParser, error)
 			VisionModel:        cfg.AI.ModelVision,
 			ChatModel:          cfg.AI.ModelChat,
 			TranscribeModel:    cfg.AI.ModelTranscribe,
+			ThinkingMode:       cfg.AI.ThinkingMode,
 			TranscribeProtocol: cfg.AI.TranscribeProtocol,
 			Timeout:            cfg.AI.Timeout,
 			MaxOutputTokens:    cfg.AI.MaxOutputTokens,
