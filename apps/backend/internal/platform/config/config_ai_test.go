@@ -25,10 +25,12 @@ func TestAIConfigValidateFakeEnvironmentGate(t *testing.T) {
 
 func TestAIConfigValidateOpenAI(t *testing.T) {
 	valid := AIConfig{
-		Provider:   "openai",
-		APIKey:     "test-key",
-		BaseURL:    "https://ai.example.com",
-		ModelParse: "parse-model",
+		Provider:           "openai",
+		APIKey:             "test-key",
+		BaseURL:            "https://ai.example.com",
+		ModelParse:         "parse-model",
+		TranscribeProtocol: "chat-completions",
+		ModelTranscribe:    "qwen3-asr-flash",
 	}
 	if err := valid.validate("production"); err != nil {
 		t.Fatalf("生产环境完整 OpenAI 配置应当有效：%v", err)
@@ -38,5 +40,11 @@ func TestAIConfigValidateOpenAI(t *testing.T) {
 	invalid.ModelParse = ""
 	if err := invalid.validate("production"); err == nil {
 		t.Fatal("缺少解析模型时必须启动失败")
+	}
+
+	invalid = valid
+	invalid.TranscribeProtocol = "unknown"
+	if err := invalid.validate("production"); err == nil {
+		t.Fatal("未知语音转写协议必须启动失败")
 	}
 }

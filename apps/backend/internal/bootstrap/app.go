@@ -477,15 +477,16 @@ func newParser(cfg config.Config, logger *slog.Logger) (ai.CaptureParser, error)
 		logger.Info("Capture 使用兼容 OpenAI 协议的模型服务",
 			"base_url", cfg.AI.BaseURL, "model", cfg.AI.ModelParse)
 		return openai.New(openai.Config{
-			BaseURL:         cfg.AI.BaseURL,
-			APIKey:          cfg.AI.APIKey,
-			ParseModel:      cfg.AI.ModelParse,
-			VisionModel:     cfg.AI.ModelVision,
-			ChatModel:       cfg.AI.ModelChat,
-			TranscribeModel: cfg.AI.ModelTranscribe,
-			Timeout:         cfg.AI.Timeout,
-			MaxOutputTokens: cfg.AI.MaxOutputTokens,
-			Logger:          logger,
+			BaseURL:            cfg.AI.BaseURL,
+			APIKey:             cfg.AI.APIKey,
+			ParseModel:         cfg.AI.ModelParse,
+			VisionModel:        cfg.AI.ModelVision,
+			ChatModel:          cfg.AI.ModelChat,
+			TranscribeModel:    cfg.AI.ModelTranscribe,
+			TranscribeProtocol: cfg.AI.TranscribeProtocol,
+			Timeout:            cfg.AI.Timeout,
+			MaxOutputTokens:    cfg.AI.MaxOutputTokens,
+			Logger:             logger,
 		})
 	default:
 		return nil, fmt.Errorf("不支持的 STEWARD_AI_PROVIDER=%s", cfg.AI.Provider)

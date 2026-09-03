@@ -99,6 +99,9 @@ type AIConfig struct {
 	ModelVision     string
 	ModelChat       string
 	ModelTranscribe string
+	// TranscribeProtocol 取 audio-transcriptions 或 chat-completions。
+	// 后者用于通过 OpenAI 兼容 Chat Completions 接入 Qwen-ASR 的 input_audio。
+	TranscribeProtocol string
 	// ApprovedSensitiveContent 只有在 Provider 的敏感数据等级、地区、保留、
 	// 训练退出和删除能力都已经完成审核后才能打开。默认关闭，避免只凭用户同意
 	// 就把心情日记正文发送给尚未批准的 Provider。
@@ -146,6 +149,9 @@ func Load() (Config, error) {
 			ModelVision:     env("STEWARD_AI_MODEL_VISION", ""),
 			ModelChat:       env("STEWARD_AI_MODEL_CHAT", ""),
 			ModelTranscribe: env("STEWARD_AI_MODEL_TRANSCRIBE", ""),
+			TranscribeProtocol: strings.ToLower(strings.TrimSpace(
+				env("STEWARD_AI_TRANSCRIBE_PROTOCOL", "audio-transcriptions"),
+			)),
 			ApprovedSensitiveContent: strings.EqualFold(
 				env("STEWARD_AI_APPROVED_SENSITIVE_CONTENT", "false"), "true",
 			),
@@ -287,6 +293,11 @@ func (c AIConfig) validate(environment string) error {
 		}
 		if c.ModelParse == "" {
 			return errors.New("STEWARD_AI_PROVIDER=openai 时必须设置 STEWARD_AI_MODEL_PARSE")
+		}
+		switch c.TranscribeProtocol {
+		case "", "audio-transcriptions", "chat-completions":
+		default:
+			return errors.New("STEWARD_AI_TRANSCRIBE_PROTOCOL 只能是 audio-transcriptions 或 chat-completions")
 		}
 		return nil
 	default:

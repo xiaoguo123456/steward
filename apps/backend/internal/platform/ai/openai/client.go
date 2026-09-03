@@ -33,7 +33,9 @@ type Config struct {
 	ParseModel      string
 	VisionModel     string
 	TranscribeModel string
-	ChatModel       string
+	// TranscribeProtocol 取 audio-transcriptions 或 chat-completions。
+	TranscribeProtocol string
+	ChatModel          string
 
 	Timeout         time.Duration
 	MaxOutputTokens int
@@ -74,6 +76,12 @@ func New(cfg Config) (*Provider, error) {
 	if cfg.ChatModel == "" {
 		cfg.ChatModel = cfg.ParseModel
 	}
+	if cfg.TranscribeProtocol == "" {
+		cfg.TranscribeProtocol = "audio-transcriptions"
+	}
+	if cfg.TranscribeProtocol != "audio-transcriptions" && cfg.TranscribeProtocol != "chat-completions" {
+		return nil, errors.New("不支持的语音转写协议")
+	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
 	}
@@ -98,13 +106,18 @@ type chatMessage struct {
 }
 
 type contentPart struct {
-	Type     string        `json:"type"`
-	Text     string        `json:"text,omitempty"`
-	ImageURL *imageURLPart `json:"image_url,omitempty"`
+	Type       string          `json:"type"`
+	Text       string          `json:"text,omitempty"`
+	ImageURL   *imageURLPart   `json:"image_url,omitempty"`
+	InputAudio *inputAudioPart `json:"input_audio,omitempty"`
 }
 
 type imageURLPart struct {
 	URL string `json:"url"`
+}
+
+type inputAudioPart struct {
+	Data string `json:"data"`
 }
 
 type chatRequest struct {
@@ -113,6 +126,18 @@ type chatRequest struct {
 	Temperature         float64         `json:"temperature"`
 	MaxCompletionTokens int             `json:"max_completion_tokens,omitempty"`
 	ResponseFormat      *responseFormat `json:"response_format,omitempty"`
+}
+
+type asrChatRequest struct {
+	Model      string        `json:"model"`
+	Messages   []chatMessage `json:"messages"`
+	Stream     bool          `json:"stream"`
+	ASROptions asrOptions    `json:"asr_options"`
+}
+
+type asrOptions struct {
+	Language  string `json:"language,omitempty"`
+	EnableITN bool   `json:"enable_itn"`
 }
 
 type responseFormat struct {
@@ -145,8 +170,6 @@ type chatResponse struct {
 //
 // 它只负责传输与错误分类，不解释业务语义。
 func (p *Provider) chat(ctx context.Context, model string, messages []chatMessage, wantJSON bool) (string, ai.Usage, error) {
-	started := time.Now()
-
 	body := chatRequest{
 		Model:    model,
 		Messages: messages,
@@ -158,6 +181,13 @@ func (p *Provider) chat(ctx context.Context, model string, messages []chatMessag
 		body.ResponseFormat = &responseFormat{Type: "json_object"}
 		body.Messages = ensureJSONMention(body.Messages)
 	}
+	return p.doChat(ctx, model, body)
+}
+
+// doChat 发送一次非流式 Chat Completions 请求并统一解析响应。
+// body 可以是普通文本／图片请求，也可以是 Qwen-ASR 的 input_audio 请求。
+func (p *Provider) doChat(ctx context.Context, model string, body any) (string, ai.Usage, error) {
+	started := time.Now()
 
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -245,12 +275,57 @@ func (p *Provider) ExtractFromImage(ctx context.Context, input ai.MediaInput) (s
 
 // Transcribe 把音频转写为文字。
 //
-// 走标准的 /audio/transcriptions 接口。若服务商不提供该能力，
-// 调用方应当把该输入项标记为失败并让用户改用文字，而不是伪造转写结果。
+// 标准 Provider 走 /audio/transcriptions；Qwen-ASR 按配置走 Chat Completions
+// 的 input_audio。协议必须显式配置，不能根据模型名静默猜测。
 func (p *Provider) Transcribe(ctx context.Context, input ai.MediaInput) (string, ai.Usage, error) {
 	if p.cfg.TranscribeModel == "" {
 		return "", ai.Usage{}, fmt.Errorf("%w: 未配置转写模型", ai.ErrProviderUnavailable)
 	}
+	if len(input.Data) == 0 {
+		return "", ai.Usage{}, errors.New("音频内容为空")
+	}
+
+	switch p.cfg.TranscribeProtocol {
+	case "chat-completions":
+		return p.transcribeViaChatCompletions(ctx, input)
+	case "audio-transcriptions":
+		return p.transcribeViaAudioEndpoint(ctx, input)
+	default:
+		return "", ai.Usage{}, fmt.Errorf("%w: 不支持的转写协议", ai.ErrProviderUnavailable)
+	}
+}
+
+func (p *Provider) transcribeViaChatCompletions(
+	ctx context.Context,
+	input ai.MediaInput,
+) (string, ai.Usage, error) {
+	dataURI := "data:" + input.ContentType + ";base64," + encodeBase64(input.Data)
+	body := asrChatRequest{
+		Model: p.cfg.TranscribeModel,
+		Messages: []chatMessage{{
+			Role: "user",
+			Content: []contentPart{{
+				Type:       "input_audio",
+				InputAudio: &inputAudioPart{Data: dataURI},
+			}},
+		}},
+		Stream: false,
+		ASROptions: asrOptions{
+			Language:  "zh",
+			EnableITN: true,
+		},
+	}
+	text, usage, err := p.doChat(ctx, p.cfg.TranscribeModel, body)
+	if err != nil {
+		return "", usage, err
+	}
+	return strings.TrimSpace(text), usage, nil
+}
+
+func (p *Provider) transcribeViaAudioEndpoint(
+	ctx context.Context,
+	input ai.MediaInput,
+) (string, ai.Usage, error) {
 
 	started := time.Now()
 	var buf bytes.Buffer
