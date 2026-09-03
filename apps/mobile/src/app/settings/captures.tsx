@@ -71,7 +71,7 @@ export default function CaptureDraftsScreen() {
       await saveCaptureDraft(accountId, ready);
       const submitted = await processCaptureDraft(accountId, draft.id);
       router.push({
-        pathname: '/capture/processing',
+        pathname: '/ai',
         params: {
           captureId: submitted.captureId ?? '',
           operationId: submitted.operationId ?? '',
@@ -163,9 +163,9 @@ export default function CaptureDraftsScreen() {
                     ) : null}
                     {draft.status === 'submitted' && draft.captureId && draft.operationId ? (
                       <AppButton
-                        label="查看处理"
+                        label="打开 AI 管家"
                         onPress={() => router.push({
-                          pathname: '/capture/processing',
+                          pathname: '/ai',
                           params: {
                             captureId: draft.captureId,
                             operationId: draft.operationId,

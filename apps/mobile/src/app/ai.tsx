@@ -1,11 +1,13 @@
 import {
   createCapture,
   errorMessage,
+  useAnswerCaptureQuestion,
   useCancelTurn,
   useCreateThread,
   useCreateTurn,
   useGetCurrentThread,
   useGetOperation,
+  useListCaptureQuestions,
   useListMessages,
   useListProposals,
   type ActionProposal,
@@ -29,6 +31,14 @@ import { AiAssistantAvatar } from '@/components/ui/ai-assistant-avatar';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
 import { AssistantMarkdown } from '@/features/assistant/assistant-markdown';
+import {
+  AssistantCaptureFlow,
+  CaptureQuestionPrompt,
+} from '@/features/capture/assistant-capture-flow';
+import {
+  useCaptureAssistantSession,
+  type CaptureAssistantSession,
+} from '@/features/capture/capture-assistant-session';
 import {
   assistantCaptureDraftSummary,
   buildAssistantCaptureParts,
@@ -58,7 +68,36 @@ export default function AiConversationScreen() {
   const queryClient = useQueryClient();
   const listRef = useRef<ScrollView>(null);
 
-  const params = useLocalSearchParams<{ threadId?: string; taskAction?: string; taskId?: string }>();
+  const params = useLocalSearchParams<{
+    captureId?: string;
+    draft?: string;
+    intent?: string;
+    operationId?: string;
+    projectId?: string;
+    threadId?: string;
+    taskAction?: string;
+    taskId?: string;
+  }>();
+  const {
+    clearSession: clearCaptureSession,
+    openSession: storeCaptureSession,
+    session: storedCaptureSession,
+  } = useCaptureAssistantSession();
+  const [captureSessionOverride, setCaptureSessionOverride] = useState<CaptureAssistantSession | null>(null);
+  const [completedCaptureId, setCompletedCaptureId] = useState<string | null>(null);
+  const [completedCaptureSummary, setCompletedCaptureSummary] = useState<string | null>(null);
+  const routeCaptureSession: CaptureAssistantSession | null = params.captureId
+    ? {
+        captureId: params.captureId,
+        operationId: params.operationId,
+        draft: params.draft,
+        intent: params.intent,
+        projectId: params.projectId,
+      }
+    : null;
+  const captureSession = captureSessionOverride
+    ?? (routeCaptureSession?.captureId === completedCaptureId ? null : routeCaptureSession)
+    ?? (storedCaptureSession?.captureId === completedCaptureId ? null : storedCaptureSession);
   const [threadSession, dispatchThread] = useReducer(
     assistantThreadSessionReducer,
     createAssistantThreadSession(params.threadId),
@@ -71,9 +110,10 @@ export default function AiConversationScreen() {
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [submittingCapture, setSubmittingCapture] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [questionAnswer, setQuestionAnswer] = useState('');
+  const [questionFailure, setQuestionFailure] = useState<string | null>(null);
   const picker = useImagePicker();
   const media = useMediaUpload();
-
 
   // 打开面板只读取今天的默认对话，不创建空 Thread。
   const currentThread = useGetCurrentThread({
@@ -112,8 +152,13 @@ export default function AiConversationScreen() {
 
   const proposals = useListProposals(
     { status: ['pending'] },
-    { query: { enabled: Boolean(threadId) } },
+    { query: { staleTime: 15_000 } },
   );
+  const captureQuestions = useListCaptureQuestions(
+    { status: 'open', limit: 100 },
+    { query: { staleTime: 5_000 } },
+  );
+  const answerCaptureQuestion = useAnswerCaptureQuestion();
 
   const operation = useGetOperation(operationId, {
     query: {
@@ -203,17 +248,19 @@ export default function AiConversationScreen() {
           parts: buildAssistantCaptureParts(text, uploaded),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
+        if (!response.data.resource_id) throw new Error('服务端没有返回 Capture 引用');
         const draft = assistantCaptureDraftSummary(text, images.length);
         setInput('');
         setImages([]);
-        router.replace({
-          pathname: '/capture/processing',
-          params: {
-            captureId: response.data.resource_id ?? '',
-            operationId: response.data.operation_id,
-            draft,
-          },
-        });
+        const next = {
+          captureId: response.data.resource_id,
+          operationId: response.data.operation_id,
+          draft,
+          intent: 'assistant',
+        };
+        setCompletedCaptureSummary(null);
+        setCaptureSessionOverride(next);
+        storeCaptureSession(next);
       } catch (error) {
         setFailure(errorMessage(error, '图片没能发出去，请稍后重试。'));
       } finally {
@@ -253,16 +300,70 @@ export default function AiConversationScreen() {
   // 契约按 message_seq 倒序返回，展示要按时间正序。
   const ordered = [...(messages.data?.data ?? [])].reverse();
   const pending = proposals.data?.data ?? [];
+  const attachedProposalIds = new Set(ordered.flatMap((message) => message.proposal_ids ?? []));
+  const standaloneProposals = pending.filter((proposal) => !attachedProposalIds.has(proposal.id));
+  const currentQuestion = (captureQuestions.data?.data ?? []).find(
+    (question) => !captureSession || question.capture_id === captureSession.captureId,
+  );
+  const standaloneQuestion = captureSession ? undefined : currentQuestion;
   const sending = createThread.isPending || createTurn.isPending || submittingCapture || media.uploading;
-  const canSend = Boolean(input.trim() || images.length) && !thinking && !restoring && !sending;
+  const captureDecisionPending = Boolean(captureSession || standaloneQuestion);
+  const canSend = Boolean(input.trim() || images.length)
+    && !thinking
+    && !restoring
+    && !sending
+    && !captureDecisionPending;
   const canStartFresh = Boolean(threadId) && !thinking && !sending;
   const restoreFailure = threadSession.mode === 'default' && !threadId && currentThread.isError
     ? errorMessage(currentThread.error, '没能恢复今天的对话，发送时会再试。')
     : null;
   const visibleFailure = failure ?? picker.error ?? turnFailure ?? restoreFailure;
 
+  const startCaptureSession = (next: CaptureAssistantSession) => {
+    setCompletedCaptureId(null);
+    setCompletedCaptureSummary(null);
+    setCaptureSessionOverride(next);
+    storeCaptureSession(next);
+  };
+
+  const submitStandaloneQuestion = async (value: string) => {
+    const normalized = value.trim();
+    if (!standaloneQuestion || !normalized || answerCaptureQuestion.isPending) return;
+    setQuestionFailure(null);
+    try {
+      const response = await answerCaptureQuestion.mutateAsync({
+        questionId: standaloneQuestion.id,
+        data: { answer: normalized },
+      });
+      setQuestionAnswer('');
+      startCaptureSession({
+        captureId: response.data.resource_id ?? standaloneQuestion.capture_id,
+        operationId: response.data.operation_id,
+        draft: normalized,
+      });
+      await queryClient.invalidateQueries();
+    } catch (error) {
+      setQuestionFailure(errorMessage(error, '这条补充暂时没能提交，请重试。'));
+    }
+  };
+
+  const reenterCapture = () => {
+    const current = captureSession;
+    clearCaptureSession();
+    setCaptureSessionOverride(null);
+    router.replace({
+      pathname: '/capture/new',
+      params: { intent: current?.intent, projectId: current?.projectId },
+    });
+  };
+
+  const closeAssistant = () => {
+    if (captureSession) storeCaptureSession(captureSession);
+    router.back();
+  };
+
   return (
-    <ModalSheet maxHeight="84%" onClose={() => router.back()}>
+    <ModalSheet maxHeight="84%" onClose={closeAssistant}>
       <View style={styles.header}>
         <View style={styles.headerIcon}>
           <AiAssistantAvatar size={36} />
@@ -270,7 +371,11 @@ export default function AiConversationScreen() {
         <View style={styles.headerCopy}>
           <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
           <Text numberOfLines={1} style={styles.headerStatus}>
-            {thinking
+            {captureSession
+              ? '正在处理这次输入'
+              : standaloneQuestion
+                ? '有一项需要你补充'
+                : thinking
               ? stream.label || '正在查你的数据…'
               : restoring
                 ? '正在恢复今天的对话…'
@@ -318,7 +423,7 @@ export default function AiConversationScreen() {
         <Pressable
           accessibilityLabel="关闭 AI 管家"
           accessibilityRole="button"
-          onPress={() => router.back()}
+          onPress={closeAssistant}
           style={({ pressed }) => [styles.closeButton, pressed && styles.iconPressed]}
         >
           <AppIcon name="close" size={23} />
@@ -341,7 +446,13 @@ export default function AiConversationScreen() {
           </View>
         ) : null}
 
-        {!restoring && ordered.length === 0 && !messages.isLoading ? (
+        {!restoring
+        && ordered.length === 0
+        && !messages.isLoading
+        && !captureSession
+        && !standaloneQuestion
+        && standaloneProposals.length === 0
+        && !completedCaptureSummary ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>我能帮你看你自己的内容</Text>
             <Text style={styles.emptyCopy}>
@@ -363,6 +474,74 @@ export default function AiConversationScreen() {
             }}
           />
         ))}
+
+        {standaloneProposals.length > 0 ? (
+          <View style={styles.standaloneProposals}>
+            <Text style={styles.standaloneProposalTitle}>待你确认的建议</Text>
+            {standaloneProposals.map((proposal) => (
+              <ProposalCard
+                key={proposal.id}
+                onResolved={() => {
+                  void proposals.refetch();
+                  void queryClient.invalidateQueries();
+                }}
+                proposal={proposal}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        {standaloneQuestion ? (
+          <View style={styles.capturePromptRow}>
+            <View style={styles.assistantMark}>
+              <AiAssistantAvatar size={30} />
+            </View>
+            <View style={styles.capturePromptBubble}>
+              <CaptureQuestionPrompt
+                answer={questionAnswer}
+                error={questionFailure}
+                onAnswerChange={(value) => {
+                  setQuestionAnswer(value);
+                  setQuestionFailure(null);
+                }}
+                onSubmit={submitStandaloneQuestion}
+                question={standaloneQuestion}
+                submitting={answerCaptureQuestion.isPending}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        {captureSession ? (
+          <AssistantCaptureFlow
+            onCompleted={(summary) => {
+              clearCaptureSession();
+              setCompletedCaptureId(captureSession.captureId);
+              setCaptureSessionOverride(null);
+              setCompletedCaptureSummary(summary);
+            }}
+            onReenterCapture={reenterCapture}
+            onSessionChange={startCaptureSession}
+            session={captureSession}
+          />
+        ) : null}
+
+        {completedCaptureSummary ? (
+          <View style={styles.capturePromptRow}>
+            <View style={styles.assistantMark}>
+              <AiAssistantAvatar size={30} />
+            </View>
+            <View style={styles.capturePromptBubble}>
+              <View style={styles.captureCompleted}>
+                <AppIcon color={colors.primaryStrong} name="checkmark-circle-outline" size={21} />
+                <View style={styles.captureCompletedCopy}>
+                  <Text style={styles.captureCompletedTitle}>{completedCaptureSummary}</Text>
+                  <Text style={styles.captureCompletedText}>需要的话可以继续和我说。</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         {thinking ? (
           <View style={styles.thinkingRow}>
@@ -443,8 +622,8 @@ export default function AiConversationScreen() {
           <Pressable
             accessibilityLabel="添加图片"
             accessibilityRole="button"
-            accessibilityState={{ disabled: thinking || restoring || sending }}
-            disabled={thinking || restoring || sending}
+            accessibilityState={{ disabled: thinking || restoring || sending || captureDecisionPending }}
+            disabled={thinking || restoring || sending || captureDecisionPending}
             onPress={() => setShowMediaMenu((current) => !current)}
             style={({ pressed }) => [
               styles.imageButton,
@@ -460,12 +639,14 @@ export default function AiConversationScreen() {
           </Pressable>
           <TextInput
             accessibilityLabel="输入给 AI 管家的消息"
-            editable
+            editable={!captureDecisionPending && !restoring && !sending}
             multiline
             onChangeText={setInput}
             onFocus={() => setShowMediaMenu(false)}
             placeholder={
-              thinking || sending
+              captureDecisionPending
+                ? '先处理上面的整理结果…'
+                : thinking || sending
                 ? '正在处理…'
                 : restoring
                   ? '正在恢复对话…'
@@ -697,6 +878,49 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontFamily,
     ...typography.meta,
+  },
+  capturePromptRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+  },
+  capturePromptBubble: {
+    minWidth: 0,
+    flex: 1,
+    padding: 14,
+    borderRadius: radius.lg,
+    borderTopLeftRadius: 7,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  captureCompleted: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+  },
+  captureCompletedCopy: {
+    minWidth: 0,
+    flex: 1,
+    gap: 3,
+  },
+  captureCompletedTitle: {
+    color: colors.text,
+    fontFamily,
+    ...typography.bodyStrong,
+  },
+  captureCompletedText: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+  },
+  standaloneProposals: {
+    gap: 10,
+  },
+  standaloneProposalTitle: {
+    color: colors.textSecondary,
+    fontFamily,
+    ...typography.meta,
+    fontWeight: '600',
   },
   composerWrap: {
     padding: 12,

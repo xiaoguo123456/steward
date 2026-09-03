@@ -20,7 +20,7 @@ test('AI 图片按文字在前、图片在后的可追溯顺序提交', () => {
   );
 });
 
-test('没有说明时使用图片数量作为处理页摘要', () => {
+test('没有说明时使用图片数量作为对话内处理摘要', () => {
   assert.equal(assistantCaptureDraftSummary(' ', 2), '2 张图片');
   assert.equal(assistantCaptureDraftSummary('识别日程', 2), '识别日程');
 });

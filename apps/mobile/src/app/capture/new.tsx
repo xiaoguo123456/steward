@@ -20,6 +20,7 @@ import {
 import { AppButton } from '@/components/ui/app-button';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
+import { useCaptureAssistantSession } from '@/features/capture/capture-assistant-session';
 import { useImagePicker } from '@/features/capture/use-media-picker';
 import {
   deleteCaptureDraft,
@@ -81,6 +82,7 @@ function VoiceWaveform({ active = false, compact = false, level = 0.5 }: {
 
 export default function CaptureInputScreen() {
   const router = useRouter();
+  const captureAssistant = useCaptureAssistantSession();
   const params = useLocalSearchParams<{ intent?: string; projectId?: string; draftId?: string }>();
   const isTripIntent = params.intent === 'trip';
   const isTripItemIntent = params.intent === 'trip_item';
@@ -330,21 +332,24 @@ export default function CaptureInputScreen() {
         return;
       }
       const submitted = await processCaptureDraft(draft.accountId, draft.id);
+      if (!submitted.captureId) throw new Error('服务端没有返回 Capture 引用');
+      const assistantSession = {
+        captureId: submitted.captureId,
+        operationId: submitted.operationId ?? '',
+        draft: summarizeDraft(submitted),
+        intent: isTripIntent
+          ? 'trip'
+          : isTripItemIntent
+            ? 'trip_item'
+            : isLedgerIntent
+              ? 'ledger'
+              : undefined,
+        projectId: isTripItemIntent ? params.projectId : undefined,
+      };
+      captureAssistant.openSession(assistantSession);
       router.replace({
-        pathname: '/capture/processing',
-        params: {
-          captureId: submitted.captureId ?? '',
-          operationId: submitted.operationId ?? '',
-          draft: summarizeDraft(submitted),
-          intent: isTripIntent
-            ? 'trip'
-            : isTripItemIntent
-              ? 'trip_item'
-              : isLedgerIntent
-                ? 'ledger'
-                : undefined,
-          projectId: isTripItemIntent ? params.projectId : undefined,
-        },
+        pathname: '/ai',
+        params: assistantSession,
       });
     } catch (error) {
       const network = await NetInfo.fetch().catch(() => null);

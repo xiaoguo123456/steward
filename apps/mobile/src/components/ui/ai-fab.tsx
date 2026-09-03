@@ -6,6 +6,7 @@ import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 
 import { useBootState } from '@/api/provider';
+import { useCaptureAssistantSession } from '@/features/capture/capture-assistant-session';
 import { colors, fontFamily, radius } from '@/theme/tokens';
 import { AiAssistantAvatar } from './ai-assistant-avatar';
 import { AI_FAB_SIZE, useDraggableAiFab } from './use-draggable-ai-fab';
@@ -20,6 +21,7 @@ export const AI_FAB_TAB_BAR_INSET = 76;
 export function AiFab({ bottomInset = 0, count }: AiFabProps) {
   const router = useRouter();
   const boot = useBootState();
+  const captureAssistant = useCaptureAssistantSession();
   const enabled = boot === 'signed-in';
   const questions = useListCaptureQuestions(
     { status: 'open', limit: 100 },
@@ -31,10 +33,16 @@ export function AiFab({ bottomInset = 0, count }: AiFabProps) {
   );
   const questionCount = questions.data?.data.length ?? 0;
   const proposalCount = proposals.data?.data.length ?? 0;
-  const visibleCount = count ?? questionCount + proposalCount;
+  const activeCaptureCount = captureAssistant.session
+    && !(questions.data?.data ?? []).some(
+      (question) => question.capture_id === captureAssistant.session?.captureId,
+    )
+    ? 1
+    : 0;
+  const visibleCount = count ?? questionCount + proposalCount + activeCaptureCount;
   const openAssistant = useCallback(
-    () => router.push(questionCount > 0 ? '/assistant/pending' : '/ai'),
-    [questionCount, router],
+    () => router.push('/ai'),
+    [router],
   );
   const {
     animatedPosition,
@@ -44,10 +52,12 @@ export function AiFab({ bottomInset = 0, count }: AiFabProps) {
     panGesture,
   } = useDraggableAiFab({ bottomInset, onPress: openAssistant });
   const badgeText = visibleCount > 9 ? '9+' : visibleCount.toString();
-  const accessibilityLabel = `打开 AI 管家，${visibleCount} 项待处理`;
+  const accessibilityLabel = visibleCount > 0
+    ? `打开 AI 管家，${visibleCount} 项待处理`
+    : '打开 AI 管家';
 
-  // 这是待答状态入口，不是常驻装饰或第二个“新增”按钮。
-  if (!enabled || visibleCount === 0) return null;
+  // AI 管家是常驻对话入口；待处理数量只作为附加状态，中央加号仍只负责新增。
+  if (!enabled) return null;
 
   return (
     <View
@@ -69,9 +79,11 @@ export function AiFab({ bottomInset = 0, count }: AiFabProps) {
             testID="ai-assistant-fab"
           >
             <AiAssistantAvatar size={AI_FAB_SIZE} />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badgeText}</Text>
-            </View>
+            {visibleCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{badgeText}</Text>
+              </View>
+            ) : null}
           </Pressable>
         </Animated.View>
       </GestureDetector>

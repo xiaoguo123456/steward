@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiProvider, useBootState } from '@/api/provider';
 import { ToastProvider } from '@/components/ui/toast';
+import { CaptureAssistantSessionProvider } from '@/features/capture/capture-assistant-session';
 import { CaptureQueueProvider } from '@/features/capture/capture-queue-provider';
 import { FocusPrototypeProvider } from '@/features/focus/focus-context';
 import { colors } from '@/theme/tokens';
@@ -17,11 +18,13 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ApiProvider>
           <ToastProvider>
-            <CaptureQueueProvider>
-              <FocusPrototypeProvider>
-                <RootNavigator />
-              </FocusPrototypeProvider>
-            </CaptureQueueProvider>
+            <CaptureAssistantSessionProvider>
+              <CaptureQueueProvider>
+                <FocusPrototypeProvider>
+                  <RootNavigator />
+                </FocusPrototypeProvider>
+              </CaptureQueueProvider>
+            </CaptureAssistantSessionProvider>
           </ToastProvider>
         </ApiProvider>
       </SafeAreaProvider>
@@ -94,14 +97,6 @@ function RootNavigator() {
         <Stack.Screen name="settings/captures" />
         <Stack.Screen name="assistant/threads" />
         <Stack.Screen
-          name="assistant/pending"
-          options={{
-            animation: 'fade',
-            presentation: 'transparentModal',
-            contentStyle: { backgroundColor: 'transparent' },
-          }}
-        />
-        <Stack.Screen
           name="capture/new"
           options={{
             animation: 'fade',
@@ -109,8 +104,6 @@ function RootNavigator() {
             contentStyle: { backgroundColor: 'transparent' },
           }}
         />
-        <Stack.Screen name="capture/processing" />
-        <Stack.Screen name="capture/confirm" />
         <Stack.Screen
           name="ai"
           options={{

@@ -92,27 +92,29 @@ export function ToastProvider({ children }: PropsWithChildren) {
       <View style={styles.root}>
         {children}
         {toast ? (
-          <Animated.View
-            accessibilityLiveRegion="polite"
-            accessibilityRole="alert"
-            pointerEvents={toast.onAction ? 'auto' : 'none'}
-            style={[
-              styles.toast,
-              { bottom: insets.bottom + 84, opacity, transform: [{ translateY }] },
-            ]}
+          <View
+            pointerEvents="box-none"
+            style={[styles.toastLayer, { bottom: insets.bottom + 84 }]}
           >
-            <Text style={styles.message}>{toast.message}</Text>
-            {toast.actionLabel && toast.onAction ? (
-              <Pressable
-                accessibilityRole="button"
-                hitSlop={6}
-                onPress={runAction}
-                style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
-              >
-                <Text style={styles.actionLabel}>{toast.actionLabel}</Text>
-              </Pressable>
-            ) : null}
-          </Animated.View>
+            <Animated.View
+              accessibilityLiveRegion="polite"
+              accessibilityRole="alert"
+              pointerEvents={toast.onAction ? 'auto' : 'none'}
+              style={[styles.toast, { opacity, transform: [{ translateY }] }]}
+            >
+              <Text style={styles.message}>{toast.message}</Text>
+              {toast.actionLabel && toast.onAction ? (
+                <Pressable
+                  accessibilityRole="button"
+                  hitSlop={6}
+                  onPress={runAction}
+                  style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+                >
+                  <Text style={styles.actionLabel}>{toast.actionLabel}</Text>
+                </Pressable>
+              ) : null}
+            </Animated.View>
+          </View>
         ) : null}
       </View>
     </ToastContext.Provider>
@@ -130,34 +132,38 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  toast: {
+  toastLayer: {
     position: 'absolute',
-    left: 24,
-    right: 24,
+    left: 12,
+    right: 12,
     zIndex: 40,
-    maxWidth: 520,
+    alignItems: 'center',
+  },
+  toast: {
+    maxWidth: 420,
+    minWidth: 220,
     minHeight: 44,
-    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    gap: 6,
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 5,
     borderRadius: radius.md,
     backgroundColor: colors.black,
     elevation: 10,
   },
   message: {
-    flex: 1,
+    flexShrink: 1,
     color: colors.background,
     fontFamily,
     ...typography.label,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   action: {
     minHeight: 44,
-    minWidth: 52,
+    minWidth: 56,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,

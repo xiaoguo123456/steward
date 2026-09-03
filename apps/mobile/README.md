@@ -7,7 +7,7 @@
 | 文档类型 | 移动端工程说明 |
 | 适用范围 | `apps/mobile` |
 | 当前状态 | 维护中 |
-| 更新日期 | 2026-09-02 |
+| 更新日期 | 2026-09-03 |
 
 本目录是基于 Expo SDK 57、React Native 0.86、React 19 与 Expo Router 的移动端应用。全局功能进度只在 [实现状态](../../docs/实现状态.md) 维护；本页说明移动端工程边界和开发方式，不重复逐页需求。
 
@@ -21,7 +21,7 @@
 
 ## 当前能力边界
 
-核心管理、Capture 确认、Assistant、时光、心情日记、亲友、食谱、行程、重要日、购物和复盘等页面已经使用正式 API。Capture 未提交输入使用按账号分库的 SQLCipher 草稿与离线上传队列，媒体先复制到应用 Documents；Web 不持久化该私有草稿。时光复用正式媒体上传并读取 Memory Moments API，发布后只读且只能整段删除；其独立发布草稿和离线上传恢复尚未持久化。亲友使用正式 People API 保存用户主动录入的人物及其 Task／Event 关联，不读取系统通讯录，也不装载 Fixture；音乐不进入当前首页信息架构。专注、记账和运动均把最终记录写入正式 Tracker／Record；专注计时和原始 GPS 仍按各模块边界留在设备会话，拍照记账复用正式媒体 Capture、可编辑确认和 Record 保存链路。
+核心管理、Capture 确认、Assistant、时光、心情日记、亲友、食谱、行程、重要日、购物和复盘等页面已经使用正式 API。Capture 未提交输入使用按账号分库的 SQLCipher 草稿与离线上传队列，媒体先复制到应用 Documents；Web 不持久化该私有草稿。提交成功后直接打开常驻 AI 管家浮层，处理中、澄清、候选确认／编辑、保存结果和失败恢复由 `AssistantCaptureFlow` 在同一视觉对话内编排；轻量 `CaptureAssistantSessionProvider` 只保存当前 App 会话的 Capture／Operation ID 与最小摘要，服务端 Query 仍是权威状态，进程重启后从“最近输入”恢复。时光复用正式媒体上传并读取 Memory Moments API，发布后只读且只能整段删除；其独立发布草稿和离线上传恢复尚未持久化。亲友使用正式 People API 保存用户主动录入的人物及其 Task／Event 关联，不读取系统通讯录，也不装载 Fixture；音乐不进入当前首页信息架构。专注、记账和运动均把最终记录写入正式 Tracker／Record；专注计时和原始 GPS 仍按各模块边界留在设备会话，拍照记账复用正式媒体 Capture、可编辑确认和 Record 保存链路。
 
 不要从页面是否“看起来完整”推断是否已接正式数据。开发前先查 [实现状态](../../docs/实现状态.md)，再阅读目标 Feature 的 README、[功能规格说明](../../docs/功能规格说明.md) 和 [产品设计说明](../../docs/产品设计说明.md)。
 
@@ -59,6 +59,8 @@ pnpm --filter mobile typecheck
 pnpm --filter mobile test
 pnpm --filter mobile test:h5
 ```
+
+Capture／Assistant 交互回归集中在 `src/features/capture/capture-conversation-model.test.mjs`、`capture-conversation-placement.test.mjs`、`capture-confirmation-model.test.mjs` 与 `capture-offline-policy.test.mjs`，覆盖状态映射、统一浮层路由、常驻入口、确认写入边界、紧凑撤销条和离线恢复策略。
 
 修改 `assets/brand` 中的高分辨率 PNG 母版后，使用下面的命令重新生成构建与商店使用的各尺寸 PNG；本机需要安装 ImageMagick：
 
