@@ -19,6 +19,7 @@ import { NavHeader } from '@/components/ui/nav-header';
 import { StatePanel } from '@/components/ui/state-panel';
 import { buildEventEditRequest, eventEditDraft, type EventEditDraft } from '@/features/events/event-edit-model';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { formatMinuteDateTime, formatMinuteClock, zonedDateTimeParts } from '@/utils/date-time';
 
 const projectStatuses: ProjectStatus[] = ['active', 'paused'];
 
@@ -99,7 +100,6 @@ export default function EventDetailScreen() {
             <Text style={styles.title}>{event.title}</Text>
             <View style={styles.card}>
               <Row label="时间" value={eventTime(event)} />
-              <Row label="时区" value={event.timezone} />
               <Row label="地点" value={event.location || '未设置'} />
               <Row label="参与人" value={event.participants?.join('、') || '未设置'} />
               <Row label="提醒" value={event.reminders?.length ? `${event.reminders.length} 条` : '未设置'} />
@@ -115,8 +115,25 @@ export default function EventDetailScreen() {
   );
 }
 
-function eventTime(event: Event) { if (event.all_day) return `${event.start_date ?? ''}${event.end_date ? ` 至 ${event.end_date}` : ''} · 全天`; const start = event.start_at ? new Date(event.start_at).toLocaleString('zh-CN') : '未设置'; return `${start}${event.end_at ? ` 至 ${new Date(event.end_at).toLocaleString('zh-CN')}` : ''}`; }
-function eventDeviceTimePreview(draft: EventEditDraft) { try { const request = buildEventEditRequest({ ...draft, end: '', reminderEnabled: false }); return `设备当地时间：${new Date(request.start_at!).toLocaleString('zh-CN')}（Event 时区：${draft.timezone}）`; } catch { return '请填写有效时间与 IANA 时区，例如 Asia/Shanghai'; } }
+function eventTime(event: Event) {
+  if (event.all_day) return `${event.start_date ?? ''}${event.end_date ? ` 至 ${event.end_date}` : ''} · 全天`;
+  if (!event.start_at) return '未设置';
+  const start = zonedDateTimeParts(event.start_at, event.timezone);
+  const end = event.end_at ? zonedDateTimeParts(event.end_at, event.timezone) : null;
+  if (start && end && start.date === end.date) {
+    return `${formatMinuteDateTime(event.start_at, event.timezone)}–${formatMinuteClock(end.hour * 60 + end.minute)}`;
+  }
+  const startLabel = formatMinuteDateTime(event.start_at, event.timezone);
+  return `${startLabel}${event.end_at ? ` 至 ${formatMinuteDateTime(event.end_at, event.timezone)}` : ''}`;
+}
+function eventDeviceTimePreview(draft: EventEditDraft) {
+  try {
+    const request = buildEventEditRequest({ ...draft, end: '', reminderEnabled: false });
+    return `设备当地时间：${formatMinuteDateTime(request.start_at!)}（Event 时区：${draft.timezone}）`;
+  } catch {
+    return '请填写有效时间与 IANA 时区，例如 Asia/Shanghai';
+  }
+}
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text>{children}</View>; }
 function Input(props: React.ComponentProps<typeof TextInput> & { label: string }) { const { label, ...rest } = props; return <TextInput accessibilityLabel={label} placeholderTextColor={colors.textTertiary} selectionColor={colors.primary} style={[styles.input, rest.multiline && styles.multiline]} {...rest} />; }
 function Choice({ selected, label, onPress }: { selected: boolean; label: string; onPress: () => void }) { return <AppButton label={label} onPress={onPress} variant={selected ? 'primary' : 'secondary'} style={styles.choice} />; }
