@@ -40,9 +40,22 @@ test('Capture 对话会话支持关闭浮层后恢复，并保持确认后才写
   assert.match(provider, /session: CaptureAssistantSession \| null/);
   assert.match(provider, /服务端 Capture 仍是权威状态/);
   assert.match(flow, /confirmCapture\(session\.captureId/);
-  assert.match(flow, /确认前它们不会进入正式列表/);
-  assert.match(flow, /durationMs: 10_000/);
+  assert.match(flow, /已整理 \{candidates\.length\} 项，请确认后保存/);
+  assert.match(flow, /durationMs: 3_000/);
   assert.match(flow, /undoActivityBatch\(activityBatchId\)/);
+  assert.doesNotMatch(flow, /保存后 10 秒内可以撤销/);
+  assert.doesNotMatch(flow, /确认并保存|检查并编辑/);
+  assert.match(flow, /styles\.confirmationActions/);
+  assert.match(flow, /label="编辑"/);
+  assert.doesNotMatch(flow, /create-outline|chevron-up/);
+  assert.ok(
+    flow.indexOf('<SourceSummary candidate={candidate}')
+      < flow.indexOf('<Text style={styles.candidateDetail}>{candidateDetail(draft)}</Text>'),
+  );
+  assert.match(flow, /label=\{saving \? '保存中…' : '保存'\}/);
+  assert.match(flow, /checkbox:\s*\{[^}]*width:\s*44,\s*height:\s*44,/s);
+  assert.match(flow, /checkboxIndicator:\s*\{[^}]*width:\s*26,\s*height:\s*26,/s);
+  assert.match(flow, /confirmationAction:\s*\{[^}]*flex:\s*1/s);
 });
 
 test('撤销 Snackbar 使用紧凑宽度，同时保留 44dp 操作目标和安全区偏移', async () => {

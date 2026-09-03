@@ -155,6 +155,12 @@ export function AssistantCaptureFlow({
     && blockedCandidates.length === 0
     && unresolvedConflictCount === 0
     && !saving;
+  const onlyCandidate = candidates.length === 1 ? candidates[0] : undefined;
+  const currentSaveHint = saveHint(
+    selectedCandidates.length,
+    blockedCandidates.length,
+    unresolvedConflictCount,
+  );
 
   const submitAnswer = async (value: string) => {
     const normalized = value.trim();
@@ -220,7 +226,7 @@ export function AssistantCaptureFlow({
       const activityBatchId = response.data.capture.activity_batch_id;
       showToast(`${summary.text}已保存`, activityBatchId ? {
         actionLabel: '撤销',
-        durationMs: 10_000,
+        durationMs: 3_000,
         onAction: async () => {
           try {
             await undoActivityBatch(activityBatchId);
@@ -296,10 +302,7 @@ export function AssistantCaptureFlow({
           )
         ) : phase === 'confirmation' ? (
           <View style={styles.confirmation}>
-            <View style={styles.confirmationHeading}>
-              <Text style={styles.statusTitle}>我整理出了 {candidates.length} 项</Text>
-              <Text style={styles.statusText}>检查并选择要保存的内容。确认前它们不会进入正式列表。</Text>
-            </View>
+            <Text style={styles.statusTitle}>已整理 {candidates.length} 项，请确认后保存。</Text>
 
             {(data?.conflicts?.length ?? 0) > 0 ? (
               <View style={styles.conflicts}>
@@ -357,9 +360,12 @@ export function AssistantCaptureFlow({
                       style={[styles.candidate, index > 0 && styles.candidateDivider]}
                     >
                       <View style={styles.candidateHead}>
-                        <View style={[styles.typeChip, { backgroundColor: meta.soft }]}>
-                          <AppIcon color={meta.color} name={meta.icon} size={14} />
-                          <Text style={[styles.typeText, { color: meta.color }]}>{meta.label}</Text>
+                        <View style={styles.candidateIdentity}>
+                          <View style={[styles.typeChip, { backgroundColor: meta.soft }]}>
+                            <AppIcon color={meta.color} name={meta.icon} size={14} />
+                            <Text style={[styles.typeText, { color: meta.color }]}>{meta.label}</Text>
+                          </View>
+                          <Text style={styles.candidateTitle}>{candidateTitle(draft)}</Text>
                         </View>
                         <Pressable
                           accessibilityLabel={`${selected ? '取消选择' : '选择'}${meta.label}`}
@@ -371,17 +377,17 @@ export function AssistantCaptureFlow({
                           }))}
                           style={({ pressed }) => [
                             styles.checkbox,
-                            selected && styles.checkboxSelected,
                             pressed && styles.pressed,
                           ]}
                         >
-                          {selected ? <AppIcon color={colors.background} name="checkmark" size={15} /> : null}
+                          <View style={[
+                            styles.checkboxIndicator,
+                            selected && styles.checkboxIndicatorSelected,
+                          ]}>
+                            {selected ? <AppIcon color={colors.background} name="checkmark" size={13} /> : null}
+                          </View>
                         </Pressable>
                       </View>
-                      <Text style={styles.candidateTitle}>{candidateTitle(draft)}</Text>
-                      {candidateDetail(draft) ? (
-                        <Text style={styles.candidateDetail}>{candidateDetail(draft)}</Text>
-                      ) : null}
                       <SourceSummary candidate={candidate} parts={data?.parts ?? []} />
                       {missing.length > 0 ? (
                         <Text style={styles.error}>还需补全：{missing.map(missingFieldLabel).join('、')}</Text>
@@ -392,18 +398,19 @@ export function AssistantCaptureFlow({
                       {candidate.duplicate_of ? (
                         <Text style={styles.warning}>可能与已有内容重复，请重点核对。</Text>
                       ) : null}
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => setEditingId(editing ? null : candidate.id)}
-                        style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}
-                      >
-                        <AppIcon
-                          color={colors.primaryStrong}
-                          name={editing ? 'chevron-up' : 'create-outline'}
-                          size={16}
+                      {candidateDetail(draft) ? (
+                        <Text style={styles.candidateDetail}>{candidateDetail(draft)}</Text>
+                      ) : null}
+                      {!onlyCandidate ? (
+                        <AppButton
+                          accessibilityLabel={editing ? `收起${meta.label}编辑` : `编辑${meta.label}`}
+                          compact
+                          label="编辑"
+                          onPress={() => setEditingId(editing ? null : candidate.id)}
+                          style={styles.editButton}
+                          variant="secondary"
                         />
-                        <Text style={styles.editText}>{editing ? '收起编辑' : '检查并编辑'}</Text>
-                      </Pressable>
+                      ) : null}
                       {editing ? (
                         <CaptureCandidateEditor
                           candidate={candidate}
@@ -427,16 +434,34 @@ export function AssistantCaptureFlow({
             ) : null}
             {candidates.length > 0 ? (
               <View style={styles.saveArea}>
-                <Text style={styles.saveHint}>{saveHint(
-                  selectedCandidates.length,
-                  blockedCandidates.length,
-                  unresolvedConflictCount,
-                )}</Text>
-                <AppButton
-                  disabled={!canSave}
-                  label={saving ? '保存中…' : `确认并保存 ${selectedCandidates.length} 项`}
-                  onPress={() => void save()}
-                />
+                {currentSaveHint ? <Text style={styles.saveHint}>{currentSaveHint}</Text> : null}
+                {onlyCandidate ? (
+                  <View style={styles.confirmationActions}>
+                    <AppButton
+                      accessibilityLabel={editingId === onlyCandidate.id ? '收起编辑' : '编辑当前内容'}
+                      compact
+                      label="编辑"
+                      onPress={() => setEditingId((current) => (
+                        current === onlyCandidate.id ? null : onlyCandidate.id
+                      ))}
+                      style={styles.confirmationAction}
+                      variant="secondary"
+                    />
+                    <AppButton
+                      compact
+                      disabled={!canSave}
+                      label={saving ? '保存中…' : '保存'}
+                      onPress={() => void save()}
+                      style={styles.confirmationAction}
+                    />
+                  </View>
+                ) : (
+                  <AppButton
+                    disabled={!canSave}
+                    label={saving ? '保存中…' : '保存'}
+                    onPress={() => void save()}
+                  />
+                )}
               </View>
             ) : null}
           </View>
@@ -723,11 +748,11 @@ function missingFieldLabel(field: string): string {
   return labels[field] ?? field;
 }
 
-function saveHint(selected: number, blocked: number, conflicts: number): string {
+function saveHint(selected: number, blocked: number, conflicts: number): string | null {
   if (selected === 0) return '至少选择一项要保存的内容。';
   if (blocked > 0) return `已选内容中有 ${blocked} 项仍需补全。`;
   if (conflicts > 0) return `还需确认 ${conflicts} 处歧义信息。`;
-  return '保存后 10 秒内可以撤销。';
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -751,7 +776,6 @@ const styles = StyleSheet.create({
   statusTitle: { color: colors.text, fontFamily, ...typography.bodyStrong },
   statusText: { color: colors.textSecondary, fontFamily, ...typography.meta },
   confirmation: { gap: 14 },
-  confirmationHeading: { gap: 4 },
   conflicts: { gap: 9, padding: 12, borderRadius: radius.md, backgroundColor: colors.dangerSoft },
   warningTitle: { color: colors.danger, fontFamily, ...typography.bodyStrong },
   conflictItem: { gap: 7 },
@@ -767,21 +791,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden', borderWidth: 1, borderColor: colors.border,
     borderRadius: radius.md, backgroundColor: colors.background,
   },
-  candidate: { padding: 13 },
+  candidate: { paddingHorizontal: 14, paddingVertical: 14 },
   candidateDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  candidateHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  candidateHead: {
+    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+  },
+  candidateIdentity: { minWidth: 0, flex: 1, gap: 8 },
   typeChip: {
-    paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row',
+    alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, flexDirection: 'row',
     alignItems: 'center', gap: 4, borderRadius: radius.pill,
   },
   typeText: { fontFamily, fontSize: 12, lineHeight: 17, fontWeight: '600' },
   checkbox: {
-    width: 44, height: 44, marginVertical: -8, marginRight: -8,
+    width: 44, height: 44, marginTop: -5, marginRight: -7,
     alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill,
   },
-  checkboxSelected: { backgroundColor: colors.primary },
-  candidateTitle: { marginTop: 9, color: colors.text, fontFamily, ...typography.bodyStrong },
-  candidateDetail: { marginTop: 3, color: colors.textSecondary, fontFamily, ...typography.meta },
+  checkboxIndicator: {
+    width: 26, height: 26, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: colors.borderStrong, borderRadius: radius.pill,
+    backgroundColor: colors.background,
+  },
+  checkboxIndicatorSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
+  candidateTitle: { color: colors.text, fontFamily, ...typography.section },
+  candidateDetail: { marginTop: 8, color: colors.textSecondary, fontFamily, ...typography.meta },
   sources: { marginTop: 9, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   sourceItem: {
     maxWidth: '100%', height: 34, paddingRight: 8, flexDirection: 'row',
@@ -794,13 +826,12 @@ const styles = StyleSheet.create({
   warning: { marginTop: 6, color: '#815000', fontFamily, ...typography.meta },
   error: { marginTop: 6, color: colors.danger, fontFamily, ...typography.meta },
   editButton: {
-    minHeight: 44, marginTop: 10, paddingHorizontal: 10, alignSelf: 'flex-start',
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    borderRadius: radius.pill, backgroundColor: colors.primarySoft,
+    minWidth: 96, marginTop: 10, alignSelf: 'flex-start',
   },
-  editText: { color: colors.primaryStrong, fontFamily, ...typography.meta, fontWeight: '600' },
   saveArea: { gap: 8 },
   saveHint: { color: colors.textSecondary, fontFamily, ...typography.meta },
+  confirmationActions: { flexDirection: 'row', gap: 10 },
+  confirmationAction: { minWidth: 0, flex: 1 },
   emptyResult: { gap: 10 },
   recovery: { gap: 12 },
   partStatuses: { gap: 7 },
