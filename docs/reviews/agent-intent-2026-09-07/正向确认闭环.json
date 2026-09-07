@@ -1,0 +1,97 @@
+[
+  {
+    "answer": "没查到。你目前没有任何未完成的任务（待办和进行中的都是空的）。",
+    "confirm_error": null,
+    "confirmed": false,
+    "denied": null,
+    "proposals": 0,
+    "tasks_created": 0,
+    "tools": [
+      "tasks.search"
+    ],
+    "turn_failed": false,
+    "case": "空任务查询"
+  },
+  {
+    "answer": "你现在有 2 条未完成任务，都是待办状态、优先级普通：\n\n- 评审测试：采购文具\n- 评审测试：周报\n\n两条都没有设置截止日期。",
+    "confirm_error": null,
+    "confirmed": false,
+    "denied": null,
+    "proposals": 0,
+    "tasks_created": 0,
+    "tools": [
+      "tasks.search"
+    ],
+    "turn_failed": false,
+    "case": "任务查询"
+  },
+  {
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "confirm_error": null,
+    "confirmed": true,
+    "denied": null,
+    "proposals": 1,
+    "tasks_created": 1,
+    "tools": [
+      "tasks.propose_create"
+    ],
+    "turn_failed": false,
+    "case": "新用户创建任务"
+  },
+  {
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "confirm_error": null,
+    "confirmed": true,
+    "denied": null,
+    "proposals": 1,
+    "tasks_created": 0,
+    "tools": [
+      "search.hybrid",
+      "objects.get",
+      "tasks.propose_update"
+    ],
+    "turn_failed": false,
+    "case": "任务改期"
+  },
+  {
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "confirm_error": null,
+    "confirmed": true,
+    "denied": null,
+    "proposals": 1,
+    "tasks_created": 3,
+    "tools": [
+      "search.hybrid",
+      "objects.get",
+      "tasks.propose_split"
+    ],
+    "turn_failed": false,
+    "case": "任务拆分"
+  },
+  {
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "confirm_error": null,
+    "confirmed": true,
+    "denied": null,
+    "proposals": 1,
+    "tasks_created": 0,
+    "tools": [
+      "events.propose_create"
+    ],
+    "turn_failed": false,
+    "case": "创建日程"
+  },
+  {
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "confirm_error": null,
+    "confirmed": true,
+    "denied": null,
+    "proposals": 1,
+    "tasks_created": 0,
+    "tools": [
+      "memories.propose_upsert"
+    ],
+    "turn_failed": false,
+    "case": "记录偏好"
+  }
+]

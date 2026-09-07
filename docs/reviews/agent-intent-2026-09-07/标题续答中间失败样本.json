@@ -1,0 +1,25 @@
+[
+  {
+    "accepted": true,
+    "answer": "这条任务具体要记什么内容？比如“买牛奶”。",
+    "degraded": false,
+    "denied": [
+      "assistant.ask_clarification"
+    ],
+    "elapsed_ms": 2593,
+    "id": "补充任务标题",
+    "issues": [
+      "信息已足够但缺少预期建议"
+    ],
+    "mode": "assistant",
+    "model_ms": 2566,
+    "model_rounds": 2,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 2
+  }
+]

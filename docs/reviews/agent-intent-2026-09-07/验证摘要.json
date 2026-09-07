@@ -1,0 +1,17 @@
+{
+  "代码版本": "b053845",
+  "完整检查": "make check 通过（/tmp/steward-intent-check-evidence.log）",
+  "生成检查": "make generate 后无生成产物漂移",
+  "并发检查": "assistant、captures、runtime/eino、eval 的 go test -race 通过（/tmp/steward-intent-race-evidence.log）",
+  "增量Lint": "相对 6331701 的受影响包 golangci-lint 0 issues",
+  "全量Lint": "受影响包仍有 12 项既有问题：errcheck 6、staticcheck 4、unused 2；未宣称全量 Lint 清零",
+  "原始场景": {
+    "观测": 84,
+    "标记问题": 0
+  },
+  "独立措辞": {
+    "观测": 32,
+    "标记问题": 0
+  },
+  "正向真实模型闭环": "7 类通过，其中创建任务、改期、拆分、日程、偏好完成实际确认"
+}

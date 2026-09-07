@@ -1,0 +1,88 @@
+[
+  {
+    "case": "空字符串",
+    "rejected": true,
+    "code": "VALIDATION_FAILED",
+    "http": 400
+  },
+  {
+    "case": "纯空白",
+    "rejected": true,
+    "code": "VALIDATION_FAILED",
+    "http": 400
+  },
+  {
+    "case": "不可见字符",
+    "rejected": true,
+    "code": "VALIDATION_FAILED",
+    "http": 400
+  },
+  {
+    "case": "乱码后补充",
+    "stage": "初次解析",
+    "operation": "succeeded",
+    "capture": "awaiting_instruction",
+    "candidates": [],
+    "blocking_questions": 1
+  },
+  {
+    "case": "乱码后补充",
+    "stage": "未澄清确认",
+    "blocked": true,
+    "code": "VALIDATION_FAILED"
+  },
+  {
+    "case": "乱码后补充",
+    "stage": "回答后",
+    "operation": "succeeded",
+    "capture": "needs_confirmation",
+    "revision_advanced": true,
+    "candidates": [
+      "task"
+    ],
+    "open_questions": 0
+  },
+  {
+    "case": "矛盾时间",
+    "stage": "初次解析",
+    "operation": "succeeded",
+    "capture": "awaiting_instruction",
+    "candidates": [
+      "event"
+    ],
+    "blocking_questions": 1
+  },
+  {
+    "case": "矛盾时间",
+    "stage": "未澄清确认",
+    "blocked": true,
+    "code": "CAPTURE_NOT_READY"
+  },
+  {
+    "case": "矛盾时间",
+    "stage": "回答后",
+    "operation": "succeeded",
+    "capture": "needs_confirmation",
+    "revision_advanced": true,
+    "candidates": [
+      "event"
+    ],
+    "open_questions": 0
+  },
+  {
+    "case": "否定输入",
+    "stage": "初次解析",
+    "operation": "succeeded",
+    "capture": "discarded",
+    "candidates": [],
+    "blocking_questions": 0
+  },
+  {
+    "case": "明确不保存",
+    "stage": "初次解析",
+    "operation": "succeeded",
+    "capture": "discarded",
+    "candidates": [],
+    "blocking_questions": 0
+  }
+]

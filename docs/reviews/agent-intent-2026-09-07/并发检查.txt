@@ -1,0 +1,4 @@
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/eino	1.587s
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/eval	4.695s

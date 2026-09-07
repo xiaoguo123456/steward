@@ -1,0 +1,1612 @@
+cd apps/backend && go vet ./...
+pnpm mobile:lint
+
+> ai-steward@0.1.0 mobile:lint /private/tmp/steward-agent-hardening
+> pnpm --filter mobile lint
+
+
+> mobile@1.0.0 lint /private/tmp/steward-agent-hardening/apps/mobile
+> expo lint
+
+cd apps/backend && go test ./...
+?   	github.com/guoxiaozheng1/steward/apps/backend/cmd/admin-api	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/cmd/admin-passwd	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/cmd/api	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/cmd/migrate	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/cmd/seed	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/cmd/seed-calendar	(cached)
+?   	github.com/guoxiaozheng1/steward/apps/backend/cmd/worker	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/db/migrations	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/adminbootstrap	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/bootstrap	1.058s
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/domain/notecontent	(cached)
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/gen/adminapi	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/gen/httpapi	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/activity	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/aggregate	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/auth	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/costs	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/readapi	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/admin/writeapi	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/auth	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/captures	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/lists	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/media	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memory	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/memorymoments	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/moodjournal	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/notifications	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/objects	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/recipes	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/relationships	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/retention	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/trackers	(cached)
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/users	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/views	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai	(cached)
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/assets	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/eval	2.279s
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/fake	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/openai	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/eino	1.811s
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/internal/conformancetest	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/aiaudit	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/apperr	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/auth	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/httpx	(cached)
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/idgen	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/jobs	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/sms/aliyun	(cached)
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/aliyunoss	(cached)
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/storage/localfs	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams/pgnotify	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams/redisstream	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/timeutil	(cached)
+pnpm mobile:test
+
+> ai-steward@0.1.0 mobile:test /private/tmp/steward-agent-hardening
+> pnpm --filter mobile test
+
+
+> mobile@1.0.0 test /private/tmp/steward-agent-hardening/apps/mobile
+> pnpm run test:config && pnpm run test:life-regression && pnpm run test:important-dates && pnpm run test:notifications && pnpm run test:review && pnpm run test:recipes && pnpm run test:trips && pnpm run test:workouts && pnpm run test:assistant && pnpm run test:calendar && pnpm run test:memories && pnpm run test:mood-journal && pnpm run test:notes && pnpm run test:plan && pnpm run test:trackers && pnpm run test:ui && pnpm run test:auth
+
+
+> mobile@1.0.0 test:config /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test app.config.test.mjs scripts/check-ota-safe-changes.test.mjs scripts/check-public-h5.test.mjs
+
+TAP version 13
+# (node:51475) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51475) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/app.config.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 原生配置移除应用锁权限、加入受控 H5 容器并统一移动端版本
+ok 1 - 原生配置移除应用锁权限、加入受控 H5 容器并统一移动端版本
+  ---
+  duration_ms: 3.024375
+  ...
+# Subtest: 本地未配置远程更新时只使用安装包内置版本
+ok 2 - 本地未配置远程更新时只使用安装包内置版本
+  ---
+  duration_ms: 0.177084
+  ...
+# Subtest: 测试与生产构建固定使用隔离的更新频道
+ok 3 - 测试与生产构建固定使用隔离的更新频道
+  ---
+  duration_ms: 0.151166
+  ...
+# Subtest: 要求启用 OTA 时拒绝缺失或不完整配置
+ok 4 - 要求启用 OTA 时拒绝缺失或不完整配置
+  ---
+  duration_ms: 0.361291
+  ...
+# Subtest: 只允许移动端源码、生成客户端源码和专用 OTA 资源
+ok 5 - 只允许移动端源码、生成客户端源码和专用 OTA 资源
+  ---
+  duration_ms: 0.973125
+  ...
+# Subtest: 依赖、应用配置和普通原生资源变化必须重新构建
+ok 6 - 依赖、应用配置和普通原生资源变化必须重新构建
+  ---
+  duration_ms: 0.120542
+  ...
+# Subtest: 公开 H5 固定路径完整且测试环境结构校验通过
+ok 7 - 公开 H5 固定路径完整且测试环境结构校验通过
+  ---
+  duration_ms: 6.337416
+  ...
+# Subtest: 当前公开 H5 已通过生产发布门禁
+ok 8 - 当前公开 H5 已通过生产发布门禁
+  ---
+  duration_ms: 1.722708
+  ...
+# Subtest: noindex 与发布阻塞标记会阻断生产发布
+ok 9 - noindex 与发布阻塞标记会阻断生产发布
+  ---
+  duration_ms: 0.129875
+  ...
+# Subtest: 公开页面拒绝脚本、用户 API 与伪删除表单
+ok 10 - 公开页面拒绝脚本、用户 API 与伪删除表单
+  ---
+  duration_ms: 0.06025
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 77.829084
+
+> mobile@1.0.0 test:life-regression /private/tmp/steward-agent-hardening/apps/mobile
+> node --test src/features/life-regression.test.mjs
+
+TAP version 13
+# Subtest: 专注先完成正式任务并等待记录保存，失败时保留总结页
+ok 1 - 专注先完成正式任务并等待记录保存，失败时保留总结页
+  ---
+  duration_ms: 2.571542
+  ...
+# Subtest: 运动常亮参数进入进行中页且总结等待正式保存
+ok 2 - 运动常亮参数进入进行中页且总结等待正式保存
+  ---
+  duration_ms: 1.59675
+  ...
+# Subtest: 购物写入等待成功，读取和写入失败都有可恢复状态
+ok 3 - 购物写入等待成功，读取和写入失败都有可恢复状态
+  ---
+  duration_ms: 0.75725
+  ...
+# Subtest: 重要日、行程与 AI 设置不再把查询失败伪装成空状态
+ok 4 - 重要日、行程与 AI 设置不再把查询失败伪装成空状态
+  ---
+  duration_ms: 0.983625
+  ...
+# Subtest: 复盘总是展示确定性指标并等待感受保存
+ok 5 - 复盘总是展示确定性指标并等待感受保存
+  ---
+  duration_ms: 0.560459
+  ...
+# Subtest: 心情隐私字段双向接入契约且回望轨迹可以打开日记
+ok 6 - 心情隐私字段双向接入契约且回望轨迹可以打开日记
+  ---
+  duration_ms: 1.301375
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42.053041
+
+> mobile@1.0.0 test:important-dates /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/important-dates/important-date-picker.test.mjs src/features/important-dates/important-date-list.test.mjs src/features/important-dates/important-date-detail.test.mjs
+
+TAP version 13
+# Subtest: 重要日详情统一使用编辑入口且不再提供日历快捷入口
+ok 1 - 重要日详情统一使用编辑入口且不再提供日历快捷入口
+  ---
+  duration_ms: 0.376292
+  ...
+# Subtest: 一次性重要日保留标记已处理，年度重复重要日不显示该操作
+ok 2 - 一次性重要日保留标记已处理，年度重复重要日不显示该操作
+  ---
+  duration_ms: 0.074917
+  ...
+# (node:51512) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51512) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/important-dates/important-date-list.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 已过期条目不会进入即将到来或更多重要日
+ok 3 - 已过期条目不会进入即将到来或更多重要日
+  ---
+  duration_ms: 1.056833
+  ...
+# Subtest: 只有已过期条目时不伪造即将到来的主卡片
+ok 4 - 只有已过期条目时不伪造即将到来的主卡片
+  ---
+  duration_ms: 0.068959
+  ...
+# (node:51513) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51513) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/important-dates/important-date-picker.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 月份天数覆盖大小月与闰年
+ok 5 - 月份天数覆盖大小月与闰年
+  ---
+  duration_ms: 1.395542
+  ...
+# Subtest: 切换年月时把无效日期收敛到当月最后一天
+ok 6 - 切换年月时把无效日期收敛到当月最后一天
+  ---
+  duration_ms: 0.116125
+  ...
+# Subtest: 年份选项覆盖历史日期和未来日期
+ok 7 - 年份选项覆盖历史日期和未来日期
+  ---
+  duration_ms: 0.076833
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 69.733917
+
+> mobile@1.0.0 test:notifications /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/notifications/notification-model.test.mjs
+
+TAP version 13
+# (node:51530) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51530) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/notifications/notification-model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 通知来源进入对应正式详情路由
+ok 1 - 通知来源进入对应正式详情路由
+  ---
+  duration_ms: 0.67875
+  ...
+# Subtest: 通知按设备本地今天和更早分组，并保持服务端顺序
+ok 2 - 通知按设备本地今天和更早分组，并保持服务端顺序
+  ---
+  duration_ms: 0.695917
+  ...
+# Subtest: 分页结果按 id 去重并让新快照覆盖旧状态
+ok 3 - 分页结果按 id 去重并让新快照覆盖旧状态
+  ---
+  duration_ms: 0.071958
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 62.556542
+
+> mobile@1.0.0 test:review /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/review/review-period.test.mjs src/features/review/review-metrics.test.mjs
+
+TAP version 13
+# (node:51547) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51547) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/review/review-metrics.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 复盘指标按任务三项与记录两项稳定分组
+ok 1 - 复盘指标按任务三项与记录两项稳定分组
+  ---
+  duration_ms: 0.693292
+  ...
+# Subtest: 新增指标按每行最多三项保留在固定指标之后
+ok 2 - 新增指标按每行最多三项保留在固定指标之后
+  ---
+  duration_ms: 0.0755
+  ...
+# Subtest: 空周不生成小结，但与上周有变化时仍可复盘
+ok 3 - 空周不生成小结，但与上周有变化时仍可复盘
+  ---
+  duration_ms: 0.063792
+  ...
+# (node:51548) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51548) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/review/review-period.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 周一默认选择刚结束的完整自然周
+ok 4 - 周一默认选择刚结束的完整自然周
+  ---
+  duration_ms: 1.821791
+  ...
+# Subtest: 周日仍不把尚未结束的当前周当作复盘周期
+ok 5 - 周日仍不把尚未结束的当前周当作复盘周期
+  ---
+  duration_ms: 0.069459
+  ...
+# Subtest: 跨年时正确返回上一自然周
+ok 6 - 跨年时正确返回上一自然周
+  ---
+  duration_ms: 0.046
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 67.315083
+
+> mobile@1.0.0 test:recipes /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/recipes/discovery-order.test.mjs src/features/recipes/recipe-confirmation-placement.test.mjs src/features/recipes/recipe-swap.test.mjs
+
+TAP version 13
+# (node:51569) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51569) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/recipes/discovery-order.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 同一浏览会话和分类保持相同顺序
+ok 1 - 同一浏览会话和分类保持相同顺序
+  ---
+  duration_ms: 1.080458
+  ...
+# Subtest: 换分类或刷新种子后得到新的展示顺序
+ok 2 - 换分类或刷新种子后得到新的展示顺序
+  ---
+  duration_ms: 0.083792
+  ...
+# Subtest: 搜索结果保留服务端返回顺序
+ok 3 - 搜索结果保留服务端返回顺序
+  ---
+  duration_ms: 0.052333
+  ...
+# Subtest: 新生成的周食谱在菜单顶部提供醒目的确认入口
+ok 4 - 新生成的周食谱在菜单顶部提供醒目的确认入口
+  ---
+  duration_ms: 2.45525
+  ...
+# (node:51571) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51571) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/recipes/recipe-swap.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 换一道只选择同餐次且同角色的菜
+ok 5 - 换一道只选择同餐次且同角色的菜
+  ---
+  duration_ms: 0.6955
+  ...
+# Subtest: 换一道不会选中同一餐已经存在的菜
+ok 6 - 换一道不会选中同一餐已经存在的菜
+  ---
+  duration_ms: 0.201834
+  ...
+# Subtest: 替换菜单返回新对象并保留原菜品角色
+ok 7 - 替换菜单返回新对象并保留原菜品角色
+  ---
+  duration_ms: 0.439917
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 242.161125
+
+> mobile@1.0.0 test:trips /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/trips/trip-form.test.mjs
+
+TAP version 13
+# (node:51588) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51588) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/trips/trip-form.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 新建行程固定创建 trip 类型项目并保留注意事项
+ok 1 - 新建行程固定创建 trip 类型项目并保留注意事项
+  ---
+  duration_ms: 0.617125
+  ...
+# Subtest: 目的地与注意事项可以从项目描述稳定还原
+ok 2 - 目的地与注意事项可以从项目描述稳定还原
+  ---
+  duration_ms: 0.101792
+  ...
+# Subtest: 结束日期早于开始日期时禁止创建
+ok 3 - 结束日期早于开始日期时禁止创建
+  ---
+  duration_ms: 0.067833
+  ...
+# Subtest: 日期范围展示星期并按首尾日期计算天数
+ok 4 - 日期范围展示星期并按首尾日期计算天数
+  ---
+  duration_ms: 1.757
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 77.3215
+
+> mobile@1.0.0 test:workouts /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/workouts/workout-location.test.mjs src/features/workouts/workout-voice.test.mjs
+
+TAP version 13
+# (node:51605) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51605) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/workouts/workout-location.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 大圆距离计算保持米级合理精度
+ok 1 - 大圆距离计算保持米级合理精度
+  ---
+  duration_ms: 0.567333
+  ...
+# Subtest: 首个有效定位点开启路线线段
+ok 2 - 首个有效定位点开启路线线段
+  ---
+  duration_ms: 0.324125
+  ...
+# Subtest: 过滤低精度、原地漂移和不可能的瞬移
+ok 3 - 过滤低精度、原地漂移和不可能的瞬移
+  ---
+  duration_ms: 0.082792
+  ...
+# Subtest: 暂停或后台断档后开启新线段且不累加直线距离
+ok 4 - 暂停或后台断档后开启新线段且不累加直线距离
+  ---
+  duration_ms: 0.054833
+  ...
+# Subtest: 距离、平均配速与骑行均速格式化
+ok 5 - 距离、平均配速与骑行均速格式化
+  ---
+  duration_ms: 0.132042
+  ...
+# (node:51606) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51606) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/workouts/workout-voice.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 从准备页展示值解析距离与时长目标
+ok 6 - 从准备页展示值解析距离与时长目标
+  ---
+  duration_ms: 1.029792
+  ...
+# Subtest: 播报时间使用自然中文单位
+ok 7 - 播报时间使用自然中文单位
+  ---
+  duration_ms: 0.080042
+  ...
+# Subtest: 跑步整公里播报包含距离、本公里配速和总用时
+ok 8 - 跑步整公里播报包含距离、本公里配速和总用时
+  ---
+  duration_ms: 0.068166
+  ...
+# Subtest: 骑行整公里播报使用平均速度
+ok 9 - 骑行整公里播报使用平均速度
+  ---
+  duration_ms: 0.051416
+  ...
+# Subtest: 开始、目标和结束播报保持简短
+ok 10 - 开始、目标和结束播报保持简短
+  ---
+  duration_ms: 0.118541
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 71.978708
+
+> mobile@1.0.0 test:assistant /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/assistant/assistant-markdown-policy.test.mjs src/features/assistant/assistant-media-capture.test.mjs src/features/assistant/assistant-thread-session.test.mjs src/features/assistant/proposal-action-state.test.mjs src/features/assistant/assistant-operation-state.test.mjs src/features/assistant/assistant-provenance-contract.test.mjs
+
+TAP version 13
+# (node:51623) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51623) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/assistant/assistant-markdown-policy.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 只允许带主机名的 HTTPS 链接
+ok 1 - 只允许带主机名的 HTTPS 链接
+  ---
+  duration_ms: 2.019625
+  ...
+# Subtest: 拒绝不安全协议、相对路径和无效链接
+ok 2 - 拒绝不安全协议、相对路径和无效链接
+  ---
+  duration_ms: 0.1645
+  ...
+# Subtest: 远程图片只展示可读的替代说明
+ok 3 - 远程图片只展示可读的替代说明
+  ---
+  duration_ms: 0.076416
+  ...
+# (node:51624) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51624) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/assistant/assistant-media-capture.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: AI 图片按文字在前、图片在后的可追溯顺序提交
+ok 4 - AI 图片按文字在前、图片在后的可追溯顺序提交
+  ---
+  duration_ms: 5.558084
+  ...
+# Subtest: 没有说明时使用图片数量作为对话内处理摘要
+ok 5 - 没有说明时使用图片数量作为对话内处理摘要
+  ---
+  duration_ms: 0.108875
+  ...
+# (node:51625) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51625) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/assistant/assistant-operation-state.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 断网及恢复过程中保持轮次活跃，不重复发送
+ok 6 - 断网及恢复过程中保持轮次活跃，不重复发送
+  ---
+  duration_ms: 6.147375
+  ...
+# Subtest: 只有服务端终态结束等待，即使后续请求暂时出错
+ok 7 - 只有服务端终态结束等待，即使后续请求暂时出错
+  ---
+  duration_ms: 0.210166
+  ...
+# (node:51626) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51626) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/packages/api-client/src/generated/tasks/tasks.zod.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/packages/api-client/package.json.
+# Subtest: AI 建议确认后的 Task 可由正式网络契约读取
+ok 8 - AI 建议确认后的 Task 可由正式网络契约读取
+  ---
+  duration_ms: 1.719166
+  ...
+# (node:51627) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51627) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/assistant/assistant-thread-session.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 路由指定的历史对话优先于默认恢复
+ok 9 - 路由指定的历史对话优先于默认恢复
+  ---
+  duration_ms: 0.759209
+  ...
+# Subtest: 点击新对话后忽略迟到的当天恢复结果
+ok 10 - 点击新对话后忽略迟到的当天恢复结果
+  ---
+  duration_ms: 0.224041
+  ...
+# Subtest: 首条消息取得服务端 Thread 后成为当天默认对话
+ok 11 - 首条消息取得服务端 Thread 后成为当天默认对话
+  ---
+  duration_ms: 0.257125
+  ...
+# (node:51628) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51628) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/assistant/proposal-action-state.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 不足两条子任务时仍可拒绝，但不能确认
+ok 12 - 不足两条子任务时仍可拒绝，但不能确认
+  ---
+  duration_ms: 0.967958
+  ...
+# Subtest: 已选子任务的空标题必须修正，不能被提交过滤
+ok 13 - 已选子任务的空标题必须修正，不能被提交过滤
+  ---
+  duration_ms: 0.074291
+  ...
+# Subtest: 请求中禁用两个动作，普通建议无需子任务
+ok 14 - 请求中禁用两个动作，普通建议无需子任务
+  ---
+  duration_ms: 0.049083
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 110.558292
+
+> mobile@1.0.0 test:calendar /private/tmp/steward-agent-hardening/apps/mobile
+> node --no-warnings --experimental-strip-types --loader ../../tools/typescript-extension-loader.mjs --test src/features/calendar/calendar-month.test.mjs src/features/calendar/calendar-week-timeline.test.mjs
+
+TAP version 13
+# Subtest: 月历总是生成包含相邻月份的 42 个日期格
+ok 1 - 月历总是生成包含相邻月份的 42 个日期格
+  ---
+  duration_ms: 1.223625
+  ...
+# Subtest: 选择本月时回到今天，其他月份默认选择一号
+ok 2 - 选择本月时回到今天，其他月份默认选择一号
+  ---
+  duration_ms: 0.056333
+  ...
+# Subtest: 月份入口显示完整年月，当天面板显示星期
+ok 3 - 月份入口显示完整年月，当天面板显示星期
+  ---
+  duration_ms: 0.127125
+  ...
+# Subtest: 月格只保留第一条可读预览，不显示其余条目数量
+ok 4 - 月格只保留第一条可读预览，不显示其余条目数量
+  ---
+  duration_ms: 0.0415
+  ...
+# Subtest: 月格标题只保留前四个字且不追加省略号
+ok 5 - 月格标题只保留前四个字且不追加省略号
+  ---
+  duration_ms: 0.043333
+  ...
+# Subtest: 周历生成周日至周六七天并支持跨周导航
+ok 6 - 周历生成周日至周六七天并支持跨周导航
+  ---
+  duration_ms: 0.162625
+  ...
+# Subtest: 时光与心情复用月历导航和日期格，内容标记保持在日期圈内
+ok 7 - 时光与心情复用月历导航和日期格，内容标记保持在日期圈内
+  ---
+  duration_ms: 5.260583
+  ...
+# Subtest: 跨午夜日程会切分到相邻日期列，时间只显示到分钟
+ok 8 - 跨午夜日程会切分到相邻日期列，时间只显示到分钟
+  ---
+  duration_ms: 24.042291
+  ...
+# Subtest: 重叠事项使用稳定分栏，后续不重叠事项可复用列
+ok 9 - 重叠事项使用稳定分栏，后续不重叠事项可复用列
+  ---
+  duration_ms: 0.439333
+  ...
+# Subtest: 全天日程和无时刻待办进入全天带，指定时区决定布局分钟
+ok 10 - 全天日程和无时刻待办进入全天带，指定时区决定布局分钟
+  ---
+  duration_ms: 0.454083
+  ...
+# Subtest: 多日定时日程进入跨天横条，续日详情保留原实体和准确时间
+ok 11 - 多日定时日程进入跨天横条，续日详情保留原实体和准确时间
+  ---
+  duration_ms: 0.594875
+  ...
+# Subtest: 跨天横条午夜结束不占次日，重叠横条分行，任务同样可读
+ok 12 - 跨天横条午夜结束不占次日，重叠横条分行，任务同样可读
+  ---
+  duration_ms: 0.323292
+  ...
+# Subtest: 短跨午夜保留时间轴但不将首屏定位到凌晨，当天长日程不截短
+ok 13 - 短跨午夜保留时间轴但不将首屏定位到凌晨，当天长日程不截短
+  ---
+  duration_ms: 0.257291
+  ...
+# Subtest: 窄列重叠簇聚合且保留全部入口，宽列并排，不重叠事项不聚合
+ok 14 - 窄列重叠簇聚合且保留全部入口，宽列并排，不重叠事项不聚合
+  ---
+  duration_ms: 0.349958
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 124.274917
+
+> mobile@1.0.0 test:memories /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/memories/memory-model.test.mjs
+
+TAP version 13
+# (node:51667) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51667) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/memories/memory-model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 时光按月份和日期由新到旧分组，同一天可以保留多条
+ok 1 - 时光按月份和日期由新到旧分组，同一天可以保留多条
+  ---
+  duration_ms: 5.916875
+  ...
+# Subtest: 日期展示包含星期且拒绝不存在的日期
+ok 2 - 日期展示包含星期且拒绝不存在的日期
+  ---
+  duration_ms: 0.572875
+  ...
+# Subtest: 选图按选择顺序去重并严格限制为九张
+ok 3 - 选图按选择顺序去重并严格限制为九张
+  ---
+  duration_ms: 0.133959
+  ...
+# Subtest: 正式接口结果按 position 映射为短期网络图片
+ok 4 - 正式接口结果按 position 映射为短期网络图片
+  ---
+  duration_ms: 0.0805
+  ...
+# Subtest: 时光使用正式查询与上传，发布后只保留整段删除
+ok 5 - 时光使用正式查询与上传，发布后只保留整段删除
+  ---
+  duration_ms: 3.190125
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 70.671542
+
+> mobile@1.0.0 test:mood-journal /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/mood-journal/model.test.mjs src/features/mood-journal/mood-journal-polish.test.mjs src/features/mood-journal/mood-journal-ai.test.mjs
+
+TAP version 13
+# (node:51684) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51684) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/mood-journal/model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 块文档只维护一份权威正文并可生成本地预览
+ok 1 - 块文档只维护一份权威正文并可生成本地预览
+  ---
+  duration_ms: 0.378125
+  ...
+# Subtest: 恢复旧草稿时清理手动工具栏遗留的空块
+ok 2 - 恢复旧草稿时清理手动工具栏遗留的空块
+  ---
+  duration_ms: 0.289083
+  ...
+# Subtest: 月范围覆盖当地自然月
+ok 3 - 月范围覆盖当地自然月
+  ---
+  duration_ms: 0.618875
+  ...
+# Subtest: 常见心情选择不修改服务端原顺序并兼容 Android 运行时
+ok 4 - 常见心情选择不修改服务端原顺序并兼容 Android 运行时
+  ---
+  duration_ms: 0.088
+  ...
+# Subtest: 新日记按实际保存时间归档，独立日期查找页只读浏览
+ok 5 - 新日记按实际保存时间归档，独立日期查找页只读浏览
+  ---
+  duration_ms: 3.448375
+  ...
+# Subtest: 保存后追问只在保存后的详情页主动触发
+ok 6 - 保存后追问只在保存后的详情页主动触发
+  ---
+  duration_ms: 2.096625
+  ...
+# Subtest: 周月回望要求逐篇选择并展示来源
+ok 7 - 周月回望要求逐篇选择并展示来源
+  ---
+  duration_ms: 0.666584
+  ...
+# Subtest: 心情首页只保留一个本月回望入口
+ok 8 - 心情首页只保留一个本月回望入口
+  ---
+  duration_ms: 0.480625
+  ...
+# Subtest: 心情草稿按平台隔离且 Web 不持久化敏感正文
+ok 9 - 心情草稿按平台隔离且 Web 不持久化敏感正文
+  ---
+  duration_ms: 0.962625
+  ...
+# Subtest: 心情 AI 单独同意在 Web 与原生都能结束等待
+ok 10 - 心情 AI 单独同意在 Web 与原生都能结束等待
+  ---
+  duration_ms: 1.061583
+  ...
+# (node:51686) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51686) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/mood-journal/mood-journal-polish.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 心情日记有正文且空闲时才允许排版润色
+ok 11 - 心情日记有正文且空闲时才允许排版润色
+  ---
+  duration_ms: 0.7215
+  ...
+# Subtest: 采用排版润色结果时保留 AI 来源
+ok 12 - 采用排版润色结果时保留 AI 来源
+  ---
+  duration_ms: 0.063458
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 67.548542
+
+> mobile@1.0.0 test:notes /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/notes/note-polish.test.mjs
+
+TAP version 13
+# (node:51703) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51703) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/notes/note-polish.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 标题为空时采用润色标题，已有标题保持不变
+ok 1 - 标题为空时采用润色标题，已有标题保持不变
+  ---
+  duration_ms: 0.6955
+  ...
+# Subtest: 润色结果保留来源，正文为空或处理中不可再次触发
+ok 2 - 润色结果保留来源，正文为空或处理中不可再次触发
+  ---
+  duration_ms: 0.248333
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 60.142666
+
+> mobile@1.0.0 test:plan /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/plan/anytime-task-actions.test.mjs src/features/plan/task-list-order.test.mjs src/features/plan/task-list-appearance.test.mjs src/features/plan/task-list-policy.test.mjs src/features/plan/plan-tab-navigation.test.mjs src/features/projects/project-task-scope.test.mjs src/features/tasks/manual-task-request.test.mjs src/features/tasks/task-detail.test.mjs src/features/tasks/task-edit-model.test.mjs src/features/events/event-edit-model.test.mjs
+
+TAP version 13
+# (node:51721) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51721) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/events/event-edit-model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 全天日程切换会清空定时时刻并使用当地提醒
+ok 1 - 全天日程切换会清空定时时刻并使用当地提醒
+  ---
+  duration_ms: 2.35125
+  ...
+# Subtest: 定时日程结束时间必须晚于开始时间
+ok 2 - 定时日程结束时间必须晚于开始时间
+  ---
+  duration_ms: 12.429292
+  ...
+# Subtest: 定时时间按 Event 时区转换为绝对时刻
+ok 3 - 定时时间按 Event 时区转换为绝对时刻
+  ---
+  duration_ms: 0.4325
+  ...
+# Subtest: 跨时区日程进入编辑态时保持 Event 当地分钟语义
+ok 4 - 跨时区日程进入编辑态时保持 Event 当地分钟语义
+  ---
+  duration_ms: 0.400958
+  ...
+# Subtest: 日程详情隐藏独立时区行，详情和确认卡不使用带秒的默认格式
+ok 5 - 日程详情隐藏独立时区行，详情和确认卡不使用带秒的默认格式
+  ---
+  duration_ms: 3.816708
+  ...
+# (node:51722) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51722) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/plan/anytime-task-actions.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 加入今天只写入 focus_date
+ok 6 - 加入今天只写入 focus_date
+  ---
+  duration_ms: 6.784166
+  ...
+# Subtest: 设置日期同时保留 date-only 语义和用户时区
+ok 7 - 设置日期同时保留 date-only 语义和用户时区
+  ---
+  duration_ms: 0.100667
+  ...
+# (node:51723) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51723) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/plan/plan-tab-navigation.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 离开计划一级页时发布一次临时视图重置信号
+ok 8 - 离开计划一级页时发布一次临时视图重置信号
+  ---
+  duration_ms: 6.918708
+  ...
+# Subtest: 只让旧版本的计划临时视图失效
+ok 9 - 只让旧版本的计划临时视图失效
+  ---
+  duration_ms: 0.158541
+  ...
+# (node:51724) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51724) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/plan/task-list-appearance.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 默认清单只在缺少外观时使用兼容默认值
+ok 10 - 默认清单只在缺少外观时使用兼容默认值
+  ---
+  duration_ms: 0.843417
+  ...
+# Subtest: 新清单根据名称推荐语义图标
+ok 11 - 新清单根据名称推荐语义图标
+  ---
+  duration_ms: 0.130625
+  ...
+# Subtest: 新清单优先使用尚未出现的颜色
+ok 12 - 新清单优先使用尚未出现的颜色
+  ---
+  duration_ms: 0.096083
+  ...
+# Subtest: 旧清单缺少外观字段时结果保持稳定
+ok 13 - 旧清单缺少外观字段时结果保持稳定
+  ---
+  duration_ms: 0.084958
+  ...
+# (node:51725) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51725) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/plan/task-list-order.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 清单可以拖到新的位置
+ok 14 - 清单可以拖到新的位置
+  ---
+  duration_ms: 1.660375
+  ...
+# Subtest: 目标位置会限制在清单范围内
+ok 15 - 目标位置会限制在清单范围内
+  ---
+  duration_ms: 0.072458
+  ...
+# Subtest: 只提交发生变化的位置
+ok 16 - 只提交发生变化的位置
+  ---
+  duration_ms: 0.12125
+  ...
+# (node:51726) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51726) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/plan/task-list-policy.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 归档保留期按服务端秒数生成短文案
+ok 17 - 归档保留期按服务端秒数生成短文案
+  ---
+  duration_ms: 1.916417
+  ...
+# Subtest: 旧服务端缺少策略字段时临时按 3 天展示
+ok 18 - 旧服务端缺少策略字段时临时按 3 天展示
+  ---
+  duration_ms: 0.211708
+  ...
+# (node:51727) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51727) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/projects/project-task-scope.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 全部状态保留有关联和未关联项目的任务
+ok 19 - 全部状态保留有关联和未关联项目的任务
+  ---
+  duration_ms: 10.761375
+  ...
+# Subtest: 项目状态直接筛选关联任务
+ok 20 - 项目状态直接筛选关联任务
+  ---
+  duration_ms: 0.094375
+  ...
+# Subtest: 具体项目优先于状态范围
+ok 21 - 具体项目优先于状态范围
+  ---
+  duration_ms: 0.0555
+  ...
+# (node:51728) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51728) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/tasks/manual-task-request.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 手动表单预选加入今天只写入 focus_date，不伪造今天截止
+ok 22 - 手动表单预选加入今天只写入 focus_date，不伪造今天截止
+  ---
+  duration_ms: 1.316083
+  ...
+# Subtest: 手动设置截止日期时保留用户时区和自选提醒时间
+ok 23 - 手动设置截止日期时保留用户时区和自选提醒时间
+  ---
+  duration_ms: 0.150584
+  ...
+# Subtest: 从亲友详情创建任务时保留人物关联且不改变清单归属
+ok 24 - 从亲友详情创建任务时保留人物关联且不改变清单归属
+  ---
+  duration_ms: 0.186959
+  ...
+# Subtest: 任务详情不展示内嵌 AI 操作和来源说明
+ok 25 - 任务详情不展示内嵌 AI 操作和来源说明
+  ---
+  duration_ms: 0.33725
+  ...
+# (node:51731) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51731) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/tasks/task-edit-model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 任务编辑请求保持日期截止语义并清空互斥字段
+ok 26 - 任务编辑请求保持日期截止语义并清空互斥字段
+  ---
+  duration_ms: 1.054625
+  ...
+# Subtest: 计划结束不晚于开始时拒绝保存
+ok 27 - 计划结束不晚于开始时拒绝保存
+  ---
+  duration_ms: 0.238125
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 190.120542
+
+> mobile@1.0.0 test:trackers /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/trackers/trend-chart-model.test.mjs src/features/trackers/record-pagination.test.mjs src/features/ledger/ledger-report.test.mjs
+
+TAP version 13
+# (node:51751) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51751) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/ledger/ledger-report.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 月报只统计当前月真实记录并按周与分类聚合
+ok 1 - 月报只统计当前月真实记录并按周与分类聚合
+  ---
+  duration_ms: 1.375167
+  ...
+# Subtest: 没有支出时保持空统计，不编造趋势
+ok 2 - 没有支出时保持空统计，不编造趋势
+  ---
+  duration_ms: 0.113333
+  ...
+# (node:51752) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51752) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/trackers/record-pagination.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 完整统计会沿不透明游标加载所有记录页
+ok 3 - 完整统计会沿不透明游标加载所有记录页
+  ---
+  duration_ms: 1.558042
+  ...
+# Subtest: 普通列表默认只读取第一页
+ok 4 - 普通列表默认只读取第一页
+  ---
+  duration_ms: 0.08475
+  ...
+# Subtest: 重复游标会中止，避免异常响应造成无限请求
+ok 5 - 重复游标会中止，避免异常响应造成无限请求
+  ---
+  duration_ms: 0.173917
+  ...
+# (node:51753) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51753) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/trackers/trend-chart-model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 趋势数据保留 Record 粒度，按范围过滤并按发生时间升序排列
+ok 6 - 趋势数据保留 Record 粒度，按范围过滤并按发生时间升序排列
+  ---
+  duration_ms: 0.746542
+  ...
+# Subtest: 趋势数据忽略文本值、无效时间与非有限数值
+ok 7 - 趋势数据忽略文本值、无效时间与非有限数值
+  ---
+  duration_ms: 0.071958
+  ...
+# Subtest: 正数和负数序列都包含零基线，跨零序列保持正确方向
+ok 8 - 正数和负数序列都包含零基线，跨零序列保持正确方向
+  ---
+  duration_ms: 0.126875
+  ...
+# Subtest: 全零序列仍生成有限刻度和位于底部的零值
+ok 9 - 全零序列仍生成有限刻度和位于底部的零值
+  ---
+  duration_ms: 0.055709
+  ...
+# Subtest: 月视图减少日期密度并保留首尾，周视图逐条标注
+ok 10 - 月视图减少日期密度并保留首尾，周视图逐条标注
+  ---
+  duration_ms: 0.627333
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 70.628375
+
+> mobile@1.0.0 test:ui /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/api/network-contract-policy.test.mjs src/api/session-policy.test.mjs src/components/ui/icon-system.test.mjs src/components/ui/filter-chip-system.test.mjs src/components/ui/tab-shell-compatibility.test.mjs src/components/ui/touch-target-accessibility.test.mjs src/components/ui/confirm-action.test.mjs src/theme/theme-accessibility.test.mjs src/features/home/home-top-navigation.test.mjs src/features/capture/capture-confirmation-model.test.mjs src/features/capture/capture-conversation-model.test.mjs src/features/capture/capture-conversation-placement.test.mjs src/features/capture/capture-success-model.test.mjs src/features/capture/capture-offline-policy.test.mjs
+
+TAP version 13
+# Subtest: 成功响应必须经过生成的 Zod Schema 校验
+ok 1 - 成功响应必须经过生成的 Zod Schema 校验
+  ---
+  duration_ms: 3.743792
+  ...
+# Subtest: 失败写请求按方法、URL 和请求体保留稳定幂等键
+ok 2 - 失败写请求按方法、URL 和请求体保留稳定幂等键
+  ---
+  duration_ms: 1.062042
+  ...
+# Subtest: 购物与行程更新携带当前实体版本
+ok 3 - 购物与行程更新携带当前实体版本
+  ---
+  duration_ms: 3.458459
+  ...
+# Subtest: Project 详情通过正式 project_id 查询聚合 Record
+ok 4 - Project 详情通过正式 project_id 查询聚合 Record
+  ---
+  duration_ms: 1.327209
+  ...
+# Subtest: Assistant 查询失败可恢复，停止回复与 SSE 刷新链路可达
+ok 5 - Assistant 查询失败可恢复，停止回复与 SSE 刷新链路可达
+  ---
+  duration_ms: 3.027125
+  ...
+# Subtest: 通知已读复用统一稳定幂等策略，不在重试时生成新键
+ok 6 - 通知已读复用统一稳定幂等策略，不在重试时生成新键
+  ---
+  duration_ms: 3.006541
+  ...
+# (node:51773) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51773) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/api/session-policy.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: Access Token 到期前一分钟开始静默续期
+ok 7 - Access Token 到期前一分钟开始静默续期
+  ---
+  duration_ms: 1.330792
+  ...
+# Subtest: 只有明确的鉴权错误才清除长期登录态
+ok 8 - 只有明确的鉴权错误才清除长期登录态
+  ---
+  duration_ms: 4.63775
+  ...
+# Subtest: 确认交互在 Web 使用原生 confirm，原生端使用 Alert 回调
+ok 9 - 确认交互在 Web 使用原生 confirm，原生端使用 Alert 回调
+  ---
+  duration_ms: 2.345417
+  ...
+# Subtest: 有破坏性的入口统一使用可等待的确认交互
+ok 10 - 有破坏性的入口统一使用可等待的确认交互
+  ---
+  duration_ms: 6.670458
+  ...
+# Subtest: AI 任务候选允许用户检查并修正所属清单
+ok 11 - AI 任务候选允许用户检查并修正所属清单
+  ---
+  duration_ms: 1.685458
+  ...
+# Subtest: 内容筛选统一复用 FilterChip
+ok 12 - 内容筛选统一复用 FilterChip
+  ---
+  duration_ms: 4.885
+  ...
+# Subtest: FilterChip 使用统一的轻量选中样式
+ok 13 - FilterChip 使用统一的轻量选中样式
+  ---
+  duration_ms: 3.03725
+  ...
+# Subtest: Feature 只能通过公共适配层使用 Hugeicons
+ok 14 - Feature 只能通过公共适配层使用 Hugeicons
+  ---
+  duration_ms: 32.017542
+  ...
+# Subtest: 移动端图标层只保留 Hugeicons 直接依赖
+ok 15 - 移动端图标层只保留 Hugeicons 直接依赖
+  ---
+  duration_ms: 0.380416
+  ...
+# Subtest: Web 图标不把布尔 accessible 属性透传给 SVG DOM
+ok 16 - Web 图标不把布尔 accessible 属性透传给 SVG DOM
+  ---
+  duration_ms: 0.3025
+  ...
+# Subtest: Web 不调用仅 iOS 可用的降低透明度接口
+ok 17 - Web 不调用仅 iOS 可用的降低透明度接口
+  ---
+  duration_ms: 1.932834
+  ...
+# Subtest: 自定义底部标签不透传会触发整页刷新的 href
+ok 18 - 自定义底部标签不透传会触发整页刷新的 href
+  ---
+  duration_ms: 1.110792
+  ...
+# Subtest: 首页头像入口使用按钮语义和 44dp 最小触控尺寸
+ok 19 - 首页头像入口使用按钮语义和 44dp 最小触控尺寸
+  ---
+  duration_ms: 2.419083
+  ...
+# Subtest: Capture 图片删除入口通过 hitSlop 扩展到 44dp
+ok 20 - Capture 图片删除入口通过 hitSlop 扩展到 44dp
+  ---
+  duration_ms: 3.233833
+  ...
+# Subtest: 公共紧凑按钮统一尺寸、图标和中性操作色
+ok 21 - 公共紧凑按钮统一尺寸、图标和中性操作色
+  ---
+  duration_ms: 1.726084
+  ...
+# (node:51779) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51779) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/capture/capture-confirmation-model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 精确截止时间与截止日期互斥，提交时保留更精确的时间
+ok 22 - 精确截止时间与截止日期互斥，提交时保留更精确的时间
+  ---
+  duration_ms: 0.832583
+  ...
+# Subtest: 服务端未默认勾选的候选仍可由用户主动选择
+ok 23 - 服务端未默认勾选的候选仍可由用户主动选择
+  ---
+  duration_ms: 0.3365
+  ...
+# Subtest: 用户补齐缺失字段后允许确认，删空必填字段会重新阻塞
+ok 24 - 用户补齐缺失字段后允许确认，删空必填字段会重新阻塞
+  ---
+  duration_ms: 0.208
+  ...
+# Subtest: 行程安排的嵌套缺失字段可以在确认页补齐
+ok 25 - 行程安排的嵌套缺失字段可以在确认页补齐
+  ---
+  duration_ms: 0.081625
+  ...
+# Subtest: 冲突选项和 Record 字段会写回确认 payload
+ok 26 - 冲突选项和 Record 字段会写回确认 payload
+  ---
+  duration_ms: 0.206958
+  ...
+# Subtest: Record 中尚未填写的字段会继续阻塞确认
+ok 27 - Record 中尚未填写的字段会继续阻塞确认
+  ---
+  duration_ms: 0.141834
+  ...
+# (node:51780) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51780) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/capture/capture-conversation-model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: Capture 对话阶段覆盖处理中、澄清、确认、失败和完成
+ok 28 - Capture 对话阶段覆盖处理中、澄清、确认、失败和完成
+  ---
+  duration_ms: 0.432125
+  ...
+# Subtest: 处理中提示来自真实 Capture 阶段
+ok 29 - 处理中提示来自真实 Capture 阶段
+  ---
+  duration_ms: 0.06125
+  ...
+# Subtest: 多轮文字澄清在处理中聚合为一行，图片仍逐项显示
+ok 30 - 多轮文字澄清在处理中聚合为一行，图片仍逐项显示
+  ---
+  duration_ms: 0.342417
+  ...
+# Subtest: 明确无保存内容的结束态不展示失败或零项确认
+ok 31 - 明确无保存内容的结束态不展示失败或零项确认
+  ---
+  duration_ms: 0.045084
+  ...
+# Subtest: Capture 提交后直接打开 AI 管家，不经过处理或确认页面
+ok 32 - Capture 提交后直接打开 AI 管家，不经过处理或确认页面
+  ---
+  duration_ms: 3.735166
+  ...
+# Subtest: AI 管家入口常驻，数量为零时不渲染红点但仍可打开
+ok 33 - AI 管家入口常驻，数量为零时不渲染红点但仍可打开
+  ---
+  duration_ms: 1.398125
+  ...
+# Subtest: Capture 对话会话支持关闭浮层后恢复，并保持确认后才写入
+ok 34 - Capture 对话会话支持关闭浮层后恢复，并保持确认后才写入
+  ---
+  duration_ms: 1.063333
+  ...
+# Subtest: 撤销 Snackbar 使用紧凑宽度，同时保留 44dp 操作目标和安全区偏移
+ok 35 - 撤销 Snackbar 使用紧凑宽度，同时保留 44dp 操作目标和安全区偏移
+  ---
+  duration_ms: 0.949708
+  ...
+# Subtest: 原生 Capture 草稿使用按账号隔离的 SQLCipher 与设备级密钥
+ok 36 - 原生 Capture 草稿使用按账号隔离的 SQLCipher 与设备级密钥
+  ---
+  duration_ms: 2.790333
+  ...
+# Subtest: 媒体先复制到应用持久目录，Web 实现不把私有草稿写入浏览器存储
+ok 37 - 媒体先复制到应用持久目录，Web 实现不把私有草稿写入浏览器存储
+  ---
+  duration_ms: 2.349208
+  ...
+# Subtest: 离线上传队列持久化稳定幂等键和 media_id，但不持久化签名 URL
+ok 38 - 离线上传队列持久化稳定幂等键和 media_id，但不持久化签名 URL
+  ---
+  duration_ms: 2.096583
+  ...
+# Subtest: 退出登录提供保留或删除当前账号设备草稿的明确选择
+ok 39 - 退出登录提供保留或删除当前账号设备草稿的明确选择
+  ---
+  duration_ms: 0.627209
+  ...
+# Subtest: 用户清空已有 Capture 草稿后不会恢复出旧内容
+ok 40 - 用户清空已有 Capture 草稿后不会恢复出旧内容
+  ---
+  duration_ms: 0.550417
+  ...
+# (node:51783) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51783) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/capture/capture-success-model.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 保存摘要只统计带 ID 的真实业务资源并去重
+ok 41 - 保存摘要只统计带 ID 的真实业务资源并去重
+  ---
+  duration_ms: 1.203959
+  ...
+# Subtest: 服务端没有返回具体资源时使用已确认候选数量兜底
+ok 42 - 服务端没有返回具体资源时使用已确认候选数量兜底
+  ---
+  duration_ms: 0.113125
+  ...
+# (node:51784) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51784) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/home/home-top-navigation.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 首页顶部导航保持固定顺序和短标签
+ok 43 - 首页顶部导航保持固定顺序和短标签
+  ---
+  duration_ms: 0.572
+  ...
+# Subtest: 首次进入首页默认定位到今天，二级页返回时保留离开前的分区
+ok 44 - 首次进入首页默认定位到今天，二级页返回时保留离开前的分区
+  ---
+  duration_ms: 2.16575
+  ...
+# Subtest: 亲友首页使用正式人物查询和添加入口
+ok 45 - 亲友首页使用正式人物查询和添加入口
+  ---
+  duration_ms: 0.54525
+  ...
+# Subtest: 亲友详情聚焦人物资料、关联待办、近期安排和重要日
+ok 46 - 亲友详情聚焦人物资料、关联待办、近期安排和重要日
+  ---
+  duration_ms: 0.529917
+  ...
+# Subtest: 时光与心情首页不展示重复标题或研发提示
+ok 47 - 时光与心情首页不展示重复标题或研发提示
+  ---
+  duration_ms: 0.729583
+  ...
+# Subtest: 首页分区已开放的紧凑操作复用统一按钮及全局操作色
+ok 48 - 首页分区已开放的紧凑操作复用统一按钮及全局操作色
+  ---
+  duration_ms: 0.985375
+  ...
+# Subtest: 首页不再保留灵感分区或专属页面入口
+ok 49 - 首页不再保留灵感分区或专属页面入口
+  ---
+  duration_ms: 0.440459
+  ...
+# Subtest: 今天首页只保留待办主区，不用日程数量拼装第二个今日摘要
+ok 50 - 今天首页只保留待办主区，不用日程数量拼装第二个今日摘要
+  ---
+  duration_ms: 0.282708
+  ...
+# Subtest: 正文与弱提示文字在常用表面满足 WCAG AA 小字号对比度
+ok 51 - 正文与弱提示文字在常用表面满足 WCAG AA 小字号对比度
+  ---
+  duration_ms: 0.570333
+  ...
+# Subtest: 品牌主色承载白色小字号内容时满足 WCAG AA
+ok 52 - 品牌主色承载白色小字号内容时满足 WCAG AA
+  ---
+  duration_ms: 0.128041
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 52
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 145.34175
+
+> mobile@1.0.0 test:auth /private/tmp/steward-agent-hardening/apps/mobile
+> node --experimental-strip-types --test src/features/auth/phone-code.test.mjs src/features/auth/login-input.test.mjs src/features/account/account-navigation.test.mjs src/features/legal/public-pages.test.mjs
+
+TAP version 13
+# Subtest: “我的”直接收纳资料、手机号和退出登录，不再进入重复设置页
+ok 1 - “我的”直接收纳资料、手机号和退出登录，不再进入重复设置页
+  ---
+  duration_ms: 2.349208
+  ...
+# Subtest: 根导航不再登记“全部设置”、资料和账号中转页
+ok 2 - 根导航不再登记“全部设置”、资料和账号中转页
+  ---
+  duration_ms: 0.678
+  ...
+# Subtest: 短信登录采用两阶段流程并保留系统自动填充语义
+ok 3 - 短信登录采用两阶段流程并保留系统自动填充语义
+  ---
+  duration_ms: 0.933792
+  ...
+# Subtest: 账号删除在响应丢失后保留短期重放凭证
+ok 4 - 账号删除在响应丢失后保留短期重放凭证
+  ---
+  duration_ms: 1.152125
+  ...
+# Subtest: 旧账号迟到的 refresh 响应不会覆盖新账号会话
+ok 5 - 旧账号迟到的 refresh 响应不会覆盖新账号会话
+  ---
+  duration_ms: 0.474667
+  ...
+# (node:51803) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51803) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/auth/login-input.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 手机号输入会移除格式字符并限制为 11 位
+ok 6 - 手机号输入会移除格式字符并限制为 11 位
+  ---
+  duration_ms: 0.762583
+  ...
+# Subtest: 输入过程中不提前报错，离开后给出可操作提示
+ok 7 - 输入过程中不提前报错，离开后给出可操作提示
+  ---
+  duration_ms: 0.089291
+  ...
+# (node:51804) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51804) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/auth/phone-code.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 测试环境返回验证码时直接填入
+ok 8 - 测试环境返回验证码时直接填入
+  ---
+  duration_ms: 0.681583
+  ...
+# Subtest: 生产环境未返回验证码时提示查看短信
+ok 9 - 生产环境未返回验证码时提示查看短信
+  ---
+  duration_ms: 0.069459
+  ...
+# Subtest: 不自动填入不合法的测试验证码
+ok 10 - 不自动填入不合法的测试验证码
+  ---
+  duration_ms: 0.048417
+  ...
+# Subtest: 验证码发送失败会区分网络、限流与短信服务错误
+ok 11 - 验证码发送失败会区分网络、限流与短信服务错误
+  ---
+  duration_ms: 0.06975
+  ...
+# Subtest: 登录失败会区分验证码错误、过期与网络错误
+ok 12 - 登录失败会区分验证码错误、过期与网络错误
+  ---
+  duration_ms: 0.103666
+  ...
+# (node:51805) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:51805) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/steward-agent-hardening/apps/mobile/src/features/legal/public-pages.ts is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /private/tmp/steward-agent-hardening/apps/mobile/package.json.
+# Subtest: 公开 H5 跟随当前环境域名且路径固定
+ok 13 - 公开 H5 跟随当前环境域名且路径固定
+  ---
+  duration_ms: 0.317208
+  ...
+# Subtest: App 路由只接收稳定页面键，不接收任意 URL
+ok 14 - App 路由只接收稳定页面键，不接收任意 URL
+  ---
+  duration_ms: 0.256792
+  ...
+# Subtest: 内嵌容器只允许同源法律与帮助路径
+ok 15 - 内嵌容器只允许同源法律与帮助路径
+  ---
+  duration_ms: 0.109
+  ...
+# Subtest: H5 的账号删除按钮回到原生公开页
+ok 16 - H5 的账号删除按钮回到原生公开页
+  ---
+  duration_ms: 0.051292
+  ...
+# Subtest: 原生公开页容器默认关闭脚本、存储和原生桥接
+ok 17 - 原生公开页容器默认关闭脚本、存储和原生桥接
+  ---
+  duration_ms: 2.460708
+  ...
+# Subtest: 公开路径不能被基础地址中的子路径吞掉
+ok 18 - 公开路径不能被基础地址中的子路径吞掉
+  ---
+  duration_ms: 0.084125
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 68.092292
+python3 tools/recipe-import/test_to_postgres.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.001s
+
+OK
+python3 tools/recipe-import/test_discovery_tags.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.000s
+
+OK
+python3 tools/recipe-import/allergens.py
+自检 19 条，失败 0 项
+python3 tools/recipe-import/classify.py
+自检 31 条，失败 0 项
+pnpm mobile:typecheck
+
+> ai-steward@0.1.0 mobile:typecheck /private/tmp/steward-agent-hardening
+> pnpm --filter mobile typecheck
+
+
+> mobile@1.0.0 typecheck /private/tmp/steward-agent-hardening/apps/mobile
+> tsc --noEmit
+
+pnpm admin:typecheck
+
+> ai-steward@0.1.0 admin:typecheck /private/tmp/steward-agent-hardening
+> pnpm --filter @steward/admin run typecheck && pnpm --filter @steward/admin-api-client run typecheck
+
+
+> @steward/admin@0.1.0 typecheck /private/tmp/steward-agent-hardening/apps/admin
+> tsc --noEmit
+
+
+> @steward/admin-api-client@0.1.0 typecheck /private/tmp/steward-agent-hardening/packages/admin-api-client
+> tsc --noEmit
+
+pnpm admin:test
+
+> ai-steward@0.1.0 admin:test /private/tmp/steward-agent-hardening
+> pnpm --filter @steward/admin run test
+
+
+> @steward/admin@0.1.0 test /private/tmp/steward-agent-hardening/apps/admin
+> vitest run --config vitest.config.ts
+
+
+ RUN  v4.1.11 /private/tmp/steward-agent-hardening/apps/admin
+
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  15:36:41
+   Duration  1.48s (transform 51ms, setup 188ms, import 1.44s, tests 283ms, environment 898ms)

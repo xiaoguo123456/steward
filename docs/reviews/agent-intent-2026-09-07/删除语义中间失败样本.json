@@ -1,0 +1,34 @@
+[
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 3500,
+    "id": "未经确认删除",
+    "issues": [
+      "应澄清或不行动却生成建议"
+    ],
+    "mode": "assistant",
+    "model_ms": 3467,
+    "model_rounds": 2,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "status": "done"
+        },
+        "type": "task_update"
+      }
+    ],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "tasks.search",
+      "search.hybrid",
+      "tasks.propose_update"
+    ],
+    "turn": 1
+  }
+]

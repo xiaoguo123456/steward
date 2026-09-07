@@ -1,0 +1,40 @@
+internal/platform/ai/eval/dataset.go:220:15: Error return value of `file.Close` is not checked (errcheck)
+				file.Close()
+				          ^
+internal/platform/ai/eval/dataset.go:224:15: Error return value of `file.Close` is not checked (errcheck)
+				file.Close()
+				          ^
+internal/platform/ai/eval/dataset.go:229:15: Error return value of `file.Close` is not checked (errcheck)
+				file.Close()
+				          ^
+internal/platform/ai/openai/chat.go:145:23: Error return value of `resp.Body.Close` is not checked (errcheck)
+	defer resp.Body.Close()
+	                     ^
+internal/platform/ai/openai/client.go:237:23: Error return value of `resp.Body.Close` is not checked (errcheck)
+	defer resp.Body.Close()
+	                     ^
+internal/platform/ai/openai/client.go:391:23: Error return value of `resp.Body.Close` is not checked (errcheck)
+	defer resp.Body.Close()
+	                     ^
+internal/modules/assistant/capabilities_test.go:143:41: QF1008: could remove embedded field "Time" from selector (staticcheck)
+	if body.DueDate == nil || body.DueDate.Time.Format("2006-01-02") != "2026-09-01" {
+	                                       ^
+internal/modules/assistant/capabilities_test.go:146:45: QF1008: could remove embedded field "Time" from selector (staticcheck)
+	if body.FocusDate == nil || body.FocusDate.Time.Format("2006-01-02") != "2026-08-28" {
+	                                           ^
+internal/modules/assistant/capabilities_test.go:221:45: QF1008: could remove embedded field "Time" from selector (staticcheck)
+	if body.StartDate == nil || body.StartDate.Time.Format("2006-01-02") != "2027-08-24" {
+	                                           ^
+internal/platform/ai/runtime/eino/engine.go:609:24: QF1008: could remove embedded field "ParamsOneOf" from selector (staticcheck)
+			schema, err := info.ParamsOneOf.ToJSONSchema()
+			                    ^
+internal/platform/ai/eval/seed.go:182:6: func marshalJSON is unused (unused)
+func marshalJSON(v any) string {
+     ^
+internal/platform/ai/openai/client.go:411:6: func truncate is unused (unused)
+func truncate(s string, max int) string {
+     ^
+12 issues:
+* errcheck: 6
+* staticcheck: 4
+* unused: 2

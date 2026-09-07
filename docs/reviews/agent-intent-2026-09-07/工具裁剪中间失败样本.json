@@ -1,0 +1,25 @@
+[
+  {
+    "accepted": true,
+    "answer": "这条「买牛奶」有截止时间吗？比如今天或明天要买到，还是先记着、不设日期？",
+    "degraded": false,
+    "denied": [
+      "assistant.ask_clarification"
+    ],
+    "elapsed_ms": 1247,
+    "id": "可选日期不阻塞",
+    "issues": [
+      "信息已足够但缺少预期建议"
+    ],
+    "mode": "assistant",
+    "model_ms": 1225,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  }
+]

@@ -1,0 +1,749 @@
+[
+  {
+    "accepted": true,
+    "answer": "这条任务要做什么？告诉我内容即可。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 18,
+    "id": "短回答不是噪声",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 0,
+    "model_rounds": 0,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": [
+      "tasks.propose_create",
+      "tasks.propose_create"
+    ],
+    "elapsed_ms": 4975,
+    "id": "短回答不是噪声",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 4945,
+    "model_rounds": 3,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "title": "取快递"
+        },
+        "type": "task_create"
+      }
+    ],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "tasks.propose_create"
+    ],
+    "turn": 2
+  },
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 1365,
+    "id": "不要忘记不是撤回",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1333,
+    "model_rounds": 1,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "title": "买面包"
+        },
+        "type": "task_create"
+      }
+    ],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "tasks.propose_create"
+    ],
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": [
+      "tasks.propose_create"
+    ],
+    "elapsed_ms": 2914,
+    "id": "撤回改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 2883,
+    "model_rounds": 2,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "title": "买鸡蛋"
+        },
+        "type": "task_create"
+      }
+    ],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "tasks.propose_create"
+    ],
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "已取消这条待确认建议，尚未保存的内容不会执行。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 10,
+    "id": "撤回改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 0,
+    "model_rounds": 0,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 2
+  },
+  {
+    "accepted": true,
+    "answer": "「隔些日子」我没法确定具体日期——你想定在哪天去领材料？（比如本周五、9月15日）",
+    "degraded": false,
+    "denied": [
+      "assistant.ask_clarification"
+    ],
+    "elapsed_ms": 1351,
+    "id": "模糊日期改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1326,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "4月31日这个日期不存在（4月只有30天），而且今年4月也已经过了。你想让我按哪个时间来准备提醒？比如 9月30日、10月8日，或者其他具体日期。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 1233,
+    "id": "非法月日改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1205,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "有多条同名任务，请选择要处理的那一条。",
+    "degraded": false,
+    "denied": [
+      "search.hybrid"
+    ],
+    "elapsed_ms": 1157,
+    "id": "重复任务改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1079,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "我查到了你的「报销」任务，但它现在还是**待办**状态（未完成），所以按你说的条件，我没有生成任何改动建议。\n\n如果它其实已经办完了，你说一声，我就把截止改到明天（2026-09-08）。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 2961,
+    "id": "条件改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 2932,
+    "model_rounds": 3,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "search.hybrid",
+      "objects.get"
+    ],
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "好的，明天晚上的读书会大概定在几点开始呢？（例如 19:00、七点半）另外如果有结束时间也可以一并告诉我。",
+    "degraded": false,
+    "denied": [
+      "assistant.ask_clarification"
+    ],
+    "elapsed_ms": 1458,
+    "id": "时间补充改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1439,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 2559,
+    "id": "时间补充改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 2539,
+    "model_rounds": 1,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "end_at": "2026-09-08T21:00:00+08:00",
+          "event_kind": "schedule",
+          "start_at": "2026-09-08T20:00:00+08:00",
+          "time_evidence": {
+            "end_at": {
+              "date_anchor": "2026-09-07T15:40:01+08:00",
+              "date_source_ref": "message:资源引用已脱敏",
+              "date_text": "明天",
+              "period_text": "晚上",
+              "time_text": "九点"
+            },
+            "start_at": {
+              "date_anchor": "2026-09-07T15:40:01+08:00",
+              "date_source_ref": "message:资源引用已脱敏",
+              "date_text": "明天",
+              "period_text": "晚上",
+              "time_text": "八点"
+            }
+          },
+          "title": "读书会"
+        },
+        "type": "event_create"
+      }
+    ],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "events.propose_create"
+    ],
+    "turn": 2
+  },
+  {
+    "accepted": true,
+    "answer": "这条任务要做什么？告诉我内容即可。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 11,
+    "id": "澄清换话题",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 0,
+    "model_rounds": 0,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "用户换话题了，之前的新建待办问题结束。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 710,
+    "id": "澄清换话题",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 693,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 1,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 2
+  },
+  {
+    "candidates": [],
+    "conflicts": null,
+    "elapsed_ms": 843,
+    "id": "Capture随口聊",
+    "instruction": "这次没有需要保存的内容。",
+    "issues": [],
+    "mode": "capture",
+    "model_ms": 839,
+    "questions": null,
+    "repeat": 1,
+    "turn": 1
+  },
+  {
+    "candidates": [
+      {
+        "dates": {},
+        "description": "",
+        "missing": null,
+        "title": "咖啡豆快用完了",
+        "type": "note",
+        "warnings": null
+      }
+    ],
+    "conflicts": null,
+    "elapsed_ms": 1354,
+    "id": "Capture指定笔记",
+    "instruction": "",
+    "issues": [],
+    "mode": "capture",
+    "model_ms": 1353,
+    "questions": null,
+    "repeat": 1,
+    "turn": 1
+  },
+  {
+    "candidates": [
+      {
+        "dates": {},
+        "description": "",
+        "missing": null,
+        "title": "给花浇水",
+        "type": "task",
+        "warnings": null
+      }
+    ],
+    "conflicts": null,
+    "elapsed_ms": 1350,
+    "id": "Capture否定防误伤",
+    "instruction": "",
+    "issues": [],
+    "mode": "capture",
+    "model_ms": 1349,
+    "questions": null,
+    "repeat": 1,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "这条任务要做什么？告诉我内容即可。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 20,
+    "id": "短回答不是噪声",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 0,
+    "model_rounds": 0,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 2293,
+    "id": "短回答不是噪声",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 2270,
+    "model_rounds": 2,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "title": "取快递"
+        },
+        "type": "task_create"
+      }
+    ],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "tasks.propose_create"
+    ],
+    "turn": 2
+  },
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": [
+      "tasks.propose_create"
+    ],
+    "elapsed_ms": 3307,
+    "id": "不要忘记不是撤回",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 3284,
+    "model_rounds": 2,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "description": "你说“不要忘记”，所以先记成无截止的待办；需要指定哪天买的话告我一声。",
+          "title": "买面包"
+        },
+        "type": "task_create"
+      }
+    ],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "tasks.propose_create"
+    ],
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 1706,
+    "id": "撤回改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1386,
+    "model_rounds": 1,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "priority": "normal",
+          "title": "买鸡蛋"
+        },
+        "type": "task_create"
+      }
+    ],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "tasks.propose_create"
+    ],
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "已取消这条待确认建议，尚未保存的内容不会执行。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 11,
+    "id": "撤回改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 0,
+    "model_rounds": 0,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 2
+  },
+  {
+    "accepted": true,
+    "answer": "「隔些日子」太模糊了，我没法定成具体日期。你想让我哪天提醒你？比如给个具体日期或「周五」「下周」。",
+    "degraded": false,
+    "denied": [
+      "assistant.ask_clarification"
+    ],
+    "elapsed_ms": 1305,
+    "id": "模糊日期改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1281,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "4月31日这个日期不存在（4月只有30天），而且现在已经是2026年9月了。\n\n请确认一下：你是想提醒**明年（2027年）4月底**取资料，还是记错了月份，其实是某个具体日期？",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 1243,
+    "id": "非法月日改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1221,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "有多条同名任务，请选择要处理的那一条。",
+    "degraded": false,
+    "denied": [
+      "search.hybrid"
+    ],
+    "elapsed_ms": 769,
+    "id": "重复任务改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 739,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "「报销」目前还是待办状态，没完成，所以按你说的条件不动它。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 2685,
+    "id": "条件改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 2641,
+    "model_rounds": 3,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "search.hybrid",
+      "objects.get"
+    ],
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "好的，明天晚上的读书会定在几点开始？大概到几点结束？",
+    "degraded": false,
+    "denied": [
+      "assistant.ask_clarification"
+    ],
+    "elapsed_ms": 1045,
+    "id": "时间补充改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1032,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "已准备好待确认建议，请查看卡片后确认。",
+    "degraded": false,
+    "denied": [
+      "events.propose_create"
+    ],
+    "elapsed_ms": 5328,
+    "id": "时间补充改写",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 5307,
+    "model_rounds": 2,
+    "pending_count": 1,
+    "proposals": [
+      {
+        "command": {
+          "end_at": "2026-09-08T21:00:00+08:00",
+          "event_kind": "schedule",
+          "start_at": "2026-09-08T20:00:00+08:00",
+          "time_evidence": {
+            "end_at": {
+              "date_anchor": "2026-09-07T15:40:23+08:00",
+              "date_source_ref": "message:资源引用已脱敏",
+              "date_text": "明天",
+              "period_text": "晚上",
+              "time_text": "九点"
+            },
+            "start_at": {
+              "date_anchor": "2026-09-07T15:40:23+08:00",
+              "date_source_ref": "message:资源引用已脱敏",
+              "date_text": "明天",
+              "period_text": "晚上",
+              "time_text": "八点"
+            }
+          },
+          "title": "读书会"
+        },
+        "type": "event_create"
+      }
+    ],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": [
+      "events.propose_create"
+    ],
+    "turn": 2
+  },
+  {
+    "accepted": true,
+    "answer": "这条任务要做什么？告诉我内容即可。",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 9,
+    "id": "澄清换话题",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 0,
+    "model_rounds": 0,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 1
+  },
+  {
+    "accepted": true,
+    "answer": "好的，换个轻松的话题。\n\n一个程序员去面试，面试官问：\"你有什么特长？\"\n程序员说：\"我特别擅长修 bug。\"\n面试官：\"能举个例子吗？\"\n程序员：\"我写的代码里从来没有 bug。\"",
+    "degraded": false,
+    "denied": null,
+    "elapsed_ms": 1565,
+    "id": "澄清换话题",
+    "issues": [],
+    "mode": "assistant",
+    "model_ms": 1551,
+    "model_rounds": 1,
+    "pending_count": 0,
+    "proposals": [],
+    "repeat": 2,
+    "tasks_created": 0,
+    "tasks_updated": 0,
+    "tools": null,
+    "turn": 2
+  },
+  {
+    "candidates": [],
+    "conflicts": null,
+    "elapsed_ms": 1169,
+    "id": "Capture随口聊",
+    "instruction": "这次没有需要保存的内容。",
+    "issues": [],
+    "mode": "capture",
+    "model_ms": 1168,
+    "questions": null,
+    "repeat": 2,
+    "turn": 1
+  },
+  {
+    "candidates": [
+      {
+        "dates": {},
+        "description": "",
+        "missing": null,
+        "title": "咖啡豆快用完了",
+        "type": "note",
+        "warnings": null
+      }
+    ],
+    "conflicts": null,
+    "elapsed_ms": 1599,
+    "id": "Capture指定笔记",
+    "instruction": "",
+    "issues": [],
+    "mode": "capture",
+    "model_ms": 1598,
+    "questions": null,
+    "repeat": 2,
+    "turn": 1
+  },
+  {
+    "candidates": [
+      {
+        "dates": {},
+        "description": "",
+        "missing": null,
+        "title": "给花浇水",
+        "type": "task",
+        "warnings": null
+      }
+    ],
+    "conflicts": null,
+    "elapsed_ms": 1319,
+    "id": "Capture否定防误伤",
+    "instruction": "",
+    "issues": [],
+    "mode": "capture",
+    "model_ms": 1318,
+    "questions": null,
+    "repeat": 2,
+    "turn": 1
+  }
+]

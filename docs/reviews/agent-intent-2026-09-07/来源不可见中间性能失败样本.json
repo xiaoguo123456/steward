@@ -1,0 +1,1549 @@
+{
+  "environment": "本地隔离 API/Worker + 真实 Provider",
+  "repeats": 3,
+  "polling_ms": 250,
+  "samples": [
+    {
+      "name": "暖机",
+      "repeat": 0,
+      "kind": "assistant",
+      "ack_ms": 11,
+      "stream_http": 200,
+      "first_status_ms": 21,
+      "first_text_ms": 784,
+      "stream_done_ms": 902,
+      "operation_seen_ms": 1034,
+      "status": "succeeded",
+      "result_read_ms": 1039,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 12,
+      "worker_ms": 879,
+      "server_total_ms": 891,
+      "tools": [],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 860,
+          "input_tokens": 6356,
+          "output_tokens": 8,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "简短聊天",
+      "repeat": 1,
+      "kind": "assistant",
+      "ack_ms": 8,
+      "stream_http": 200,
+      "first_status_ms": 10,
+      "first_text_ms": 501,
+      "stream_done_ms": 769,
+      "operation_seen_ms": 1023,
+      "status": "succeeded",
+      "result_read_ms": 1027,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 8,
+      "worker_ms": 756,
+      "server_total_ms": 763,
+      "tools": [],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 748,
+          "input_tokens": 6355,
+          "output_tokens": 18,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "空查询",
+      "repeat": 1,
+      "kind": "assistant",
+      "ack_ms": 5,
+      "stream_http": 200,
+      "first_status_ms": 7,
+      "stream_tool_count": 1,
+      "first_text_ms": 1302,
+      "stream_done_ms": 1884,
+      "operation_seen_ms": 2043,
+      "status": "succeeded",
+      "result_read_ms": 2046,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 4,
+      "worker_ms": 1875,
+      "server_total_ms": 1879,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 11
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 1852,
+          "input_tokens": 12776,
+          "output_tokens": 67,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "任务查询",
+      "repeat": 1,
+      "kind": "assistant",
+      "ack_ms": 4,
+      "stream_http": 200,
+      "first_status_ms": 7,
+      "stream_tool_count": 1,
+      "first_text_ms": 14046,
+      "stream_done_ms": 14443,
+      "operation_seen_ms": 14510,
+      "status": "succeeded",
+      "result_read_ms": 14514,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 4,
+      "worker_ms": 14434,
+      "server_total_ms": 14437,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 14419,
+          "input_tokens": 12814,
+          "output_tokens": 69,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "创建任务",
+      "repeat": 1,
+      "kind": "assistant",
+      "ack_ms": 4,
+      "stream_http": 200,
+      "first_status_ms": 8,
+      "stream_tool_count": 1,
+      "first_text_ms": 2105,
+      "stream_done_ms": 2105,
+      "operation_seen_ms": 2284,
+      "status": "succeeded",
+      "result_read_ms": 2286,
+      "has_answer": true,
+      "proposals": [
+        "task_create"
+      ],
+      "result_ready": true,
+      "queue_ms": 5,
+      "worker_ms": 2095,
+      "server_total_ms": 2100,
+      "tools": [
+        {
+          "name": "tasks.propose_create",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 0
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 2088,
+          "input_tokens": 3606,
+          "output_tokens": 195,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "修改任务",
+      "repeat": 1,
+      "kind": "assistant",
+      "ack_ms": 5,
+      "stream_http": 200,
+      "first_status_ms": 7,
+      "stream_tool_count": 4,
+      "first_text_ms": 6193,
+      "stream_done_ms": 6193,
+      "operation_seen_ms": 6339,
+      "status": "succeeded",
+      "result_read_ms": 6347,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": false,
+      "queue_ms": 4,
+      "worker_ms": 6182,
+      "server_total_ms": 6186,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        },
+        {
+          "name": "objects.get",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 1
+        },
+        {
+          "name": "tasks.propose_update",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 3
+        },
+        {
+          "name": "tasks.propose_update",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 1
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 6161,
+          "input_tokens": 16025,
+          "output_tokens": 495,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "拆分任务",
+      "repeat": 1,
+      "kind": "assistant",
+      "ack_ms": 5,
+      "stream_http": 200,
+      "first_status_ms": 9,
+      "stream_tool_count": 4,
+      "first_text_ms": 7450,
+      "stream_done_ms": 7450,
+      "operation_seen_ms": 7644,
+      "status": "succeeded",
+      "result_read_ms": 7647,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": false,
+      "queue_ms": 5,
+      "worker_ms": 7437,
+      "server_total_ms": 7442,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        },
+        {
+          "name": "objects.get",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 0
+        },
+        {
+          "name": "tasks.propose_split",
+          "status": "denied",
+          "error_code": "AI_TOOL_INPUT_INVALID",
+          "ms": 2
+        },
+        {
+          "name": "tasks.propose_split",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 2
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 7417,
+          "input_tokens": 14398,
+          "output_tokens": 622,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "创建日程",
+      "repeat": 1,
+      "kind": "assistant",
+      "ack_ms": 6,
+      "stream_http": 200,
+      "first_status_ms": 9,
+      "stream_tool_count": 1,
+      "first_text_ms": 2424,
+      "stream_done_ms": 2425,
+      "operation_seen_ms": 2551,
+      "status": "succeeded",
+      "result_read_ms": 2555,
+      "has_answer": true,
+      "proposals": [
+        "event_create"
+      ],
+      "result_ready": true,
+      "queue_ms": 6,
+      "worker_ms": 2397,
+      "server_total_ms": 2403,
+      "tools": [
+        {
+          "name": "events.propose_create",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 1
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 2384,
+          "input_tokens": 3633,
+          "output_tokens": 227,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "记录偏好",
+      "repeat": 1,
+      "kind": "assistant",
+      "ack_ms": 5,
+      "stream_http": 200,
+      "first_status_ms": 14,
+      "stream_tool_count": 1,
+      "first_text_ms": 1900,
+      "stream_done_ms": 1900,
+      "operation_seen_ms": 2034,
+      "status": "succeeded",
+      "result_read_ms": 2038,
+      "has_answer": true,
+      "proposals": [
+        "memory_upsert"
+      ],
+      "result_ready": true,
+      "queue_ms": 5,
+      "worker_ms": 1890,
+      "server_total_ms": 1895,
+      "tools": [
+        {
+          "name": "memories.propose_upsert",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 0
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 1877,
+          "input_tokens": 3351,
+          "output_tokens": 134,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "文字整理",
+      "repeat": 1,
+      "kind": "capture",
+      "upload_ms": 0,
+      "ack_ms": 10,
+      "operation_seen_ms": 2039,
+      "status": "succeeded",
+      "result_read_ms": 2048,
+      "capture_status": "needs_confirmation",
+      "candidates": 1,
+      "result_ready": true,
+      "server_total_ms": 1903,
+      "model": [
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 1881,
+          "status": "succeeded",
+          "input_tokens": 2935,
+          "output_tokens": 149
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 3,
+          "worker_ms": 1898,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "单图整理",
+      "repeat": 1,
+      "kind": "capture",
+      "upload_ms": 15,
+      "ack_ms": 4,
+      "operation_seen_ms": 3809,
+      "status": "succeeded",
+      "result_read_ms": 3812,
+      "capture_status": "needs_confirmation",
+      "candidates": 2,
+      "result_ready": true,
+      "server_total_ms": 3648,
+      "model": [
+        {
+          "policy": "vision",
+          "model": "",
+          "ms": 745,
+          "status": "succeeded",
+          "input_tokens": 1000,
+          "output_tokens": 30
+        },
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 2891,
+          "status": "succeeded",
+          "input_tokens": 2952,
+          "output_tokens": 293
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 2,
+          "worker_ms": 3653,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "短语音整理",
+      "repeat": 1,
+      "kind": "capture",
+      "upload_ms": 6,
+      "ack_ms": 3,
+      "operation_seen_ms": 2541,
+      "status": "succeeded",
+      "result_read_ms": 2545,
+      "capture_status": "needs_confirmation",
+      "candidates": 1,
+      "result_ready": true,
+      "server_total_ms": 2346,
+      "model": [
+        {
+          "policy": "transcribe",
+          "model": "",
+          "ms": 517,
+          "status": "succeeded",
+          "input_tokens": 195,
+          "output_tokens": 28
+        },
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 1818,
+          "status": "succeeded",
+          "input_tokens": 2944,
+          "output_tokens": 160
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 1,
+          "worker_ms": 2348,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "图文语音混合",
+      "repeat": 1,
+      "kind": "capture",
+      "upload_ms": 9,
+      "ack_ms": 5,
+      "operation_seen_ms": 6351,
+      "status": "succeeded",
+      "result_read_ms": 6359,
+      "capture_status": "needs_confirmation",
+      "candidates": 3,
+      "result_ready": true,
+      "server_total_ms": 6179,
+      "model": [
+        {
+          "policy": "transcribe",
+          "model": "",
+          "ms": 521,
+          "status": "succeeded",
+          "input_tokens": 195,
+          "output_tokens": 28
+        },
+        {
+          "policy": "vision",
+          "model": "",
+          "ms": 1527,
+          "status": "succeeded",
+          "input_tokens": 1000,
+          "output_tokens": 30
+        },
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 4637,
+          "status": "succeeded",
+          "input_tokens": 3054,
+          "output_tokens": 478
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 1,
+          "worker_ms": 6193,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "简短聊天",
+      "repeat": 2,
+      "kind": "assistant",
+      "ack_ms": 7,
+      "stream_http": 200,
+      "first_status_ms": 18,
+      "first_text_ms": 495,
+      "stream_done_ms": 649,
+      "operation_seen_ms": 773,
+      "status": "succeeded",
+      "result_read_ms": 777,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 8,
+      "worker_ms": 634,
+      "server_total_ms": 641,
+      "tools": [],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 616,
+          "input_tokens": 6356,
+          "output_tokens": 7,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "空查询",
+      "repeat": 2,
+      "kind": "assistant",
+      "ack_ms": 5,
+      "stream_http": 200,
+      "first_status_ms": 8,
+      "first_text_ms": 469,
+      "stream_tool_count": 1,
+      "stream_done_ms": 1832,
+      "operation_seen_ms": 2033,
+      "status": "succeeded",
+      "result_read_ms": 2038,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 5,
+      "worker_ms": 1820,
+      "server_total_ms": 1825,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 16
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 1791,
+          "input_tokens": 12796,
+          "output_tokens": 81,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "任务查询",
+      "repeat": 2,
+      "kind": "assistant",
+      "ack_ms": 3,
+      "stream_http": 200,
+      "first_status_ms": 6,
+      "stream_tool_count": 1,
+      "first_text_ms": 2713,
+      "stream_done_ms": 3176,
+      "operation_seen_ms": 3304,
+      "status": "succeeded",
+      "result_read_ms": 3305,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 3,
+      "worker_ms": 3168,
+      "server_total_ms": 3170,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 8
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 3143,
+          "input_tokens": 12804,
+          "output_tokens": 63,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "创建任务",
+      "repeat": 2,
+      "kind": "assistant",
+      "ack_ms": 4,
+      "stream_http": 200,
+      "first_status_ms": 7,
+      "stream_tool_count": 2,
+      "first_text_ms": 4274,
+      "stream_done_ms": 4274,
+      "operation_seen_ms": 4320,
+      "status": "succeeded",
+      "result_read_ms": 4324,
+      "has_answer": true,
+      "proposals": [
+        "task_create"
+      ],
+      "result_ready": true,
+      "queue_ms": 4,
+      "worker_ms": 4263,
+      "server_total_ms": 4267,
+      "tools": [
+        {
+          "name": "tasks.propose_create",
+          "status": "denied",
+          "error_code": "AI_TOOL_INPUT_INVALID",
+          "ms": 0
+        },
+        {
+          "name": "tasks.propose_create",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 0
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 4254,
+          "input_tokens": 7450,
+          "output_tokens": 387,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "修改任务",
+      "repeat": 2,
+      "kind": "assistant",
+      "ack_ms": 3,
+      "stream_http": 200,
+      "first_status_ms": 8,
+      "stream_tool_count": 4,
+      "first_text_ms": 5830,
+      "stream_done_ms": 5830,
+      "operation_seen_ms": 5856,
+      "status": "succeeded",
+      "result_read_ms": 5860,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": false,
+      "queue_ms": 4,
+      "worker_ms": 5819,
+      "server_total_ms": 5823,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 3
+        },
+        {
+          "name": "objects.get",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        },
+        {
+          "name": "tasks.propose_update",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 4
+        },
+        {
+          "name": "tasks.propose_update",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 2
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 5793,
+          "input_tokens": 16035,
+          "output_tokens": 520,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "拆分任务",
+      "repeat": 2,
+      "kind": "assistant",
+      "ack_ms": 9,
+      "stream_http": 200,
+      "first_status_ms": 13,
+      "stream_tool_count": 4,
+      "first_text_ms": 7769,
+      "stream_done_ms": 7769,
+      "operation_seen_ms": 7905,
+      "status": "succeeded",
+      "result_read_ms": 7910,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": false,
+      "queue_ms": 10,
+      "worker_ms": 7754,
+      "server_total_ms": 7764,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        },
+        {
+          "name": "objects.get",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 1
+        },
+        {
+          "name": "tasks.propose_split",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 1
+        },
+        {
+          "name": "tasks.propose_split",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 1
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 7736,
+          "input_tokens": 14415,
+          "output_tokens": 605,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "创建日程",
+      "repeat": 2,
+      "kind": "assistant",
+      "ack_ms": 4,
+      "stream_http": 200,
+      "first_status_ms": 7,
+      "stream_tool_count": 2,
+      "first_text_ms": 4232,
+      "stream_done_ms": 4233,
+      "operation_seen_ms": 4330,
+      "status": "succeeded",
+      "result_read_ms": 4344,
+      "has_answer": true,
+      "proposals": [
+        "event_create"
+      ],
+      "result_ready": true,
+      "queue_ms": 4,
+      "worker_ms": 4222,
+      "server_total_ms": 4226,
+      "tools": [
+        {
+          "name": "events.propose_create",
+          "status": "denied",
+          "error_code": "AI_TOOL_INPUT_INVALID",
+          "ms": 0
+        },
+        {
+          "name": "events.propose_create",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 5
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 4205,
+          "input_tokens": 7543,
+          "output_tokens": 441,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "记录偏好",
+      "repeat": 2,
+      "kind": "assistant",
+      "ack_ms": 3,
+      "stream_http": 200,
+      "first_status_ms": 5,
+      "stream_tool_count": 1,
+      "first_text_ms": 1767,
+      "stream_done_ms": 1767,
+      "operation_seen_ms": 1786,
+      "status": "succeeded",
+      "result_read_ms": 1793,
+      "has_answer": true,
+      "proposals": [
+        "memory_upsert"
+      ],
+      "result_ready": true,
+      "queue_ms": 3,
+      "worker_ms": 1758,
+      "server_total_ms": 1761,
+      "tools": [
+        {
+          "name": "memories.propose_upsert",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 0
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 1752,
+          "input_tokens": 3352,
+          "output_tokens": 130,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "文字整理",
+      "repeat": 2,
+      "kind": "capture",
+      "upload_ms": 0,
+      "ack_ms": 16,
+      "operation_seen_ms": 1800,
+      "status": "succeeded",
+      "result_read_ms": 1812,
+      "capture_status": "needs_confirmation",
+      "candidates": 1,
+      "result_ready": true,
+      "server_total_ms": 1677,
+      "model": [
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 1650,
+          "status": "succeeded",
+          "input_tokens": 2933,
+          "output_tokens": 147
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 2,
+          "worker_ms": null,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "单图整理",
+      "repeat": 2,
+      "kind": "capture",
+      "upload_ms": 32,
+      "ack_ms": 4,
+      "operation_seen_ms": 3861,
+      "status": "succeeded",
+      "result_read_ms": 3865,
+      "capture_status": "needs_confirmation",
+      "candidates": 2,
+      "result_ready": true,
+      "server_total_ms": 3685,
+      "model": [
+        {
+          "policy": "vision",
+          "model": "",
+          "ms": 823,
+          "status": "succeeded",
+          "input_tokens": 1000,
+          "output_tokens": 30
+        },
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 2849,
+          "status": "succeeded",
+          "input_tokens": 2953,
+          "output_tokens": 272
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 1,
+          "worker_ms": 3687,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "短语音整理",
+      "repeat": 2,
+      "kind": "capture",
+      "upload_ms": 8,
+      "ack_ms": 6,
+      "operation_seen_ms": 2299,
+      "status": "succeeded",
+      "result_read_ms": 2303,
+      "capture_status": "needs_confirmation",
+      "candidates": 1,
+      "result_ready": true,
+      "server_total_ms": 2156,
+      "model": [
+        {
+          "policy": "transcribe",
+          "model": "",
+          "ms": 463,
+          "status": "succeeded",
+          "input_tokens": 195,
+          "output_tokens": 28
+        },
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 1678,
+          "status": "succeeded",
+          "input_tokens": 2943,
+          "output_tokens": 159
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 4,
+          "worker_ms": 2154,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "图文语音混合",
+      "repeat": 2,
+      "kind": "capture",
+      "upload_ms": 16,
+      "ack_ms": 5,
+      "operation_seen_ms": 5072,
+      "status": "succeeded",
+      "result_read_ms": 5078,
+      "capture_status": "needs_confirmation",
+      "candidates": 3,
+      "result_ready": true,
+      "server_total_ms": 4993,
+      "model": [
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 3891,
+          "status": "succeeded",
+          "input_tokens": 3054,
+          "output_tokens": 415
+        },
+        {
+          "policy": "transcribe",
+          "model": "",
+          "ms": 477,
+          "status": "succeeded",
+          "input_tokens": 195,
+          "output_tokens": 28
+        },
+        {
+          "policy": "vision",
+          "model": "",
+          "ms": 1089,
+          "status": "succeeded",
+          "input_tokens": 1000,
+          "output_tokens": 30
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 2,
+          "worker_ms": null,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "简短聊天",
+      "repeat": 3,
+      "kind": "assistant",
+      "ack_ms": 7,
+      "stream_http": 200,
+      "first_status_ms": 15,
+      "first_text_ms": 499,
+      "stream_done_ms": 611,
+      "operation_seen_ms": 772,
+      "status": "succeeded",
+      "result_read_ms": 775,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 8,
+      "worker_ms": 597,
+      "server_total_ms": 605,
+      "tools": [],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 584,
+          "input_tokens": 6357,
+          "output_tokens": 8,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "空查询",
+      "repeat": 3,
+      "kind": "assistant",
+      "ack_ms": 3,
+      "stream_http": 200,
+      "first_status_ms": 5,
+      "stream_tool_count": 1,
+      "first_text_ms": 1381,
+      "stream_done_ms": 1992,
+      "operation_seen_ms": 2040,
+      "status": "succeeded",
+      "result_read_ms": 2041,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 3,
+      "worker_ms": 1985,
+      "server_total_ms": 1988,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 1974,
+          "input_tokens": 12774,
+          "output_tokens": 74,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "任务查询",
+      "repeat": 3,
+      "kind": "assistant",
+      "ack_ms": 5,
+      "stream_http": 200,
+      "first_status_ms": 7,
+      "stream_tool_count": 1,
+      "first_text_ms": 1281,
+      "stream_done_ms": 1638,
+      "operation_seen_ms": 1814,
+      "status": "succeeded",
+      "result_read_ms": 1816,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": true,
+      "queue_ms": 5,
+      "worker_ms": 1628,
+      "server_total_ms": 1632,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 1614,
+          "input_tokens": 12804,
+          "output_tokens": 58,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "创建任务",
+      "repeat": 3,
+      "kind": "assistant",
+      "ack_ms": 3,
+      "stream_http": 200,
+      "first_status_ms": 5,
+      "stream_tool_count": 1,
+      "first_text_ms": 2068,
+      "stream_done_ms": 2068,
+      "operation_seen_ms": 2287,
+      "status": "succeeded",
+      "result_read_ms": 2291,
+      "has_answer": true,
+      "proposals": [
+        "task_create"
+      ],
+      "result_ready": true,
+      "queue_ms": 3,
+      "worker_ms": 2060,
+      "server_total_ms": 2062,
+      "tools": [
+        {
+          "name": "tasks.propose_create",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 0
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 2054,
+          "input_tokens": 3602,
+          "output_tokens": 192,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "修改任务",
+      "repeat": 3,
+      "kind": "assistant",
+      "ack_ms": 2,
+      "stream_http": 200,
+      "first_status_ms": 4,
+      "stream_tool_count": 4,
+      "first_text_ms": 6101,
+      "stream_done_ms": 6101,
+      "operation_seen_ms": 6106,
+      "status": "succeeded",
+      "result_read_ms": 6110,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": false,
+      "queue_ms": 2,
+      "worker_ms": 6104,
+      "server_total_ms": 6106,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        },
+        {
+          "name": "objects.get",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 1
+        },
+        {
+          "name": "tasks.propose_update",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 4
+        },
+        {
+          "name": "tasks.propose_update",
+          "status": "denied",
+          "error_code": "AI_TOOL_INPUT_INVALID",
+          "ms": 0
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 6055,
+          "input_tokens": 16027,
+          "output_tokens": 517,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "拆分任务",
+      "repeat": 3,
+      "kind": "assistant",
+      "ack_ms": 4,
+      "stream_http": 200,
+      "first_status_ms": 7,
+      "stream_tool_count": 4,
+      "first_text_ms": 7945,
+      "stream_done_ms": 7945,
+      "operation_seen_ms": 8146,
+      "status": "succeeded",
+      "result_read_ms": 8152,
+      "has_answer": true,
+      "proposals": [],
+      "result_ready": false,
+      "queue_ms": 4,
+      "worker_ms": 7945,
+      "server_total_ms": 7949,
+      "tools": [
+        {
+          "name": "search.hybrid",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        },
+        {
+          "name": "objects.get",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 2
+        },
+        {
+          "name": "tasks.propose_split",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 3
+        },
+        {
+          "name": "tasks.propose_split",
+          "status": "denied",
+          "error_code": "AI_SOURCE_INVALID",
+          "ms": 2
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 7915,
+          "input_tokens": 14374,
+          "output_tokens": 544,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "创建日程",
+      "repeat": 3,
+      "kind": "assistant",
+      "ack_ms": 3,
+      "stream_http": 200,
+      "first_status_ms": 6,
+      "stream_tool_count": 2,
+      "first_text_ms": 4586,
+      "stream_done_ms": 4586,
+      "operation_seen_ms": 4835,
+      "status": "succeeded",
+      "result_read_ms": 4839,
+      "has_answer": true,
+      "proposals": [
+        "event_create"
+      ],
+      "result_ready": true,
+      "queue_ms": 3,
+      "worker_ms": 4581,
+      "server_total_ms": 4585,
+      "tools": [
+        {
+          "name": "events.propose_create",
+          "status": "denied",
+          "error_code": "AI_TOOL_INPUT_INVALID",
+          "ms": 0
+        },
+        {
+          "name": "events.propose_create",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 1
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 4570,
+          "input_tokens": 7543,
+          "output_tokens": 455,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "记录偏好",
+      "repeat": 3,
+      "kind": "assistant",
+      "ack_ms": 3,
+      "stream_http": 200,
+      "first_status_ms": 6,
+      "stream_tool_count": 1,
+      "first_text_ms": 1949,
+      "stream_done_ms": 1949,
+      "operation_seen_ms": 2035,
+      "status": "succeeded",
+      "result_read_ms": 2037,
+      "has_answer": true,
+      "proposals": [
+        "memory_upsert"
+      ],
+      "result_ready": true,
+      "queue_ms": 3,
+      "worker_ms": 1941,
+      "server_total_ms": 1944,
+      "tools": [
+        {
+          "name": "memories.propose_upsert",
+          "status": "succeeded",
+          "error_code": null,
+          "ms": 0
+        }
+      ],
+      "model": [
+        {
+          "policy": "chat",
+          "model": "qwen3.8-flash",
+          "ms": 1934,
+          "input_tokens": 3352,
+          "output_tokens": 139,
+          "status": "succeeded"
+        }
+      ]
+    },
+    {
+      "name": "文字整理",
+      "repeat": 3,
+      "kind": "capture",
+      "upload_ms": 0,
+      "ack_ms": 5,
+      "operation_seen_ms": 1783,
+      "status": "succeeded",
+      "result_read_ms": 1788,
+      "capture_status": "needs_confirmation",
+      "candidates": 1,
+      "result_ready": true,
+      "server_total_ms": 1753,
+      "model": [
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 1739,
+          "status": "succeeded",
+          "input_tokens": 2935,
+          "output_tokens": 149
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 2,
+          "worker_ms": 1753,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "单图整理",
+      "repeat": 3,
+      "kind": "capture",
+      "upload_ms": 14,
+      "ack_ms": 4,
+      "operation_seen_ms": 5611,
+      "status": "succeeded",
+      "result_read_ms": 5620,
+      "capture_status": "needs_confirmation",
+      "candidates": 2,
+      "result_ready": true,
+      "server_total_ms": 5556,
+      "model": [
+        {
+          "policy": "vision",
+          "model": "",
+          "ms": 1221,
+          "status": "succeeded",
+          "input_tokens": 1000,
+          "output_tokens": 30
+        },
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 4317,
+          "status": "succeeded",
+          "input_tokens": 2954,
+          "output_tokens": 274
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 1,
+          "worker_ms": null,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "短语音整理",
+      "repeat": 3,
+      "kind": "capture",
+      "upload_ms": 10,
+      "ack_ms": 4,
+      "operation_seen_ms": 3052,
+      "status": "succeeded",
+      "result_read_ms": 3056,
+      "capture_status": "needs_confirmation",
+      "candidates": 1,
+      "result_ready": true,
+      "server_total_ms": 3018,
+      "model": [
+        {
+          "policy": "transcribe",
+          "model": "",
+          "ms": 502,
+          "status": "succeeded",
+          "input_tokens": 195,
+          "output_tokens": 28
+        },
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 2501,
+          "status": "succeeded",
+          "input_tokens": 2943,
+          "output_tokens": 194
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 1,
+          "worker_ms": 3017,
+          "attempt": 1
+        }
+      ]
+    },
+    {
+      "name": "图文语音混合",
+      "repeat": 3,
+      "kind": "capture",
+      "upload_ms": 12,
+      "ack_ms": 4,
+      "operation_seen_ms": 6601,
+      "status": "succeeded",
+      "result_read_ms": 6605,
+      "capture_status": "needs_confirmation",
+      "candidates": 3,
+      "result_ready": true,
+      "server_total_ms": 6504,
+      "model": [
+        {
+          "policy": "transcribe",
+          "model": "",
+          "ms": 494,
+          "status": "succeeded",
+          "input_tokens": 195,
+          "output_tokens": 28
+        },
+        {
+          "policy": "vision",
+          "model": "",
+          "ms": 2495,
+          "status": "succeeded",
+          "input_tokens": 1000,
+          "output_tokens": 30
+        },
+        {
+          "policy": "parse",
+          "model": "qwen3.8-flash",
+          "ms": 3995,
+          "status": "succeeded",
+          "input_tokens": 3054,
+          "output_tokens": 415
+        }
+      ],
+      "jobs": [
+        {
+          "kind": "capture.parse",
+          "queue_ms": 2,
+          "worker_ms": null,
+          "attempt": 1
+        }
+      ]
+    }
+  ]
+}
