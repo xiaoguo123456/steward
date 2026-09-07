@@ -49,6 +49,9 @@ import {
 } from '@/features/assistant/assistant-thread-session';
 import { assistantOperationState } from '@/features/assistant/assistant-operation-state';
 import { ProposalCard } from '@/features/assistant/proposal-card';
+import { ClarificationChoices } from '@/features/assistant/clarification-choices';
+import { selectedChoiceId } from '@/features/assistant/clarification-choice-model';
+import { MessageProposal } from '@/features/assistant/message-proposal';
 import { useTurnStream } from '@/features/assistant/use-turn-stream';
 import { useImagePicker } from '@/features/capture/use-media-picker';
 import { useMediaUpload, type LocalMedia } from '@/features/capture/use-media-upload';
@@ -470,10 +473,13 @@ export default function AiConversationScreen() {
           </View>
         ) : null}
 
-        {ordered.map((message) => (
+        {ordered.map((message, index) => (
           <MessageRow
             key={message.id}
             message={message}
+            nextMessage={ordered[index + 1]}
+            choiceActive={index === ordered.length - 1}
+            choiceBusy={thinking || sending}
             onChoice={message.id === ordered.at(-1)?.id && !thinking && !sending
               ? (id, label) => { void send({ messageId: message.id, id, label }); }
               : undefined}
@@ -713,11 +719,17 @@ function MessageRow({
   proposals,
   onProposalResolved,
   onChoice,
+  nextMessage,
+  choiceActive,
+  choiceBusy,
 }: {
   message: AssistantMessage;
   proposals: ActionProposal[];
   onProposalResolved: () => void;
   onChoice?: (id: string, label: string) => void;
+  nextMessage?: AssistantMessage;
+  choiceActive: boolean;
+  choiceBusy: boolean;
 }) {
   const isUser = message.role === 'user';
 
@@ -738,20 +750,15 @@ function MessageRow({
         </View>
       </View>
 
-      {message.interaction?.choices?.map((choice) => (
-        <Pressable
-          key={choice.id}
-          accessibilityRole="button"
-          accessibilityLabel={choice.label}
-          disabled={!onChoice}
-          onPress={() => onChoice?.(choice.id, choice.label)}
-          style={[styles.bubble, { opacity: onChoice ? 1 : 0.5 }]}
-        >
-          <Text style={styles.messageText}>{choice.label}</Text>
-        </Pressable>
-      ))}
-      {proposals.map((proposal) => (
-        <ProposalCard key={proposal.id} onResolved={onProposalResolved} proposal={proposal} />
+      <ClarificationChoices
+        choices={message.interaction?.choices ?? []}
+        selectedId={selectedChoiceId(message.interaction?.choices ?? [], nextMessage)}
+        active={choiceActive}
+        busy={choiceBusy}
+        onSelect={onChoice}
+      />
+      {(message.proposal_ids ?? []).map((id) => (
+        <MessageProposal key={id} id={id} pending={proposals.find((proposal) => proposal.id === id)} onResolved={onProposalResolved} />
       ))}
     </View>
   );
