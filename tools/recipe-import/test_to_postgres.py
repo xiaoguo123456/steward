@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 from to_postgres import (
     CDN_BASE,
     build_meal_slots,
+    build_display_tags,
     build_steps,
     database_url,
     nutrition_per_serving,
@@ -12,6 +13,11 @@ from to_postgres import (
 
 
 class RecipeImportMappingTest(unittest.TestCase):
+    def test_internal_editorial_label_is_not_a_display_tag(self):
+        source = ["不在推荐位展示", "烹饪基础"]
+        self.assertEqual(build_display_tags(source, ["season_summer"]), ["season_summer", "烹饪基础"])
+        self.assertIn("不在推荐位展示", source)
+
     def test_heavy_main_meals_are_not_mapped_to_breakfast(self):
         for category in ["咖喱", "炒饭", "焖饭", "火锅"]:
             with self.subTest(category=category):

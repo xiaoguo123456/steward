@@ -29,7 +29,7 @@ REPO = Path(__file__).resolve().parents[2]
 DB_PATH = REPO / "tools" / "recipe-import" / "recipes.sqlite3"
 
 # 内容版本。映射规则改了就要改它，便于分辨库里是哪一版规则导入的。
-CONTENT_VERSION = "lanfan-2026-08.4"
+CONTENT_VERSION = "lanfan-2026-08.5"
 
 # 图片分发域名。steward/recipes/ 这个前缀在 CDN 上配了免鉴权，
 # 因此可以直接拼出永久地址；其余前缀仍然要签名。
@@ -122,6 +122,11 @@ def ingredient_group(name: str) -> str:
     if any(k in name for k in STAPLE):
         return "staple"
     return "produce"
+
+
+def build_display_tags(source_tags: list[str], derived_tags: list[str]) -> list[str]:
+    # 来源运营标记保留在归档；正式菜单过滤继续使用 plan_excluded_reason。
+    return sorted((set(source_tags) | set(derived_tags)) - {"不在推荐位展示"})
 
 
 def build_steps(rows: list[tuple[int, str | None, str | None]], fallback: str) -> list[dict]:
@@ -217,7 +222,7 @@ def build_row(conn: sqlite3.Connection, rid: int) -> dict | None:
         "categories": categories,
         "goals": goals,
         # 中文来源标签用于审计；season_* 是四季查询标签，月份标签仅用于滚动升级兼容。
-        "tags": sorted(set(source_tags) | set(derived_tags)),
+        "tags": build_display_tags(source_tags, derived_tags),
         "allergens": detect_allergens(ingredient_names),
         "ingredients": json.dumps(
             [

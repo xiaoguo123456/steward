@@ -94,3 +94,25 @@ python3 tools/recipe-import/upload_images.py --backup-archive
 **图片存对象键不存 URL。** 桶是私有的，签名地址会过期；键是稳定的，
 URL 由服务端按当前分发方式拼。CDN 放开免鉴权就拼域名，没放开就临时签名，
 两种都不用改数据。
+
+## 内部运营标记与步骤补图修复
+
+从 `lanfan-2026-08.5` 起，“不在推荐位展示”不再写入用户可见的 `tags`。原始标签仍保留在 SQLite 归档，分类计算继续使用未改动的来源标签，菜单排除继续由 `plan_excluded_reason` 决定。
+
+2026-09-07 的生产补图使用 `repair_step_images.py`，只接受已核验的 4267 道菜、17297 张已上传步骤图归档。它按 ID、文字、顺序、已有图片及图片权利逐项匹配，任何差异都拒绝执行；只补步骤图、删除 `rcp_lf8025` 的指定展示标签并更新时间，不重导其他菜谱字段，也不升级整库内容版本。
+
+```bash
+# 默认生成只读预检 SQL，临时表随事务回滚，无正式数据写入。
+python3 tools/recipe-import/repair_step_images.py \
+  --archive-path /path/to/recipes.sqlite3 > /tmp/recipe-preflight.sql
+
+# 只有提供服务器备份路径才生成执行 SQL。
+python3 tools/recipe-import/repair_step_images.py \
+  --archive-path /path/to/recipes.sqlite3 \
+  --backup-path /opt/steward-prod/backups/recipes-2026-09-07/before.csv \
+  > /tmp/recipe-apply.sql
+```
+
+在目标服务器使用正式迁移账号和 `psql -XAt -v ON_ERROR_STOP=1` 执行，不在日志中输出环境变量或连接串。执行前设置 `umask 077`、创建备份目录，并确认备份文件及执行脚本均不存在；禁止覆盖以前的备份。执行 SQL 留在同一服务器。脚本在事务中锁住匹配菜谱，将受影响行的 `id / steps / tags / updated_at` 备份到服务器，再更新与校验；其他字段变化、已有图片冲突、备份失败或 SQL 错误均不能提交。备份中的原始字段用于受控回滚，回滚前必须重新核对当前记录，不能覆盖修复之后的编辑。
+
+本次测试库仅更新 1 行标签；生产库更新 4267 行，共补入 17297 张图片。重复预检两环境都返回 `affected_recipes=0 / missing_images=0 / target_label_present=false`。详见 [生产食谱步骤图补齐验收](../../docs/生产食谱步骤图补齐验收-2026-09-07.md)。
