@@ -39,7 +39,8 @@ func TestLiveAssistantAcceptance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			s.Assistant = assistant.New(s.DB, acceptanceTracingEngine{OrchestrationEngine: einoruntime.New(p, nil), t: t}, s.Registry, s.Users, noopEnqueuer{}, s.Proposals, s.Memory, nil, nil)
+			measured := &acceptanceMeasuredProvider{Provider: p, t: t}
+			s.Assistant = assistant.New(s.DB, acceptanceTracingEngine{OrchestrationEngine: einoruntime.New(measured, nil), t: t}, s.Registry, s.Users, noopEnqueuer{}, s.Proposals, s.Memory, nil, nil)
 			r, err := s.Run(t.Context(), Case{UserText: tc.text, Fixtures: tc.fixtures, ConfirmFirstProposal: tc.confirm})
 			if err != nil {
 				t.Fatal(err)
@@ -65,9 +66,26 @@ type acceptanceTracingEngine struct {
 }
 
 func (e acceptanceTracingEngine) RunTurn(ctx context.Context, req ai.TurnRequest) (ai.TurnResult, error) {
+	started := time.Now()
 	r, err := e.OrchestrationEngine.RunTurn(ctx, req)
+	e.t.Logf("编排耗时：总计=%dms，Provider 合计=%dms", time.Since(started).Milliseconds(), r.Usage.LatencyMS)
 	for _, call := range r.ToolCalls {
-		e.t.Logf("虚构数据工具轨迹：%s %s %s", call.Name, call.Status, call.Arguments)
+		e.t.Logf("工具轨迹：%s %s %dms", call.Name, call.Status, call.DurationMS)
 	}
+	return r, err
+}
+
+// 保留真实流式路径，仅记录每次模型往返的耗时和形状，不记录正文、参数或凭据。
+type acceptanceMeasuredProvider struct {
+	*openai.Provider
+	t     *testing.T
+	round int
+}
+
+func (p *acceptanceMeasuredProvider) CompleteStream(ctx context.Context, req ai.CompletionRequest, onDelta func(string)) (ai.CompletionResult, error) {
+	p.round++
+	started := time.Now()
+	r, err := p.Provider.CompleteStream(ctx, req, onDelta)
+	p.t.Logf("模型往返：序号=%d，耗时=%dms，工具申请=%d，输入token=%d，输出token=%d，成功=%t", p.round, time.Since(started).Milliseconds(), len(r.ToolCalls), r.Usage.InputTokens, r.Usage.OutputTokens, err == nil)
 	return r, err
 }

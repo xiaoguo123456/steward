@@ -1,0 +1,11 @@
+被测应用提交：7697dd6 合并 Agent 安全修复与验收
+合并后 make check：通过，退出码 0。
+补充计时观测后 go test ./...：通过，退出码 0；使用专用验收数据库。
+受影响包 go vet ./internal/platform/ai/eval：通过，退出码 0。
+golangci-lint v2.4.0 --new-from-rev 7697dd6 ./internal/platform/ai/eval：0 issues，退出码 0；不是存量全仓 Lint 全绿声明。
+TypeScript 5.9.3，strict、skipLibCheck、ES2022、bundler：计时脚本检查通过，退出码 0。
+真实模型独立分解 TestLiveAssistantAcceptance：7 类全部通过，25.011 秒；直接应用服务调用，不包含 HTTP 和队列。
+正式 HTTP 采样：36 次；Operation 成功终态 36/36，预期结果形态就绪 35/36。
+拆分请求 2/3 得到建议；一次参数两次被 AI_TOOL_INPUT_INVALID 拒绝，未产生正式写入。
+预采样审计表名错误不计入正式数据；其残留 10 条待确认建议已通过 API 拒绝。
+模型原始参数、回复正文、手机号、Token、验证码与媒体地址均不导出至本次计时证据。

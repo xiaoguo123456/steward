@@ -1,0 +1,54 @@
+=== RUN   TestLiveAssistantAcceptance
+=== RUN   TestLiveAssistantAcceptance/空任务查询
+    live_acceptance_test.go:89: 模型往返：序号=1，耗时=2435ms，工具申请=1，输入token=3909，输出token=30，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=2，耗时=789ms，工具申请=0，输入token=3965，输出token=27，成功=true
+    live_acceptance_test.go:71: 编排耗时：总计=3233ms，Provider 合计=3223ms
+    live_acceptance_test.go:73: 工具轨迹：tasks.search succeeded 4ms
+=== RUN   TestLiveAssistantAcceptance/任务查询
+    live_acceptance_test.go:89: 模型往返：序号=1，耗时=1257ms，工具申请=1，输入token=3907，输出token=30，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=2，耗时=800ms，工具申请=0，输入token=4045，输出token=38，成功=true
+    live_acceptance_test.go:71: 编排耗时：总计=2070ms，Provider 合计=2057ms
+    live_acceptance_test.go:73: 工具轨迹：tasks.search succeeded 3ms
+=== RUN   TestLiveAssistantAcceptance/新用户创建任务
+    live_acceptance_test.go:89: 模型往返：序号=1，耗时=2154ms，工具申请=1，输入token=3922，输出token=135，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=2，耗时=1052ms，工具申请=0，输入token=4092，输出token=57，成功=true
+    live_acceptance_test.go:71: 编排耗时：总计=3212ms，Provider 合计=3206ms
+    live_acceptance_test.go:73: 工具轨迹：tasks.propose_create succeeded 0ms
+=== RUN   TestLiveAssistantAcceptance/任务改期
+    live_acceptance_test.go:89: 模型往返：序号=1，耗时=743ms，工具申请=1，输入token=3922，输出token=47，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=2，耗时=700ms，工具申请=1，输入token=4028，输出token=44，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=3，耗时=2166ms，工具申请=1，输入token=4132，输出token=192，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=4，耗时=1157ms，工具申请=0，输入token=4360，输出token=57，成功=true
+    live_acceptance_test.go:71: 编排耗时：总计=4780ms，Provider 合计=4766ms
+    live_acceptance_test.go:73: 工具轨迹：search.hybrid succeeded 1ms
+    live_acceptance_test.go:73: 工具轨迹：objects.get succeeded 1ms
+    live_acceptance_test.go:73: 工具轨迹：tasks.propose_update succeeded 2ms
+=== RUN   TestLiveAssistantAcceptance/任务拆分
+    live_acceptance_test.go:89: 模型往返：序号=1，耗时=653ms，工具申请=1，输入token=3916，输出token=41，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=2，耗时=699ms，工具申请=1，输入token=4013，输出token=41，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=3，耗时=1802ms，工具申请=1，输入token=4111，输出token=196，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=4，耗时=1820ms，工具申请=0，输入token=4337，输出token=124，成功=true
+    live_acceptance_test.go:71: 编排耗时：总计=4995ms，Provider 合计=4974ms
+    live_acceptance_test.go:73: 工具轨迹：search.hybrid succeeded 2ms
+    live_acceptance_test.go:73: 工具轨迹：objects.get succeeded 5ms
+    live_acceptance_test.go:73: 工具轨迹：tasks.propose_split succeeded 1ms
+=== RUN   TestLiveAssistantAcceptance/创建日程
+    live_acceptance_test.go:89: 模型往返：序号=1，耗时=1755ms，工具申请=1，输入token=3918，输出token=175，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=2，耗时=1131ms，工具申请=0，输入token=4129，输出token=56，成功=true
+    live_acceptance_test.go:71: 编排耗时：总计=2891ms，Provider 合计=2886ms
+    live_acceptance_test.go:73: 工具轨迹：events.propose_create succeeded 0ms
+=== RUN   TestLiveAssistantAcceptance/记录偏好
+    live_acceptance_test.go:89: 模型往返：序号=1，耗时=1451ms，工具申请=1，输入token=3918，输出token=123，成功=true
+    live_acceptance_test.go:89: 模型往返：序号=2，耗时=876ms，工具申请=0，输入token=4085，输出token=28，成功=true
+    live_acceptance_test.go:71: 编排耗时：总计=2332ms，Provider 合计=2326ms
+    live_acceptance_test.go:73: 工具轨迹：memories.propose_upsert succeeded 0ms
+--- PASS: TestLiveAssistantAcceptance (24.02s)
+    --- PASS: TestLiveAssistantAcceptance/空任务查询 (3.37s)
+    --- PASS: TestLiveAssistantAcceptance/任务查询 (2.13s)
+    --- PASS: TestLiveAssistantAcceptance/新用户创建任务 (3.27s)
+    --- PASS: TestLiveAssistantAcceptance/任务改期 (4.85s)
+    --- PASS: TestLiveAssistantAcceptance/任务拆分 (5.06s)
+    --- PASS: TestLiveAssistantAcceptance/创建日程 (2.95s)
+    --- PASS: TestLiveAssistantAcceptance/记录偏好 (2.39s)
+PASS
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/eval	25.011s

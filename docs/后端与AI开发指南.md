@@ -3006,3 +3006,8 @@ type MemoryCommand interface {
 - Eval 的 TasksUpdated 必须比较执行前后既有任务行，不能只检查新建数量；来源断言仅接受权威消息与成功只读工具证据。
 - 真实模型验收入口：在专用测试库设置 STEWARD_AI_LIVE_ACCEPTANCE=1，运行 go test -v -count=1 ./internal/platform/ai/eval -run TestLiveAssistantAcceptance。每例构造独立虚构用户并清理，不得对生产库运行该内部测试。
 - 生产验收使用正式生成 Client 与专用账号，测试数据需标记并清理。除服务端确认外，还必须验证 Task／Event 响应可被生成 Zod Schema 读取。
+## 响应时间验收口径补充（2026-09-07）
+
+性能验收必须分别记录提交受理、首段文本、Operation 终态和权威结果读取；收到文本或成功终态不等于获得所请求的 Proposal。小样本只报告中位数与范围，不推断生产 p95。媒体上传、预处理与结构化解析分开计时；流式计时包含网络和回调，不称为纯模型推理时间。真实调用的计时观测不得输出正文、工具参数或凭据。
+
+本轮 12 类输入的基线、一次拆分无建议和单图尾延迟见 `docs/Agent响应时间实测-2026-09-07.md`，复现入口为 `tools/agent-latency/README.md`。
