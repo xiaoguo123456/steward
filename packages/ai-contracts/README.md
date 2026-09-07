@@ -69,3 +69,7 @@ Schema、Prompt 和契约安全 Eval 已先固化。当前 Eval 只确定性检�
 - Provider SDK 只允许出现在 `apps/backend/internal/platform/ai/<provider>` 适配器内。
 - 生成的 Go 类型只提升编译期可读性，不能替代运行时验证。
 - 不能反过来用某个 Provider SDK 的 Go Struct 生成项目权威 Schema。
+
+## 无意义与模糊输入真实评测
+
+`evals/ambiguity-live.json` 定义 37 个真实模型场景，包括多轮补充、取消和 Capture 入口。该 JSON 由后端 `TestLiveAmbiguityAcceptance` 单独加载，不混入使用脚本 Provider 的 JSONL 基线；仅在 `STEWARD_AI_LIVE_AMBIGUITY=1` 时执行。当前保留已复现的质量失败，不降低断言来获得通过。说明与修复顺序见 `docs/Agent模糊输入实测与改进方案-2026-09-07.md`。

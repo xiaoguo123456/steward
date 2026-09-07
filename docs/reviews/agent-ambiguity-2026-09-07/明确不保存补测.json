@@ -1,0 +1,22 @@
+[
+  {
+    "case": "空字符串",
+    "rejected": true,
+    "code": "VALIDATION_FAILED",
+    "http": 400
+  },
+  {
+    "case": "纯空白",
+    "rejected": true,
+    "code": "VALIDATION_FAILED",
+    "http": 400
+  },
+  {
+    "case": "明确不保存",
+    "stage": "初次解析",
+    "operation": "succeeded",
+    "capture": "needs_confirmation",
+    "candidates": [],
+    "blocking_questions": 0
+  }
+]

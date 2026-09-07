@@ -1,0 +1,12 @@
+应用代码：c3d0c53；本轮不修改产品 Runtime、Prompt、网络契约或数据库。
+正式真实模型探针：37 场景 × 2 次，共 84 条观测；按预期标记 15 条，涉及 9 个场景。
+TestLiveAmbiguityAcceptance：失败，退出码 1，用时 164.520 秒；这些是待修复的质量问题，未降低断言或更换为脚本模型。
+常规 make check：通过，退出码 0；默认跳过真实模型探针，不代表真实质量问题已解决。
+计时/歧义 HTTP 脚本严格 TypeScript 检查：通过，退出码 0。
+HTTP 补测：空字符串和空白 400 VALIDATION_FAILED；乱码与时间冲突进入阻塞澄清，回答后 revision 推进且无遗留问题。
+真实 Event 候选在澄清前确认：CAPTURE_NOT_READY。空候选确认的 VALIDATION_FAILED 属参数校验，不冒充 Domain 状态验收。
+否定边界：“不记任务、随口说”产生 Note；明确“不保存任何类型”得到零候选。
+安全范围：Assistant 探针使用自动清理的独立虚构用户，不执行确认；正式任务新增、更新计数均为 0。
+HTTP Probe 的 Capture 已废弃；临时本地登录文件已删除；只保留脱敏指标与必要的虚构样例回复。
+预探测中修正了多轮建议归属统计与时间矛盾题表述；随后完整重测。报告只汇总重测的 84 条，不合并预探测数据。
+Eval 包完整 golangci-lint：退出码 1，4 条存量问题：dataset.go 的 file.Close 忽略错误 3 处、seed.go 的 marshalJSON 未使用 1 处；这些文件本轮没有修改，新增探针无新增告警。

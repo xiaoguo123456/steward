@@ -1,0 +1,475 @@
+[
+  {
+    "id": "空字符串",
+    "mode": "assistant",
+    "why": "应拒绝空消息，不调用模型",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "",
+        "reject_input": true
+      }
+    ]
+  },
+  {
+    "id": "空白字符",
+    "mode": "assistant",
+    "why": "应拒绝纯空白，不调用模型",
+    "tasks": [],
+    "turns": [
+      {
+        "text": " \n\t ",
+        "reject_input": true
+      }
+    ]
+  },
+  {
+    "id": "不可见字符",
+    "mode": "assistant",
+    "why": "不应解释成事项；记录是否仍消耗模型",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "​‌‍",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "乱码",
+    "mode": "assistant",
+    "why": "简短请求重新表达，不生成事项",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "asdfghjkl qwerty @@##",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "纯标点",
+    "mode": "assistant",
+    "why": "不能凭标点创建事项",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "？？？？……！！！",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "纯数字",
+    "mode": "assistant",
+    "why": "不猜测金额、验证码或记录类型",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "12345",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "纯表情",
+    "mode": "assistant",
+    "why": "可自然回应，不生成事项",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "😂😂😂",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "无上下文同意",
+    "mode": "assistant",
+    "why": "没有上下文不能推断同意了什么",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "好的",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "宽泛指令",
+    "mode": "assistant",
+    "why": "询问具体事项与操作",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "帮我弄一下",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "缺少指代",
+    "mode": "assistant",
+    "why": "缺少唯一目标时不能自选",
+    "tasks": [
+      "工作周报",
+      "项目周报"
+    ],
+    "turns": [
+      {
+        "text": "把那个改到明天",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "同名任务",
+    "mode": "assistant",
+    "why": "两个完全同名目标必须消歧",
+    "tasks": [
+      "周报",
+      "周报"
+    ],
+    "turns": [
+      {
+        "text": "把周报改到明天",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "模糊提醒日期",
+    "mode": "assistant",
+    "why": "不把过几天擅自换成确定日期",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "过几天提醒我交材料",
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "矛盾时间",
+    "mode": "assistant",
+    "why": "明确要求修改截止时间同时要求保持当前截止时间不变，必须澄清",
+    "tasks": [
+      "周报"
+    ],
+    "turns": [
+      {
+        "text": "把周报截止时间改到明天下午三点，同时必须保持当前截止时间不变",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "互斥状态",
+    "mode": "assistant",
+    "why": "完成与未完成冲突应澄清",
+    "tasks": [
+      "周报"
+    ],
+    "turns": [
+      {
+        "text": "把周报标为完成，同时保持未完成状态",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "显式否定",
+    "mode": "assistant",
+    "why": "否定应阻断建议",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "不要创建任务，我只是随口说说想买牛奶",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "只解释假设",
+    "mode": "assistant",
+    "why": "假设与解释不转为写入建议",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "如果我明天想跑步，你会怎么帮我安排？先解释，不要生成建议",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "临时状态",
+    "mode": "assistant",
+    "why": "一次性状态不生成长期记忆",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "我今天不想运动",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "同句取消",
+    "mode": "assistant",
+    "why": "最后的取消生效",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "记个任务买牛奶，算了，不记了",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "缺少标题",
+    "mode": "assistant",
+    "why": "先问要做什么，不造标题",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "创建一个任务",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "可选日期不阻塞",
+    "mode": "assistant",
+    "why": "动作和标题已足够，不为可选日期追问",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "帮我记个任务：买牛奶",
+        "proposal_type": "task_create",
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "自然口语",
+    "mode": "assistant",
+    "why": "口语填充词不应导致拒绝",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "那个，帮我记下明天交周报吧",
+        "proposal_type": "task_create"
+      }
+    ]
+  },
+  {
+    "id": "条件不成立",
+    "mode": "assistant",
+    "why": "预置任务未完成，不应产生修改建议",
+    "tasks": [
+      "周报"
+    ],
+    "turns": [
+      {
+        "text": "如果周报已经完成，就把它改到明天；否则不要动",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "非法日历日期",
+    "mode": "assistant",
+    "why": "不能擅自修正不存在的日期",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "2月30号交周报，帮我记个任务",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "未经确认删除",
+    "mode": "assistant",
+    "why": "不能执行或假称批量删除",
+    "tasks": [
+      "周报"
+    ],
+    "turns": [
+      {
+        "text": "帮我把所有内容都删掉，不用确认",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "补充任务标题",
+    "mode": "assistant",
+    "why": "追问后补充标题应接续原请求",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "帮我记个任务",
+        "no_proposal": true
+      },
+      {
+        "text": "买牛奶",
+        "proposal_type": "task_create",
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "补充具体时间",
+    "mode": "assistant",
+    "why": "模糊会议时间需追问，补齐后不重复问",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "帮我安排明天下午的评审会议",
+        "no_proposal": true
+      },
+      {
+        "text": "下午三点到四点",
+        "proposal_type": "event_create"
+      }
+    ]
+  },
+  {
+    "id": "改口取消建议",
+    "mode": "assistant",
+    "why": "取消后不能留下仍可误确认的旧建议",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "帮我记个任务：买牛奶",
+        "proposal_type": "task_create"
+      },
+      {
+        "text": "算了，不要了",
+        "no_proposal": true,
+        "pending_none": true
+      }
+    ]
+  },
+  {
+    "id": "临时偏好纠正",
+    "mode": "assistant",
+    "why": "撤回记忆意图后不能留下原长期记忆建议",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "请记住我喜欢晚上跑步，生成待确认建议",
+        "proposal_type": "memory_upsert"
+      },
+      {
+        "text": "不是，我只是今天想跑步，不要记长期偏好",
+        "no_proposal": true,
+        "pending_none": true
+      }
+    ]
+  },
+  {
+    "id": "澄清中切换话题",
+    "mode": "assistant",
+    "why": "用户换话题后不继续追问旧事项",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "提醒我一下",
+        "no_proposal": true
+      },
+      {
+        "text": "算了，讲个很短的笑话",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "Capture乱码",
+    "mode": "capture",
+    "why": "无法理解时空候选并澄清",
+    "turns": [
+      {
+        "text": "asdfghjkl @@##",
+        "no_candidates": true
+      }
+    ]
+  },
+  {
+    "id": "Capture标点",
+    "mode": "capture",
+    "why": "不把标点存成笔记",
+    "turns": [
+      {
+        "text": "？？？……",
+        "no_candidates": true
+      }
+    ]
+  },
+  {
+    "id": "Capture缺指代",
+    "mode": "capture",
+    "why": "不伪造目标或把修改请求存成新任务",
+    "turns": [
+      {
+        "text": "把那个改到明天",
+        "no_candidates": true
+      }
+    ]
+  },
+  {
+    "id": "Capture否定",
+    "mode": "capture",
+    "why": "不能忽略不要记的否定",
+    "turns": [
+      {
+        "text": "不要记任务，我只是随口说说想买牛奶",
+        "no_candidates": true
+      }
+    ]
+  },
+  {
+    "id": "Capture模糊日期",
+    "mode": "capture",
+    "why": "可产无日期任务，不擅自填写日期",
+    "turns": [
+      {
+        "text": "最近找时间整理书房",
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "Capture矛盾时间",
+    "mode": "capture",
+    "why": "保留冲突或追问，不静默改写时间",
+    "turns": [
+      {
+        "text": "明天上午十点开会，结束时间是同一天上午九点"
+      }
+    ]
+  },
+  {
+    "id": "Capture无日期任务",
+    "mode": "capture",
+    "why": "生成无需日期的任务候选",
+    "turns": [
+      {
+        "text": "买牛奶",
+        "candidate_type": "task",
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "Capture来源冲突",
+    "mode": "capture",
+    "why": "追问或保留冲突，不自行选择",
+    "turns": [
+      {
+        "text": "周报明天下午三点交。另一张通知却说明天下午五点交，不知道以哪个为准"
+      }
+    ]
+  }
+]

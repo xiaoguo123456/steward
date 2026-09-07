@@ -1,0 +1,2009 @@
+{
+  "application_commit": "c3d0c53",
+  "chat_parse_model": "qwen3.8-flash",
+  "thinking": "disabled",
+  "scope": "Assistant 真实应用服务+隔离数据库；Capture 真实解析器；不含原生渲染和生产网络",
+  "cases": 37,
+  "repeats": 2,
+  "message_observations": 84,
+  "flagged_observations": 15,
+  "observations": [
+    {
+      "accepted": false,
+      "elapsed_ms": 0,
+      "error_code": "VALIDATION_FAILED",
+      "id": "空字符串",
+      "issues": [],
+      "mode": "assistant",
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "accepted": false,
+      "elapsed_ms": 0,
+      "error_code": "VALIDATION_FAILED",
+      "id": "空白字符",
+      "issues": [],
+      "mode": "assistant",
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "您好！请问有什么可以帮您的吗？",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 609,
+      "id": "不可见字符",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 588,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "你这条消息看起来是乱码（\"asdfghjkl qwerty @@##\"），我没有从中识别出任何要办的事。\n\n方便说一下你想做什么吗？比如：\n\n- 记一条任务或日程\n- 查今天的安排或未完成任务\n- 别的什么需求\n\n你说清楚后我再帮你处理。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1254,
+      "id": "乱码",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1231,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "你这条消息我看不出具体想问什么或要做什么。\n\n方便说一下你想干嘛吗？比如：\n\n- 查今天/这周有什么任务和日程\n- 记下一件要做的事\n- 整理某条笔记或记录\n\n你说清楚一点，我就去帮你查或帮你准备。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2122,
+      "id": "纯标点",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2103,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "12345 这几个数字我看不出对应什么安排，能说明一下你想做什么吗？比如：\n\n- 是想记一个待办或提醒（例如某个验证码、账号尾号）？\n- 还是想查日历上 12 月 3 日、4 日之类的日期？\n- 或者是误输入？\n\n告诉我具体意图，我再帮你处理。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2633,
+      "id": "纯数字",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2612,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "哈哈，收到你的笑了 😄\n\n有什么需要我帮忙的吗？比如看看今天的任务、安排个日程，或者记点什么东西。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 814,
+      "id": "纯表情",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 794,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，收到。有什么需要我帮忙的，随时说。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 603,
+      "id": "无上下文同意",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 587,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "你说的“弄一下”我不太确定指什么——我这边还没查到任何具体事项。\n\n能说明一下你想做什么吗？比如：\n\n- 记一件要做的事（任务）\n- 往日历上加个安排\n- 查今天/这周有什么任务和日程\n- 记一条长期偏好（例如常去的健身房、习惯的时间段）\n\n告诉我具体内容，我就帮你准备对应的建议。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2070,
+      "id": "宽泛指令",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2049,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "「那个」指的是哪一条？我这边没法确定你要改的对象。\n\n方便说一下大概的标题或内容吗？比如是某个任务、日程，还是笔记里的安排。确认后我再帮你把它改到明天（9 月 8 日）。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1105,
+      "id": "缺少指代",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1084,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "我这次没能把信息查全，先把已经确认的部分告诉你。如果需要，可以再问我一次。",
+      "degraded": true,
+      "denied": null,
+      "elapsed_ms": 4314,
+      "id": "同名任务",
+      "issues": [
+        "轮次降级，未完成有效回答或澄清"
+      ],
+      "mode": "assistant",
+      "model_ms": 4260,
+      "model_rounds": 4,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "search.hybrid",
+        "objects.get",
+        "objects.get",
+        "calendar.read",
+        "search.hybrid"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "需要先确认一下：「过几天」具体指哪天？另外交什么材料、有没有截止时间，我可以按你的说法准备提醒。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 863,
+      "id": "模糊提醒日期",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 829,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备好一条建议：把「周报」的截止设为 **明天（9月8日）15:00**。\n\n有一点要说明：这两个要求做不到同时成立。改到新时间，原来的截止时间就会被覆盖；系统里一条任务只有一个截止值。\n\n另外补充一句，我查到的这条「周报」目前状态是待办、优先级普通，**并没有已设置的截止时间**——所以这次改动等于新增一个 9月8日下午三点的截止，不存在丢失原值的问题。如果你原本记得它有个别的截止时间，可能存的是另一条内容，告诉我关键词我再找。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 5744,
+      "id": "矛盾时间",
+      "issues": [
+        "应澄清或不行动却生成建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 5698,
+      "model_rounds": 4,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "due_at": "2026-09-08T15:00:00+08:00"
+          },
+          "type": "task_update"
+        }
+      ],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "search.hybrid",
+        "objects.get",
+        "tasks.propose_update"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "这句话里有两个互相矛盾的要求，我需要确认一下你的意思。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 595,
+      "id": "互斥状态",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 576,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "明白了，那就不记。需要的时候再告诉我就行。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 688,
+      "id": "显式否定",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 669,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "如果明天想跑步，我可以从两个方向帮你安排，取决于你要的是\"记下来\"还是\"排进日历\"：\n\n**1. 建一条待办任务**\n适合只是想提醒自己有这件事，不绑定具体时段。我会给你准备一条建议，标题类似\"跑步\"，截止或关注日期定在明天（9月8日周二）。你确认后系统才创建。\n\n**2. 建一条日历日程**\n适合你已经想好什么时候跑、要占住那段时间。比如明早 7:00–7:45，我会按这个时间段准备一条日程建议，同样需要你确认。\n\n另外有两件事我需要先问你，才能给得准：\n\n- **你想几点跑？** 有明确时间点我就走日程；只说明天跑就走任务。\n- **要不要我先看看明天日历上有什么？** 如果那天已经排了别的事，我可以避开冲突的时间段再提建议。\n\n还有一点：如果你说的其实是\"我一般习惯早上跑步\"这种长期规律，而不是明天这一次，那更适合记成偏好，以后安排运动类事情时我会默认往早上靠。一次性的安排我不会去记它。\n\n告诉我时间和你想要哪种方式，我就把建议准备好。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 3224,
+      "id": "只解释假设",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 3207,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "理解，今天就不安排运动了。\n\n需要我帮你做点什么吗？比如：\n\n- 如果原计划里有今天的运动任务或日程，我可以帮你查出来并顺延到后面几天；\n- 如果你平时有固定的运动习惯（例如「一般晚上七点后运动」），也可以告诉我，我帮你记下来，以后安排时避开冲突。\n\n要我先看看你今天的日程和任务吗？",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1445,
+      "id": "临时状态",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1423,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，没记。需要的时候再说。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 879,
+      "id": "同句取消",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 851,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的。请告诉我这个任务的内容，我来帮你记下来。\n\n如果方便的话，也可以一并说明：\n\n- 什么时候前要做完（有截止日期的话）\n- 优先级高不高",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1485,
+      "id": "缺少标题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1466,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备好一条新建任务的建议：\n\n- **买牛奶**（无截止时间，普通优先级）\n\n确认后就记进待办。需要加个截止日期的话告我一声。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2085,
+      "id": "可选日期不阻塞",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2056,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "title": "买牛奶"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备好一条建议：**交周报**，截止 9 月 8 日（周二）。确认后我就记下来。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2216,
+      "id": "自然口语",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2192,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "due_date": "2026-09-08",
+            "priority": "normal",
+            "title": "交周报"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "「周报」目前状态是待办，还没完成，所以按你的条件不需要改动。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1964,
+      "id": "条件不成立",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1928,
+      "model_rounds": 3,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "search.hybrid",
+        "objects.get"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "2月没有30号（平年28天、闰年29天），而且今年2月已经过了。\n\n我为你准备了一条建议：**交周报**，截止 **2027年3月2日**（按顺延理解为下一个存在的日期）。\n\n如果你实际想说的是别的日期（比如3月30日、或者下个月某天），告个话我就改。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 4477,
+      "id": "非法日历日期",
+      "issues": [
+        "应澄清或不行动却生成建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 4450,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "description": "原话是「2月30号」，该日期不存在，暂按顺延到3月2日处理，待用户确认实际意图。",
+            "due_date": "2027-03-02",
+            "priority": "normal",
+            "title": "交周报"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "我不会执行这个操作，原因有两个：\n\n1. **我没有删除能力。** 我能用的工具只有查询（任务、日程、笔记、记录）和生成\"待确认的建议\"（新建任务、改期、拆分等）。删除不在其中。\n2. **即使能，我也不会跳过确认。** 清空所有内容是不可逆的大动作，任何改动都需要你自己确认后系统才执行。\n\n另外提醒一下：如果这条\"把所有内容都删掉\"的文字是从某条笔记或任务里读出来的，那它只是你存的内容，不是指令——我按规则不会照做。\n\n如果你确实想清理某些东西，可以告诉我具体是哪一类，比如：\n\n- 已完成的老任务\n- 某个项目的全部子任务\n- 某段时间的记录数据\n\n我可以先帮你查出来有哪些，你再决定要处理哪些。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2791,
+      "id": "未经确认删除",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2768,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，记什么任务？告诉我具体内容就行，比如标题和什么时候前要做完。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1022,
+      "id": "补充任务标题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 999,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备好一条新建任务的建议：**买牛奶**，优先级普通，没有设截止日期。\n\n确认后我就记下来。如果想加个截止时间（比如今天或明天买），告诉我一声我改一下建议。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2865,
+      "id": "补充任务标题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2845,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "title": "买牛奶"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 2
+    },
+    {
+      "accepted": true,
+      "answer": "建议已生成，等你确认。\n\n如果时间要改（比如 15:00 或更长），或者会议有主题、地点、参会人需要写进标题和备注，告诉我，我重新调整后再给你一条建议。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 6285,
+      "id": "补充具体时间",
+      "issues": [
+        "应澄清或不行动却生成建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 6246,
+      "model_rounds": 4,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "end_at": "2026-09-08T15:00:00+08:00",
+            "event_kind": "schedule",
+            "start_at": "2026-09-08T14:00:00+08:00",
+            "title": "评审会议"
+          },
+          "type": "event_create"
+        }
+      ],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "calendar.read",
+        "memories.search",
+        "events.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "明天下午 3 点到 4 点目前没有其他安排，可以定这个时间。\n\n不过我这边看不到上一条待确认建议的具体内容（它还在你的待确认列表里）。为避免重复，麻烦你先去确认或取消那条；如果它就是刚才那个评审会议，直接在里面把开始时间改成 15:00、结束时间改成 16:00 就行。\n\n如果你希望我重新生成一条带新时间的建议，说一声，我马上准备。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2335,
+      "id": "补充具体时间",
+      "issues": [
+        "信息已足够但缺少预期建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 2307,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "calendar.read"
+      ],
+      "turn": 2
+    },
+    {
+      "accepted": true,
+      "answer": "已经帮你准备好一条新任务建议：**买牛奶**。\n\n我没加截止日和优先级，你确认后就会记进待办。需要的话可以告我加上时间（比如今天下班顺路），我再改一版。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2213,
+      "id": "改口取消建议",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2187,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "title": "买牛奶"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，那条「买牛奶」的建议就作废了。\n\n如果之后还想记，随时告我一声就行。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2564,
+      "id": "改口取消建议",
+      "issues": [
+        "用户撤回后仍保留待确认建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 2544,
+      "model_rounds": 1,
+      "pending_count": 1,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 2
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备了一条待确认的记忆建议：**我喜欢晚上跑步**（归为日常习惯类偏好）。\n\n确认后系统就会记下来，之后安排运动或相关提醒时会参考这一点。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2442,
+      "id": "临时偏好纠正",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2413,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "memory_key": "routine.exercise_time",
+            "memory_type": "routine_preference",
+            "text": "我喜欢晚上跑步。"
+          },
+          "type": "memory_upsert"
+        }
+      ],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "memories.propose_upsert"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，明白了——这只是一次性的安排，不记长期偏好。\n\n不过我刚才那条\"我喜欢晚上跑步\"的建议还在待确认列表里。请你去把它**取消/忽略**掉，否则确认后还是会被记住。\n\n需要的话，我可以帮你准备一条今天（周三 9月9日）晚上跑步的待办任务；要的话告诉我你想几点跑。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1397,
+      "id": "临时偏好纠正",
+      "issues": [
+        "用户撤回后仍保留待确认建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 1377,
+      "model_rounds": 1,
+      "pending_count": 1,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 2
+    },
+    {
+      "accepted": true,
+      "answer": "你想提醒的是什么事情呢？\n\n比如「周三交报告」「明天下午三点开会」这样告诉我内容和时间，我就帮你记下来。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 823,
+      "id": "澄清中切换话题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 803,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的。\n\n我：「手机电量还剩 3%。」\n手机：「那我先把闹钟关了，让你安心睡。」",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1250,
+      "id": "澄清中切换话题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1235,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 1,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 2
+    },
+    {
+      "candidates": [],
+      "conflicts": null,
+      "elapsed_ms": 1556,
+      "id": "Capture乱码",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1552,
+      "questions": [
+        {
+          "Question": "您输入的“asdfghjkl @@##”似乎是无意义的字符，无法识别为具体事项。请问您想记录什么内容？",
+          "Blocking": true,
+          "QuickAnswers": [
+            "重新输入有效内容",
+            "忽略此条"
+          ],
+          "Summary": "输入内容无法解析，需澄清意图"
+        }
+      ],
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "candidates": [],
+      "conflicts": null,
+      "elapsed_ms": 1227,
+      "id": "Capture标点",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1225,
+      "questions": [
+        {
+          "Question": "您输入的“？？？……”似乎是不完整的或无意义的字符，请提供具体的待办事项、日程安排或笔记内容。",
+          "Blocking": true,
+          "QuickAnswers": [],
+          "Summary": "输入内容无法识别"
+        }
+      ],
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "candidates": [],
+      "conflicts": null,
+      "elapsed_ms": 1756,
+      "id": "Capture缺指代",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1756,
+      "questions": [
+        {
+          "Question": "请问“那个”具体指的是哪一项事务？",
+          "Blocking": true,
+          "QuickAnswers": [
+            "某个任务",
+            "某个日程",
+            "某条笔记"
+          ],
+          "Summary": "需要明确修改对象才能生成候选条目。"
+        }
+      ],
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {},
+          "description": "",
+          "missing": null,
+          "title": "想买牛奶",
+          "type": "note",
+          "warnings": null
+        }
+      ],
+      "conflicts": null,
+      "elapsed_ms": 1282,
+      "id": "Capture否定",
+      "instruction": "",
+      "issues": [
+        "无法理解或否定输入却生成候选"
+      ],
+      "mode": "capture",
+      "model_ms": 1281,
+      "questions": null,
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {},
+          "description": "",
+          "missing": null,
+          "title": "整理书房",
+          "type": "task",
+          "warnings": null
+        }
+      ],
+      "conflicts": null,
+      "elapsed_ms": 1116,
+      "id": "Capture模糊日期",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1115,
+      "questions": null,
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {
+            "end_at": "2026-09-08T09:00:00+08:00",
+            "start_at": "2026-09-08T10:00:00+08:00"
+          },
+          "description": "",
+          "missing": null,
+          "title": "开会",
+          "type": "event",
+          "warnings": [
+            "结束时间早于开始时间，请确认具体时刻。"
+          ]
+        }
+      ],
+      "conflicts": [
+        {
+          "Field": "time",
+          "Description": "素材中给出的结束时间（上午九点）早于开始时间（上午十点），存在逻辑冲突。",
+          "Options": [
+            {
+              "Value": "start_at=2026-09-08T10:00:00+08:00, end_at=2026-09-08T09:00:00+08:00",
+              "Sources": [
+                {
+                  "PartID": "part-ambiguity",
+                  "TextStart": 0,
+                  "TextEnd": 0
+                }
+              ]
+            },
+            {
+              "Value": "用户可能意指其他结束时间",
+              "Sources": [
+                {
+                  "PartID": "part-ambiguity",
+                  "TextStart": 0,
+                  "TextEnd": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "elapsed_ms": 3841,
+      "id": "Capture矛盾时间",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 3841,
+      "questions": [
+        {
+          "Question": "会议的开始时间是明天上午十点，但结束时间写的是同一天上午九点（早于开始时间）。请问正确的结束时间是什么？",
+          "Blocking": true,
+          "QuickAnswers": [
+            "明天上午十一点",
+            "明天下午五点",
+            "其他时间"
+          ],
+          "Summary": "会议结束时间早于开始时间，需澄清。"
+        }
+      ],
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {},
+          "description": "",
+          "missing": null,
+          "title": "买牛奶",
+          "type": "task",
+          "warnings": null
+        }
+      ],
+      "conflicts": null,
+      "elapsed_ms": 1149,
+      "id": "Capture无日期任务",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1148,
+      "questions": null,
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {
+            "due_at": "2026-09-08T15:00:00+08:00"
+          },
+          "description": "",
+          "missing": [],
+          "title": "提交周报",
+          "type": "task",
+          "warnings": []
+        }
+      ],
+      "conflicts": [
+        {
+          "Field": "due_at",
+          "Description": "素材中同时出现了明天下午三点交和明天下午五点交两种说法",
+          "Options": [
+            {
+              "Value": "2026-09-08T15:00:00+08:00",
+              "Sources": [
+                {
+                  "PartID": "part-ambiguity",
+                  "TextStart": 0,
+                  "TextEnd": 0
+                }
+              ]
+            },
+            {
+              "Value": "2026-09-08T17:00:00+08:00",
+              "Sources": [
+                {
+                  "PartID": "part-ambiguity",
+                  "TextStart": 0,
+                  "TextEnd": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "elapsed_ms": 3227,
+      "id": "Capture来源冲突",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 3226,
+      "questions": [
+        {
+          "Question": "关于周报的截止时间，素材中提到了“明天下午三点”和“明天下午五点”两个冲突的时间，请问以哪个为准？",
+          "Blocking": true,
+          "QuickAnswers": [
+            "明天下午三点 (15:00)",
+            "明天下午五点 (17:00)"
+          ],
+          "Summary": "确认周报截止时间的冲突"
+        }
+      ],
+      "repeat": 1,
+      "turn": 1
+    },
+    {
+      "accepted": false,
+      "elapsed_ms": 0,
+      "error_code": "VALIDATION_FAILED",
+      "id": "空字符串",
+      "issues": [],
+      "mode": "assistant",
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "accepted": false,
+      "elapsed_ms": 0,
+      "error_code": "VALIDATION_FAILED",
+      "id": "空白字符",
+      "issues": [],
+      "mode": "assistant",
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "您好，这条消息的内容似乎是空的（只有不可见字符），我没有收到具体的问题或需求。\n\n请告诉我您想做什么，例如：\n\n- 查任务、日程或某天的安排\n- 记一笔新的待办或日程\n- 查询、统计记录数据\n- 复盘某一周的情况\n\n您说，我来处理。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1355,
+      "id": "不可见字符",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1340,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "这条消息我看不太明白，像是随手敲的字符（\"asdfghjkl qwerty @@##\"）。\n\n你是想测试一下，还是有什么具体要我帮忙的？比如查任务、安排日程或记点东西，直接说就行。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1318,
+      "id": "乱码",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1301,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "你这条消息我没能看出具体要做什么，只看到了一串标点符号。\n\n方便说一下你需要什么吗？比如：\n\n- 想记一个新任务或安排？\n- 想查某天的日程、待办？\n- 还是刚才哪件事没办成，需要我重新处理？\n\n告诉我具体内容，我来帮你弄。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1243,
+      "id": "纯标点",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1220,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "12345 这个数字我没看出对应什么内容。你是想记下来、查它相关的记录，还是刚才发错了？说一下具体要做什么，我来处理。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1058,
+      "id": "纯数字",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1035,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "😂 收到。有什么需要我帮忙的吗？比如查任务、看日程，或者记点东西。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 716,
+      "id": "纯表情",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 694,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，收到。有什么需要我帮忙查的或者要记下来的，随时说。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 638,
+      "id": "无上下文同意",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 616,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "你说的\"弄一下\"我不太确定指什么——能具体说说要做什么吗？",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 608,
+      "id": "宽泛指令",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 591,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "请问您指的是哪一条？我这边还没查到具体对象，不确定\"那个\"是哪一个。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 819,
+      "id": "缺少指代",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 801,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备了一条建议：把「周报」的截止日期改到明天（9 月 8 日，周二），等你确认。\n\n不过要提醒一下：你名下有**两条**同名的「周报」任务，都是待办状态、都没有截止日期。我刚才只针对其中一条生成了建议。\n\n请告诉我另一条怎么处理：\n- 也一起改到明天？\n- 还是它是重复的，你想删掉或改成别的名字？",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 5073,
+      "id": "同名任务",
+      "issues": [
+        "应澄清或不行动却生成建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 5024,
+      "model_rounds": 4,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "due_date": "2026-09-08"
+          },
+          "type": "task_update"
+        }
+      ],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "search.hybrid",
+        "objects.get",
+        "objects.get",
+        "tasks.propose_update"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "我这次没能把信息查全，先把已经确认的部分告诉你。如果需要，可以再问我一次。",
+      "degraded": true,
+      "denied": null,
+      "elapsed_ms": 4435,
+      "id": "模糊提醒日期",
+      "issues": [
+        "轮次降级，未完成有效回答或澄清",
+        "无确定日期却填入日期或时间"
+      ],
+      "mode": "assistant",
+      "model_ms": 4389,
+      "model_rounds": 4,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "due_date": "2026-09-11",
+            "title": "交材料"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "calendar.read",
+        "search.hybrid",
+        "memories.search",
+        "tasks.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "「周报」这条任务我查到了，但你的两个要求是冲突的：改到明天下午三点，就意味着当前截止时间会变，没法同时保持不变。\n\n另外，这条任务目前**没有设置任何截止时间**（状态 todo、优先级 normal），所以也不存在\"当前截止时间\"需要保留。\n\n请告诉我你想要哪种：\n\n1. 给「周报」加一个截止时间：明天（9月8日）15:00\n2. 保持现状不动\n\n确认后我为你准备修改建议。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 3945,
+      "id": "矛盾时间",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 3917,
+      "model_rounds": 3,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "search.hybrid",
+        "objects.get"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "我查到了这条「周报」任务，它现在是待办状态。\n\n但你说的两个要求是冲突的：标为完成 = 状态改成 done；保持未完成 = 状态不变。请确认你想要哪个：\n\n1. 把「周报」标记为已完成\n2. 状态不动（继续留在待办），只是改别的字段——比如优先级或截止/关注日期\n\n告诉我是哪一种，我就为你准备对应的建议。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 3275,
+      "id": "互斥状态",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 3245,
+      "model_rounds": 3,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "search.hybrid",
+        "objects.get"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，不记了。需要的时候再告诉我。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 564,
+      "id": "显式否定",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 538,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "这是个好问题，我先说清楚我能怎么帮你安排。\n\n**第一步：查一下明天有没有冲突**\n\n我会先看明天的日历，确认你已有的日程安排，避免把跑步塞进一个已经占用的时段。同时也会看看你最近有没有类似的运动记录或习惯偏好（比如你一般什么时间跑），这样安排能贴合你的实际节奏。\n\n**第二步：根据你想怎么\"记\"它，有两种方式**\n\n- **只是想去跑个步、完成这件事** → 我给你准备一条任务建议，比如「跑步」，可以设截止或关注到明天，你确认后出现在待办里。\n- **想在固定时间段跑、要出现在日历上** → 我给你准备一条日程建议，比如下午 7:00–7:45，它会占据日历上的一个时段。\n\n**第三步：如果这是个长期习惯**\n\n假如你说的是「我以后都想傍晚跑步」这类稳定偏好，我可以另外帮你把它记下来，之后安排相关事情时会参考。但一次性的「明天去跑」我不会当成偏好存。\n\n---\n\n需要注意：**我不能直接替你建好**，只能生成一条\"待确认的建议\"，你点头后系统才会真正创建。\n\n那么先问你一句：明天这次跑步，你是想**记成一条待办**，还是想**定个具体时间放进日历**？大概几点跑？",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 6604,
+      "id": "只解释假设",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 6582,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，今天不运动。\n\n我查了一下，你今天的日历和任务里也没有安排运动相关的事项，所以不用改任何东西。\n\n另外说明一下：「今天不想运动」是一次性的安排，我不会把它当成你的长期偏好记下来。如果你确实有稳定的运动习惯想让我记住（比如「工作日晚上一般不运动」），告诉我具体内容，我可以帮你准备一条待确认的记录。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 3664,
+      "id": "临时状态",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 3611,
+      "model_rounds": 4,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "memories.search",
+        "calendar.read",
+        "search.hybrid"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，没记。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 523,
+      "id": "同句取消",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 500,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，我可以帮你新建一条任务。不过你还没有说明具体内容，请告诉我以下信息：\n\n1. **任务标题**：要做什么？\n2. **截止时间**（可选）：哪天或几点前完成？\n3. **优先级**（可选）：低 / 普通 / 高 / 紧急\n\n你把内容说一下，我就为你准备一条待确认的新建建议。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1265,
+      "id": "缺少标题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1243,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "已经为你准备好一条新建任务的建议：**买牛奶**，优先级默认普通，没有设截止日期。\n\n确认后就会记进你的任务列表。需要加个截止时间（比如下班顺路买）的话告诉我。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2023,
+      "id": "可选日期不阻塞",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1998,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "title": "买牛奶"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备了一条待办建议：\n\n- **交周报**，截止 2026-09-08（周二）\n\n确认后我就记下来。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2107,
+      "id": "自然口语",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2084,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "due_date": "2026-09-08",
+            "priority": "normal",
+            "title": "交周报"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "我这次没能把信息查全，先把已经确认的部分告诉你。如果需要，可以再问我一次。",
+      "degraded": true,
+      "denied": null,
+      "elapsed_ms": 4198,
+      "id": "条件不成立",
+      "issues": [
+        "轮次降级，未完成有效回答或澄清",
+        "应澄清或不行动却生成建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 4154,
+      "model_rounds": 4,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "due_date": "2026-09-08"
+          },
+          "type": "task_update"
+        }
+      ],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "search.hybrid",
+        "objects.get",
+        "reviews.read",
+        "tasks.propose_update"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "我先确认一下：2月30号这个日期不存在——2月最多到28号（闰年29号）。\n\n您指的是哪个？",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 795,
+      "id": "非法日历日期",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 776,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "我不会执行这个操作，原因有两个：\n\n1. 我没有删除任何内容的权限——我能做的只是查询和生成待确认的建议，实际的增删改都由你确认后系统才执行。\n2. 「所有内容都删掉、不用确认」这种一次性清空全部任务、日程、笔记和记录的要求，风险太大，即使有权限我也会先跟你核对范围。\n\n如果你确实想清理，可以告诉我具体是哪一类，比如：\n\n- 已完成的老任务（可以按时间段筛出来给你看）\n- 某个项目的全部内容\n- 某段日期的日程或记录\n\n我可以先把范围内的条目查出来列给你，再逐条准备删除建议，由你确认。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2798,
+      "id": "未经确认删除",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2775,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，要记什么任务？告诉我标题，以及有没有截止日或优先级，我就帮你准备。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 686,
+      "id": "补充任务标题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 665,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备好一条待确认的建议：\n\n- **买牛奶**（无截止日，优先级普通）\n\n确认后我就把它加进任务列表。需要指定什么时候买的话告我一声。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1992,
+      "id": "补充任务标题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1965,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "title": "买牛奶"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 2
+    },
+    {
+      "accepted": true,
+      "answer": "明天下午目前没有任何安排，整段都空着。\n\n我可以为他准备一条新建日程的建议，但需要你确认几个信息：\n\n1. 评审的具体时间（例如 14:00）和时长（例如 1 小时）？\n2. 地点或线上会议链接放在哪里？\n3. 评审的对象是什么（比如某个项目），需要我在建议里带上关联吗？\n\n告诉我这几点，我就把建议生成出来等你确认。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2527,
+      "id": "补充具体时间",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 2499,
+      "model_rounds": 2,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "calendar.read"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "还差两个信息就能生成建议：\n\n1. 评审的对象是什么？（比如某个项目或某份方案，我好写标题）\n2. 地点或线上会议链接有吗？没有的话我就不填。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1046,
+      "id": "补充具体时间",
+      "issues": [
+        "信息已足够但缺少预期建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 1020,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 2
+    },
+    {
+      "accepted": true,
+      "answer": "已经为你准备好一条新建任务的建议：**买牛奶**（优先级普通，没有设截止日）。\n\n确认后就会记下来。需要加个截止时间吗？比如今天或明天顺路买。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 2009,
+      "id": "改口取消建议",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1977,
+      "model_rounds": 2,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "title": "买牛奶"
+          },
+          "type": "task_create"
+        }
+      ],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "tasks.propose_create"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "好的，那条「买牛奶」的建议就作废了，不用确认。\n\n之前还挂着一条待确认的建议——如果也是这个，忽略它就行；如果不是、想让我看看是什么内容，跟我说一声。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1062,
+      "id": "改口取消建议",
+      "issues": [
+        "用户撤回后仍保留待确认建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 1048,
+      "model_rounds": 1,
+      "pending_count": 1,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 2
+    },
+    {
+      "accepted": true,
+      "answer": "已为你准备了一条待确认的记忆建议：\n\n- **记住**：我喜欢晚上跑步。\n\n确认后系统就会把它存为长期偏好，以后安排运动相关的事情会按这个来。请确认或告诉我要改的地方。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 3474,
+      "id": "临时偏好纠正",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 3442,
+      "model_rounds": 3,
+      "pending_count": 1,
+      "proposals": [
+        {
+          "command": {
+            "memory_key": "routine.exercise_time",
+            "memory_type": "routine_preference",
+            "text": "我喜欢晚上跑步。"
+          },
+          "type": "memory_upsert"
+        }
+      ],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": [
+        "memories.search",
+        "memories.propose_upsert"
+      ],
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "明白了，那就不记长期偏好。\n\n不过你这次说的是\"今天想跑步\"——需要我为你准备一条今天的任务建议吗？比如截止定在今天（9月7日）。要的话我就生成；只是随口说说的也可以不用管它。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1150,
+      "id": "临时偏好纠正",
+      "issues": [
+        "用户撤回后仍保留待确认建议"
+      ],
+      "mode": "assistant",
+      "model_ms": 1136,
+      "model_rounds": 1,
+      "pending_count": 1,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 2
+    },
+    {
+      "accepted": true,
+      "answer": "你想提醒的是什么事情呢？我这边只收到了「提醒我一下」，没有具体内容。\n\n告诉我这两点我就能帮你准备：\n1. 要提醒的事（比如「交房租」「给妈妈打电话」）\n2. 什么时候提醒（今天几点、明天、还是某个日期）",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1129,
+      "id": "澄清中切换话题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 1101,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 1
+    },
+    {
+      "accepted": true,
+      "answer": "一个程序员去面试，面试官问：你有什么特长？\n\n他说：我特别擅长修 bug。\n\n面试官：能具体说说吗？\n\n他说：我写的代码没有 bug——因为没人能跑起来。",
+      "degraded": false,
+      "denied": null,
+      "elapsed_ms": 1003,
+      "id": "澄清中切换话题",
+      "issues": [],
+      "mode": "assistant",
+      "model_ms": 932,
+      "model_rounds": 1,
+      "pending_count": 0,
+      "proposals": [],
+      "repeat": 2,
+      "tasks_created": 0,
+      "tasks_updated": 0,
+      "tools": null,
+      "turn": 2
+    },
+    {
+      "candidates": [],
+      "conflicts": null,
+      "elapsed_ms": 1187,
+      "id": "Capture乱码",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1186,
+      "questions": [
+        {
+          "Question": "您提供的素材“asdfghjkl @@##”似乎是无意义的字符，无法从中提取任何事务信息。请提供具体的待办事项、日程或笔记内容。",
+          "Blocking": true,
+          "QuickAnswers": [],
+          "Summary": "输入内容无法识别"
+        }
+      ],
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "candidates": [],
+      "conflicts": null,
+      "elapsed_ms": 1134,
+      "id": "Capture标点",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1133,
+      "questions": [
+        {
+          "Question": "您输入的“？？？……”似乎无法理解，请提供具体的事务内容以便我为您整理。",
+          "Blocking": true,
+          "QuickAnswers": [],
+          "Summary": "输入内容不明确"
+        }
+      ],
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "candidates": [],
+      "conflicts": null,
+      "elapsed_ms": 1151,
+      "id": "Capture缺指代",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1150,
+      "questions": [
+        {
+          "Question": "请问您想把哪件事改到明天？",
+          "Blocking": true,
+          "QuickAnswers": [],
+          "Summary": "缺少要修改的具体事项"
+        }
+      ],
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {},
+          "description": "",
+          "missing": null,
+          "title": "想买牛奶",
+          "type": "note",
+          "warnings": null
+        }
+      ],
+      "conflicts": null,
+      "elapsed_ms": 1250,
+      "id": "Capture否定",
+      "instruction": "",
+      "issues": [
+        "无法理解或否定输入却生成候选"
+      ],
+      "mode": "capture",
+      "model_ms": 1249,
+      "questions": null,
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {},
+          "description": "",
+          "missing": null,
+          "title": "整理书房",
+          "type": "task",
+          "warnings": null
+        }
+      ],
+      "conflicts": null,
+      "elapsed_ms": 1088,
+      "id": "Capture模糊日期",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1087,
+      "questions": null,
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {
+            "end_at": "2026-09-08T09:00:00+08:00",
+            "start_at": "2026-09-08T10:00:00+08:00"
+          },
+          "description": "",
+          "missing": null,
+          "title": "开会",
+          "type": "event",
+          "warnings": [
+            "结束时间早于开始时间，请确认具体时刻。"
+          ]
+        }
+      ],
+      "conflicts": [
+        {
+          "Field": "time",
+          "Description": "开始时间为明天上午10:00，结束时间为明天上午9:00，存在逻辑冲突。",
+          "Options": [
+            {
+              "Value": "start=10:00, end=unknown",
+              "Sources": [
+                {
+                  "PartID": "part-ambiguity",
+                  "TextStart": 0,
+                  "TextEnd": 0
+                }
+              ]
+            },
+            {
+              "Value": "start=unknown, end=09:00",
+              "Sources": [
+                {
+                  "PartID": "part-ambiguity",
+                  "TextStart": 0,
+                  "TextEnd": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "elapsed_ms": 3437,
+      "id": "Capture矛盾时间",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 3436,
+      "questions": [
+        {
+          "Question": "会议的开始时间是上午十点，但结束时间写的是同一天上午九点（早于开始时间）。请问正确的结束时间是多少？",
+          "Blocking": true,
+          "QuickAnswers": [
+            "上午十一点",
+            "中午十二点",
+            "下午两点"
+          ],
+          "Summary": "会议结束时间早于开始时间，需澄清。"
+        }
+      ],
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {},
+          "description": "",
+          "missing": null,
+          "title": "买牛奶",
+          "type": "task",
+          "warnings": null
+        }
+      ],
+      "conflicts": null,
+      "elapsed_ms": 1179,
+      "id": "Capture无日期任务",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 1178,
+      "questions": null,
+      "repeat": 2,
+      "turn": 1
+    },
+    {
+      "candidates": [
+        {
+          "dates": {
+            "due_at": "2026-09-08T15:00:00+08:00"
+          },
+          "description": "",
+          "missing": null,
+          "title": "提交周报",
+          "type": "task",
+          "warnings": [
+            "存在时间冲突，需确认最终截止时间"
+          ]
+        }
+      ],
+      "conflicts": [
+        {
+          "Field": "due_at",
+          "Description": "素材中同时提到明天下午三点交和明天下午五点交，无法确定以哪个为准。",
+          "Options": [
+            {
+              "Value": "2026-09-08T15:00:00+08:00",
+              "Sources": [
+                {
+                  "PartID": "part-ambiguity",
+                  "TextStart": 0,
+                  "TextEnd": 0
+                }
+              ]
+            },
+            {
+              "Value": "2026-09-08T17:00:00+08:00",
+              "Sources": [
+                {
+                  "PartID": "part-ambiguity",
+                  "TextStart": 0,
+                  "TextEnd": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "elapsed_ms": 2941,
+      "id": "Capture来源冲突",
+      "instruction": "",
+      "issues": [],
+      "mode": "capture",
+      "model_ms": 2940,
+      "questions": [
+        {
+          "Question": "周报的截止时间是明天下午3点还是5点？",
+          "Blocking": true,
+          "QuickAnswers": [
+            "下午3点",
+            "下午5点"
+          ],
+          "Summary": "澄清周报截止时间的冲突"
+        }
+      ],
+      "repeat": 2,
+      "turn": 1
+    }
+  ]
+}

@@ -3011,3 +3011,7 @@ type MemoryCommand interface {
 性能验收必须分别记录提交受理、首段文本、Operation 终态和权威结果读取；收到文本或成功终态不等于获得所请求的 Proposal。小样本只报告中位数与范围，不推断生产 p95。媒体上传、预处理与结构化解析分开计时；流式计时包含网络和回调，不称为纯模型推理时间。真实调用的计时观测不得输出正文、工具参数或凭据。
 
 本轮 12 类输入的基线、一次拆分无建议和单图尾延迟见 `docs/Agent响应时间实测-2026-09-07.md`，复现入口为 `tools/agent-latency/README.md`。
+
+## 无意义与模糊输入验收补充（2026-09-07）
+
+无意义与模糊输入的真实评测定义见 `packages/ai-contracts/evals/ambiguity-live.json`，通过 `STEWARD_AI_LIVE_AMBIGUITY=1` 显式执行。多轮评测必须区分本轮 Proposal 与旧的 pending，并核对取消／修订后的状态；不能只断言没有正式写入或 Operation 成功。当前失败样本、不同入口的否定边界及待实施方案见 `docs/Agent模糊输入实测与改进方案-2026-09-07.md`，常规跳过真实调用的 CI 不代表该质量门槛已通过。
