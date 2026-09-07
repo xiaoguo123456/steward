@@ -4,6 +4,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestSchemaFeedbackIncludesPathsWithoutInputValues(t *testing.T) {
@@ -41,5 +42,12 @@ func TestSuccessfulProposalDoesNotFinishCompoundRequest(t *testing.T) {
 		if state.terminalText() != "" {
 			t.Fatal("复合请求在第一项建议后被截断：", value)
 		}
+	}
+}
+
+func TestToolSourceSurvivesResultTruncation(t *testing.T) {
+	got := toolContentWithSources(strings.Repeat("合成内容", 100), []string{"task:tsk_fixture"}, 100)
+	if len(got) > 100 || !utf8.ValidString(got) || !strings.Contains(got, `source_refs: ["task:tsk_fixture"]`) {
+		t.Fatal("截断丢失来源或突破预算：", got)
 	}
 }

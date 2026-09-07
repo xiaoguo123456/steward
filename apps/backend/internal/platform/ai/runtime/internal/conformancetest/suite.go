@@ -107,6 +107,15 @@ func Run(t *testing.T, factory Factory) {
 		if len(result.ToolCalls) != 1 || result.ToolCalls[0].Status != "succeeded" {
 			t.Fatalf("工具审计异常：%+v", result.ToolCalls)
 		}
+		visibleSource := false
+		for _, message := range provider.seenMessages[1] {
+			if message.Role == ai.RoleTool && strings.Contains(message.Content, "task:tsk_1") {
+				visibleSource = true
+			}
+		}
+		if !visibleSource {
+			t.Fatal("真实来源仅存在审计中，模型无法原样引用")
+		}
 		if len(result.ToolCalls[0].SourceRefs) != 1 || result.ToolCalls[0].SourceRefs[0] != "task:tsk_1" {
 			t.Fatalf("来源审计异常：%+v", result.ToolCalls[0].SourceRefs)
 		}

@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	einodk "github.com/cloudwego/eino/adk"
 	einomodel "github.com/cloudwego/eino/components/model"
@@ -566,9 +567,11 @@ func (t *capabilityTool) InvokableRun(ctx context.Context, arguments string,
 	}
 
 	content := output.Content
-	if len(content) > t.capability.MaxResultBytes {
-		content = content[:t.capability.MaxResultBytes] + "\n（结果过长已截断）"
+	refs := []string(nil)
+	if t.capability.Risk == ai.RiskReadOnly {
+		refs = output.SourceRefs
 	}
+	content = toolContentWithSources(content, refs, t.capability.MaxResultBytes)
 	record.Status = "succeeded"
 	record.Summary = summarize(content)
 	record.SourceRefs = output.SourceRefs
@@ -834,4 +837,37 @@ func changedTopic(text string) bool {
 		}
 	}
 	return false
+}
+
+// 实际来源必须出现在交给模型的工具消息中，不能只保存在审计元数据里。
+// 截断为来源预留空间，并保持 UTF-8 完整；不允许输出突破能力结果预算。
+func toolContentWithSources(content string, refs []string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	suffix := ""
+	visible := []string{}
+	for _, ref := range refs {
+		next := append(append([]string(nil), visible...), ref)
+		raw, _ := json.Marshal(next)
+		candidate := "\nsource_refs: " + string(raw)
+		if len(candidate) > limit/2 {
+			break
+		}
+		visible = next
+		suffix = candidate
+	}
+	budget := limit - len(suffix)
+	if len(content) > budget {
+		marker := "\n（结果过长已截断）"
+		if len(marker) > budget {
+			marker = ""
+		}
+		content = content[:budget-len(marker)]
+		for !utf8.ValidString(content) {
+			content = content[:len(content)-1]
+		}
+		content += marker
+	}
+	return content + suffix
 }
