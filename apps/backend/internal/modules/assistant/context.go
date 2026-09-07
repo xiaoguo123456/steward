@@ -39,10 +39,11 @@ type MemoryFact struct {
 
 // contextSeed 是一次 Turn 的最小上下文。
 type contextSeed struct {
-	Timezone string
-	Now      time.Time
-	UserText string
-	History  []ai.Message
+	Timezone      string
+	Now           time.Time
+	UserText      string
+	UserMessageID string
+	History       []ai.Message
 	// ContextBlocks 是已确认的事实与偏好，按优先级排好序。
 	ContextBlocks     []string
 	EntryResourceType string
@@ -116,6 +117,9 @@ func (s *Service) loadSeed(ctx context.Context, args RespondArgs) (contextSeed, 
 			return apperr.Internal(err)
 		}
 		seed.UserText, seed.History = splitHistory(messages, turn.UserMessageID)
+		if turn.UserMessageID != nil {
+			seed.UserMessageID = *turn.UserMessageID
+		}
 
 		// 待处理建议数：让模型知道有东西悬而未决，别重复生成同一条建议。
 		pending, err := q.CountPendingProposals(ctx)

@@ -201,7 +201,7 @@ func (d CapabilityDeps) searchTasks(ctx context.Context, cc ai.CapabilityContext
 	for _, t := range rows {
 		item := map[string]any{
 			"id": t.ID, "title": t.Title,
-			"status": t.Status, "priority": t.Priority,
+			"status": t.Status, "priority": t.Priority, "version": t.Version,
 		}
 		if t.DueAt != nil {
 			item["due"] = t.DueAt.In(loc).Format("2006-01-02 15:04")
@@ -284,6 +284,18 @@ func (d CapabilityDeps) getObject(ctx context.Context, cc ai.CapabilityContext,
 		}
 		if t.DueAt != nil {
 			payload["due"] = t.DueAt.In(loc).Format("2006-01-02 15:04")
+		}
+		if t.DueDate != nil {
+			payload["due_date"] = t.DueDate.Format("2006-01-02")
+		}
+		if t.FocusDate != nil {
+			payload["focus_date"] = t.FocusDate.Format("2006-01-02")
+		}
+		if t.ScheduledStartAt != nil {
+			payload["scheduled_start_at"] = t.ScheduledStartAt.Format(time.RFC3339)
+		}
+		if t.ScheduledEndAt != nil {
+			payload["scheduled_end_at"] = t.ScheduledEndAt.Format(time.RFC3339)
 		}
 		if t.Description != nil {
 			payload["description"] = truncate(*t.Description, 300)

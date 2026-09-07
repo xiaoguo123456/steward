@@ -1,0 +1,4 @@
+=== RUN   TestAssistantProvenanceBackfillWithOwnerRLS
+--- PASS: TestAssistantProvenanceBackfillWithOwnerRLS (0.04s)
+PASS
+ok  	github.com/guoxiaozheng1/steward/apps/backend/db/migrations	0.952s

@@ -1,0 +1,14 @@
+{
+  "process": "qemu-system-aarch64",
+  "signal": "SIGSEGV",
+  "entry": "injectAudio",
+  "stack": [
+    "audio_forwarder_enable",
+    "QemuAudioInputEngine::start",
+    "QemuAudioInputStream::QemuAudioInputStream",
+    "EmulatorControllerImpl::injectAudio"
+  ],
+  "attempts": 2,
+  "result": "模拟器进程退出，App 正向录音未验收通过",
+  "recovery": "保留磁盘数据恢复原有 AVD"
+}

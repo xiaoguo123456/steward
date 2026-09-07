@@ -1,0 +1,66 @@
+=== RUN   TestLiveAssistantAcceptance
+=== RUN   TestLiveAssistantAcceptance/空任务查询
+    live_acceptance_test.go:70: 虚构数据工具轨迹：tasks.search succeeded {"status": 
+        ["todo", "doing"]
+        
+        }
+    live_acceptance_test.go:48: {"answer":"没查到未完成任务——你当前没有处于待办或进行中的任务。\n\n需要我帮你新建一条吗？","confirm_error":null,"confirmed":false,"denied":null,"proposals":0,"tasks_created":0,"tools":["tasks.search"],"turn_failed":false}
+=== RUN   TestLiveAssistantAcceptance/任务查询
+    live_acceptance_test.go:70: 虚构数据工具轨迹：tasks.search succeeded {"status": 
+        ["todo", "doing"]
+        
+        }
+    live_acceptance_test.go:48: {"answer":"你现在有 2 个未完成任务：\n\n- 评审测试：采购文具（待办，普通优先级）\n- 评审测试：周报（待办，普通优先级）\n\n两条都没有设置截止日期。","confirm_error":null,"confirmed":false,"denied":null,"proposals":0,"tasks_created":0,"tools":["tasks.search"],"turn_failed":false}
+=== RUN   TestLiveAssistantAcceptance/新用户创建任务
+    live_acceptance_test.go:70: 虚构数据工具轨迹：tasks.propose_create succeeded {"title": "交评审报告", "due_at": "2026-09-08T15:00:00+08:00", "reason": "用户要求记录：明天下午三点前交评审报告。", "source_refs": 
+        ["message:amsg_agqhuipw2fznfgmvv6yzf6jh34"]
+        
+        , "priority": "normal"}
+    live_acceptance_test.go:48: {"answer":"已为你准备好一条新建任务的建议，等你确认：\n\n- **交评审报告**\n- 截止时间：明天（9月8日 周二）下午 3:00\n\n确认后我就把它加进任务列表。","confirm_error":null,"confirmed":true,"denied":null,"proposals":1,"tasks_created":1,"tools":["tasks.propose_create"],"turn_failed":false}
+=== RUN   TestLiveAssistantAcceptance/任务改期
+    live_acceptance_test.go:70: 虚构数据工具轨迹：search.hybrid succeeded {"query": "评审测试周报", "types": 
+        ["task"]
+        
+        }
+    live_acceptance_test.go:70: 虚构数据工具轨迹：objects.get succeeded {"id": "tsk_agqhuiqbab2z3gnidgy2kgp73e"}
+    live_acceptance_test.go:70: 虚构数据工具轨迹：tasks.propose_update succeeded {"task_id": "tsk_agqhuiqbab2z3gnidgy2kgp73e", "expected_version": 1, "due_at": "2026-09-08T15:00:00+08:00", "reason": "按你的要求把「评审测试周报」的截止时间改到明天（周二）下午三点。", "source_refs": 
+        ["message:amsg_agqhuiqba52zdfqochsif3vzse", "task:tsk_agqhuiqbab2z3gnidgy2kgp73e"]
+        
+        }
+    live_acceptance_test.go:48: {"answer":"已为你准备好一条待确认的修改建议：\n\n- 任务：评审测试周报（当前状态 todo，优先级 normal）\n- 截止时间改为：明天（9月8日 周二）15:00\n\n原任务上没查到已有的截止时间记录，所以这次相当于新增该截止时间。确认后系统才会执行改动。","confirm_error":null,"confirmed":true,"denied":null,"proposals":1,"tasks_created":0,"tools":["search.hybrid","objects.get","tasks.propose_update"],"turn_failed":false}
+=== RUN   TestLiveAssistantAcceptance/任务拆分
+    live_acceptance_test.go:70: 虚构数据工具轨迹：search.hybrid succeeded {"query": "准备评审材料", "types": 
+        ["task"]
+        
+        }
+    live_acceptance_test.go:70: 虚构数据工具轨迹：objects.get succeeded {"id": "tsk_agqhuiqtgj7qpg4a2eo2a5blhy"}
+    live_acceptance_test.go:70: 虚构数据工具轨迹：tasks.propose_split succeeded {"task_id": "tsk_agqhuiqtgj7qpg4a2eo2a5blhy", "expected_version": 1, "tasks": 
+        [{"title": "整理评审所需的基础资料"}, {"title": "编写评审材料正文"}, {"title": "校对并定稿提交"}]
+        
+        , "reason": "按用户要求把「准备评审材料」拆为收集资料、编写、校对定稿三个可独立推进的步骤。", "source_refs": 
+        ["task:tsk_agqhuiqtgj7qpg4a2eo2a5blhy", "message:amsg_agqhuiqthr4edaipntf37dzc24"]
+        
+        }
+    live_acceptance_test.go:48: {"answer":"已为「准备评审材料」准备好拆分建议，三个子任务是：\n\n1. 整理评审所需的基础资料\n2. 编写评审材料正文\n3. 校对并定稿提交\n\n原任务当前状态是待办、优先级普通，我没有改动它。你确认后系统会批量创建这三条子任务并与原任务关联；如果想调整某条的说法或顺序，告诉我改哪一条。","confirm_error":null,"confirmed":true,"denied":null,"proposals":1,"tasks_created":3,"tools":["search.hybrid","objects.get","tasks.propose_split"],"turn_failed":false}
+=== RUN   TestLiveAssistantAcceptance/创建日程
+    live_acceptance_test.go:70: 虚构数据工具轨迹：events.propose_create succeeded {"title": "评审会议", "start_at": "2026-09-08T10:00:00+08:00", "end_at": "2026-09-08T11:00:00+08:00", "event_kind": "schedule", "reason": "用户要求为明天上午十点到十一点的评审会议准备日程建议。", "source_refs": 
+        ["message:amsg_agqhuirhx56h7lp232bql253sq"]
+        
+        }
+    live_acceptance_test.go:48: {"answer":"已为你准备好一条日程建议：明天（9月8日 周二）10:00–11:00「评审会议」。确认后就会加进日历。","confirm_error":null,"confirmed":true,"denied":null,"proposals":1,"tasks_created":0,"tools":["events.propose_create"],"turn_failed":false}
+=== RUN   TestLiveAssistantAcceptance/记录偏好
+    live_acceptance_test.go:70: 虚构数据工具轨迹：memories.propose_upsert succeeded {"memory_key": "routine.exercise_time", "memory_type": "routine_preference", "text": "我一般晚上七点以后运动。", "reason": "用户明确说这是他一般的运动时间习惯，属于长期稳定的作息偏好。", "source_refs": 
+        ["message:amsg_agqhuirswvzovj73jmdyu35f7u"]
+        
+        }
+    live_acceptance_test.go:48: {"answer":"已经为你准备好一条记忆建议：\n\n**我一般晚上七点以后运动。**\n\n确认后系统就会长期记下这个习惯，之后安排日程或提醒时会避开七点前的时间段。请你确认一下。","confirm_error":null,"confirmed":true,"denied":null,"proposals":1,"tasks_created":0,"tools":["memories.propose_upsert"],"turn_failed":false}
+--- PASS: TestLiveAssistantAcceptance (21.26s)
+    --- PASS: TestLiveAssistantAcceptance/空任务查询 (1.50s)
+    --- PASS: TestLiveAssistantAcceptance/任务查询 (1.65s)
+    --- PASS: TestLiveAssistantAcceptance/新用户创建任务 (2.61s)
+    --- PASS: TestLiveAssistantAcceptance/任务改期 (4.65s)
+    --- PASS: TestLiveAssistantAcceptance/任务拆分 (5.26s)
+    --- PASS: TestLiveAssistantAcceptance/创建日程 (2.81s)
+    --- PASS: TestLiveAssistantAcceptance/记录偏好 (2.77s)
+PASS
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/eval	22.435s

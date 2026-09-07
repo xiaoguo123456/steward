@@ -797,9 +797,15 @@ func (q *Queries) StartTurn(ctx context.Context, id string) (AssistantTurn, erro
 }
 
 const supersedeOlderTurns = `-- name: SupersedeOlderTurns :exec
+WITH superseded AS (
 UPDATE assistant_turns SET status = 'superseded', completed_at = now(), version = version + 1
 WHERE thread_id = $1
   AND turn_seq < $2
+  AND status IN ('queued', 'running')
+RETURNING operation_id
+)
+UPDATE async_operations SET status = 'cancelled', progress = 100, completed_at = now()
+WHERE id IN (SELECT operation_id FROM superseded)
   AND status IN ('queued', 'running')
 `
 

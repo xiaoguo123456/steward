@@ -4669,6 +4669,7 @@ components:
             - capture
             - object
             - ai_action
+            - assistant_proposal
         source_id:
           type: string
         source_revision:

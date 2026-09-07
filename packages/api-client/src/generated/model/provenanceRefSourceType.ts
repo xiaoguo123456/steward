@@ -21,4 +21,5 @@ export const ProvenanceRefSourceType = {
   capture: 'capture',
   object: 'object',
   ai_action: 'ai_action',
+  assistant_proposal: 'assistant_proposal',
 } as const;

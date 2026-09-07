@@ -90,6 +90,8 @@ type Result struct {
 	ToolResults []string
 	// ToolSources 是工具声明读过的来源。
 	ToolSources []string
+	// TrustedSources 只来自权威消息和成功只读工具，不能包含 Proposal 自报来源。
+	TrustedSources []string
 	// ContextBlocks 是进入 Prompt 的上下文。
 	ContextBlocks []string
 	Answer        string
@@ -136,18 +138,31 @@ func (s *Stack) Run(ctx context.Context, c Case) (Result, error) {
 		return result, err
 	}
 
-	before, err := s.countTasks(ctx, userID)
+	before, err := s.taskSnapshot(ctx, userID)
 	if err != nil {
 		return result, err
 	}
-
-	// 脚本里的占位符替换成本次真实的 ID。
-	s.provider.reset(resolveScript(c.Script, fixtures))
 
 	threadID, turnID, operationID, err := s.startTurn(ctx, userID, c.UserText)
 	if err != nil {
 		return result, err
 	}
+
+	err = s.DB.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		turn, err := q.GetTurn(ctx, turnID)
+		if err != nil {
+			return err
+		}
+		if turn.UserMessageID != nil {
+			fixtures.messageID = *turn.UserMessageID
+			result.TrustedSources = append(result.TrustedSources, "message:"+fixtures.messageID)
+		}
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+	s.provider.reset(resolveScript(c.Script, fixtures))
 
 	// OperationID 必须用 CreateTurn 真的建出来的那一个。
 	// 自己造一个 ID 会让收尾时的 UpdateOperationStatus 找不到行，
@@ -164,17 +179,19 @@ func (s *Stack) Run(ctx context.Context, c Case) (Result, error) {
 	}
 	result.ContextBlocks = s.provider.systemBlocks
 
-	after, err := s.countTasks(ctx, userID)
+	after, err := s.taskSnapshot(ctx, userID)
 	if err != nil {
 		return result, err
 	}
-	result.TasksCreated = after - before
+	result.TasksCreated = len(after) - len(before)
+	result.TasksUpdated = changedTasks(before, after)
 
 	if c.ConfirmFirstProposal && len(result.Proposals) > 0 {
 		s.confirm(ctx, userID, result.Proposals[0], &result)
 		// 确认可能写入任务或记忆，重新统计。
-		if final, err := s.countTasks(ctx, userID); err == nil {
-			result.TasksCreated = final - before
+		if final, err := s.taskSnapshot(ctx, userID); err == nil {
+			result.TasksCreated = len(final) - len(before)
+			result.TasksUpdated = changedTasks(before, final)
 		}
 		if memories, evidence, err := s.listMemories(ctx, userID); err == nil {
 			result.Memories = memories
@@ -221,6 +238,9 @@ func (s *Stack) collect(ctx context.Context, userID, turnID string, result *Resu
 			var sources []string
 			_ = json.Unmarshal(call.SourceRefs, &sources)
 			result.ToolSources = append(result.ToolSources, sources...)
+			if call.Status == "succeeded" && call.Risk == string(ai.RiskReadOnly) {
+				result.TrustedSources = append(result.TrustedSources, sources...)
+			}
 		}
 
 		turn, err := q.GetTurn(ctx, turnID)
@@ -294,16 +314,38 @@ func (s *Stack) listMemories(ctx context.Context, userID string) (
 	return out, withEvidence, err
 }
 
-func (s *Stack) countTasks(ctx context.Context, userID string) (int, error) {
-	count := 0
-	err := s.DB.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		rows, err := q.ListTasks(ctx, dbgen.ListTasksParams{
-			Statuses: []string{"todo", "doing", "done"}, RowLimit: 200,
-		})
-		count = len(rows)
-		return err
+// taskSnapshot 比较整行，捕获状态、版本、日期和软删除变化；新建不算更新。
+func (s *Stack) taskSnapshot(ctx context.Context, userID string) (map[string]string, error) {
+	out := map[string]string{}
+	err := s.DB.InTx(ctx, userID, func(ctx context.Context, _ *dbgen.Queries) error {
+		tx, err := database.TxFrom(ctx)
+		if err != nil {
+			return err
+		}
+		rows, err := tx.Query(ctx, "SELECT id, to_jsonb(tasks)::text FROM tasks")
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id, snapshot string
+			if err := rows.Scan(&id, &snapshot); err != nil {
+				return err
+			}
+			out[id] = snapshot
+		}
+		return rows.Err()
 	})
-	return count, err
+	return out, err
+}
+func changedTasks(before, after map[string]string) int {
+	count := 0
+	for id, old := range before {
+		if after[id] != old {
+			count++
+		}
+	}
+	return count
 }
 
 // startTurn 建对话与 Turn。
@@ -404,12 +446,14 @@ func resolveScript(steps []ScriptStep, f seeded) []ai.CompletionResult {
 
 // seeded 记录本次运行预置出来的 ID，供脚本占位符替换。
 type seeded struct {
-	taskIDs  []string
-	eventIDs []string
-	ledgerID string
+	messageID string
+	taskIDs   []string
+	eventIDs  []string
+	ledgerID  string
 }
 
 func (s seeded) replace(text string) string {
+	text = strings.ReplaceAll(text, "$MESSAGE", s.messageID)
 	for i, id := range s.taskIDs {
 		text = strings.ReplaceAll(text, fmt.Sprintf("$TASK%d", i+1), id)
 	}

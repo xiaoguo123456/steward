@@ -19,6 +19,7 @@ type Factory func(ai.ChatProvider, *slog.Logger) ai.OrchestrationEngine
 // Run 对一个编排实现执行共享契约测试。
 func Run(t *testing.T, factory Factory) {
 	t.Helper()
+	runValidation(t, factory)
 	t.Run("直接回答", func(t *testing.T) {
 		provider := &scriptedProvider{steps: []ai.CompletionResult{{
 			Content: "你这周有三件事。",
@@ -129,7 +130,8 @@ func Run(t *testing.T, factory Factory) {
 				return ai.CapabilityResult{
 					Content: `{"proposal":"draft"}`,
 					Proposals: []ai.ProposalDraft{{
-						Type: "task_create", Command: map[string]any{"title": "写周报"},
+						SourceRefs: []string{"message:amsg_contract"},
+						Type:       "task_create", Command: map[string]any{"title": "写周报"},
 						Preview: ai.ProposalPreview{Title: "写周报"},
 					}},
 				}, nil
@@ -278,13 +280,14 @@ func (s *recordingSink) OnDelta(delta string) {
 
 func request(capabilities []ai.Capability) ai.TurnRequest {
 	return ai.TurnRequest{
-		TurnID:       "atrn_contract",
-		UserID:       "usr_contract",
-		SystemPrompt: "测试策略",
-		UserText:     "这周有什么要做的？",
-		Capabilities: capabilities,
-		Limits:       ai.DefaultRunLimits(),
-		Ctx:          ai.CapabilityContext{UserID: "usr_contract", Timezone: "Asia/Shanghai"},
+		TurnID:        "atrn_contract",
+		UserMessageID: "amsg_contract",
+		UserID:        "usr_contract",
+		SystemPrompt:  "测试策略",
+		UserText:      "这周有什么要做的？",
+		Capabilities:  capabilities,
+		Limits:        ai.DefaultRunLimits(),
+		Ctx:           ai.CapabilityContext{UserID: "usr_contract", Timezone: "Asia/Shanghai"},
 	}
 }
 

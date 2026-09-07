@@ -40,7 +40,7 @@ var VisionExtractPromptV1 string
 
 // AssistantPolicyV1 是通用 Assistant 的 System Policy。
 //
-//go:embed prompts/assistant/v1.md
+//go:embed prompts/assistant/v2.md
 var AssistantPolicyV1 string
 
 // ReviewNarrativePromptV2 是复盘结构化内容的系统提示词。
@@ -119,7 +119,7 @@ var MoodReflectionSchemaV1 []byte
 const (
 	CaptureParsePromptVersion        = "capture-parse@v5"
 	VisionExtractPromptVersion       = "vision-extract@v1"
-	AssistantPolicyVersion           = "assistant@v1"
+	AssistantPolicyVersion           = "assistant@v2"
 	ReviewNarrativePromptVersion     = "review-narrative@v2"
 	ReviewNarrativeSchemaVersion     = "review-narrative-result.v2"
 	NotePolishPromptVersion          = "note-polish@v1"

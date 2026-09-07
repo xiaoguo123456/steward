@@ -1,0 +1,6 @@
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/runtime/eino	(cached)
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/modules/assistant	2.194s
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/eval	3.900s
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams	[no test files]
+?   	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams/pgnotify	[no test files]
+ok  	github.com/guoxiaozheng1/steward/apps/backend/internal/platform/streams/redisstream	(cached)

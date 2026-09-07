@@ -2999,3 +2999,10 @@ type MemoryCommand interface {
 | ADR-029 | 使用 Eino v0.9.19 单 Agent 作为唯一编排实现，保留项目边界、确认、审计与行为契约 |
 
 每个 ADR 必须写背景、选项、选择、后果、替换条件和回滚方式，不能只复制本文结论。
+
+### Assistant 验收门禁补充（2026-09-07）
+
+- Assistant Policy 升级为 assistant@v2，动态消息引用由服务端提供，不从模型输出推断。
+- Eval 的 TasksUpdated 必须比较执行前后既有任务行，不能只检查新建数量；来源断言仅接受权威消息与成功只读工具证据。
+- 真实模型验收入口：在专用测试库设置 STEWARD_AI_LIVE_ACCEPTANCE=1，运行 go test -v -count=1 ./internal/platform/ai/eval -run TestLiveAssistantAcceptance。每例构造独立虚构用户并清理，不得对生产库运行该内部测试。
+- 生产验收使用正式生成 Client 与专用账号，测试数据需标记并清理。除服务端确认外，还必须验证 Task／Event 响应可被生成 Zod Schema 读取。

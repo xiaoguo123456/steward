@@ -47,6 +47,7 @@ import {
   assistantThreadSessionReducer,
   createAssistantThreadSession,
 } from '@/features/assistant/assistant-thread-session';
+import { assistantOperationState } from '@/features/assistant/assistant-operation-state';
 import { ProposalCard } from '@/features/assistant/proposal-card';
 import { useTurnStream } from '@/features/assistant/use-turn-stream';
 import { useImagePicker } from '@/features/capture/use-media-picker';
@@ -173,9 +174,7 @@ export default function AiConversationScreen() {
   });
 
   const turnStatus = operation.data?.data.status;
-  const settled =
-    turnStatus === 'succeeded' || turnStatus === 'failed' || turnStatus === 'cancelled'
-    || operation.isError;
+  const { settled, recovering } = assistantOperationState(turnStatus, operation.isError);
   // 状态还没拉回来时也算"正在回复"，否则用户能在同一轮里连发两条。
   const thinking = Boolean(operationId) && !settled;
 
@@ -205,8 +204,8 @@ export default function AiConversationScreen() {
   const turnFailure =
     turnStatus === 'failed'
       ? errorMessage(operation.data?.data.error, '助理这次没能回复，请稍后再试。')
-      : operation.isError
-        ? errorMessage(operation.error, '回复状态暂时无法确认。你可以重新发送，原回复稍后仍会出现在记录里。')
+      : recovering
+        ? errorMessage(operation.error, '网络连接暂时中断，正在恢复回复状态，请稍候。')
       : null;
   const restoring =
     threadSession.mode === 'default' &&

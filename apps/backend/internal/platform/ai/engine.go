@@ -122,6 +122,8 @@ type TurnRequest struct {
 	UserID   string
 	ThreadID string
 	TurnID   string
+	// UserMessageID 来自正式 Turn，供创建类建议引用本轮用户输入。
+	UserMessageID string
 
 	SystemPrompt string
 	// History 是最近若干轮原始消息，按时间正序。
