@@ -1,10 +1,10 @@
 :root {
   color-scheme: light;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 16px;
-  line-height: 1.7;
-  color: #17211d;
-  background: #f4f7fa;
+  font-size: 100%;
+  line-height: 1.75;
+  color: #242424;
+  background: #fff;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -15,7 +15,8 @@
 
 body {
   margin: 0;
-  background: #f4f7fa;
+  overflow-wrap: anywhere;
+  background: #fff;
 }
 
 a {
@@ -24,25 +25,25 @@ a {
 }
 
 a:focus-visible {
-  outline: 3px solid rgba(23, 106, 91, 0.28);
+  outline: 2px solid #176a5b;
   outline-offset: 3px;
   border-radius: 4px;
 }
 
 .site-header {
-  border-bottom: 1px solid #dce4e8;
-  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #e5e5e5;
+  background: #fff;
 }
 
 .site-header__inner,
 .page,
 .site-footer__inner {
-  width: min(100% - 32px, 760px);
+  width: min(100% - 40px, 720px);
   margin-inline: auto;
 }
 
 .site-header__inner {
-  min-height: 64px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,10 +51,14 @@ a:focus-visible {
 }
 
 .brand {
-  color: #17211d;
-  font-weight: 750;
-  letter-spacing: -0.02em;
+  color: #242424;
+  font-weight: 600;
+  letter-spacing: normal;
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .header-link {
@@ -61,21 +66,13 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: none;
 }
 
 .page {
-  padding-block: clamp(32px, 7vw, 72px) 72px;
-}
-
-.eyebrow {
-  margin: 0 0 8px;
-  color: #176a5b;
-  font-size: 0.78rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  padding-block: 28px 48px;
+  overflow-wrap: anywhere;
 }
 
 h1,
@@ -89,18 +86,17 @@ dl {
 }
 
 h1 {
-  max-width: 16ch;
-  margin-bottom: 14px;
-  font-size: clamp(2rem, 7vw, 3.4rem);
-  line-height: 1.08;
-  letter-spacing: -0.045em;
+  margin-bottom: 16px;
+  font-size: 1.5rem;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 h2 {
   margin-bottom: 12px;
-  font-size: clamp(1.22rem, 3vw, 1.5rem);
-  line-height: 1.35;
-  letter-spacing: -0.02em;
+  font-size: 1.125rem;
+  line-height: 1.5;
+  letter-spacing: normal;
 }
 
 h3 {
@@ -110,26 +106,25 @@ h3 {
 }
 
 .lead {
-  max-width: 62ch;
-  margin-bottom: 18px;
-  color: #526070;
-  font-size: 1.03rem;
+  margin-bottom: 16px;
+  color: #333;
+  font-size: 1rem;
 }
 
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 18px;
-  margin-bottom: 26px;
-  color: #667085;
-  font-size: 0.84rem;
+  gap: 4px 16px;
+  margin-bottom: 24px;
+  color: #666;
+  font-size: 0.875rem;
 }
 
 .release-blocker {
   margin-block: 24px;
   padding: 16px 18px;
   border: 1px solid #e4b55d;
-  border-radius: 14px;
+  border-radius: 4px;
   background: #fff8e8;
 }
 
@@ -145,19 +140,35 @@ h3 {
 }
 
 .section {
-  padding-block: 28px;
-  border-top: 1px solid #dce4e8;
+  padding-block: 0;
+  margin-top: 28px;
 }
 
-.section:first-of-type {
-  border-top: 0;
+p,
+ul,
+ol {
+  margin-bottom: 12px;
+}
+
+ul,
+ol {
+  padding-inline-start: 1.5em;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+.section > :last-child {
+  margin-bottom: 0;
 }
 
 .section p,
 .section li,
 .card p,
 .card li {
-  color: #526070;
+  color: #333;
 }
 
 .section li + li,
@@ -167,16 +178,14 @@ h3 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 22px;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: 24px;
 }
 
 .card {
-  min-height: 138px;
-  padding: 18px;
-  border: 1px solid #dce4e8;
-  border-radius: 16px;
+  padding-block: 20px;
+  border-top: 1px solid #e5e5e5;
   background: #fff;
 }
 
@@ -194,7 +203,7 @@ h3 {
 .table-wrap {
   overflow-x: auto;
   border: 1px solid #dce4e8;
-  border-radius: 14px;
+  border-radius: 4px;
   background: #fff;
 }
 
@@ -202,7 +211,7 @@ table {
   width: 100%;
   min-width: 620px;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 th,
@@ -215,11 +224,11 @@ td {
 
 th {
   color: #27332e;
-  background: #eef5f7;
+  background: #f5f5f5;
 }
 
 td {
-  color: #526070;
+  color: #333;
 }
 
 tr:last-child td {
@@ -233,9 +242,8 @@ tr:last-child td {
 
 .note {
   padding: 14px 16px;
-  border-left: 3px solid #78aeda;
-  background: #eaf4ff;
-  color: #36566f;
+  background: #f5f5f5;
+  color: #333;
 }
 
 .link-list {
@@ -244,11 +252,11 @@ tr:last-child td {
 }
 
 .link-list li {
-  border-top: 1px solid #dce4e8;
+  border-top: 1px solid #e5e5e5;
 }
 
 .link-list li:last-child {
-  border-bottom: 1px solid #dce4e8;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 .link-list a {
@@ -257,7 +265,7 @@ tr:last-child td {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -267,8 +275,8 @@ tr:last-child td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  background: #177d64;
+  border-radius: 8px;
+  background: #176a5b;
   color: #fff;
   font-weight: 700;
   text-decoration: none;
@@ -280,14 +288,14 @@ tr:last-child td {
 }
 
 .site-footer {
-  border-top: 1px solid #dce4e8;
+  border-top: 1px solid #e5e5e5;
   background: #fff;
 }
 
 .site-footer__inner {
   padding-block: 24px 34px;
-  color: #667085;
-  font-size: 0.82rem;
+  color: #666;
+  font-size: 0.875rem;
 }
 
 .site-footer p {
@@ -298,15 +306,11 @@ tr:last-child td {
   .site-header__inner,
   .page,
   .site-footer__inner {
-    width: min(100% - 24px, 760px);
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
+    width: calc(100% - 32px);
   }
 
   .page {
-    padding-bottom: 52px;
+    padding-block: 20px 40px;
   }
 }
 
@@ -314,6 +318,16 @@ tr:last-child td {
   a {
     transition: color 160ms ease, background-color 160ms ease;
   }
+}
+
+.table-hint {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.table-wrap:focus-visible {
+  outline: 2px solid #176a5b;
+  outline-offset: 2px;
 }
 
 @media print {
@@ -330,5 +344,18 @@ tr:last-child td {
   .page {
     width: 100%;
     padding: 0;
+  }
+
+  .table-hint {
+    display: none;
+  }
+
+  .table-wrap {
+    overflow: visible;
+  }
+
+  table {
+    min-width: 0;
+    table-layout: fixed;
   }
 }

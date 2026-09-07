@@ -3,17 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f4f7fa" />
+    <meta name="theme-color" content="#ffffff" />
     <title>个人信息收集清单｜序事</title>
     <link rel="stylesheet" href="../assets/legal.css" />
   </head>
   <body>
     <header class="site-header"><div class="site-header__inner"><a class="brand" href="../">序事</a><a class="header-link" href="../../support/">帮助与联系</a></div></header>
-    <main class="page">
-      <p class="eyebrow">Personal Information</p><h1>个人信息收集清单</h1>
+    <main class="page"><h1>个人信息收集清单</h1>
       <p class="lead">本清单仅列出当前功能实际需要的信息。关闭某项可选功能后，不再为该功能发起新的处理。</p>
       <div class="meta"><span>清单版本：1.0</span><span>更新日期：2026 年 9 月 2 日</span></div>
-      <section class="section"><h2>当前功能数据</h2><div class="table-wrap"><table><thead><tr><th>场景</th><th>信息类型</th><th>目的与方式</th><th>保存期限</th></tr></thead><tbody>
+      <section class="section"><h2>当前功能数据</h2><p class="table-hint">表格可左右滑动查看完整内容。</p><div class="table-wrap" role="region" aria-label="信息清单，可左右滚动" tabindex="0"><table><thead><tr><th scope="col">场景</th><th scope="col">信息类型</th><th scope="col">目的与方式</th><th scope="col">保存期限</th></tr></thead><tbody>
         <tr><td>手机号登录</td><td>手机号、验证码校验结果、会话令牌摘要、登录时间和必要安全标识</td><td>注册登录、保持会话、身份核验和防止滥用</td><td>验证码哈希 5 分钟；Access Token 2 小时；Refresh Token 最长 30 天；账号资料保存至账号删除</td></tr>
         <tr><td>事务与生活管理</td><td>任务、日程、笔记、清单、项目、打卡、账目、行程、人物关系及用户主动填写的字段</td><td>提供创建、查询、修改、提醒、统计和跨模块展示</td><td>保存至用户删除相应内容或删除账号</td></tr>
         <tr><td>Capture 输入</td><td>用户主动提交的文字、图片、音频、转写、OCR、候选和来源</td><td>理解本次输入并生成可编辑候选；确认前不进入正式业务列表</td><td>在完成处理、故障恢复和安全审计所需期间保存；用户删除输入或账号时清理</td></tr>
