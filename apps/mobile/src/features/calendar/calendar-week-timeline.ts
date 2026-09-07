@@ -1,6 +1,6 @@
 import type { CalendarDay, Event, Task } from '@steward/api-client';
 
-import { formatMinuteClock, zonedDateTimeParts } from '../../utils/date-time';
+import { formatMinuteClock, formatMinuteDateTime, zonedDateTimeParts } from '../../utils/date-time';
 
 export type WeekTimelineItem = {
   id: string;
@@ -28,7 +28,29 @@ export type WeekAllDayItem = {
 export type WeekTimeline = {
   timed: WeekTimelineItem[];
   allDay: WeekAllDayItem[];
+  spanning: WeekSpanningItem[];
+  agendaByDate: Map<string, CalendarDay>;
   initialMinute: number;
+};
+
+export type WeekSpanningItem = {
+  id: string;
+  type: WeekTimelineItem['type'];
+  title: string;
+  dayIndex: number;
+  daySpan: number;
+  row: number;
+  timeLabel: string;
+};
+
+export type WeekTimelineBlock = {
+  items: WeekTimelineItem[];
+  date: string;
+  dayIndex: number;
+  startMinute: number;
+  endMinute: number;
+  column: number;
+  columnCount: number;
 };
 
 type WeekCell = { date: string };
@@ -47,21 +69,99 @@ export function buildWeekTimeline(
 ): WeekTimeline {
   const timed: WeekTimelineItem[] = [];
   const allDay: WeekAllDayItem[] = [];
+  const spanning: WeekSpanningItem[] = [];
   const events = uniqueByID(cells.flatMap(cell => daysByDate.get(cell.date)?.events ?? []));
   const tasks = uniqueByID(cells.flatMap(cell => daysByDate.get(cell.date)?.tasks ?? []));
 
-  for (const event of events) appendEvent(event, cells, timezone, timed, allDay);
-  for (const task of tasks) appendTask(task, cells, daysByDate, timezone, timed, allDay);
+  for (const event of events) {
+    if (!event.all_day && appendSpanningRange(event.id, event.title, event.event_kind === 'important_date' ? 'important' : 'event', event.start_at, event.end_at, cells, timezone, spanning)) continue;
+    appendEvent(event, cells, timezone, timed, allDay);
+  }
+  for (const task of tasks) {
+    if (appendSpanningRange(task.id, task.title, 'task', task.scheduled_start_at, task.scheduled_end_at, cells, timezone, spanning)) continue;
+    appendTask(task, cells, daysByDate, timezone, timed, allDay);
+  }
+
+  spanning.sort((left, right) => left.dayIndex - right.dayIndex || right.daySpan - left.daySpan);
+  const rowEnds: number[] = [];
+  for (const item of spanning) {
+    let row = rowEnds.findIndex(end => end <= item.dayIndex);
+    if (row < 0) row = rowEnds.length;
+    rowEnds[row] = item.dayIndex + item.daySpan;
+    item.row = row;
+  }
 
   layoutOverlaps(timed);
   timed.sort((left, right) => left.dayIndex - right.dayIndex || left.startMinute - right.startMinute || left.title.localeCompare(right.title, 'zh-CN'));
   allDay.sort((left, right) => left.dayIndex - right.dayIndex);
 
-  const earliest = timed.reduce((value, item) => Math.min(value, item.startMinute), Number.POSITIVE_INFINITY);
-  const initialMinute = Number.isFinite(earliest)
-    ? Math.max(0, Math.min(18 * 60, Math.floor((earliest - 60) / 60) * 60))
-    : 7 * 60;
-  return { timed, allDay, initialMinute };
+  // 详情沿用原实体，续日片段只补充当前可见周的阅读入口，不修改服务端日期归属。
+  const agendaByDate = new Map<string, CalendarDay>();
+  cells.forEach((cell, index) => {
+    const visible = [
+      ...timed.filter(item => item.date === cell.date),
+      ...allDay.filter(item => item.date === cell.date),
+      ...spanning.filter(item => index >= item.dayIndex && index < item.dayIndex + item.daySpan),
+    ];
+    const eventIDs = new Set(visible.filter(item => item.type !== 'task').map(item => item.id));
+    const taskIDs = new Set(visible.filter(item => item.type === 'task').map(item => item.id));
+    agendaByDate.set(cell.date, {
+      date: cell.date,
+      events: uniqueByID([...(daysByDate.get(cell.date)?.events ?? []), ...events.filter(item => eventIDs.has(item.id))]),
+      tasks: uniqueByID([...(daysByDate.get(cell.date)?.tasks ?? []), ...tasks.filter(item => taskIDs.has(item.id))]),
+    });
+  });
+  return { timed, allDay, spanning, agendaByDate, initialMinute: 8 * 60 };
+}
+
+/** 只有显式起止、持续至少 24 小时且跨当地日期的事项进入跨天带，短跨午夜仍保留时间轴。 */
+function appendSpanningRange(
+  id: string, title: string, type: WeekTimelineItem['type'],
+  startValue: string | null | undefined, endValue: string | null | undefined,
+  cells: WeekCell[], timezone: string, target: WeekSpanningItem[],
+): boolean {
+  if (!startValue || !endValue || new Date(endValue).getTime() - new Date(startValue).getTime() < 86_400_000) return false;
+  const start = zonedDateTimeParts(startValue, timezone);
+  const end = zonedDateTimeParts(endValue, timezone);
+  if (!start || !end || start.date === end.date) return false;
+  const covered = cells.map((cell, index) => ({ ...cell, index })).filter(cell =>
+    cell.date >= start.date && (cell.date < end.date || (cell.date === end.date && end.hour * 60 + end.minute > 0)),
+  );
+  if (covered.length === 0) return false;
+  target.push({
+    id, title, type, dayIndex: covered[0].index, daySpan: covered.length, row: 0,
+    timeLabel: `${formatMinuteDateTime(startValue, timezone)} 至 ${formatMinuteDateTime(endValue, timezone)}`,
+  });
+  return true;
+}
+
+/** 小屏重叠簇聚合为可打开当天列表的入口，避免继续缩字或生成不可点击的细条。 */
+export function buildWeekTimelineBlocks(items: WeekTimelineItem[], dayWidth: number): WeekTimelineBlock[] {
+  const blocks: WeekTimelineBlock[] = [];
+  const dates = [...new Set(items.map(item => item.date))];
+  for (const date of dates) {
+    const sorted = items.filter(item => item.date === date).sort((a, b) => a.startMinute - b.startMinute);
+    let cluster: WeekTimelineItem[] = [];
+    let end = -1;
+    const finish = () => {
+      if (!cluster.length) return;
+      const first = cluster[0];
+      if (cluster.length > 1 && dayWidth / first.columnCount < 36) {
+        blocks.push({ items: cluster, date, dayIndex: first.dayIndex, startMinute: first.startMinute, endMinute: end, column: 0, columnCount: 1 });
+      } else {
+        for (const item of cluster) blocks.push({ ...item, items: [item] });
+      }
+      cluster = [];
+    };
+    for (const item of sorted) {
+      if (cluster.length && item.startMinute >= end) finish();
+      if (!cluster.length) end = item.endMinute;
+      cluster.push(item);
+      end = Math.max(end, item.endMinute);
+    }
+    finish();
+  }
+  return blocks;
 }
 
 function appendEvent(
