@@ -138,6 +138,53 @@ func (q *Queries) GetProposal(ctx context.Context, id string) (ActionProposal, e
 	return i, err
 }
 
+const listPendingProposalsForThread = `-- name: ListPendingProposalsForThread :many
+SELECT id, user_id, thread_id, turn_id, proposal_type, proposal_schema_version, target_type, target_id, target_expected_version, command, preview, reason, source_refs, status, expires_at, executed_batch_id, error_code, created_at, updated_at, version FROM action_proposals
+WHERE thread_id = $1 AND status = 'pending' AND expires_at >= now()
+ORDER BY created_at DESC, id DESC LIMIT 20
+`
+
+func (q *Queries) ListPendingProposalsForThread(ctx context.Context, threadID *string) ([]ActionProposal, error) {
+	rows, err := q.db.Query(ctx, listPendingProposalsForThread, threadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ActionProposal{}
+	for rows.Next() {
+		var i ActionProposal
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.ThreadID,
+			&i.TurnID,
+			&i.ProposalType,
+			&i.ProposalSchemaVersion,
+			&i.TargetType,
+			&i.TargetID,
+			&i.TargetExpectedVersion,
+			&i.Command,
+			&i.Preview,
+			&i.Reason,
+			&i.SourceRefs,
+			&i.Status,
+			&i.ExpiresAt,
+			&i.ExecutedBatchID,
+			&i.ErrorCode,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Version,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProposals = `-- name: ListProposals :many
 SELECT id, user_id, thread_id, turn_id, proposal_type, proposal_schema_version, target_type, target_id, target_expected_version, command, preview, reason, source_refs, status, expires_at, executed_batch_id, error_code, created_at, updated_at, version FROM action_proposals
 WHERE (cardinality($1::text[]) = 0 OR status = ANY ($1::text[]))
@@ -368,7 +415,7 @@ func (q *Queries) MarkProposalResolved(ctx context.Context, arg MarkProposalReso
 }
 
 const supersedeProposalsForTarget = `-- name: SupersedeProposalsForTarget :exec
-UPDATE action_proposals SET status = 'superseded', updated_at = now()
+UPDATE action_proposals SET status = 'superseded', updated_at = now(), version = version + 1
 WHERE status = 'pending'
   AND target_type = $1
   AND target_id = $2

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/dbgen"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
@@ -24,34 +25,38 @@ func (s *Service) preprocessMedia(ctx context.Context, args CaptureParseArgs,
 	out := make([]dbgen.CapturePart, len(parts))
 	copy(out, parts)
 
-	for i, part := range out {
+	parallelParts(ctx, len(out), 2, func(i int) {
+		part := out[i]
 		if part.Kind == "text" || part.Status == "succeeded" || part.Status == "ignored" {
-			continue
+			return
 		}
 		if part.MediaID == nil || *part.MediaID == "" {
 			s.markPartFailed(ctx, args.UserID, &out[i], "这条输入没有关联到已上传的文件。")
-			continue
+			return
 		}
 
 		text, err := s.extractText(ctx, args.UserID, part)
 		if err != nil {
 			s.markPartFailed(ctx, args.UserID, &out[i], failureMessage(part.Kind, err))
-			continue
+			return
 		}
 		if strings.TrimSpace(text) == "" {
 			s.markPartFailed(ctx, args.UserID, &out[i],
 				"没有从这个文件里识别到可用内容，请补充文字说明。")
-			continue
+			return
 		}
 
-		out[i].Text = &text
-		out[i].Status = "succeeded"
-		_ = s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+		if err := s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
 			return q.UpdateCapturePartResult(ctx, dbgen.UpdateCapturePartResultParams{
 				ID: part.ID, Status: "succeeded", Text: &text,
 			})
-		})
-	}
+		}); err != nil {
+			s.markPartFailed(ctx, args.UserID, &out[i], "识别结果暂时无法保存，请重试。")
+			return
+		}
+		out[i].Text = &text
+		out[i].Status = "succeeded"
+	})
 	return out
 }
 
@@ -175,4 +180,32 @@ func failureMessage(kind string, err error) string {
 	default:
 		return "图片识别暂时不可用，请改用文字描述。"
 	}
+}
+
+// parallelParts 限制独立预处理的并发数；每个槽位只写一次，并等待所有调用退出。
+// 取消后不再派发尚未开始的输入，运行中的 Provider 共用取消上下文。
+func parallelParts(ctx context.Context, count, limit int, process func(int)) {
+	var workers sync.WaitGroup
+	jobs := make(chan int)
+	for range limit {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for i := range jobs {
+				if ctx.Err() == nil {
+					process(i)
+				}
+			}
+		}()
+	}
+dispatch:
+	for i := range count {
+		select {
+		case <-ctx.Done():
+			break dispatch
+		case jobs <- i:
+		}
+	}
+	close(jobs)
+	workers.Wait()
 }

@@ -36,6 +36,7 @@ type ambiguityTurn struct {
 	NoDates       bool   `json:"no_dates"`
 	ProposalType  string `json:"proposal_type"`
 	PendingNone   bool   `json:"pending_none"`
+	NoAction      bool   `json:"no_action"`
 	NoCandidates  bool   `json:"no_candidates"`
 	CandidateType string `json:"candidate_type"`
 }
@@ -50,7 +51,11 @@ func TestLiveAmbiguityAcceptance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "ambiguity-live.json"))
+	dataset := "ambiguity-live.json"
+	if os.Getenv("STEWARD_AI_AMBIGUITY_HOLDOUT") == "1" {
+		dataset = "ambiguity-holdout.json"
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, dataset))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,6 +131,7 @@ func runAmbiguousAssistant(t *testing.T, s *Stack, p *openai.Provider, c ambigui
 		if step.RejectInput {
 			issues = append(issues, "空输入进入模型链路")
 		}
+		engine.last = ai.TurnResult{}
 		err := s.Assistant.Respond(ctx, assistant.RespondArgs{
 			SchemaVersion: 1, UserID: uid, ThreadID: thread.ID, TurnID: accepted.TurnID,
 			OperationID: accepted.OperationID, IdempotencyKey: "ambiguity:" + accepted.TurnID,
@@ -227,7 +233,7 @@ func runAmbiguousCapture(t *testing.T, p *openai.Provider, c ambiguityCase, repe
 	if step.NoCandidates && len(candidates) > 0 {
 		issues = append(issues, "无法理解或否定输入却生成候选")
 	}
-	if step.NoCandidates && len(candidates) == 0 && len(r.Questions) == 0 {
+	if step.NoCandidates && len(candidates) == 0 && len(r.Questions) == 0 && (!step.NoAction || strings.TrimSpace(r.InstructionNote) == "") {
 		issues = append(issues, "无法理解且没有解释或澄清问题")
 	}
 	if step.CandidateType != "" && !found {

@@ -31,7 +31,8 @@
     "turns": [
       {
         "text": "​‌‍",
-        "no_proposal": true
+        "no_proposal": true,
+        "reject_input": true
       }
     ]
   },
@@ -425,7 +426,8 @@
     "turns": [
       {
         "text": "不要记任务，我只是随口说说想买牛奶",
-        "no_candidates": true
+        "no_candidates": true,
+        "no_action": true
       }
     ]
   },

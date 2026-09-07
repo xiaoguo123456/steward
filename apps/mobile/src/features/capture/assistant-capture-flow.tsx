@@ -478,6 +478,12 @@ export function AssistantCaptureFlow({
             <CapturePartStatuses parts={data?.parts ?? []} />
             <AppButton compact label="重新输入" onPress={onReenterCapture} variant="secondary" />
           </View>
+        ) : phase === 'dismissed' ? (
+          <View style={styles.recovery}>
+            <Text style={styles.statusTitle}>这次没有保存内容</Text>
+            <Text style={styles.statusText}>{data?.instruction_note ?? '这次整理已结束。'}</Text>
+            <AppButton compact label="完成" onPress={() => onCompleted('这次没有保存内容')} />
+          </View>
         ) : phase === 'completed' ? (
           <View style={styles.recovery}>
             <View style={styles.statusRow}>

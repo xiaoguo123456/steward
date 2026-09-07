@@ -13,6 +13,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { AssistantInteraction } from './assistantInteraction';
 import type { AssistantMessageStatus } from './assistantMessageStatus';
 import type { MessageRole } from './messageRole';
 
@@ -30,6 +31,7 @@ export interface AssistantMessage {
   status: AssistantMessageStatus;
   /** @nullable */
   turn_id?: string | null;
+  interaction?: AssistantInteraction;
   /** 本条消息附带的待确认建议。 */
   proposal_ids?: string[];
   created_at: string;

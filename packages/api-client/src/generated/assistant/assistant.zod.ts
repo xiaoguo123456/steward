@@ -216,6 +216,10 @@ export const ListMessagesQueryParams = zod.object({
   "limit": zod.number().int().min(1).max(listMessagesQueryLimitMax).default(listMessagesQueryLimitDefault).describe('单页条数。')
 })
 
+export const listMessagesResponseDataItemInteractionChoicesMax = 10;
+
+
+
 export const ListMessagesResponse = zod.object({
   "data": zod.array(zod.object({
   "id": zod.string(),
@@ -225,6 +229,13 @@ export const ListMessagesResponse = zod.object({
   "content": zod.string().describe('用户可见文本。不包含 Provider 原始响应对象，\n也不包含模型的隐藏思维过程。\n'),
   "status": zod.enum(['draft', 'completed', 'failed', 'superseded']),
   "turn_id": zod.string().nullish(),
+  "interaction": zod.object({
+  "outcome": zod.enum(['reply', 'clarification', 'proposal_ready', 'cancelled', 'degraded']),
+  "choices": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string()
+})).max(listMessagesResponseDataItemInteractionChoicesMax).optional()
+}).optional(),
   "proposal_ids": zod.array(zod.string()).optional().describe('本条消息附带的待确认建议。'),
   "created_at": zod.string().datetime({"offset":true})
 })).describe('按 message_seq 倒序返回，最新的在前。'),
@@ -266,6 +277,8 @@ export const createTurnBodyTextMax = 2000;
 
 export const CreateTurnBody = zod.object({
   "text": zod.string().min(1).max(createTurnBodyTextMax).describe('第一阶段通用 Assistant 只支持文本。\n图片与音频继续走统一 Capture，不在这里重复一套媒体协议。\n'),
+  "clarification_message_id": zod.string().optional().describe('选择的澄清问题消息 ID；仅当前最后一条助理消息有效。'),
+  "choice_id": zod.string().optional().describe('服务端签发的当前问题选项 ID，必须与问题消息 ID 一同提供。'),
   "entry_context": zod.object({
   "screen": zod.string().optional().describe('例如 task_detail、today。'),
   "resource_type": zod.string().nullish(),

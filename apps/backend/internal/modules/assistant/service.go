@@ -340,16 +340,16 @@ func (s *Service) CreateTurn(ctx context.Context, userID, threadID string,
 	body httpapi.CreateTurnRequest) (TurnAccepted, error) {
 
 	text := strings.TrimSpace(body.Text)
-	if text == "" {
+	if !ai.HasVisibleText(text) {
 		return TurnAccepted{}, apperr.Validation(apperr.Field("text", "消息内容不能为空。"))
 	}
-	if len([]rune(text)) > 4000 {
+	if len([]rune(text)) > 2000 {
 		return TurnAccepted{}, apperr.Validation(apperr.Field("text", "单条消息过长，请分几次说。"))
 	}
 
 	var out TurnAccepted
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
-		thread, err := q.GetThread(ctx, threadID)
+		thread, err := q.LockAssistantThread(ctx, threadID)
 		if err != nil {
 			if database.IsNoRows(err) {
 				return apperr.NotFound("这个对话")
@@ -365,6 +365,10 @@ func (s *Service) CreateTurn(ctx context.Context, userID, threadID string,
 			return apperr.Internal(err)
 		}
 
+		selection, err := selectionForTurn(ctx, q, thread, body)
+		if err != nil {
+			return err
+		}
 		now := time.Now()
 		message, err := q.CreateMessage(ctx, dbgen.CreateMessageParams{
 			ID:          idgen.New(idgen.PrefixMessage),
@@ -378,6 +382,13 @@ func (s *Service) CreateTurn(ctx context.Context, userID, threadID string,
 		})
 		if err != nil {
 			return apperr.Internal(err)
+		}
+
+		if selection != nil {
+			raw, _ := json.Marshal(messageInteraction{Selection: selection})
+			if err := q.SetMessageInteraction(ctx, dbgen.SetMessageInteractionParams{ID: message.ID, Interaction: raw}); err != nil {
+				return apperr.Internal(err)
+			}
 		}
 
 		op, err := q.CreateOperation(ctx, dbgen.CreateOperationParams{
@@ -497,6 +508,13 @@ func (s *Service) CancelTurn(ctx context.Context, userID, turnID string) error {
 			}
 			return apperr.Internal(err)
 		}
+		if _, err := q.LockAssistantThread(ctx, turn.ThreadID); err != nil {
+			return apperr.Internal(err)
+		}
+		turn, err = q.GetTurn(ctx, turnID)
+		if err != nil {
+			return apperr.Internal(err)
+		}
 		if turn.Status != "queued" && turn.Status != "running" {
 			return apperr.New(apperr.CodeAITurnCancelled)
 		}
@@ -538,12 +556,16 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		Now:               time.Now(),
 		EntryResourceType: seed.EntryResourceType,
 		EntryResourceID:   seed.EntryResourceID,
+		UserTexts:         seed.UserTexts, UserSources: seed.UserSources, Pending: seed.Pending, SelectedVersion: seed.SelectedVersion,
+		PendingIntent:   pendingIntent(seed),
+		PendingReminder: seed.Clarification != nil && seed.Clarification.MissingField == "reminder_time",
 	}
 	sink := s.sinkFor(ctx, args.UserID, args.TurnID)
 	sink.OnStatus("正在理解你的问题")
 
 	runID := idgen.New(idgen.PrefixRun)
-	result, runErr := s.engine.RunTurn(ctx, ai.TurnRequest{
+	result, runErr := s.runWithWithdrawal(ctx, ai.TurnRequest{
+		PendingIntent: pendingIntent(seed),
 		RunID:         runID,
 		UserID:        args.UserID,
 		ThreadID:      args.ThreadID,
@@ -578,7 +600,7 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 	})
 
 	// 第三步：短事务保存结果。
-	proposalIDs, saveErr := s.saveTurnResult(ctx, args, result, runErr)
+	proposalIDs, saveErr := s.saveTurnResult(ctx, args, &result, runErr)
 
 	// 最后才收尾流：客户端看到 done 之后会去读权威消息，
 	// 那时消息必须已经落库，否则它会读到上一轮的内容。
@@ -593,7 +615,10 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 //
 // 这里的裁剪是引导手段，不是唯一的安全边界：每次工具调用前仍会重新授权。
 func (s *Service) allowedFor(seed contextSeed) []ai.Capability {
-	all := s.registry.Allowed(seed.SuggestionsEnabled)
+	all := append(s.registry.Allowed(seed.SuggestionsEnabled), clarificationCapability())
+	if len(seed.Pending) > 0 {
+		all = append(all, dismissCapability())
+	}
 	if seed.MemoryLearningEnabled {
 		return all
 	}
@@ -739,10 +764,13 @@ func (s *Service) systemPrompt(seed contextSeed) string {
 
 // saveTurnResult 落库回复、工具审计与建议，并完成 Operation。
 func (s *Service) saveTurnResult(ctx context.Context, args RespondArgs,
-	result ai.TurnResult, runErr error) ([]string, error) {
+	result *ai.TurnResult, runErr error) ([]string, error) {
 
 	var proposalIDs []string
 	err := s.db.InTx(ctx, args.UserID, func(ctx context.Context, q *dbgen.Queries) error {
+		if _, err := q.LockAssistantThread(ctx, args.ThreadID); err != nil {
+			return apperr.Internal(err)
+		}
 		turn, err := q.GetTurn(ctx, args.TurnID)
 		if err != nil {
 			return apperr.Internal(err)
@@ -771,22 +799,6 @@ func (s *Service) saveTurnResult(ctx context.Context, args RespondArgs,
 			return apperr.Internal(err)
 		}
 
-		now := time.Now()
-		message, err := q.CreateMessage(ctx, dbgen.CreateMessageParams{
-			ID:          idgen.New(idgen.PrefixMessage),
-			UserID:      args.UserID,
-			ThreadID:    args.ThreadID,
-			MessageSeq:  seq.LastMessageSeq,
-			Role:        "assistant",
-			Content:     result.Text,
-			Status:      "completed",
-			TurnID:      &args.TurnID,
-			CompletedAt: &now,
-		})
-		if err != nil {
-			return apperr.Internal(err)
-		}
-
 		// 建议在完整校验后才落库；没有通过校验的直接丢弃，不半成品下发。
 		if s.proposal != nil {
 			// 上一次尝试可能已经落过一批；重试时先清空，避免重复计数。
@@ -803,9 +815,52 @@ func (s *Service) saveTurnResult(ctx context.Context, args RespondArgs,
 			}
 		}
 
+		resolved, err := resolvePending(ctx, q, args, result.Resolutions)
+		if err != nil {
+			return err
+		}
+		interaction := messageInteraction{Outcome: "reply", Clarification: result.Clarification}
+		switch {
+		case result.Clarification != nil:
+			interaction.Outcome = "clarification"
+		case len(proposalIDs) > 0:
+			interaction.Outcome = "proposal_ready"
+			result.Text = "已准备好待确认建议，请查看卡片后确认。"
+		case resolved > 0:
+			interaction.Outcome = "cancelled"
+			result.Text = "已取消这条待确认建议，尚未保存的内容不会执行。"
+		case len(result.Proposals) > 0 || len(result.Resolutions) > 0 || result.Degraded:
+			interaction.Outcome = "degraded"
+			result.Text = "这次没有生成可用的建议或完成取消，请查看当前卡片后重试。"
+		}
+
+		now := time.Now()
+		message, err := q.CreateMessage(ctx, dbgen.CreateMessageParams{
+			ID:          idgen.New(idgen.PrefixMessage),
+			UserID:      args.UserID,
+			ThreadID:    args.ThreadID,
+			MessageSeq:  seq.LastMessageSeq,
+			Role:        "assistant",
+			Content:     result.Text,
+			Status:      "completed",
+			TurnID:      &args.TurnID,
+			CompletedAt: &now,
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+
+		rawInteraction, err := json.Marshal(interaction)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		if err := q.SetMessageInteraction(ctx, dbgen.SetMessageInteractionParams{ID: message.ID, Interaction: rawInteraction}); err != nil {
+			return apperr.Internal(err)
+		}
+
 		mode := result.Mode
 		if mode == "" {
-			mode = inferMode(result)
+			mode = inferMode(*result)
 		}
 		if _, err := q.FinishTurn(ctx, dbgen.FinishTurnParams{
 			Status: "succeeded", Mode: &mode,
@@ -985,4 +1040,44 @@ func summarizeTitle(text string) string {
 
 func weekdayName(d time.Weekday) string {
 	return [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}[d]
+}
+
+// 用户明确撤回时走确定性的应用控制路径，不依赖模型是否愿意调用工具。
+func (s *Service) runWithWithdrawal(ctx context.Context, req ai.TurnRequest) (ai.TurnResult, error) {
+	pending := req.Ctx.Pending
+	if req.Ctx.EntryResourceType != "proposal" {
+		pending = withdrawalScope(pending, req.UserText)
+	}
+	if len(pending) > 0 && (withdrawalRequested(req.UserText) || req.Ctx.EntryResourceType == "proposal") {
+		req.Ctx.Pending = pending
+		id := req.Ctx.Pending[0].ID
+		for _, pending := range req.Ctx.Pending {
+			if title := text(pending.Command["title"]); title != "" && strings.Contains(req.UserText, title) {
+				id = pending.ID
+			}
+		}
+		if req.Ctx.EntryResourceType == "proposal" {
+			id = req.Ctx.EntryResourceID
+		}
+		output, err := dismissCapability().Handler(ctx, req.Ctx, map[string]any{"proposal_id": id})
+		var question *ai.ClarificationError
+		if errors.As(err, &question) {
+			return ai.TurnResult{Text: question.Question, Clarification: question}, nil
+		}
+		if err != nil {
+			return ai.TurnResult{}, err
+		}
+		return ai.TurnResult{Text: "正在处理取消请求。", Resolutions: output.Resolutions}, nil
+	}
+	if declinesRecording(req.UserText) {
+		return ai.TurnResult{Text: "好的，这次不生成记录或长期偏好。"}, nil
+	}
+	return s.engine.RunTurn(ctx, req)
+}
+
+func pendingIntent(seed contextSeed) string {
+	if seed.Clarification != nil {
+		return seed.Clarification.Intent
+	}
+	return ""
 }

@@ -195,6 +195,9 @@ func (d CapabilityDeps) searchTasks(ctx context.Context, cc ai.CapabilityContext
 	if err != nil {
 		return ai.CapabilityResult{}, err
 	}
+	if question := ambiguousTaskSearch(cc, rows); question != nil {
+		return ai.CapabilityResult{}, question
+	}
 
 	var out ai.CapabilityResult
 	items := make([]map[string]any, 0, len(rows))
@@ -386,6 +389,21 @@ func (d CapabilityDeps) hybridSearch(ctx context.Context, cc ai.CapabilityContex
 	hits, err := d.Views.Search(ctx, cc.UserID, query, stringSlice(args["types"]), 20)
 	if err != nil {
 		return ai.CapabilityResult{}, err
+	}
+	if cc.EntryResourceID == "" && taskWriteRequest.MatchString(currentUserText(cc)) && d.Tasks != nil {
+		rows := []dbgen.Task{}
+		for _, hit := range hits {
+			if hit.ResourceType == "task" && strings.Contains(currentUserText(cc), hit.Title) {
+				row, err := d.Tasks.GetTask(ctx, cc.UserID, hit.ResourceId)
+				if err != nil {
+					return ai.CapabilityResult{}, err
+				}
+				rows = append(rows, row)
+			}
+		}
+		if question := ambiguousTaskSearch(cc, rows); question != nil {
+			return ai.CapabilityResult{}, question
+		}
 	}
 
 	var out ai.CapabilityResult

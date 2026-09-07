@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "question",
+    "intent",
+    "missing_field"
+  ],
+  "properties": {
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "description": "向用户提出的一个具体问题，不含内部 ID。"
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "task_create",
+        "task_update",
+        "event_create",
+        "event_update",
+        "other"
+      ]
+    },
+    "missing_field": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "description": "缺少的关键字段，例如 title、start_at、target。"
+    }
+  }
+}

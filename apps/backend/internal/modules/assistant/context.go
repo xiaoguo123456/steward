@@ -50,6 +50,11 @@ type contextSeed struct {
 	EntryResourceID   string
 	// PendingProposals 是尚未处理的建议数。
 	PendingProposals int
+	Pending          []ai.PendingProposal
+	UserTexts        []string
+	UserSources      []ai.UserTextSource
+	SelectedVersion  int
+	Clarification    *ai.ClarificationError
 	// SuggestionsEnabled 与 MemoryLearningEnabled 来自用户的 AI 开关。
 	SuggestionsEnabled    bool
 	MemoryLearningEnabled bool
@@ -117,11 +122,52 @@ func (s *Service) loadSeed(ctx context.Context, args RespondArgs) (contextSeed, 
 			return apperr.Internal(err)
 		}
 		seed.UserText, seed.History = splitHistory(messages, turn.UserMessageID)
+		// 只续接紧邻当前用户消息的最后一个问题；换话题后的历史问题不会复活。
+		for _, message := range messages {
+			if turn.UserMessageID != nil && message.ID == *turn.UserMessageID {
+				continue
+			}
+			if message.Role == "assistant" {
+				var state messageInteraction
+				if json.Unmarshal(message.Interaction, &state) == nil {
+					seed.Clarification = state.Clarification
+				}
+			}
+			break
+		}
 		if turn.UserMessageID != nil {
 			seed.UserMessageID = *turn.UserMessageID
 		}
 
-		// 待处理建议数：让模型知道有东西悬而未决，别重复生成同一条建议。
+		for i := len(messages) - 1; i >= 0; i-- {
+			var saved messageInteraction
+			_ = json.Unmarshal(messages[i].Interaction, &saved)
+			// 服务端选项标签中的旧日期不是用户重新指定的时间。
+			if messages[i].Role == "user" && saved.Selection == nil {
+				seed.UserTexts = append(seed.UserTexts, messages[i].Content)
+				seed.UserSources = append(seed.UserSources, ai.UserTextSource{ID: messages[i].ID, Text: messages[i].Content, CreatedAt: messages[i].CreatedAt})
+			}
+			if turn.UserMessageID != nil && messages[i].ID == *turn.UserMessageID {
+				var state messageInteraction
+				if json.Unmarshal(messages[i].Interaction, &state) == nil && state.Selection != nil {
+					seed.EntryResourceType = state.Selection.ResourceType
+					seed.EntryResourceID = state.Selection.ResourceID
+					seed.SelectedVersion = state.Selection.Version
+				}
+			}
+		}
+		rows, err := q.ListPendingProposalsForThread(ctx, &args.ThreadID)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		for _, row := range rows {
+			var command map[string]any
+			if err := json.Unmarshal(row.Command, &command); err != nil {
+				return apperr.Internal(err)
+			}
+			seed.Pending = append(seed.Pending, ai.PendingProposal{ID: row.ID, Version: int(row.Version), Type: row.ProposalType, Command: command})
+		}
+		// 用户所有对话的待确认数量仅供提示；控制只能操作当前对话的快照。
 		pending, err := q.CountPendingProposals(ctx)
 		if err != nil {
 			return apperr.Internal(err)
@@ -144,6 +190,10 @@ func (s *Service) buildContextBlocks(ctx context.Context,
 	args RespondArgs, seed contextSeed) []string {
 
 	var blocks []string
+	if seed.Clarification != nil {
+		raw, _ := json.Marshal(seed.Clarification)
+		blocks = append(blocks, "上一轮尚未回答的问题："+string(raw)+"。本轮若是补充答案，接续该意图并从用户历史原话获取已有字段；补齐后立即调用对应建议工具。若换话题或撤回则结束这个问题。")
+	}
 
 	// 优先级 2：本轮选中的页面资源。只给引用，具体内容由模型自己查。
 	if seed.EntryResourceID != "" {
@@ -151,13 +201,15 @@ func (s *Service) buildContextBlocks(ctx context.Context,
 			"用户当前正在查看一条%s，ID 是 %s。他说的「这个」「它」大概率指它；"+
 				"要用到具体内容时请调用工具查询确认。",
 			resourceLabel(seed.EntryResourceType), seed.EntryResourceID))
+		if seed.SelectedVersion > 0 {
+			blocks = append(blocks, "本轮是用户选择对象，消息中的标签仅用于消歧，不代表新的时间要求；动作与时间沿用前面的用户原话。")
+		}
 	}
 
 	// 优先级 2：待用户处理的建议。避免模型重复生成同一条建议。
-	if seed.PendingProposals > 0 {
-		blocks = append(blocks, fmt.Sprintf(
-			"用户还有 %d 条待确认的建议尚未处理。如果他这次说的是同一件事，"+
-				"先提醒他去确认，不要重复生成一条一样的建议。", seed.PendingProposals))
+	if len(seed.Pending) > 0 {
+		raw, _ := json.Marshal(seed.Pending)
+		blocks = append(blocks, "当前对话真实的待确认建议（不是已保存的事实）："+string(raw)+"。用户撤回时调用 assistant.dismiss_proposal；改口或补充该建议时在新建议工具中传 replaces_proposal_id，旧建议会与新建议一起原子替换。不要要求用户手动修订旧卡片。")
 	}
 
 	// 优先级 5：用户确认过的长期记忆。

@@ -126,6 +126,8 @@ AssistantMessage:
     turn_id:
       type: string
       nullable: true
+    interaction:
+      $ref: '#/AssistantInteraction'
     proposal_ids:
       type: array
       description: 本条消息附带的待确认建议。
@@ -183,6 +185,12 @@ CreateTurnRequest:
       description: |
         第一阶段通用 Assistant 只支持文本。
         图片与音频继续走统一 Capture，不在这里重复一套媒体协议。
+    clarification_message_id:
+      type: string
+      description: 选择的澄清问题消息 ID；仅当前最后一条助理消息有效。
+    choice_id:
+      type: string
+      description: 服务端签发的当前问题选项 ID，必须与问题消息 ID 一同提供。
     entry_context:
       $ref: '#/EntryContext'
 
@@ -418,3 +426,27 @@ TurnStreamEvent:
         done 之后读消息列表即可拿到完整内容。
     code:
       $ref: './common.yaml#/ErrorCode'
+
+AssistantInteraction:
+  type: object
+  additionalProperties: false
+  required: [outcome]
+  properties:
+    outcome:
+      type: string
+      enum: [reply, clarification, proposal_ready, cancelled, degraded]
+    choices:
+      type: array
+      maxItems: 10
+      items:
+        $ref: '#/AssistantChoice'
+
+AssistantChoice:
+  type: object
+  additionalProperties: false
+  required: [id, label]
+  properties:
+    id:
+      type: string
+    label:
+      type: string

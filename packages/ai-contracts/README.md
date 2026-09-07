@@ -73,3 +73,9 @@ Schema、Prompt 和契约安全 Eval 已先固化。当前 Eval 只确定性检�
 ## 无意义与模糊输入真实评测
 
 `evals/ambiguity-live.json` 定义 37 个真实模型场景，包括多轮补充、取消和 Capture 入口。该 JSON 由后端 `TestLiveAmbiguityAcceptance` 单独加载，不混入使用脚本 Provider 的 JSONL 基线；仅在 `STEWARD_AI_LIVE_AMBIGUITY=1` 时执行。当前保留已复现的质量失败，不降低断言来获得通过。说明与修复顺序见 `docs/Agent模糊输入实测与改进方案-2026-09-07.md`。
+
+## Assistant 交互与字段来源
+
+`schemas/assistant` 定义建议时间证据、替换引用、状态前提、澄清与撤回输入。服务端在交给 Handler 前校验原始工具 JSON；Handler 再校验当前用户事实、日期来源与领域状态。`assistant/v3` 与 `capture-parse/v6` 分别对应持久化澄清和“不记录”的入口语义。
+
+`evals/ambiguity-live.json` 固定 37 个场景；`ambiguity-holdout.json` 使用独立措辞。通过 `STEWARD_AI_AMBIGUITY_HOLDOUT=1` 切换留出集，不改写历史验收结果。

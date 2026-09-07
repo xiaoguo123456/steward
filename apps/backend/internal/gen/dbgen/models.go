@@ -258,6 +258,7 @@ type AssistantMessage struct {
 	CreatedAt   time.Time
 	CompletedAt *time.Time
 	DeletedAt   *time.Time
+	Interaction []byte
 }
 
 type AssistantThread struct {

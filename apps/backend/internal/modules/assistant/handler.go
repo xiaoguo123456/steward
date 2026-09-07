@@ -334,6 +334,18 @@ func MapMessage(row dbgen.AssistantMessage, proposalIDs []string) httpapi.Assist
 		TurnId:     row.TurnID,
 		CreatedAt:  row.CreatedAt,
 	}
+	var state messageInteraction
+	if json.Unmarshal(row.Interaction, &state) == nil && state.Outcome != "" {
+		interaction := httpapi.AssistantInteraction{Outcome: httpapi.AssistantInteractionOutcome(state.Outcome)}
+		if state.Clarification != nil && len(state.Clarification.Choices) > 0 {
+			choices := []httpapi.AssistantChoice{}
+			for _, choice := range state.Clarification.Choices {
+				choices = append(choices, httpapi.AssistantChoice{Id: choice.ID, Label: choice.Label})
+			}
+			interaction.Choices = &choices
+		}
+		out.Interaction = &interaction
+	}
 	if len(proposalIDs) > 0 {
 		out.ProposalIds = &proposalIDs
 	}

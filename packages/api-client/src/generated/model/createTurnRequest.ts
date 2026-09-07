@@ -23,5 +23,9 @@ export interface CreateTurnRequest {
      * @maxLength 2000
      */
   text: string;
+  /** 选择的澄清问题消息 ID；仅当前最后一条助理消息有效。 */
+  clarification_message_id?: string;
+  /** 服务端签发的当前问题选项 ID，必须与问题消息 ID 一同提供。 */
+  choice_id?: string;
   entry_context?: EntryContext;
 }

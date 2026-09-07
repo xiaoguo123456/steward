@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proposal_id"
+  ],
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "description": "当前对话上下文给出的待确认建议 ID。"
+    }
+  }
+}

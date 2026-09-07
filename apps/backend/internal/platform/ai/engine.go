@@ -118,10 +118,12 @@ func DefaultRunLimits() RunLimits {
 
 // TurnRequest 是一次 Turn 的中立输入。
 type TurnRequest struct {
-	RunID    string
-	UserID   string
-	ThreadID string
-	TurnID   string
+	// PendingIntent 来自上一条持久化澄清，仅用于校验补充回答的动作闭环。
+	PendingIntent string
+	RunID         string
+	UserID        string
+	ThreadID      string
+	TurnID        string
 	// UserMessageID 来自正式 Turn，供创建类建议引用本轮用户输入。
 	UserMessageID string
 
@@ -155,10 +157,12 @@ type ToolCallRecord struct {
 
 // TurnResult 是一次 Turn 的中立输出。
 type TurnResult struct {
-	Text      string
-	ToolCalls []ToolCallRecord
-	Proposals []ProposalDraft
-	Usage     Usage
+	Clarification *ClarificationError
+	Resolutions   []ProposalResolution
+	Text          string
+	ToolCalls     []ToolCallRecord
+	Proposals     []ProposalDraft
+	Usage         Usage
 	// Mode 记录本轮被判定为哪种交互，仅用于审计与展示。
 	Mode string
 	// Provider 与 ProviderModel 是这一轮实际用的服务商与模型，只用于审计。

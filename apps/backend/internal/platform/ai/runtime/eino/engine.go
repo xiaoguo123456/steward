@@ -10,7 +10,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 	"log/slog"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +35,7 @@ const (
 )
 
 var (
+	errModelBudgetExceeded = errors.New("本轮模型调用次数已用尽")
 	errTokenBudgetExceeded = errors.New("本轮 token 预算已用尽")
 	errToolBudgetExceeded  = errors.New("本轮工具调用次数已用尽")
 )
@@ -119,7 +123,7 @@ func (e *Engine) RunTurn(ctx context.Context, req ai.TurnRequest) (ai.TurnResult
 				return ai.TurnResult{}, ai.ErrTurnCancelled
 			}
 			if errors.Is(event.Err, einodk.ErrExceedMaxIterations) ||
-				errors.Is(event.Err, errTokenBudgetExceeded) ||
+				errors.Is(event.Err, errTokenBudgetExceeded) || errors.Is(event.Err, errModelBudgetExceeded) ||
 				errors.Is(event.Err, errToolBudgetExceeded) || state.hasToolCalls() {
 				state.markDegraded()
 				e.logger.Warn("Eino Agent 提前结束，使用已有证据降级回答",
@@ -151,7 +155,17 @@ func (e *Engine) RunTurn(ctx context.Context, req ai.TurnRequest) (ai.TurnResult
 	}
 
 	result := state.result()
+	if terminal := state.terminalText(); terminal != "" {
+		finalText = terminal
+		result.Degraded = false
+	}
 	result.Text = finalText
+	if result.Clarification != nil {
+		result.Text = result.Clarification.Question
+		result.Proposals = nil
+		result.Resolutions = nil
+		result.Degraded = false
+	}
 	if result.Text == "" {
 		result.Text = "我这次没能把信息查全，先把已经确认的部分告诉你。如果需要，可以再问我一次。"
 		result.Degraded = true
@@ -175,8 +189,13 @@ type runState struct {
 	proposals      []ai.ProposalDraft
 	seenCalls      map[string]bool
 	totalCalls     int
+	modelCalls     int
 	degraded       bool
 	trustedSources map[string]bool
+	clarification  *ai.ClarificationError
+	resolutions    []ai.ProposalResolution
+	shortcut       bool
+	lastBatchStart int
 }
 
 func newRunState(req ai.TurnRequest, limits ai.RunLimits, provider ai.ChatProvider, logger *slog.Logger) *runState {
@@ -197,6 +216,11 @@ func stateFromContext(ctx context.Context) (*runState, error) {
 func (s *runState) beforeModelCall() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.modelCalls >= s.limits.MaxToolRounds {
+		s.degraded = true
+		return errModelBudgetExceeded
+	}
+	s.modelCalls++
 	if s.limits.MaxTokens > 0 && s.usage.InputTokens+s.usage.OutputTokens >= s.limits.MaxTokens {
 		s.degraded = true
 		return errTokenBudgetExceeded
@@ -265,6 +289,8 @@ func (s *runState) result() ai.TurnResult {
 	defer s.mu.Unlock()
 	return ai.TurnResult{
 		ToolCalls:     append([]ai.ToolCallRecord(nil), s.toolCalls...),
+		Clarification: s.clarification,
+		Resolutions:   append([]ai.ProposalResolution(nil), s.resolutions...),
 		Proposals:     append([]ai.ProposalDraft(nil), s.proposals...),
 		Usage:         s.usage,
 		Provider:      s.provider.Name(),
@@ -284,7 +310,11 @@ func (s *runState) handleUnknownTool(_ context.Context, name, input string) (str
 	}
 	s.appendRecord(record, nil)
 	s.logger.Warn("模型请求了未授权的能力", "turn_id", s.req.TurnID, "capability", name)
-	return "这个能力不可用，请改用其他方式回答。", nil
+	names := make([]string, 0, len(s.req.Capabilities))
+	for _, capability := range s.req.Capabilities {
+		names = append(names, capability.Name)
+	}
+	return "请求的工具名称不存在。本轮实际可调用的工具是：" + strings.Join(names, "、") + "。请选择意图对应的准确名称，不要声称整个功能不可用。", nil
 }
 
 // providerModel 把项目已有 ChatProvider 适配成 Eino ToolCallingChatModel。
@@ -306,6 +336,9 @@ func (m *providerModel) Generate(ctx context.Context, input []*einoschema.Messag
 	state, err := stateFromContext(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if text := state.terminalText(); text != "" {
+		return einoschema.AssistantMessage(text, nil), nil
 	}
 	if err := state.beforeModelCall(); err != nil {
 		return nil, err
@@ -330,15 +363,48 @@ func (m *providerModel) Generate(ctx context.Context, input []*einoschema.Messag
 	}
 
 	var completion ai.CompletionResult
-	if streaming, ok := m.provider.(ai.StreamingChatProvider); ok && state.req.Sink != nil {
-		completion, err = streaming.CompleteStream(ctx, request, state.req.Sink.OnDelta)
-	} else {
-		completion, err = m.provider.Complete(ctx, request)
+	for attempt := 0; attempt < 2; attempt++ {
+		if streaming, ok := m.provider.(ai.StreamingChatProvider); ok && state.req.Sink != nil {
+			completion, err = streaming.CompleteStream(ctx, request, state.req.Sink.OnDelta)
+		} else {
+			completion, err = m.provider.Complete(ctx, request)
+		}
+		if err != nil {
+			return nil, err
+		}
+		state.addUsage(completion.Usage)
+		mustResolveQuestion := state.req.PendingIntent != "" && !changedTopic(state.req.UserText) && !state.hasToolCalls()
+		invalidCompletion := completionClaim.MatchString(completion.Content) || internalReply.MatchString(completion.Content) || mustResolveQuestion
+		if len(completion.ToolCalls) > 0 || !invalidCompletion || len(state.result().Proposals) > 0 || len(state.result().Resolutions) > 0 {
+			break
+		}
+		if attempt == 1 {
+			completion.Content = "这次没有生成可用的建议，请重试。"
+			state.markDegraded()
+			break
+		}
+		// 仅修复声称完成却没有动作的协议违例，不为每轮增加意图模型调用。
+		request.Messages = append(request.Messages, ai.Message{Role: ai.RoleAssistant, Content: completion.Content}, ai.Message{Role: ai.RoleSystem, Content: "本轮还没有调用动作或澄清工具，应用状态没有改变。若正在回答上一轮已保存的问题，必须承接已有意图和用户原话，不得输出伪造的 context、ID 或文字卡片。若信息齐全必须立即调用建议或取消工具；缺少关键字段则提出一个具体问题。禁止只写文字卡片或声称已经完成。"})
+		if err := state.beforeModelCall(); err != nil {
+			return nil, err
+		}
 	}
-	if err != nil {
-		return nil, err
+
+	state.mu.Lock()
+	state.lastBatchStart = len(state.toolCalls)
+	state.shortcut = len(completion.ToolCalls) > 0
+	for _, call := range completion.ToolCalls {
+		proposal := false
+		for _, capability := range state.req.Capabilities {
+			if capability.Name == call.Name && capability.Risk == ai.RiskProposal {
+				proposal = true
+			}
+		}
+		if !proposal {
+			state.shortcut = false
+		}
 	}
-	state.addUsage(completion.Usage)
+	state.mu.Unlock()
 
 	message := einoschema.AssistantMessage(completion.Content, toolCallsToEino(completion.ToolCalls))
 	message.ResponseMeta = &einoschema.ResponseMeta{
@@ -448,7 +514,7 @@ func (t *capabilityTool) InvokableRun(ctx context.Context, arguments string,
 		args = map[string]any{}
 	}
 	if err := t.validator.Validate(args); err != nil {
-		return fail("AI_TOOL_INPUT_INVALID", "参数不符合工具 Schema：请检查必填字段、类型、枚举与数组数量，修正后再调用。")
+		return fail("AI_TOOL_INPUT_INVALID", schemaFeedback(err, t.capability.Parameters))
 	}
 
 	if state.seen(callFingerprint(t.capability.Name, args)) {
@@ -457,9 +523,22 @@ func (t *capabilityTool) InvokableRun(ctx context.Context, arguments string,
 
 	callCtx, cancel := context.WithTimeout(ctx, t.capability.Timeout)
 	defer cancel()
+	state.mu.Lock()
+	blocked := state.clarification != nil
+	state.mu.Unlock()
+	if blocked {
+		return fail("AI_CLARIFICATION_REQUIRED", "请先等待用户澄清。")
+	}
 	output, callErr := t.capability.Handler(callCtx, state.req.Ctx, args)
 	record.DurationMS = int(time.Since(started).Milliseconds())
 	if callErr != nil {
+		var clarification *ai.ClarificationError
+		if errors.As(callErr, &clarification) {
+			state.mu.Lock()
+			state.clarification = clarification
+			state.mu.Unlock()
+			return fail("AI_CLARIFICATION_REQUIRED", clarification.Question)
+		}
 		var inputErr *ai.ToolInputError
 		if errors.As(callErr, &inputErr) {
 			return fail("AI_TOOL_INPUT_INVALID", inputErr.Message)
@@ -494,6 +573,11 @@ func (t *capabilityTool) InvokableRun(ctx context.Context, arguments string,
 	record.Summary = summarize(content)
 	record.SourceRefs = output.SourceRefs
 	state.appendRecord(record, output.Proposals)
+	state.mu.Lock()
+	if t.capability.Name == "assistant.dismiss_proposal" && t.capability.Risk == ai.RiskProposal {
+		state.resolutions = append(state.resolutions, output.Resolutions...)
+	}
+	state.mu.Unlock()
 	return content, nil
 }
 
@@ -644,4 +728,110 @@ func summarize(content string) string {
 		return string(runes)
 	}
 	return string(runes[:120]) + "…"
+}
+
+// terminalText 只省去单一成功建议之后的复述；复杂多步骤和失败修复继续模型循环。
+func (s *runState) terminalText() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.clarification != nil {
+		return s.clarification.Question
+	}
+	if !s.shortcut {
+		return ""
+	}
+	for _, word := range []string{"同时", "然后", "另外", "并且", "以及"} {
+		if strings.Contains(s.req.UserText, word) {
+			return ""
+		}
+	}
+	for _, call := range s.toolCalls[s.lastBatchStart:] {
+		if call.Status != "succeeded" {
+			return ""
+		}
+	}
+	if len(s.proposals) > 0 {
+		return "已准备好待确认建议，请查看卡片后确认。"
+	}
+	if len(s.resolutions) > 0 {
+		return "待确认建议的取消请求已处理。"
+	}
+	return ""
+}
+
+// schemaFeedback 仅返回 Schema 已声明的字段名和约束类型，不拼接用户值或未知键名。
+func schemaFeedback(err error, schema map[string]any) string {
+	known := map[string]bool{}
+	var collect func(any)
+	collect = func(value any) {
+		switch v := value.(type) {
+		case map[string]any:
+			if props, ok := v["properties"].(map[string]any); ok {
+				for name := range props {
+					known[name] = true
+				}
+			}
+			for _, child := range v {
+				collect(child)
+			}
+		case []any:
+			for _, child := range v {
+				collect(child)
+			}
+		}
+	}
+	collect(schema)
+	var validation *jsonschema.ValidationError
+	if !errors.As(err, &validation) {
+		return "参数不符合工具 Schema，请修正后再调用。"
+	}
+	details := []string{}
+	var visit func(*jsonschema.ValidationError)
+	visit = func(e *jsonschema.ValidationError) {
+		if len(details) >= 6 {
+			return
+		}
+		if len(e.Causes) > 0 {
+			for _, cause := range e.Causes {
+				visit(cause)
+			}
+			return
+		}
+		path := "$"
+		for _, part := range e.InstanceLocation {
+			if known[part] {
+				path += "." + part
+			} else if n, err := strconv.Atoi(part); err == nil && n >= 0 && n < 1000 {
+				path += "[" + part + "]"
+			} else {
+				path += ".?"
+			}
+		}
+		constraint := strings.Join(e.ErrorKind.KeywordPath(), "/")
+		if missing, ok := e.ErrorKind.(*kind.Required); ok {
+			for _, field := range missing.Missing {
+				if known[field] {
+					details = append(details, path+"."+field+": required")
+				}
+			}
+		} else {
+			details = append(details, path+": "+constraint)
+		}
+	}
+	visit(validation)
+	return "参数校验未通过：" + strings.Join(details, "；") + "。请按字段约束修正，不要省略整个操作。"
+}
+
+// 完成声明必须有本轮成功动作支撑；普通回答不触发额外模型调用。
+var completionClaim = regexp.MustCompile(`(?s)(已(?:经)?(?:为你|帮你|给你)?(?:准备|生成|取消|作废)|(?:为你|给你|帮你)(?:准备|生成)了|准备了.*建议|准备好了|需要助手复核)`)
+
+var internalReply = regexp.MustCompile(`(?i)(\[context\]|\b(?:prop|aprp|amsg|tsk|evt)_[a-z0-9-]{8,})`)
+
+func changedTopic(text string) bool {
+	for _, word := range []string{"先不说", "先不聊", "不聊这个", "换个话题", "换个问题", "讲个笑话", "算了", "不要了"} {
+		if strings.Contains(text, word) {
+			return true
+		}
+	}
+	return false
 }

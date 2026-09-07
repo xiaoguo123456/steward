@@ -49,7 +49,7 @@ RETURNING *;
 
 -- name: SupersedeProposalsForTarget :exec
 -- 新建议明确替换同一目标上的旧建议时，把旧项标为 superseded。
-UPDATE action_proposals SET status = 'superseded', updated_at = now()
+UPDATE action_proposals SET status = 'superseded', updated_at = now(), version = version + 1
 WHERE status = 'pending'
   AND target_type = sqlc.arg(target_type)
   AND target_id = sqlc.arg(target_id)
@@ -66,3 +66,8 @@ SELECT count(*)::int FROM action_proposals WHERE status = 'pending' AND expires_
 -- 确认执行前先锁住这一行：并发的两次确认里只有一个能拿到锁，
 -- 另一个会看到状态已变成 executed 而被拒绝。
 SELECT * FROM action_proposals WHERE id = sqlc.arg(id) FOR UPDATE;
+
+-- name: ListPendingProposalsForThread :many
+SELECT * FROM action_proposals
+WHERE thread_id = sqlc.arg(thread_id) AND status = 'pending' AND expires_at >= now()
+ORDER BY created_at DESC, id DESC LIMIT 20;

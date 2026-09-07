@@ -1,0 +1,174 @@
+[
+  {
+    "id": "短回答不是噪声",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "给我记个待办",
+        "no_proposal": true
+      },
+      {
+        "text": "取快递",
+        "proposal_type": "task_create",
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "不要忘记不是撤回",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "不要忘记买面包，帮我记下来",
+        "proposal_type": "task_create",
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "撤回改写",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "帮我记一条：买鸡蛋",
+        "proposal_type": "task_create"
+      },
+      {
+        "text": "这条建议取消吧",
+        "no_proposal": true,
+        "pending_none": true
+      }
+    ]
+  },
+  {
+    "id": "模糊日期改写",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "隔些日子叫我去领材料",
+        "no_proposal": true,
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "非法月日改写",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "4月31日提醒我取资料",
+        "no_proposal": true,
+        "no_dates": true
+      }
+    ]
+  },
+  {
+    "id": "重复任务改写",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [
+      "报销",
+      "报销"
+    ],
+    "turns": [
+      {
+        "text": "那个叫报销的待办，截止改到后天",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "条件改写",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [
+      "报销"
+    ],
+    "turns": [
+      {
+        "text": "若报销已经完成才改到明天，没完成就别动",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "时间补充改写",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "明天晚上跟我安排一次读书会",
+        "no_proposal": true
+      },
+      {
+        "text": "晚上八点到九点",
+        "proposal_type": "event_create"
+      }
+    ]
+  },
+  {
+    "id": "澄清换话题",
+    "mode": "assistant",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "帮我新建个待办",
+        "no_proposal": true
+      },
+      {
+        "text": "先不说这个，给我讲个笑话",
+        "no_proposal": true
+      }
+    ]
+  },
+  {
+    "id": "Capture随口聊",
+    "mode": "capture",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "不用保存啦，我就是随口聊聊想买咖啡",
+        "no_candidates": true,
+        "no_action": true
+      }
+    ]
+  },
+  {
+    "id": "Capture指定笔记",
+    "mode": "capture",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "不要建任务，把这句话记成笔记：咖啡豆快用完了",
+        "candidate_type": "note"
+      }
+    ]
+  },
+  {
+    "id": "Capture否定防误伤",
+    "mode": "capture",
+    "why": "独立措辞留出回归",
+    "tasks": [],
+    "turns": [
+      {
+        "text": "不要忘记给花浇水，帮我记下来",
+        "candidate_type": "task",
+        "no_dates": true
+      }
+    ]
+  }
+]

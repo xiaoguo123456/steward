@@ -50,6 +50,14 @@ type CapabilityContext struct {
 	// 只用于消歧，执行前仍会重新校验归属。
 	EntryResourceType string
 	EntryResourceID   string
+	// UserTexts 只包含权威用户消息，不包含工具正文或模型回复。
+	UserTexts   []string
+	UserSources []UserTextSource
+	// Pending 是当前对话待确认建议的只读快照。
+	Pending         []PendingProposal
+	SelectedVersion int
+	PendingReminder bool
+	PendingIntent   string
 }
 
 // CapabilityResult 是一次工具调用的结果。
@@ -59,12 +67,15 @@ type CapabilityResult struct {
 	// SourceRefs 是本次实际读取过的来源，用于校验模型引用是否真实。
 	SourceRefs []string
 	// Proposals 只有 RiskProposal 的能力才会返回。
-	Proposals []ProposalDraft
+	Proposals   []ProposalDraft
+	Resolutions []ProposalResolution
 }
 
 // ProposalDraft 是一条尚未落库的建议。
 type ProposalDraft struct {
-	Type string
+	Type                    string
+	ReplacesProposalID      string
+	ReplacesProposalVersion int
 	// TargetType 与 TargetID 指向已有实体，创建类建议为空。
 	TargetType            string
 	TargetID              string
@@ -175,4 +186,44 @@ func (r *Registry) Names() []string {
 	out := make([]string, len(r.order))
 	copy(out, r.order)
 	return out
+}
+
+// PendingProposal 仅在服务端已校验归属后加入当前对话上下文。
+type PendingProposal struct {
+	ID      string         `json:"id"`
+	Version int            `json:"version"`
+	Type    string         `json:"type"`
+	Command map[string]any `json:"command"`
+}
+
+// ProposalResolution 只请求关闭待确认建议，不操作已经保存的实体。
+type ProposalResolution struct {
+	ID      string
+	Version int
+}
+
+// ClarificationChoice 的对象引用仅在服务端存储，客户端只能提交选项 ID。
+type ClarificationChoice struct {
+	ID           string `json:"id"`
+	Label        string `json:"label"`
+	ResourceType string `json:"resource_type"`
+	ResourceID   string `json:"resource_id"`
+	Version      int    `json:"version"`
+}
+
+// ClarificationError 是业务上需要补充信息的成功结果，终止无效工具循环。
+type ClarificationError struct {
+	Question     string                `json:"question"`
+	Intent       string                `json:"intent,omitempty"`
+	MissingField string                `json:"missing_field,omitempty"`
+	Choices      []ClarificationChoice `json:"choices,omitempty"`
+}
+
+func (e *ClarificationError) Error() string { return e.Question }
+
+// UserTextSource 固定原话的时间锚点，跨午夜补充不会把“明天”再顺延一天。
+type UserTextSource struct {
+	ID        string
+	Text      string
+	CreatedAt time.Time
 }

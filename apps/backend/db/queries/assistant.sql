@@ -206,3 +206,12 @@ WHERE last_message_seq = 0 AND created_at < now() - interval '24 hours';
 -- 覆盖式更新流式草稿。调用方按固定间隔节流，不是每个增量都写。
 UPDATE assistant_turns SET draft_content = sqlc.arg(draft_content)
 WHERE id = sqlc.arg(id) AND status = 'running';
+
+-- name: SetMessageInteraction :exec
+UPDATE assistant_messages SET interaction = sqlc.arg(interaction) WHERE id = sqlc.arg(id);
+
+-- name: GetAssistantMessage :one
+SELECT * FROM assistant_messages WHERE id = sqlc.arg(id) AND deleted_at IS NULL;
+
+-- name: LockAssistantThread :one
+SELECT * FROM assistant_threads WHERE id = sqlc.arg(id) AND status <> 'deleted' FOR UPDATE;

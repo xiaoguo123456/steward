@@ -108,6 +108,18 @@ func (s *ProposalService) SaveDraft(ctx context.Context, q *dbgen.Queries,
 		return "", err
 	}
 
+	if draft.ReplacesProposalID != "" {
+		old, err := q.LockProposal(ctx, draft.ReplacesProposalID)
+		if err != nil {
+			return "", apperr.Internal(err)
+		}
+		if old.ThreadID == nil || *old.ThreadID != threadID || old.Status != "pending" || old.ExpiresAt.Before(time.Now()) || old.ProposalType != draft.Type || int(old.Version) != draft.ReplacesProposalVersion {
+			return "", nil
+		}
+		if _, err := q.MarkProposalResolved(ctx, dbgen.MarkProposalResolvedParams{ID: old.ID, Status: "superseded"}); err != nil {
+			return "", apperr.Internal(err)
+		}
+	}
 	command, err := json.Marshal(draft.Command)
 	if err != nil {
 		return "", apperr.Internal(err)
@@ -389,6 +401,9 @@ func (s *ProposalService) executeTaskSplit(ctx context.Context, q *dbgen.Queries
 		value := int32(*targetVersion)
 		expected = &value
 	}
+	if required := text(command["required_status"]); required != "" && current.Status != required {
+		return ConfirmResult{}, apperr.New(apperr.CodeAIProposalStale)
+	}
 	if expected != nil && current.Version != *expected {
 		return ConfirmResult{}, apperr.New(apperr.CodeAIProposalStale)
 	}
@@ -545,6 +560,9 @@ func (s *ProposalService) executeTaskUpdate(ctx context.Context, q *dbgen.Querie
 			return ConfirmResult{}, apperr.NotFound("任务")
 		}
 		return ConfirmResult{}, apperr.Internal(err)
+	}
+	if required := text(command["required_status"]); required != "" && current.Status != required {
+		return ConfirmResult{}, apperr.New(apperr.CodeAIProposalStale)
 	}
 	if expected != nil && current.Version != *expected {
 		if _, err := q.MarkProposalResolved(ctx, dbgen.MarkProposalResolvedParams{

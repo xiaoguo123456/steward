@@ -46,3 +46,7 @@ test('多轮文字澄清在处理中聚合为一行，图片仍逐项显示', ()
     { key: 'image-2', label: '图片 3', status: 'failed', errorMessage: '图片模糊' },
   ]);
 });
+
+test('明确无保存内容的结束态不展示失败或零项确认', () => {
+  assert.equal(captureConversationPhase({ captureStatus: 'discarded', operationStatus: 'succeeded' }), 'dismissed');
+});

@@ -219,7 +219,7 @@ func (s *Service) Create(ctx context.Context, userID, idempotencyKey string, bod
 				// 媒体项等待 Worker 处理；当前没有接入真实转写与 OCR。
 				partStatus = "pending"
 			}
-			if kind == "text" && (p.Text == nil || strings.TrimSpace(*p.Text) == "") {
+			if kind == "text" && (p.Text == nil || !ai.HasVisibleText(*p.Text)) {
 				return apperr.Validation(apperr.Field("parts", "文字输入不能为空。"))
 			}
 			if kind != "text" && (p.MediaId == nil || *p.MediaId == "") {
@@ -404,6 +404,9 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 	// 第二步：事务外完成媒体预处理。
 	// 这一步对应状态机里的 preprocessing：先把图片与音频转成文字，再统一理解。
 	parts = s.preprocessMedia(ctx, args, parts)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if status := mediaPreprocessStatus(parts); status != "" {
 		return s.finishMediaPreprocessBlocked(ctx, args, capture, status)
 	}
@@ -806,6 +809,9 @@ func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 	}
 
 	status := "needs_confirmation"
+	if len(result.Candidates) == 0 && len(result.Questions) == 0 {
+		status = "discarded"
+	}
 	if blocking {
 		status = "awaiting_instruction"
 	}

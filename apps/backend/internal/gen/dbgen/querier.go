@@ -211,6 +211,7 @@ type Querier interface {
 	GetActiveShoppingTaskList(ctx context.Context, userID string) (TaskList, error)
 	GetActivityBatch(ctx context.Context, id string) (ActivityBatch, error)
 	GetAiSettings(ctx context.Context, userID string) (UserAiSetting, error)
+	GetAssistantMessage(ctx context.Context, id string) (AssistantMessage, error)
 	GetCapture(ctx context.Context, id string) (Capture, error)
 	GetCaptureCandidate(ctx context.Context, arg GetCaptureCandidateParams) (CaptureCandidate, error)
 	// Worker 在 Provider 返回后必须锁定权威 Capture，再校验 revision 与终态。
@@ -335,6 +336,7 @@ type Querier interface {
 	ListPendingCostActions(ctx context.Context, rowLimit int32) ([]ListPendingCostActionsRow, error)
 	// 长期停留在 pending 的资产说明客户端放弃了上传，交给清理任务回收。
 	ListPendingMediaBefore(ctx context.Context, arg ListPendingMediaBeforeParams) ([]MediaAsset, error)
+	ListPendingProposalsForThread(ctx context.Context, threadID *string) ([]ActionProposal, error)
 	// 亲友档案、互动与人物关联事件。
 	ListPeople(ctx context.Context, arg ListPeopleParams) ([]Person, error)
 	ListPersonEvents(ctx context.Context, arg ListPersonEventsParams) ([]Event, error)
@@ -398,6 +400,7 @@ type Querier interface {
 	ListTrackerStats(ctx context.Context, arg ListTrackerStatsParams) ([]ListTrackerStatsRow, error)
 	// Tracker 与 Record 查询。Record 的 values 结构由 Go Domain 依据 Tracker fields 校验。
 	ListTrackers(ctx context.Context, arg ListTrackersParams) ([]Tracker, error)
+	LockAssistantThread(ctx context.Context, id string) (AssistantThread, error)
 	// 同一用户的默认 Thread 创建必须串行：两个设备同时发出当天第一条消息时，
 	// 都要先完成「查询当天 Thread → 必要时创建」这段临界区。
 	LockAssistantThreadCreation(ctx context.Context, userID string) error
@@ -465,6 +468,7 @@ type Querier interface {
 	SearchProjects(ctx context.Context, arg SearchProjectsParams) ([]SearchProjectsRow, error)
 	SearchRecords(ctx context.Context, arg SearchRecordsParams) ([]SearchRecordsRow, error)
 	SearchTasks(ctx context.Context, arg SearchTasksParams) ([]SearchTasksRow, error)
+	SetMessageInteraction(ctx context.Context, arg SetMessageInteractionParams) error
 	SetTaskListDefault(ctx context.Context, id string) (TaskList, error)
 	// 首条消息定标题。只在标题还是默认值时写，用户改过就不再覆盖。
 	SetThreadTitleIfDefault(ctx context.Context, arg SetThreadTitleIfDefaultParams) error

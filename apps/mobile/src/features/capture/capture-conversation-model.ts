@@ -7,6 +7,7 @@ export type CaptureConversationPhase =
   | 'partial_failure'
   | 'failure'
   | 'completed'
+  | 'dismissed'
   | 'unavailable';
 
 type CaptureConversationState = {
@@ -28,7 +29,8 @@ export function captureConversationPhase({
   if (captureStatus === 'needs_confirmation') return 'confirmation';
   if (captureStatus === 'partially_failed') return 'partial_failure';
   if (captureStatus === 'confirmed') return 'completed';
-  if (captureStatus === 'failed' || captureStatus === 'discarded' || captureStatus === 'expired') {
+  if (captureStatus === 'discarded') return 'dismissed';
+  if (captureStatus === 'failed' || captureStatus === 'expired') {
     return 'failure';
   }
   if (operationFailed || operationStatus === 'failed' || operationStatus === 'cancelled') {

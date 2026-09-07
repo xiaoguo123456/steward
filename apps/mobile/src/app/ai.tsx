@@ -199,6 +199,15 @@ export default function AiConversationScreen() {
   // 流只是让文字早点出现。它断了、连不上或者根本没启用都不影响正确性：
   // 下面的轮询照常推进，done 之后展示的是落库的那条消息。
   const stream = useTurnStream(thinking ? turnId : '');
+  useEffect(() => {
+    if (!stream.done) return;
+    // done 在服务端提交事务后发布，立即读取权威卡片；断线仍由轮询恢复。
+    void operation.refetch();
+    void messages.refetch();
+    void proposals.refetch();
+    // 与轮询收尾一致，仅在当前轮次第一次收到明确完成时触发。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnId, stream.done]);
 
   // 回复失败的说明由服务端给，直接派生出来展示，不额外存一份状态。
   const turnFailure =
@@ -224,10 +233,10 @@ export default function AiConversationScreen() {
     },
   });
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (choice?: { messageId: string; id: string; label: string }) => {
+    const text = choice?.label ?? input.trim();
     if (
-      (!text && images.length === 0)
+      (!hasVisibleMessage(text) && images.length === 0)
       || thinking
       || restoring
       || createThread.isPending
@@ -238,7 +247,7 @@ export default function AiConversationScreen() {
     setFailure(null);
     setShowMediaMenu(false);
 
-    if (images.length > 0) {
+    if (images.length > 0 && !choice) {
       setSubmittingCapture(true);
       try {
         const uploaded = await media.upload(images);
@@ -268,7 +277,7 @@ export default function AiConversationScreen() {
       return;
     }
 
-    setInput('');
+    if (!choice) setInput('');
     try {
       // 服务端按用户时区复用当天 Thread；只有用户点过“新对话”才强制新建。
       const id = threadId || (
@@ -277,7 +286,7 @@ export default function AiConversationScreen() {
         })
       ).data.id;
       dispatchThread({ type: 'attach_thread', threadId: id });
-      await createTurn.mutateAsync({ threadId: id, data: { text } });
+      await createTurn.mutateAsync({ threadId: id, data: { text, ...(choice ? { clarification_message_id: choice.messageId, choice_id: choice.id } : {}) } });
     } catch {
       // onError 已经写过提示；没有新输入时把发送失败的正文还给用户。
       setInput((current) => current || text);
@@ -307,7 +316,7 @@ export default function AiConversationScreen() {
   const standaloneQuestion = captureSession ? undefined : currentQuestion;
   const sending = createThread.isPending || createTurn.isPending || submittingCapture || media.uploading;
   const captureDecisionPending = Boolean(captureSession || standaloneQuestion);
-  const canSend = Boolean(input.trim() || images.length)
+  const canSend = Boolean(hasVisibleMessage(input) || images.length)
     && !thinking
     && !restoring
     && !sending
@@ -465,6 +474,9 @@ export default function AiConversationScreen() {
           <MessageRow
             key={message.id}
             message={message}
+            onChoice={message.id === ordered.at(-1)?.id && !thinking && !sending
+              ? (id, label) => { void send({ messageId: message.id, id, label }); }
+              : undefined}
             proposals={pending.filter((p) => message.proposal_ids?.includes(p.id))}
             onProposalResolved={() => {
               void proposals.refetch();
@@ -664,7 +676,7 @@ export default function AiConversationScreen() {
             disabled={thinking ? cancelTurn.isPending : !canSend}
             onPress={thinking
               ? () => cancelTurn.mutate({ turnId })
-              : send}
+              : () => { void send(); }}
             style={({ pressed }) => [
               styles.sendButton,
               ((!thinking && !canSend) || cancelTurn.isPending) && styles.sendDisabled,
@@ -700,10 +712,12 @@ function MessageRow({
   message,
   proposals,
   onProposalResolved,
+  onChoice,
 }: {
   message: AssistantMessage;
   proposals: ActionProposal[];
   onProposalResolved: () => void;
+  onChoice?: (id: string, label: string) => void;
 }) {
   const isUser = message.role === 'user';
 
@@ -724,6 +738,18 @@ function MessageRow({
         </View>
       </View>
 
+      {message.interaction?.choices?.map((choice) => (
+        <Pressable
+          key={choice.id}
+          accessibilityRole="button"
+          accessibilityLabel={choice.label}
+          disabled={!onChoice}
+          onPress={() => onChoice?.(choice.id, choice.label)}
+          style={[styles.bubble, { opacity: onChoice ? 1 : 0.5 }]}
+        >
+          <Text style={styles.messageText}>{choice.label}</Text>
+        </Pressable>
+      ))}
       {proposals.map((proposal) => (
         <ProposalCard key={proposal.id} onResolved={onProposalResolved} proposal={proposal} />
       ))}
@@ -1021,3 +1047,8 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
 });
+
+/** 只判定全不可见输入，不改写正文里的 Emoji 连接符。 */
+function hasVisibleMessage(text: string): boolean {
+  return /[^\s\p{Cf}\p{Cc}]/u.test(text);
+}

@@ -98,3 +98,11 @@ pgnotify 的三个代价都是结构性的，不是实现不好：LISTEN 是连�
 ## 参数与来源校验
 
 运行时校验 Schema 后才执行 Handler。来源只接受当前真实消息与成功只读审计，目标更新还需引用目标本身。非法时间在草稿与确认编辑两处校验。建议过期或失效会提交终态；领域部分写入仍全部回滚。Eval 与原生验收要求见后端指南的 2026-09-07 补充章节。
+
+## 澄清与意图恢复
+
+当前实现向 Context Builder 提供本对话待确认建议的版本与最小命令；澄清问题和选择保存在 assistant_messages.interaction。选项只对最新问题有效，服务端重新校验归属与版本。撤回及替换建议由应用服务在短事务中完成，模型不能执行正式业务写入。
+
+字段级时间来源和控制工具契约见 packages/ai-contracts/schemas/assistant。日期由 Go 从用户原话计算，无法唯一求值时澄清；跨午夜补充仍以原始日期表达所在消息的时间为锚点。确认仍需用户操作。
+
+回归入口：internal/platform/ai/eval/interaction_regression_test.go、proposal_guards_test.go，以及 opt-in ambiguity-live.json / ambiguity-holdout.json。真实模型验收不属于脚本 Provider 的确定性安全测试。

@@ -40,7 +40,7 @@ var VisionExtractPromptV1 string
 
 // AssistantPolicyV1 是通用 Assistant 的 System Policy。
 //
-//go:embed prompts/assistant/v2.md
+//go:embed prompts/assistant/v3.md
 var AssistantPolicyV1 string
 
 // ReviewNarrativePromptV2 是复盘结构化内容的系统提示词。
@@ -117,9 +117,9 @@ var MoodReflectionSchemaV1 []byte
 
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion        = "capture-parse@v5"
+	CaptureParsePromptVersion        = "capture-parse@v6"
 	VisionExtractPromptVersion       = "vision-extract@v1"
-	AssistantPolicyVersion           = "assistant@v2"
+	AssistantPolicyVersion           = "assistant@v3"
 	ReviewNarrativePromptVersion     = "review-narrative@v2"
 	ReviewNarrativeSchemaVersion     = "review-narrative-result.v2"
 	NotePolishPromptVersion          = "note-polish@v1"
@@ -132,3 +132,23 @@ const (
 	MoodReflectionSchemaVersion      = "mood-reflection-result.v1"
 	CaptureParseSchemaVersion        = "capture-parse-result.v4"
 )
+
+// ProposalGuardsSchemaV1 是建议前置条件与字段级时间来源的权威契约。
+//
+//go:embed schemas/assistant/proposal-guards.v1.schema.json
+var ProposalGuardsSchemaV1 []byte
+
+// CaptureParsePromptV6 区分用户控制意图与引用素材，不将随口说默认保存为笔记。
+//
+//go:embed prompts/capture-parse/v6.md
+var CaptureParsePromptV6 string
+
+// DismissProposalSchemaV1 是待确认建议撤回工具的输入契约。
+//
+//go:embed schemas/assistant/dismiss-proposal.v1.schema.json
+var DismissProposalSchemaV1 []byte
+
+// AskClarificationSchemaV1 是持久化澄清工具的输入契约。
+//
+//go:embed schemas/assistant/ask-clarification.v1.schema.json
+var AskClarificationSchemaV1 []byte

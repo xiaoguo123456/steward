@@ -78,7 +78,7 @@ INSERT INTO assistant_messages (
     $1, $2, $3, $4,
     $5, $6, $7, $8, $9
 )
-RETURNING id, user_id, thread_id, message_seq, role, content, status, turn_id, created_at, completed_at, deleted_at
+RETURNING id, user_id, thread_id, message_seq, role, content, status, turn_id, created_at, completed_at, deleted_at, interaction
 `
 
 type CreateMessageParams struct {
@@ -118,6 +118,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (A
 		&i.CreatedAt,
 		&i.CompletedAt,
 		&i.DeletedAt,
+		&i.Interaction,
 	)
 	return i, err
 }
@@ -288,6 +289,30 @@ func (q *Queries) FinishTurn(ctx context.Context, arg FinishTurnParams) (Assista
 	return i, err
 }
 
+const getAssistantMessage = `-- name: GetAssistantMessage :one
+SELECT id, user_id, thread_id, message_seq, role, content, status, turn_id, created_at, completed_at, deleted_at, interaction FROM assistant_messages WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) GetAssistantMessage(ctx context.Context, id string) (AssistantMessage, error) {
+	row := q.db.QueryRow(ctx, getAssistantMessage, id)
+	var i AssistantMessage
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ThreadID,
+		&i.MessageSeq,
+		&i.Role,
+		&i.Content,
+		&i.Status,
+		&i.TurnID,
+		&i.CreatedAt,
+		&i.CompletedAt,
+		&i.DeletedAt,
+		&i.Interaction,
+	)
+	return i, err
+}
+
 const getCurrentDayEmptyThread = `-- name: GetCurrentDayEmptyThread :one
 SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version, created_for_default FROM assistant_threads
 WHERE deleted_at IS NULL
@@ -429,7 +454,7 @@ func (q *Queries) GetTurn(ctx context.Context, id string) (AssistantTurn, error)
 }
 
 const listMessages = `-- name: ListMessages :many
-SELECT id, user_id, thread_id, message_seq, role, content, status, turn_id, created_at, completed_at, deleted_at FROM assistant_messages
+SELECT id, user_id, thread_id, message_seq, role, content, status, turn_id, created_at, completed_at, deleted_at, interaction FROM assistant_messages
 WHERE thread_id = $1 AND deleted_at IS NULL
   AND ($2::int IS NULL OR message_seq < $2::int)
 ORDER BY message_seq DESC
@@ -463,6 +488,7 @@ func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]A
 			&i.CreatedAt,
 			&i.CompletedAt,
 			&i.DeletedAt,
+			&i.Interaction,
 		); err != nil {
 			return nil, err
 		}
@@ -475,7 +501,7 @@ func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]A
 }
 
 const listRecentMessages = `-- name: ListRecentMessages :many
-SELECT id, user_id, thread_id, message_seq, role, content, status, turn_id, created_at, completed_at, deleted_at FROM assistant_messages
+SELECT id, user_id, thread_id, message_seq, role, content, status, turn_id, created_at, completed_at, deleted_at, interaction FROM assistant_messages
 WHERE thread_id = $1 AND deleted_at IS NULL AND status = 'completed'
 ORDER BY message_seq DESC
 LIMIT $2
@@ -508,6 +534,7 @@ func (q *Queries) ListRecentMessages(ctx context.Context, arg ListRecentMessages
 			&i.CreatedAt,
 			&i.CompletedAt,
 			&i.DeletedAt,
+			&i.Interaction,
 		); err != nil {
 			return nil, err
 		}
@@ -617,6 +644,30 @@ func (q *Queries) ListToolCalls(ctx context.Context, turnID string) ([]AiToolCal
 	return items, nil
 }
 
+const lockAssistantThread = `-- name: LockAssistantThread :one
+SELECT id, user_id, title, status, last_message_seq, last_turn_seq, created_at, updated_at, archived_at, deleted_at, version, created_for_default FROM assistant_threads WHERE id = $1 AND status <> 'deleted' FOR UPDATE
+`
+
+func (q *Queries) LockAssistantThread(ctx context.Context, id string) (AssistantThread, error) {
+	row := q.db.QueryRow(ctx, lockAssistantThread, id)
+	var i AssistantThread
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Status,
+		&i.LastMessageSeq,
+		&i.LastTurnSeq,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+		&i.DeletedAt,
+		&i.Version,
+		&i.CreatedForDefault,
+	)
+	return i, err
+}
+
 const lockAssistantThreadCreation = `-- name: LockAssistantThreadCreation :exec
 SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
 `
@@ -688,6 +739,20 @@ type SaveTurnEntryContextParams struct {
 // provider_state 存客户端页面上下文，只用于消歧；执行前仍会重新校验归属与版本。
 func (q *Queries) SaveTurnEntryContext(ctx context.Context, arg SaveTurnEntryContextParams) error {
 	_, err := q.db.Exec(ctx, saveTurnEntryContext, arg.ProviderState, arg.ID)
+	return err
+}
+
+const setMessageInteraction = `-- name: SetMessageInteraction :exec
+UPDATE assistant_messages SET interaction = $1 WHERE id = $2
+`
+
+type SetMessageInteractionParams struct {
+	Interaction []byte
+	ID          string
+}
+
+func (q *Queries) SetMessageInteraction(ctx context.Context, arg SetMessageInteractionParams) error {
+	_, err := q.db.Exec(ctx, setMessageInteraction, arg.Interaction, arg.ID)
 	return err
 }
 

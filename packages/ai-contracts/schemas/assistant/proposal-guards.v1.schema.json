@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "replaces_proposal_id": {
+      "type": "string",
+      "description": "修订当前对话待确认建议时必填；来自上下文，不能引用已经保存的实体。"
+    },
+    "required_status": {
+      "type": "string",
+      "enum": [
+        "todo",
+        "doing",
+        "done"
+      ],
+      "description": "仅用户明确提出任务状态前提时填写；服务端验证实际状态。"
+    },
+    "time_evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "date_text": {
+            "type": "string",
+            "description": "用户消息中原样出现的日期表达，例如明天、9月10日。"
+          },
+          "time_text": {
+            "type": "string",
+            "description": "用户原样给出的时刻，例如三点、15:00；不得自行补小时。"
+          },
+          "period_text": {
+            "type": "string",
+            "enum": [
+              "凌晨",
+              "早上",
+              "上午",
+              "中午",
+              "下午",
+              "晚上"
+            ],
+            "description": "用户给出的时段，跨轮补充时可引用上一条用户消息。"
+          },
+          "suggestion_request": {
+            "type": "string",
+            "description": "仅用户明确要求推荐或挑选时段时，引用原样出现的请求片段；对应时间在预览中标为建议，不代表用户已指定。"
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "date_text"
+            ]
+          },
+          {
+            "required": [
+              "suggestion_request"
+            ]
+          }
+        ]
+      },
+      "description": "每个写入时间字段必须携带用户原话，日期和时刻由 Go 验证；不支持的表达先澄清。",
+      "propertyNames": {
+        "enum": [
+          "due_date",
+          "due_at",
+          "focus_date",
+          "scheduled_start_at",
+          "scheduled_end_at",
+          "start_at",
+          "end_at",
+          "start_date"
+        ]
+      }
+    }
+  }
+}

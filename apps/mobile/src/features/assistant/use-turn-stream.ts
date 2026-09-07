@@ -20,6 +20,8 @@ type StreamState = {
   text: string;
   label: string;
   finished: boolean;
+  /** 仅服务端明确提交完成事件为真，断线和错误不代表成功。 */
+  done: boolean;
   /** 传输层截断过这条快照：屏幕上的文字还不是全部。 */
   truncated: boolean;
 };
@@ -29,6 +31,7 @@ const emptyState: StreamState = {
   text: '',
   label: '',
   finished: false,
+  done: false,
   truncated: false,
 };
 
@@ -43,6 +46,7 @@ export function useTurnStream(turnId: string) {
     let offset = 0;
 
     const update = (patch: Partial<StreamState>) => {
+      if (cancelled) return;
       setState((current) => ({
         ...(current.forTurn === turnId ? current : emptyState),
         ...patch,
@@ -61,6 +65,8 @@ export function useTurnStream(turnId: string) {
           update({ label: event.text ?? '' });
           break;
         case 'done':
+          update({ finished: true, done: true });
+          break;
         case 'error':
           update({ finished: true });
           break;

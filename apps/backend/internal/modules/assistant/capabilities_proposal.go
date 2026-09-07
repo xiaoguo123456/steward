@@ -151,12 +151,62 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 
 // registerProposal 对模型参数和确认命令采用相同的时间校验。
 func registerProposal(reg *ai.Registry, capability ai.Capability) {
+	extendProposalSchema(&capability)
 	handler := capability.Handler
 	capability.Handler = func(ctx context.Context, cc ai.CapabilityContext, args map[string]any) (ai.CapabilityResult, error) {
 		if err := validateProposalTimes(args); err != nil {
 			return ai.CapabilityResult{}, &ai.ToolInputError{Message: "时间格式无效：日期须为 YYYY-MM-DD，具体时刻须为带时区的 RFC3339。请修正参数后重试。"}
 		}
-		return handler(ctx, cc, args)
+		if capability.Name == "tasks.propose_create" && requiresCalendarEvent(cc) {
+			if cc.PendingIntent == "event_create" {
+				return ai.CapabilityResult{}, &ai.ToolInputError{Message: "正在补充的是日程，请使用 events.propose_create；不能改成任务。已有时间不要再问。"}
+			}
+			return ai.CapabilityResult{}, &ai.ClarificationError{Question: "这项日程具体几点开始、几点结束？", Intent: "event_create", MissingField: "start_at"}
+		}
+		if capability.Name == "events.propose_create" && text(args["start_at"]) == "" && hasDayPeriod(currentUserText(cc)) {
+			return ai.CapabilityResult{}, &ai.ClarificationError{Question: "请补充日程具体几点开始、几点结束，不能把指定时段改成全天。", Intent: "event_create", MissingField: "start_at"}
+		}
+		if capability.Name == "tasks.propose_create" && reminderNeedsTime(cc) && text(args["due_date"]) == "" && text(args["due_at"]) == "" {
+			return ai.CapabilityResult{}, &ai.ClarificationError{Question: "你希望具体哪一天、几点提醒？也可以选择只记成无日期任务。", Intent: "task_create", MissingField: "reminder_time"}
+		}
+		if err := validateTimeEvidence(cc, args); err != nil {
+			return ai.CapabilityResult{}, err
+		}
+		output, err := handler(ctx, cc, args)
+		if err != nil {
+			return output, err
+		}
+		for i := range output.Proposals {
+			if evidence, ok := args["time_evidence"].(map[string]any); ok {
+				for _, value := range evidence {
+					if fields, ok := value.(map[string]any); ok && text(fields["suggestion_request"]) != "" {
+						output.Proposals[i].Preview.Impact += " 时间为建议，请确认是否合适。"
+						break
+					}
+				}
+			}
+			if status := text(args["required_status"]); status != "" {
+				output.Proposals[i].Command["required_status"] = status
+			}
+			if evidence, ok := args["time_evidence"]; ok {
+				output.Proposals[i].Command["time_evidence"] = evidence
+			}
+		}
+		replacement := text(args["replaces_proposal_id"])
+		if replacement != "" {
+			valid := false
+			for _, pending := range cc.Pending {
+				if pending.ID == replacement && len(output.Proposals) == 1 && pending.Type == output.Proposals[0].Type {
+					valid = true
+					output.Proposals[0].ReplacesProposalID = replacement
+					output.Proposals[0].ReplacesProposalVersion = pending.Version
+				}
+			}
+			if !valid {
+				return ai.CapabilityResult{}, &ai.ToolInputError{Message: "只能修订当前对话中类型一致的待确认建议。"}
+			}
+		}
+		return output, nil
 	}
 	reg.Register(capability)
 }
@@ -173,6 +223,9 @@ func (d CapabilityDeps) proposeTaskSplit(ctx context.Context, cc ai.CapabilityCo
 	}
 	current, err := d.Tasks.GetTask(ctx, cc.UserID, taskID)
 	if err != nil {
+		return ai.CapabilityResult{}, err
+	}
+	if err := d.guardTaskTarget(ctx, cc, args, current); err != nil {
 		return ai.CapabilityResult{}, err
 	}
 	if current.Version != int32(version) {
@@ -281,6 +334,9 @@ func (d CapabilityDeps) proposeTaskUpdate(ctx context.Context, cc ai.CapabilityC
 	// 才发现建议是基于旧数据，不如现在就拒绝并让它重新查。
 	current, err := d.Tasks.GetTask(ctx, cc.UserID, taskID)
 	if err != nil {
+		return ai.CapabilityResult{}, err
+	}
+	if err := d.guardTaskTarget(ctx, cc, args, current); err != nil {
 		return ai.CapabilityResult{}, err
 	}
 	if int(current.Version) != expected {
