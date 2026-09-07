@@ -1,0 +1,18 @@
+[
+  {
+    "kind": "image",
+    "status": "needs_confirmation",
+    "confirmed": true,
+    "idempotent": true,
+    "dueCorrect": true,
+    "cleaned": true
+  },
+  {
+    "kind": "audio",
+    "status": "needs_confirmation",
+    "confirmed": true,
+    "idempotent": true,
+    "dueCorrect": true,
+    "cleaned": true
+  }
+]

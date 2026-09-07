@@ -548,6 +548,7 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		UserID:        args.UserID,
 		ThreadID:      args.ThreadID,
 		TurnID:        args.TurnID,
+		UserMessageID: seed.UserMessageID,
 		SystemPrompt:  s.systemPrompt(seed),
 		History:       seed.History,
 		UserText:      seed.UserText,
@@ -756,7 +757,7 @@ func (s *Service) saveTurnResult(ctx context.Context, args RespondArgs,
 			return s.saveTurnFailure(ctx, q, args, runErr)
 		}
 
-		// 工具审计先落库：即使后面的写入失败重试，也已经留下了调用记录。
+		// 工具审计先写入当前事务，供建议来源校验；收尾失败时随事务一起回滚。
 		for _, call := range result.ToolCalls {
 			if err := s.recordToolCall(ctx, q, args, call); err != nil {
 				return err
@@ -837,7 +838,7 @@ func (s *Service) MarkTurnPermanentlyFailed(ctx context.Context, args RespondArg
 		if err != nil {
 			return apperr.Internal(err)
 		}
-		if turn.Status == "succeeded" || turn.Status == "cancelled" {
+		if turn.Status == "succeeded" || turn.Status == "cancelled" || turn.Status == "superseded" {
 			return nil
 		}
 		code := string(apperr.CodeInternal)

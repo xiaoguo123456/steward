@@ -101,6 +101,12 @@ func (s *ProposalService) SaveDraft(ctx context.Context, q *dbgen.Queries,
 	if len(draft.SourceRefs) == 0 {
 		return "", nil
 	}
+	if err := validateDraftEvidence(ctx, q, threadID, turnID, draft); err != nil {
+		return "", err
+	}
+	if err := validateProposalTimes(draft.Command); err != nil {
+		return "", err
+	}
 
 	command, err := json.Marshal(draft.Command)
 	if err != nil {
@@ -233,11 +239,12 @@ type ConfirmResult struct {
 //
 // 整个过程在一个事务里：锁建议 → 校验版本与过期 → 重新读目标 →
 // 重新跑领域校验 → 映射成类型化 Domain Command → 执行 → 写 Activity。
-// 任一步失败整体回滚。
+// 领域执行失败整体回滚；过期与目标冲突保留建议终态，随后返回业务错误。
 func (s *ProposalService) Confirm(ctx context.Context, userID, proposalID string,
 	body httpapi.ConfirmProposalRequest) (ConfirmResult, error) {
 
 	var out ConfirmResult
+	var resolutionErr error
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		current, err := q.LockProposal(ctx, proposalID)
 		if err != nil {
@@ -258,16 +265,38 @@ func (s *ProposalService) Confirm(ctx context.Context, userID, proposalID string
 			}); err != nil {
 				return apperr.Internal(err)
 			}
-			return apperr.New(apperr.CodeAIProposalExpired)
+			resolutionErr = apperr.New(apperr.CodeAIProposalExpired)
+			return nil
 		}
 
 		command, err := s.applyEdits(current, body.Edits)
 		if err != nil {
 			return err
 		}
+		if err := validateProposalTimes(command); err != nil {
+			return err
+		}
+		tx, err := database.TxFrom(ctx)
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		// 冲突终态需要提交，但领域执行的任何部分写入必须全部撤回。
+		if _, err := tx.Exec(ctx, "SAVEPOINT proposal_execution"); err != nil {
+			return apperr.Internal(err)
+		}
 
 		result, err := s.execute(ctx, q, userID, current, command, body.TargetExpectedVersion)
 		if err != nil {
+			if appErr, ok := apperr.As(err); ok && (appErr.Code == apperr.CodeAIProposalStale || appErr.Code == apperr.CodeVersionConflict) {
+				if _, err := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT proposal_execution"); err != nil {
+					return apperr.Internal(err)
+				}
+				if _, err := q.MarkProposalResolved(ctx, dbgen.MarkProposalResolvedParams{Status: "stale", ID: proposalID}); err != nil {
+					return apperr.Internal(err)
+				}
+				resolutionErr = apperr.New(apperr.CodeAIProposalStale)
+				return nil
+			}
 			return err
 		}
 
@@ -285,7 +314,10 @@ func (s *ProposalService) Confirm(ctx context.Context, userID, proposalID string
 		out = result
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return out, err
+	}
+	return out, resolutionErr
 }
 
 // applyEdits 把用户在确认页的修改合并进 command。
@@ -733,6 +765,7 @@ func provenanceOf(proposal dbgen.ActionProposal) []objects.ProvenanceInput {
 	return []objects.ProvenanceInput{{
 		SourceType: "assistant_proposal",
 		SourceID:   proposal.ID,
+		Action:     "created_from",
 	}}
 }
 

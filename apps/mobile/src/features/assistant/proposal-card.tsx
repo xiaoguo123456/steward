@@ -1,11 +1,14 @@
 import {
   errorMessage,
+  isApiError,
   useConfirmProposal,
   useRejectProposal,
   type ActionProposal,
 } from '@steward/api-client';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { proposalActionState } from './proposal-action-state';
 
 import { AppIcon } from '@/components/ui/icon';
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
@@ -43,7 +46,12 @@ export function ProposalCard({
       },
       // 目标在这期间被改过、建议已过期或已处理，都会走到这里。
       // 服务端的文案已经说明了原因，直接展示，不要自己改写。
-      onError: (error) => setFailure(errorMessage(error, '这条建议没能执行。')),
+      onError: (error) => {
+        setFailure(errorMessage(error, '这条建议没能执行。'));
+        if (isApiError(error) && ['AI_PROPOSAL_EXPIRED', 'AI_PROPOSAL_STALE', 'AI_PROPOSAL_ALREADY_RESOLVED'].includes(error.code)) {
+          onResolved();
+        }
+      },
     },
   });
   const reject = useRejectProposal({
@@ -58,6 +66,7 @@ export function ProposalCard({
 
   const busy = confirm.isPending || reject.isPending;
   const resolved = proposal.status !== 'pending';
+  const actions = proposalActionState(proposal.proposal_type, busy, splitTasks);
 
   return (
     <View style={styles.card}>
@@ -132,17 +141,8 @@ export function ProposalCard({
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityState={{
-              disabled:
-                busy ||
-                (proposal.proposal_type === 'task_split' &&
-                  splitTasks.filter((task) => task.selected && task.title.trim()).length < 2),
-            }}
-            disabled={
-              busy ||
-              (proposal.proposal_type === 'task_split' &&
-                splitTasks.filter((task) => task.selected && task.title.trim()).length < 2)
-            }
+            accessibilityState={{ disabled: actions.rejectDisabled }}
+            disabled={actions.rejectDisabled}
             onPress={() =>
               reject.mutate({ proposalId: proposal.id })
             }
@@ -152,8 +152,8 @@ export function ProposalCard({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityState={{ disabled: busy }}
-            disabled={busy}
+            accessibilityState={{ disabled: actions.confirmDisabled }}
+            disabled={actions.confirmDisabled}
             onPress={() =>
               confirm.mutate({
                 proposalId: proposal.id,

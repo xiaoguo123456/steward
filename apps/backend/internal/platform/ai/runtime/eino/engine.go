@@ -22,6 +22,7 @@ import (
 	einoschema "github.com/cloudwego/eino/schema"
 	einojsonschema "github.com/eino-contrib/jsonschema"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 const (
@@ -169,18 +170,19 @@ type runState struct {
 	provider ai.ChatProvider
 	logger   *slog.Logger
 
-	usage      ai.Usage
-	toolCalls  []ai.ToolCallRecord
-	proposals  []ai.ProposalDraft
-	seenCalls  map[string]bool
-	totalCalls int
-	degraded   bool
+	usage          ai.Usage
+	toolCalls      []ai.ToolCallRecord
+	proposals      []ai.ProposalDraft
+	seenCalls      map[string]bool
+	totalCalls     int
+	degraded       bool
+	trustedSources map[string]bool
 }
 
 func newRunState(req ai.TurnRequest, limits ai.RunLimits, provider ai.ChatProvider, logger *slog.Logger) *runState {
 	return &runState{
 		req: req, limits: limits, provider: provider, logger: logger,
-		seenCalls: make(map[string]bool),
+		seenCalls: make(map[string]bool), trustedSources: make(map[string]bool),
 	}
 }
 
@@ -237,6 +239,11 @@ func (s *runState) appendRecord(record ai.ToolCallRecord, proposals []ai.Proposa
 	defer s.mu.Unlock()
 	s.toolCalls = append(s.toolCalls, record)
 	if record.Status == "succeeded" {
+		if record.Risk == ai.RiskReadOnly {
+			for _, ref := range record.SourceRefs {
+				s.trustedSources[ref] = true
+			}
+		}
 		s.proposals = append(s.proposals, proposals...)
 	}
 }
@@ -361,6 +368,7 @@ func (m *providerModel) Stream(ctx context.Context, input []*einoschema.Message,
 type capabilityTool struct {
 	capability ai.Capability
 	info       *einoschema.ToolInfo
+	validator  *jsonschema.Schema
 }
 
 var _ einotool.InvokableTool = (*capabilityTool)(nil)
@@ -372,7 +380,28 @@ func newCapabilityTools(capabilities []ai.Capability) ([]einotool.BaseTool, erro
 		if err != nil {
 			return nil, fmt.Errorf("能力 %s: %w", capability.Name, err)
 		}
-		tools = append(tools, &capabilityTool{capability: capability, info: info})
+		parameters := capability.Parameters
+		if parameters == nil {
+			parameters = map[string]any{"type": "object"}
+		}
+		raw, err := json.Marshal(parameters)
+		if err != nil {
+			return nil, err
+		}
+		var document any
+		if err := json.Unmarshal(raw, &document); err != nil {
+			return nil, err
+		}
+		compiler := jsonschema.NewCompiler()
+		compiler.AssertFormat()
+		if err := compiler.AddResource("capability.json", document); err != nil {
+			return nil, err
+		}
+		validator, err := compiler.Compile("capability.json")
+		if err != nil {
+			return nil, fmt.Errorf("能力 %s 的参数 Schema 无效: %w", capability.Name, err)
+		}
+		tools = append(tools, &capabilityTool{capability: capability, info: info, validator: validator})
 	}
 	return tools, nil
 }
@@ -418,6 +447,9 @@ func (t *capabilityTool) InvokableRun(ctx context.Context, arguments string,
 	if args == nil {
 		args = map[string]any{}
 	}
+	if err := t.validator.Validate(args); err != nil {
+		return fail("AI_TOOL_INPUT_INVALID", "参数不符合工具 Schema：请检查必填字段、类型、枚举与数组数量，修正后再调用。")
+	}
 
 	if state.seen(callFingerprint(t.capability.Name, args)) {
 		return fail("AI_TOOL_LOOP_LIMIT", "这个查询刚刚已经执行过，结果没有变化。")
@@ -428,12 +460,30 @@ func (t *capabilityTool) InvokableRun(ctx context.Context, arguments string,
 	output, callErr := t.capability.Handler(callCtx, state.req.Ctx, args)
 	record.DurationMS = int(time.Since(started).Milliseconds())
 	if callErr != nil {
+		var inputErr *ai.ToolInputError
+		if errors.As(callErr, &inputErr) {
+			return fail("AI_TOOL_INPUT_INVALID", inputErr.Message)
+		}
 		record.Status = "failed"
 		record.ErrorCode = "AI_TOOL_FAILED"
 		state.appendRecord(record, nil)
 		state.logger.Warn("能力执行失败",
 			"turn_id", state.req.TurnID, "capability", t.capability.Name, "error", callErr)
 		return "查询失败，请基于已有信息回答，不要编造。", nil
+	}
+	state.mu.Lock()
+	trusted := make(map[string]bool, len(state.trustedSources)+1)
+	for ref := range state.trustedSources {
+		trusted[ref] = true
+	}
+	if state.req.UserMessageID != "" {
+		trusted["message:"+state.req.UserMessageID] = true
+	}
+	state.mu.Unlock()
+	for _, draft := range output.Proposals {
+		if t.capability.Risk != ai.RiskProposal || !ai.ProposalSourcesValid(draft, trusted) {
+			return fail("AI_SOURCE_INVALID", "建议来源无效。创建类建议请引用本轮正式消息来源；修改类建议必须先读取目标，并引用工具实际返回的来源。")
+		}
 	}
 
 	content := output.Content
@@ -494,6 +544,9 @@ func toolSpecsFromEino(infos []*einoschema.ToolInfo) ([]ai.ToolSpec, error) {
 func buildMessages(req ai.TurnRequest) []*einoschema.Message {
 	messages := make([]*einoschema.Message, 0, len(req.History)+3)
 	messages = append(messages, einoschema.SystemMessage(req.SystemPrompt))
+	if req.UserMessageID != "" {
+		messages = append(messages, einoschema.SystemMessage("本轮用户输入的正式来源是 message:"+req.UserMessageID+"。用户要求新建内容或记住偏好时可引用它；禁止使用 current、时间戳或编造的 ID 代替来源。"))
+	}
 	if len(req.ContextBlocks) > 0 {
 		var builder strings.Builder
 		builder.WriteString("以下是这位用户已确认的事实与偏好，供你参考：\n")

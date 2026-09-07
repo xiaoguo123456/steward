@@ -34,6 +34,11 @@ var ErrCapabilityNotFound = errors.New("能力未登记")
 // ErrCapabilityNotAllowed 表示该能力本轮不在允许集合内。
 var ErrCapabilityNotAllowed = errors.New("能力本轮不可用")
 
+// ToolInputError 只携带可交回模型的字段校验提示，不包含用户正文或底层错误。
+type ToolInputError struct{ Message string }
+
+func (e *ToolInputError) Error() string { return e.Message }
+
 // CapabilityContext 是一次工具调用的执行上下文。
 //
 // UserID 只来自服务端已验证的身份；模型自报的任何用户信息都被忽略。

@@ -84,7 +84,7 @@ export const ListNotesResponse = zod.object({
   "project_id": zod.string().nullish(),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
   "provenance_refs": zod.array(zod.object({
-  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_type": zod.enum(['capture', 'object', 'ai_action', 'assistant_proposal']),
   "source_id": zod.string(),
   "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
   "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
@@ -184,7 +184,7 @@ export const CreateNoteResponse = zod.object({
   "project_id": zod.string().nullish(),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
   "provenance_refs": zod.array(zod.object({
-  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_type": zod.enum(['capture', 'object', 'ai_action', 'assistant_proposal']),
   "source_id": zod.string(),
   "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
   "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
@@ -308,7 +308,7 @@ export const GetNoteResponse = zod.object({
   "project_id": zod.string().nullish(),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
   "provenance_refs": zod.array(zod.object({
-  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_type": zod.enum(['capture', 'object', 'ai_action', 'assistant_proposal']),
   "source_id": zod.string(),
   "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
   "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
@@ -404,7 +404,7 @@ export const UpdateNoteResponse = zod.object({
   "project_id": zod.string().nullish(),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
   "provenance_refs": zod.array(zod.object({
-  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_type": zod.enum(['capture', 'object', 'ai_action', 'assistant_proposal']),
   "source_id": zod.string(),
   "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
   "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),

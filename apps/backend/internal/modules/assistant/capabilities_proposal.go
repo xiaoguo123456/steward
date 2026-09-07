@@ -22,7 +22,7 @@ import (
 
 // RegisterProposals 把 Proposal Capability 登记进 Registry。
 func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
-	reg.Register(ai.Capability{
+	registerProposal(reg, ai.Capability{
 		Name: "tasks.propose_split",
 		Description: "把一个已存在的多步骤任务拆成 2 到 10 条待确认子任务。" +
 			"必须先用 objects.get 读取原任务的 id 和 version；这里只生成一条批量建议，确认后才创建子任务并建立 related_to 关系。",
@@ -44,7 +44,7 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 		Handler: deps.proposeTaskSplit,
 	})
 
-	reg.Register(ai.Capability{
+	registerProposal(reg, ai.Capability{
 		Name: "tasks.propose_create",
 		Description: "为用户准备一条「新建任务」的待确认建议。" +
 			"用户说要做某件事、需要记下来时用它。你不能直接创建任务。",
@@ -62,7 +62,7 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 		Handler: deps.proposeTaskCreate,
 	})
 
-	reg.Register(ai.Capability{
+	registerProposal(reg, ai.Capability{
 		Name: "tasks.propose_update",
 		Description: "为用户准备一条「修改已有任务」的待确认建议，例如改期、改状态、改优先级。" +
 			"必须先用 objects.get 或 tasks.search 查到这条任务的 id 和 version。你不能直接修改任务。",
@@ -85,7 +85,7 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 		Handler: deps.proposeTaskUpdate,
 	})
 
-	reg.Register(ai.Capability{
+	registerProposal(reg, ai.Capability{
 		Name: "events.propose_create",
 		Description: "为用户准备一条「新建日程」的待确认建议。" +
 			"有明确时间点、要出现在日历上的事情用它；只是待办用 tasks.propose_create。",
@@ -106,7 +106,7 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 		Handler: deps.proposeEventCreate,
 	})
 
-	reg.Register(ai.Capability{
+	registerProposal(reg, ai.Capability{
 		Name: "events.propose_update",
 		Description: "为用户准备一条「修改已有重要日」的待确认建议，可更新日期或标记已处理。" +
 			"必须先用 objects.get 或 search.hybrid 查到 Event 的 id 和 version。过期不等于已处理，你不能自行推断处理状态。",
@@ -124,7 +124,7 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 	})
 
 	if deps.Memory != nil {
-		reg.Register(ai.Capability{
+		registerProposal(reg, ai.Capability{
 			Name: "memories.propose_upsert",
 			Description: "为用户准备一条「记住这个偏好」的待确认建议。" +
 				"只有用户明确说出的、长期稳定的偏好才用它，例如「我一般晚上七点后运动」。" +
@@ -147,6 +147,18 @@ func RegisterProposals(reg *ai.Registry, deps CapabilityDeps) {
 			Handler: deps.proposeMemoryUpsert,
 		})
 	}
+}
+
+// registerProposal 对模型参数和确认命令采用相同的时间校验。
+func registerProposal(reg *ai.Registry, capability ai.Capability) {
+	handler := capability.Handler
+	capability.Handler = func(ctx context.Context, cc ai.CapabilityContext, args map[string]any) (ai.CapabilityResult, error) {
+		if err := validateProposalTimes(args); err != nil {
+			return ai.CapabilityResult{}, &ai.ToolInputError{Message: "时间格式无效：日期须为 YYYY-MM-DD，具体时刻须为带时区的 RFC3339。请修正参数后重试。"}
+		}
+		return handler(ctx, cc, args)
+	}
+	reg.Register(capability)
 }
 
 func (d CapabilityDeps) proposeTaskSplit(ctx context.Context, cc ai.CapabilityContext,

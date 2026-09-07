@@ -84,7 +84,7 @@ export const ListEventsResponse = zod.object({
   "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
   "provenance_refs": zod.array(zod.object({
-  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_type": zod.enum(['capture', 'object', 'ai_action', 'assistant_proposal']),
   "source_id": zod.string(),
   "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
   "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
@@ -215,7 +215,7 @@ export const CreateEventResponse = zod.object({
   "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
   "provenance_refs": zod.array(zod.object({
-  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_type": zod.enum(['capture', 'object', 'ai_action', 'assistant_proposal']),
   "source_id": zod.string(),
   "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
   "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
@@ -290,7 +290,7 @@ export const GetEventResponse = zod.object({
   "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
   "provenance_refs": zod.array(zod.object({
-  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_type": zod.enum(['capture', 'object', 'ai_action', 'assistant_proposal']),
   "source_id": zod.string(),
   "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
   "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),
@@ -418,7 +418,7 @@ export const UpdateEventResponse = zod.object({
   "original_month_day": zod.string().nullish().describe('yearly 重复时保留原始月日，格式 MM-DD。\n2 月 29 日在非闰年显示于 2 月 28 日，详情仍展示原始月日。\n'),
   "created_by": zod.enum(['user', 'ai', 'system']).describe('实体的实际创建来源。AI 创建或更新的字段必须保留真实来源。'),
   "provenance_refs": zod.array(zod.object({
-  "source_type": zod.enum(['capture', 'object', 'ai_action']),
+  "source_type": zod.enum(['capture', 'object', 'ai_action', 'assistant_proposal']),
   "source_id": zod.string(),
   "source_revision": zod.number().int().nullish().describe('Capture 来源的 revision 序号。'),
   "part_refs": zod.array(zod.string()).optional().describe('Capture 中的文字片段、音频时间段或图片区域引用。'),

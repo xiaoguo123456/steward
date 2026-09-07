@@ -47,7 +47,7 @@ POST /assistant/threads/{id}/turns
 并留下审计。
 
 `user_id` 只来自 `CapabilityContext`，即服务端已验证的身份；模型自报的任何身份信息
-都被忽略。
+都不能改变身份，未声明字段会被参数 Schema 拒绝。
 
 ## 编排引擎
 
@@ -94,3 +94,7 @@ pgnotify 的三个代价都是结构性的，不是实现不好：LISTEN 是连�
 - `POST /assistant/threads` 仅在用户发送第一条消息时调用。无标题且未设置 `force_new` 时复用当天 Thread；`force_new=true` 始终创建新 Thread。
 - 默认 Thread 的判断依据是用户消息时间，不是 Thread 的 `updated_at`。因此 Worker 在午夜后补完 Assistant 回复不会把昨天的对话变成今天的默认对话。
 - 默认创建路径使用用户级事务 advisory lock，并只复用 `created_for_default=true` 的当天空 Thread，避免两个设备同时发首条消息时堆出空壳，也不会接管尚未发送的显式“新对话”。
+
+## 参数与来源校验
+
+运行时校验 Schema 后才执行 Handler。来源只接受当前真实消息与成功只读审计，目标更新还需引用目标本身。非法时间在草稿与确认编辑两处校验。建议过期或失效会提交终态；领域部分写入仍全部回滚。Eval 与原生验收要求见后端指南的 2026-09-07 补充章节。

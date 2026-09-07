@@ -147,7 +147,7 @@ ProvenanceRef:
   properties:
     source_type:
       type: string
-      enum: [capture, object, ai_action]
+      enum: [capture, object, ai_action, assistant_proposal]
     source_id:
       type: string
     source_revision:

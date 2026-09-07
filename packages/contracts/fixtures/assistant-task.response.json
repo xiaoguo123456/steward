@@ -1,0 +1,25 @@
+{
+  "data": {
+    "id": "tsk_assistant_contract",
+    "type": "task",
+    "title": "来源契约验收任务",
+    "status": "todo",
+    "priority": "normal",
+    "list_id": "tls_contract",
+    "created_by": "ai",
+    "provenance_refs": [
+      {
+        "source_type": "assistant_proposal",
+        "source_id": "aprp_contract",
+        "action": "created_from",
+        "source_deleted": false
+      }
+    ],
+    "created_at": "2026-09-07T04:00:00Z",
+    "updated_at": "2026-09-07T04:00:00Z",
+    "version": 1
+  },
+  "meta": {
+    "request_id": "req_contract"
+  }
+}

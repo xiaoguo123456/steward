@@ -100,6 +100,10 @@ func Check(c Case, r Result) []string {
 		fail("应当新建 %d 个任务，实际 %d 个", *c.Expect.TasksCreated, r.TasksCreated)
 	}
 
+	if c.Expect.TasksUpdated != nil && r.TasksUpdated != *c.Expect.TasksUpdated {
+		fail("应当更新 %d 个任务，实际 %d 个", *c.Expect.TasksUpdated, r.TasksUpdated)
+	}
+
 	joined := strings.Join(r.ToolResults, "\n")
 	for _, want := range c.Expect.ToolResultContains {
 		if !strings.Contains(joined, want) {
@@ -168,30 +172,9 @@ func Check(c Case, r Result) []string {
 
 // sourceResolvable 判断一条来源引用是否指向真实存在的对象。
 //
-// 只看格式与 ID 前缀：真正的存在性由工具自己保证——它返回的 ID
-// 就是它刚读到的那些行。这里防的是模型凭空编一个 ID 塞进来。
+// 只相信服务端消息 ID 与成功只读工具的来源；建议工具自报来源不能自证。
 func (r Result) sourceResolvable(ref string) bool {
-	parts := strings.SplitN(ref, ":", 2)
-	if len(parts) != 2 || parts[1] == "" {
-		return false
-	}
-	kind, id := parts[0], parts[1]
-	prefixes := map[string]string{
-		"task": "tsk_", "event": "evt_", "note": "nte_",
-		"project": "prj_", "record": "rec_", "tracker": "trk_",
-		"memory": "mem_", "message": "amsg_",
-	}
-	want, known := prefixes[kind]
-	if !known {
-		// review:weekly:2026-08-17 这类复合引用不做前缀检查。
-		return strings.Contains(ref, ":")
-	}
-	if !strings.HasPrefix(id, want) {
-		return false
-	}
-	// 出现在本次工具结果里的 ID 才算真读到过。
-	return strings.Contains(strings.Join(r.ToolResults, "\n"), id) ||
-		strings.Contains(strings.Join(r.ToolSources, "\n"), ref)
+	return contains(r.TrustedSources, ref)
 }
 
 // memoryHasEvidence 由 harness 注入，见 harness.go。

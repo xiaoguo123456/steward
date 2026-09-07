@@ -167,9 +167,15 @@ WHERE thread_id = sqlc.arg(thread_id) AND deleted_at IS NULL;
 -- name: SupersedeOlderTurns :exec
 -- 同一 Thread 只让最新一轮继续跑。用户改口后旧的排队轮次直接作废，
 -- 避免迟到的回复打乱上下文顺序。已生成的建议不受影响，仍需用户显式处理。
+WITH superseded AS (
 UPDATE assistant_turns SET status = 'superseded', completed_at = now(), version = version + 1
 WHERE thread_id = sqlc.arg(thread_id)
   AND turn_seq < sqlc.arg(turn_seq)
+  AND status IN ('queued', 'running')
+RETURNING operation_id
+)
+UPDATE async_operations SET status = 'cancelled', progress = 100, completed_at = now()
+WHERE id IN (SELECT operation_id FROM superseded)
   AND status IN ('queued', 'running');
 
 -- name: SaveTurnEntryContext :exec
