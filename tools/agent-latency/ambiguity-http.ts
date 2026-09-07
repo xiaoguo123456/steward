@@ -21,14 +21,14 @@ async function settle(id: string) {
   }
   throw new Error('等待超时');
 }
-for (const text of ['', ' \n\t ']) {
+for (const text of ['', ' \n\t ', '\u200b\ufeff']) {
   const thread = (await api.createThread({ title: '歧义输入 HTTP 验收', force_new: true })).data;
   try {
     await api.createTurn(thread.id, { text });
-    record({ case: text === '' ? '空字符串' : '纯空白', rejected: false });
+    record({ case: text === '' ? '空字符串' : text.includes('\u200b') ? '不可见字符' : '纯空白', rejected: false });
   } catch (error) {
     const e = error as { code?: string; status?: number };
-    record({ case: text === '' ? '空字符串' : '纯空白', rejected: true, code: e.code, http: e.status });
+    record({ case: text === '' ? '空字符串' : text.includes('\u200b') ? '不可见字符' : '纯空白', rejected: true, code: e.code, http: e.status });
   } finally {
     await api.deleteThread(thread.id);
   }

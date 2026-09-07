@@ -315,6 +315,10 @@ func (d CapabilityDeps) proposeTaskCreate(_ context.Context, cc ai.CapabilityCon
 func (d CapabilityDeps) proposeTaskUpdate(ctx context.Context, cc ai.CapabilityContext,
 	args map[string]any) (ai.CapabilityResult, error) {
 
+	if err := guardDeletionAsStatus(cc, args); err != nil {
+		return ai.CapabilityResult{}, err
+	}
+
 	taskID := strings.TrimSpace(text(args["task_id"]))
 	if !strings.HasPrefix(taskID, "tsk_") {
 		return ai.CapabilityResult{}, fmt.Errorf("task_id 必须是任务 ID")

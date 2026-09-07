@@ -315,3 +315,13 @@ func hasDayPeriod(value string) bool {
 	}
 	return false
 }
+
+// 删除与任务状态不是同一种领域操作，不能用“已完成”代替不支持的删除。
+func guardDeletionAsStatus(cc ai.CapabilityContext, args map[string]any) error {
+	value := currentUserText(cc)
+	if text(args["status"]) != "" && containsAny(value, "删除", "删掉", "删了", "删光", "清空") &&
+		!containsAny(value, "标记", "标为", "标成", "设为", "改为", "改成", "完成", "做完", "进行中", "未开始", "重新打开") {
+		return &ai.ClarificationError{Intent: "other", MissingField: "operation", Question: "目前不能通过助理删除已保存的内容，也不会用标记完成代替删除。请到对应列表或详情页手动删除。"}
+	}
+	return nil
+}

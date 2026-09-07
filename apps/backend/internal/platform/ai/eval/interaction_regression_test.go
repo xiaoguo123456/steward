@@ -121,3 +121,48 @@ func TestClarificationSelectionExpiresOnTopicChange(t *testing.T) {
 		t.Fatal("旧问题重复点击没有失效")
 	}
 }
+
+func TestMissingTitleIsPersistedAndAnswerCannotBeAskedAgain(t *testing.T) {
+	s := hardeningStack(t)
+	ctx := t.Context()
+	uid, err := s.seedUser(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.dropUser(context.WithoutCancel(ctx), uid)
+	thread, err := s.Assistant.CreateThread(ctx, uid, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := func(value string, steps func(string) []ai.CompletionResult) {
+		t.Helper()
+		a, err := s.Assistant.CreateTurn(ctx, uid, thread.ID, httpapi.CreateTurnRequest{Text: value})
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.provider.reset(steps(a.MessageID))
+		if err := s.Assistant.Respond(ctx, assistant.RespondArgs{UserID: uid, ThreadID: thread.ID, TurnID: a.TurnID, OperationID: a.OperationID, IdempotencyKey: "title:" + a.TurnID}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run("帮我记个任务", func(string) []ai.CompletionResult { return nil })
+	messages, _, err := s.Assistant.ListMessages(ctx, uid, thread.ID, nil, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mapped := assistant.MapMessage(messages[0], nil)
+	if mapped.Interaction == nil || mapped.Interaction.Outcome != "clarification" {
+		t.Fatal("标题问题没有作为权威状态保存")
+	}
+	run("买牛奶", func(mid string) []ai.CompletionResult {
+		raw, _ := json.Marshal(map[string]any{"title": "买牛奶", "reason": "用户补充了任务内容", "source_refs": []string{"message:" + mid}})
+		return []ai.CompletionResult{
+			{ToolCalls: []ai.ToolCall{{ID: "ask", Name: "assistant.ask_clarification", Arguments: `{"intent":"task_create","missing_field":"title","question":"内容是什么？"}`}}},
+			{ToolCalls: []ai.ToolCall{{ID: "create", Name: "tasks.propose_create", Arguments: string(raw)}}},
+		}
+	})
+	rows, err := s.Proposals.List(ctx, uid, []string{"pending"}, nil, nil, 20)
+	if err != nil || len(rows) != 1 || rows[0].ProposalType != "task_create" {
+		t.Fatalf("标题补充没有生成唯一建议：%v，%v", rows, err)
+	}
+}

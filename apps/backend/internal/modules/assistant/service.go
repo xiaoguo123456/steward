@@ -557,8 +557,9 @@ func (s *Service) Respond(ctx context.Context, args RespondArgs) error {
 		EntryResourceType: seed.EntryResourceType,
 		EntryResourceID:   seed.EntryResourceID,
 		UserTexts:         seed.UserTexts, UserSources: seed.UserSources, Pending: seed.Pending, SelectedVersion: seed.SelectedVersion,
-		PendingIntent:   pendingIntent(seed),
-		PendingReminder: seed.Clarification != nil && seed.Clarification.MissingField == "reminder_time",
+		PendingIntent:       pendingIntent(seed),
+		PendingMissingField: pendingMissingField(seed),
+		PendingReminder:     seed.Clarification != nil && seed.Clarification.MissingField == "reminder_time",
 	}
 	sink := s.sinkFor(ctx, args.UserID, args.TurnID)
 	sink.OnStatus("正在理解你的问题")
@@ -620,7 +621,7 @@ func (s *Service) allowedFor(seed contextSeed) []ai.Capability {
 		all = append(all, dismissCapability())
 	}
 	if seed.MemoryLearningEnabled {
-		return all
+		return routeCapabilities(seed, all)
 	}
 	out := make([]ai.Capability, 0, len(all))
 	for _, c := range all {
@@ -629,7 +630,7 @@ func (s *Service) allowedFor(seed contextSeed) []ai.Capability {
 		}
 		out = append(out, c)
 	}
-	return out
+	return routeCapabilities(seed, out)
 }
 
 // sinkFor 构造这一轮的进度通道。没有配置通道时返回一个什么都不做的实现。
@@ -1072,12 +1073,23 @@ func (s *Service) runWithWithdrawal(ctx context.Context, req ai.TurnRequest) (ai
 	if declinesRecording(req.UserText) {
 		return ai.TurnResult{Text: "好的，这次不生成记录或长期偏好。"}, nil
 	}
+	if emptyTaskRequest.MatchString(strings.TrimSpace(req.UserText)) {
+		question := &ai.ClarificationError{Intent: "task_create", MissingField: "title", Question: "这条任务要做什么？告诉我内容即可。"}
+		return ai.TurnResult{Text: question.Question, Clarification: question}, nil
+	}
 	return s.engine.RunTurn(ctx, req)
 }
 
 func pendingIntent(seed contextSeed) string {
 	if seed.Clarification != nil {
 		return seed.Clarification.Intent
+	}
+	return ""
+}
+
+func pendingMissingField(seed contextSeed) string {
+	if seed.Clarification != nil {
+		return seed.Clarification.MissingField
 	}
 	return ""
 }

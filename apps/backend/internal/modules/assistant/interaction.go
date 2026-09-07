@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -151,7 +152,18 @@ func clarificationCapability() ai.Capability {
 		Name: "assistant.ask_clarification", Version: "v1", Risk: ai.RiskReadOnly,
 		Description: "缺少关键字段时提出一个问题，并保存当前意图。仅询问阻塞字段；可选日期、地点、备注不阻塞。",
 		Parameters:  controlSchema(assets.AskClarificationSchemaV1),
-		Handler: func(_ context.Context, _ ai.CapabilityContext, args map[string]any) (ai.CapabilityResult, error) {
+		Handler: func(_ context.Context, cc ai.CapabilityContext, args map[string]any) (ai.CapabilityResult, error) {
+			field := text(args["missing_field"])
+			value := currentUserText(cc)
+			if cc.PendingIntent == "task_create" && cc.PendingMissingField == "title" && field == "title" &&
+				strings.TrimSpace(value) != "" && !containsAny(value, "不知道", "没想好", "随便", "帮我想", "不确定", "取消", "不要", "算了", "不聊", "换个", "？", "?") {
+				return ai.CapabilityResult{}, &ai.ToolInputError{Message: "上一轮缺少任务标题，用户本轮已补充内容。请合并用户原话生成待确认任务，不要再次追问标题；可选日期不阻塞。"}
+			}
+
+			if text(args["intent"]) == "task_create" && !reminderNeedsTime(cc) &&
+				containsAny(field, "date", "time", "due", "deadline") && !timeMention.MatchString(strings.Join(cc.UserTexts, "\n")) {
+				return ai.CapabilityResult{}, &ai.ToolInputError{Message: "用户没有要求日期或提醒，任务日期是可选字段，不要追问。请直接调用 tasks.propose_create 生成无日期待确认建议；不要在文本中继续询问日期。"}
+			}
 			return ai.CapabilityResult{}, &ai.ClarificationError{Question: text(args["question"]), Intent: text(args["intent"]), MissingField: text(args["missing_field"])}
 		},
 	}
@@ -209,3 +221,9 @@ func withdrawalScope(pending []ai.PendingProposal, value string) []ai.PendingPro
 	}
 	return out
 }
+
+// 保守识别时间线索；存在任何线索时保留澄清，由时间来源校验处理有效性。
+var timeMention = regexp.MustCompile(`明|今|后天|昨|周|星期|月|日|号|点|时|分|截止|到期|提醒|日期|[0-9]`)
+
+// 只识别整句没有任务内容的明确创建入口，不从模型回复反推用户意图。
+var emptyTaskRequest = regexp.MustCompile(`^(?:请|麻烦)?(?:帮我|给我|我要|我想)?(?:记|记下|新建|创建|新增)(?:一)?(?:个|条)?(?:任务|待办)(?:吧|。|！|!|：|:)?$`)

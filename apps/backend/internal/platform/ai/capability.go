@@ -54,10 +54,11 @@ type CapabilityContext struct {
 	UserTexts   []string
 	UserSources []UserTextSource
 	// Pending 是当前对话待确认建议的只读快照。
-	Pending         []PendingProposal
-	SelectedVersion int
-	PendingReminder bool
-	PendingIntent   string
+	Pending             []PendingProposal
+	SelectedVersion     int
+	PendingReminder     bool
+	PendingIntent       string
+	PendingMissingField string
 }
 
 // CapabilityResult 是一次工具调用的结果。

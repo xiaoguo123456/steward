@@ -740,7 +740,7 @@ func (s *runState) terminalText() string {
 	if !s.shortcut {
 		return ""
 	}
-	for _, word := range []string{"同时", "然后", "另外", "并且", "以及"} {
+	for _, word := range []string{"同时", "然后", "另外", "并", "以及", "和", "顺便", "接着", "还", "再", "也", "先", "；", ";"} {
 		if strings.Contains(s.req.UserText, word) {
 			return ""
 		}

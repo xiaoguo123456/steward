@@ -34,3 +34,12 @@ func TestSchemaFeedbackIncludesPathsWithoutInputValues(t *testing.T) {
 		}
 	}
 }
+
+func TestSuccessfulProposalDoesNotFinishCompoundRequest(t *testing.T) {
+	for _, value := range []string{"创建任务并查询日程", "先创建任务再查询", "记一个待办，顺便查今天的安排"} {
+		state := &runState{req: ai.TurnRequest{UserText: value}, shortcut: true, proposals: []ai.ProposalDraft{{Type: "task_create"}}, toolCalls: []ai.ToolCallRecord{{Status: "succeeded"}}}
+		if state.terminalText() != "" {
+			t.Fatal("复合请求在第一项建议后被截断：", value)
+		}
+	}
+}
