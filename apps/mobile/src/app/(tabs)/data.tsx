@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 
 import { AI_FAB_TAB_BAR_INSET, AiFab } from '@/components/ui/ai-fab';
-import { AppButton } from '@/components/ui/app-button';
 import { TrackerPresetChoices } from '@/features/trackers/tracker-preset-choices';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
@@ -69,20 +68,29 @@ export default function DataScreen() {
       >
         <PageHeader
           action={
-            <Pressable
-              accessibilityLabel="管理打卡项"
-              accessibilityRole="button"
-              onPress={() => router.push('/trackers/manage')}
-              style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
-            >
-              <Text style={styles.headerActionText}>管理</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityLabel="管理打卡项"
+                accessibilityRole="button"
+                onPress={() => router.push('/trackers/manage')}
+                style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
+              >
+                <Text style={styles.headerActionText}>管理</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="新建打卡"
+                accessibilityRole="button"
+                onPress={() => router.push('/trackers/new')}
+                style={({ pressed }) => [styles.headerAction, styles.newAction, pressed && styles.pressed]}
+              >
+                <AppIcon color={colors.primaryStrong} name="add" size={18} />
+                <Text style={styles.headerActionText}>新建</Text>
+              </Pressable>
+            </View>
           }
           subtitle="记录你在意的数据"
           title="打卡"
         />
-
-        <AppButton label="新建打卡" onPress={() => router.push('/trackers/new')} style={styles.newButton} />
 
         {trackersQuery.isPending ? (
           <View style={styles.loading}>
@@ -197,12 +205,14 @@ export default function DataScreen() {
 }
 
 const styles = StyleSheet.create({
-  newButton: { marginBottom: 20 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  newAction: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   emptyGuide: { gap: 12 },
   guideTitle: { color: colors.text, fontFamily, ...typography.section },
   guideHint: { color: colors.textSecondary, fontFamily, ...typography.meta, marginBottom: 4 },
   headerAction: {
     minHeight: 44,
+    minWidth: 44,
     paddingHorizontal: 4,
     justifyContent: 'center',
   },

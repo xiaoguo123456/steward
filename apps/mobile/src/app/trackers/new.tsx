@@ -1,11 +1,10 @@
 import type { TrackerField, TrackerSchedule } from '@steward/api-client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 
 import { AppButton } from '@/components/ui/app-button';
 import { AppScreen } from '@/components/ui/app-screen';
-import { AppIcon } from '@/components/ui/icon';
 import { NavHeader } from '@/components/ui/nav-header';
 import { SectionTitle } from '@/components/ui/section-title';
 import { finalizeFields, newField, SchemaEditor } from '@/features/trackers/schema-editor';
@@ -18,8 +17,7 @@ import { colors, fontFamily, radius, typography } from '@/theme/tokens';
 /**
  * 创建 Tracker（DAT-01，设计说明 13.3）。
  *
- * 两条入口：说一句话让 AI 生成 Schema 候选，或者直接手动编字段。
- * 前者走统一 Capture，AI 给出的仍然只是候选，用户确认后才创建。
+ * 模板与手动字段共用同一表单；AI 能力仍走统一 Capture 确认链路。
  */
 export default function NewTrackerScreen() {
   const router = useRouter();
@@ -63,21 +61,16 @@ export default function NewTrackerScreen() {
           setInvalid(null);
           actions.dismiss();
         }} />
-        <AppButton label="自定义打卡" variant="text" onPress={() => {
-          setSelectedPreset(undefined); setName(''); setFields([newField(0)]); setSchedule(null); setInvalid(null); actions.dismiss();
-        }} />
         <Pressable
-          accessibilityLabel="让管家帮我新建打卡"
+          accessibilityLabel="自定义打卡"
+          accessibilityHint="清空模板，重新填写打卡名称和字段"
           accessibilityRole="button"
-          onPress={() => router.push({ pathname: '/capture/new', params: { intent: 'tracker' } })}
-          style={({ pressed }) => [styles.aiEntry, pressed && styles.pressed]}
+          onPress={() => {
+            setSelectedPreset(undefined); setName(''); setFields([newField(0)]); setSchedule(null); setInvalid(null); actions.dismiss();
+          }}
+          style={({ pressed }) => [styles.customHeading, pressed && styles.pressed]}
         >
-          <AppIcon color={colors.primaryStrong} name="sparkles-outline" size={20} />
-          <View style={styles.aiCopy}>
-            <Text style={styles.aiTitle}>让管家帮我建</Text>
-            <Text style={styles.aiHint}>说一句「我想记每天喝了多少水」，助理帮你把字段列好</Text>
-          </View>
-          <AppIcon color={colors.borderStrong} name="chevron-forward" size={17} />
+          <Text style={styles.customHeadingText}>自定义打卡</Text>
         </Pressable>
 
         <SectionTitle style={styles.section} title="打卡名称" />
@@ -117,29 +110,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 48,
   },
-  aiEntry: {
-    marginTop: 4,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
+  customHeading: {
+    marginTop: 18,
+    minHeight: 52,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
   },
-  aiCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  aiTitle: {
+  customHeadingText: {
     color: colors.text,
     fontFamily,
-    ...typography.body,
-    fontWeight: '600',
-  },
-  aiHint: {
-    color: colors.textSecondary,
-    fontFamily,
-    ...typography.meta,
+    ...typography.section,
   },
   section: {
     marginTop: 18,
