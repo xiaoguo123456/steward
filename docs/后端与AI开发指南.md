@@ -3036,3 +3036,13 @@ Assistant v3 使用持久化澄清、当前对话待确认快照及统一时间�
 整句只有明确创建任务／待办意图、没有内容时，直接持久化 title 澄清；后续标题补答携带 PendingMissingField，阻止模型重复询问已补齐的标题。提问状态不能仅依赖模型在聊天文本中声称缺少信息。
 
 只读工具的实际 source_refs 必须随工具消息返回模型，不能仅写审计元数据。结果截断要为引用及截断提示预留字节，保持 UTF-8 有效；未提供、未读取、与目标不符的来源仍一律拒绝。该修复只涉及内部编排消息，不修改外部 OpenAPI。
+
+## Capture 新记录项关联与失败恢复（2026-09-08）
+
+Capture 使用 `capture-parse@v7` 与 `capture-parse-result.v5`。AI 契约新增 `tracker_fields` 与 `tracker_ref`：后者仅引用同批 Tracker ref，已有项继续使用 tracker_id。Provider 完整校验后映射到中立类型；应用层在审计和写候选前验证字段、引用唯一性、目标类型与 Record 字段。保存时预分配全批 candidate_id，支持 Record 出现在 Tracker 之前；确认事务仍先创建 Tracker 再按映射写 Record。
+
+没有澄清或限制上下文的纯文字裸数字，经模型成功解析后仍经过保守意图门禁：只澄清记录内容，不生成猜测候选；Provider 失败不会走规则替身成功路径。
+
+历史缺少 Tracker 字段的快照读取为 failed 且不暴露非法候选，原始数据库内容不改变；客户端不能靠旧 parsing 缓存掩盖读取错误。本次没有变更公开 OpenAPI 字段或数据库结构，复用现有 CaptureTrackerDraft、CaptureRecordDraft 与错误码；无需迁移或手写客户端 DTO。新增跨端 Fixture 和生成 Zod 校验测试。
+
+真实模型验收：`STEWARD_AI_LIVE_WEIGHT=1 go test ./internal/platform/ai/openai -run TestLiveCaptureWeight -count=2 -v`，只使用虚构输入，不保存生产用户记录。

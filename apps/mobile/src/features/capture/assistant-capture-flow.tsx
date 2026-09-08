@@ -140,12 +140,20 @@ export function AssistantCaptureFlow({
     void questions.refetch();
     // 查询对象每次渲染会产生新引用，只监听服务端状态变化。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operationStatus]);
+  }, [operationStatus, session.operationId]);
 
   const isSelected = (candidate: CaptureCandidate) =>
     selection[candidate.id] ?? candidate.selected;
   const draftFor = (candidate: CaptureCandidate) => drafts[candidate.id] ?? candidate.payload;
   const selectedCandidates = candidates.filter(isSelected);
+  const pendingTrackers = Object.fromEntries(candidates.flatMap((candidate) => {
+    const tracker = draftFor(candidate).tracker;
+    return tracker ? [[candidate.id, tracker]] : [];
+  }));
+  const hasUnselectedTracker = selectedCandidates.some((candidate) => {
+    const ref = draftFor(candidate).record?.tracker_ref;
+    return ref && pendingTrackers[ref] && !selectedCandidates.some((item) => item.id === ref);
+  });
   const blockedCandidates = selectedCandidates.filter(
     (candidate) => unresolvedCandidateFields(candidate, draftFor(candidate)).length > 0,
   );
@@ -155,9 +163,10 @@ export function AssistantCaptureFlow({
   const canSave = selectedCandidates.length > 0
     && blockedCandidates.length === 0
     && unresolvedConflictCount === 0
+    && !hasUnselectedTracker
     && !saving;
   const onlyCandidate = candidates.length === 1 ? candidates[0] : undefined;
-  const currentSaveHint = saveHint(
+  const currentSaveHint = hasUnselectedTracker ? '请同时选择这条记录所属的新记录项。' : saveHint(
     selectedCandidates.length,
     blockedCandidates.length,
     unresolvedConflictCount,
@@ -366,7 +375,7 @@ export function AssistantCaptureFlow({
                             <AppIcon color={meta.color} name={meta.icon} size={14} />
                             <Text style={[styles.typeText, { color: meta.color }]}>{meta.label}</Text>
                           </View>
-                          <Text style={styles.candidateTitle}>{candidateTitle(draft)}</Text>
+                          <Text style={styles.candidateTitle}>{candidateTitle(draft, pendingTrackers)}</Text>
                         </View>
                         <Pressable
                           accessibilityLabel={`${selected ? '取消选择' : '选择'}${meta.label}`}
@@ -399,8 +408,8 @@ export function AssistantCaptureFlow({
                       {candidate.duplicate_of ? (
                         <Text style={styles.warning}>可能与已有内容重复，请重点核对。</Text>
                       ) : null}
-                      {candidateDetail(draft) ? (
-                        <Text style={styles.candidateDetail}>{candidateDetail(draft)}</Text>
+                      {candidateDetail(draft, pendingTrackers) ? (
+                        <Text style={styles.candidateDetail}>{candidateDetail(draft, pendingTrackers)}</Text>
                       ) : null}
                       {!onlyCandidate ? (
                         <AppButton
@@ -415,6 +424,7 @@ export function AssistantCaptureFlow({
                       {editing ? (
                         <CaptureCandidateEditor
                           candidate={candidate}
+                          pendingTrackers={pendingTrackers}
                           onChange={(payload) => setDrafts((current) => ({
                             ...current,
                             [candidate.id]: payload,
@@ -497,9 +507,9 @@ export function AssistantCaptureFlow({
           </View>
         ) : phase === 'unavailable' ? (
           <View style={styles.recovery}>
-            <Text style={styles.statusTitle}>暂时无法读取整理状态</Text>
+            <Text style={styles.statusTitle}>结果暂时未能显示</Text>
             <Text style={styles.statusText}>
-              {errorMessage(capture.error, '请检查网络后重试，已提交的输入不会丢失。')}
+              已提交的输入还在，请重新加载结果。
             </Text>
             <AppButton compact label="重新加载" onPress={() => void capture.refetch()} variant="secondary" />
           </View>
@@ -507,7 +517,7 @@ export function AssistantCaptureFlow({
           <RecoveryState
             actionLabel={operation.isError ? '重新查询' : '重新输入'}
             copy={errorMessage(
-              operation.data?.data.error ?? operation.error,
+              data?.error ?? operation.data?.data.error ?? operation.error,
               '输入仍保留在最近输入中，可以重新输入后再整理。',
             )}
             onAction={operation.isError
@@ -704,7 +714,10 @@ function sharesSource(left: CaptureSourceRef[] | undefined, right: CaptureSource
   return Boolean(left?.some((source) => partIds.has(source.part_id)));
 }
 
-function candidateTitle(payload: CaptureDraftPayload): string {
+type PendingTrackers = Record<string, NonNullable<CaptureDraftPayload['tracker']>>;
+
+function candidateTitle(payload: CaptureDraftPayload, pending: PendingTrackers): string {
+  if (payload.record) return `${pending[payload.record.tracker_ref ?? '']?.name ?? '数据'}记录`;
   return payload.task?.title
     ?? payload.event?.title
     ?? payload.project?.title
@@ -714,14 +727,21 @@ function candidateTitle(payload: CaptureDraftPayload): string {
     ?? '未命名内容';
 }
 
-function candidateDetail(payload: CaptureDraftPayload): string {
+function candidateDetail(payload: CaptureDraftPayload, pending: PendingTrackers): string {
   if (payload.task?.due_at) return `截止 ${formatMinuteDateTime(payload.task.due_at)}`;
   if (payload.task?.due_date) return `截止 ${payload.task.due_date}`;
   if (payload.event?.start_at) return formatMinuteDateTime(payload.event.start_at, payload.event.timezone ?? undefined);
   if (payload.event?.start_date) return `${payload.event.start_date} · 全天`;
   if (payload.project?.destination) return payload.project.destination;
   if (payload.note) return payload.note.content;
-  if (payload.record) return `${payload.record.values.length} 个字段`;
+  if (payload.tracker) return payload.tracker.fields.map((field) => `${field.label}${field.unit ? `（${field.unit}）` : ''}`).join('、');
+  if (payload.record) {
+    const fields = pending[payload.record.tracker_ref ?? '']?.fields ?? [];
+    return payload.record.values.map((value) => {
+      const field = fields.find((item) => item.key === value.key);
+      return `${field?.label ?? '数值'}：${value.number_value ?? value.text_value ?? '待填写'}${field?.unit ? ` ${field.unit}` : ''}`;
+    }).join('；');
+  }
   return '';
 }
 

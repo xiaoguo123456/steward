@@ -193,7 +193,7 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
 		if c.Timestamp != nil {
 			ts = *c.Timestamp
 		}
-		draft := httpapi.CaptureRecordDraft{Timestamp: ts}
+		draft := httpapi.CaptureRecordDraft{Timestamp: ts, Values: make([]httpapi.RecordValue, 0, len(c.RecordValues))}
 		if c.TrackerID != "" {
 			id := c.TrackerID
 			draft.TrackerRef = &id
@@ -226,7 +226,13 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
 		payload.Record = &draft
 
 	case "tracker":
-		draft := httpapi.CaptureTrackerDraft{Name: c.Title}
+		if len(c.TrackerFields) == 0 {
+			return nil, nil, ai.ErrSchemaInvalid
+		}
+		draft := httpapi.CaptureTrackerDraft{Name: c.Title, Fields: make([]httpapi.TrackerField, 0, len(c.TrackerFields))}
+		for _, f := range c.TrackerFields {
+			draft.Fields = append(draft.Fields, httpapi.TrackerField{Key: f.Key, Label: f.Label, Type: httpapi.TrackerFieldType(f.Type), Required: f.Required, Unit: optionalText(f.Unit)})
+		}
 		if strings.TrimSpace(c.Title) == "" {
 			missing = append(missing, "name")
 		}
@@ -448,6 +454,18 @@ func MapCapture(d Detail) httpapi.Capture {
 	}
 
 	for _, c := range d.Candidates {
+		if c.CandidateType == "tracker" {
+			payload := decodePayload(c.Payload)
+			if payload.Tracker == nil || len(payload.Tracker.Fields) == 0 {
+				// 已确认／放弃的历史结果不能因旧候选损坏而倒退为失败。
+				if out.Status != httpapi.CaptureStatusConfirmed && out.Status != httpapi.CaptureStatusDiscarded && out.Status != httpapi.CaptureStatusExpired {
+					out.Status = httpapi.CaptureStatusFailed
+					out.Error = &httpapi.ErrorBody{Code: httpapi.AISCHEMAINVALID, Message: "这次整理结果不完整，请重新整理，原始输入仍保留。", Retryable: true}
+				}
+				out.Candidates = []httpapi.CaptureCandidate{}
+				break
+			}
+		}
 		candidate := httpapi.CaptureCandidate{
 			Id:            c.ID,
 			CandidateType: httpapi.CaptureCandidateType(c.CandidateType),

@@ -1,0 +1,56 @@
+{
+  "data": {
+    "id": "cap_fixture_weight",
+    "status": "needs_confirmation",
+    "revision": 2,
+    "origin": "home",
+    "parts": [],
+    "candidates": [
+      {
+        "id": "cand_weight",
+        "candidate_type": "tracker",
+        "action": "create",
+        "selected": true,
+        "payload": {
+          "tracker": {
+            "name": "体重",
+            "fields": [
+              {
+                "key": "weight_kg",
+                "label": "体重",
+                "type": "number",
+                "unit": "kg",
+                "required": true
+              }
+            ]
+          }
+        },
+        "missing_fields": []
+      },
+      {
+        "id": "cand_measurement",
+        "candidate_type": "record",
+        "action": "create",
+        "selected": true,
+        "payload": {
+          "record": {
+            "timestamp": "2026-09-08T08:00:00Z",
+            "tracker_ref": "cand_weight",
+            "values": [
+              {
+                "key": "weight_kg",
+                "number_value": 68.5
+              }
+            ]
+          }
+        },
+        "missing_fields": []
+      }
+    ],
+    "created_at": "2026-09-08T08:00:00Z",
+    "updated_at": "2026-09-08T08:00:03Z"
+  },
+  "meta": {
+    "request_id": "req_fixture_weight"
+  }
+}

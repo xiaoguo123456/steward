@@ -25,12 +25,6 @@ func (s *Service) CreateTrackerInTx(ctx context.Context, q *dbgen.Queries, userI
 	if name == "" {
 		return dbgen.Tracker{}, apperr.Validation(apperr.Field("name", "记录项名称不能为空。"))
 	}
-	if len(fields) == 0 {
-		// AI 没有给出字段定义时提供一个可用的默认数值字段，用户可在确认页修改。
-		fields = []httpapi.TrackerField{{
-			Key: "value", Label: "数值", Type: httpapi.TrackerFieldTypeNumber, Required: true,
-		}}
-	}
 	if err := validateFields(fields); err != nil {
 		return dbgen.Tracker{}, err
 	}

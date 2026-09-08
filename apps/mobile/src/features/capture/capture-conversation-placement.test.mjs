@@ -50,7 +50,7 @@ test('Capture 对话会话支持关闭浮层后恢复，并保持确认后才写
   assert.doesNotMatch(flow, /create-outline|chevron-up/);
   assert.ok(
     flow.indexOf('<SourceSummary candidate={candidate}')
-      < flow.indexOf('<Text style={styles.candidateDetail}>{candidateDetail(draft)}</Text>'),
+      < flow.indexOf('<Text style={styles.candidateDetail}>{candidateDetail('),
   );
   assert.match(flow, /label=\{saving \? '保存中…' : '保存'\}/);
   assert.match(flow, /checkbox:\s*\{[^}]*width:\s*44,\s*height:\s*44,/s);

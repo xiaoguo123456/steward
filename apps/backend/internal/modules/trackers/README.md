@@ -37,3 +37,5 @@ Tracker 字段定义与 Record 录入。Tracker 是可复用的 Schema，Record 
 ## 禁止
 
 - Tracker 不是 Object，也不作为 Relation 的端点。
+
+- Capture 确认创建记录项时缺少字段必须拒绝，不能静默提供默认 `value` 字段。

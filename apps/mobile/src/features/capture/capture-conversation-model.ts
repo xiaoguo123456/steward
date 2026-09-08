@@ -37,7 +37,7 @@ export function captureConversationPhase({
     return 'failure';
   }
   if (operationStatus === 'queued' || operationStatus === 'running') return 'processing';
-  if (captureFailed && !captureStatus) return 'unavailable';
+  if (captureFailed) return 'unavailable';
   if (
     captureStatus === 'draft'
     || captureStatus === 'submitting'

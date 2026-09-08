@@ -164,6 +164,8 @@ type CandidateDraft struct {
 	Tags                  []string
 	ListID                string
 	TrackerID             string
+	TrackerRef            string
+	TrackerFields         []TrackerFieldRef
 	RecordValues          []RecordValueDraft
 	Timestamp             *time.Time
 	Confidences           []Confidence

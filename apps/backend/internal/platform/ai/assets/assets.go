@@ -117,7 +117,7 @@ var MoodReflectionSchemaV1 []byte
 
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion        = "capture-parse@v6"
+	CaptureParsePromptVersion        = "capture-parse@v7"
 	VisionExtractPromptVersion       = "vision-extract@v1"
 	AssistantPolicyVersion           = "assistant@v3"
 	ReviewNarrativePromptVersion     = "review-narrative@v2"
@@ -130,7 +130,7 @@ const (
 	MoodJournalFollowUpSchemaVersion = "mood-journal-follow-up-result.v1"
 	MoodReflectionPromptVersion      = "mood-reflection@v1"
 	MoodReflectionSchemaVersion      = "mood-reflection-result.v1"
-	CaptureParseSchemaVersion        = "capture-parse-result.v4"
+	CaptureParseSchemaVersion        = "capture-parse-result.v5"
 )
 
 // ProposalGuardsSchemaV1 是建议前置条件与字段级时间来源的权威契约。
@@ -152,3 +152,13 @@ var DismissProposalSchemaV1 []byte
 //
 //go:embed schemas/assistant/ask-clarification.v1.schema.json
 var AskClarificationSchemaV1 []byte
+
+// CaptureParsePromptV7 补齐数据记录与新记录项的关联确认流程。
+//
+//go:embed prompts/capture-parse/v7.md
+var CaptureParsePromptV7 string
+
+// CaptureParseSchemaV5 增加记录项字段和同批引用。
+//
+//go:embed schemas/capture/capture-parse-result.v5.schema.json
+var CaptureParseSchemaV5 []byte

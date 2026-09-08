@@ -13,10 +13,12 @@ import { updateCandidateField, updateRecordCandidateValue } from './capture-conf
 
 export function CaptureCandidateEditor({
   candidate,
+  pendingTrackers = {},
   onChange,
   payload,
 }: {
   candidate: CaptureCandidate;
+  pendingTrackers?: Record<string, NonNullable<CaptureDraftPayload['tracker']>>;
   onChange: (payload: CaptureDraftPayload) => void;
   payload: CaptureDraftPayload;
 }) {
@@ -248,7 +250,7 @@ export function CaptureCandidateEditor({
   }
 
   if (candidate.candidate_type === 'record' && payload.record) {
-    return <RecordCandidateEditor onChange={onChange} payload={payload} />;
+    return <RecordCandidateEditor onChange={onChange} payload={payload} pendingTrackers={pendingTrackers} />;
   }
 
   return <Text style={styles.blockedCopy}>这项候选的结构不完整，请返回重新整理。</Text>;
@@ -295,22 +297,25 @@ function ChoiceField({
 }
 
 function RecordCandidateEditor({
+  pendingTrackers,
   onChange,
   payload,
 }: {
   onChange: (payload: CaptureDraftPayload) => void;
   payload: CaptureDraftPayload;
+  pendingTrackers: Record<string, NonNullable<CaptureDraftPayload['tracker']>>;
 }) {
   const record = payload.record;
   const trackerId = record?.tracker_ref ?? '';
-  const trackers = useListTrackers({ status: 'active' });
-  const tracker = useGetTracker(trackerId, { query: { enabled: Boolean(trackerId) } });
+  const pendingTracker = pendingTrackers[trackerId];
+  const trackers = useListTrackers({ status: 'active' }, { query: { enabled: !trackerId } });
+  const tracker = useGetTracker(trackerId, { query: { enabled: Boolean(trackerId) && !pendingTracker } });
   if (!record) return null;
 
   const setField = (field: string, value: unknown) => {
     onChange(updateCandidateField(payload, 'record', field, value));
   };
-  const trackerFields = tracker.data?.data.fields ?? [];
+  const trackerFields = pendingTracker?.fields ?? tracker.data?.data.fields ?? [];
   const displayFields = trackerFields.length > 0
     ? trackerFields
     : record.values.map<TrackerField>((item) => ({
@@ -358,7 +363,7 @@ function RecordCandidateEditor({
       ) : (
         <View style={styles.trackerSummary}>
           <Text style={styles.trackerSummaryLabel}>记录到</Text>
-          <Text style={styles.trackerSummaryValue}>{tracker.data?.data.name ?? '正在读取记录项…'}</Text>
+          <Text style={styles.trackerSummaryValue}>{pendingTracker?.name ?? tracker.data?.data.name ?? '正在读取记录项…'}</Text>
         </View>
       )}
       <EditorField
@@ -367,7 +372,7 @@ function RecordCandidateEditor({
         placeholder="ISO 时间"
         value={record.timestamp}
       />
-      {tracker.isError ? (
+      {!pendingTracker && tracker.isError ? (
         <Pressable accessibilityRole="button" onPress={() => void tracker.refetch()}>
           <Text style={styles.blockedCopy}>字段结构加载失败，点此重试。</Text>
         </Pressable>

@@ -7,13 +7,15 @@
 当前定义六条链路：
 
 ```text
-schemas/capture/capture-parse-result.v4.schema.json
+schemas/capture/capture-parse-result.v5.schema.json
 schemas/recipes/seasonal-ingredient-tags.v1.schema.json
 schemas/review/review-narrative-result.v2.schema.json
 schemas/notes/note-polish-result.v1.schema.json
 schemas/mood-journal/mood-reflection-result.v1.schema.json
 schemas/mood-journal/mood-journal-polish-result.v1.schema.json
 ```
+
+v5 增加新记录项的完整字段和同批 Record 引用；当前 Prompt 为 `capture-parse/v7`。
 
 前者描述 `apps/backend/internal/platform/ai` 中 `CaptureParseResult` 的完整契约；v4 在行程字段基础上增加稳定候选引用、已有实体更新目标和关系候选。旧版本作为历史契约保留。
 当前的 `fake` Provider 是进程内的确定性测试替身，输出结构由 Go 类型保证，因此没有接入运行时 Schema 校验。它只允许在 development/test 显式使用，不是产品级理解能力，不得作为生产 Provider 或真实 Provider 的静默 fallback。

@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -435,6 +436,9 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 	}
 
 	result, parseErr := s.parser.ParseCapture(ctx, req)
+	if parseErr == nil {
+		parseErr = validateTrackerCandidates(result.Candidates, trackers)
+	}
 
 	// 记一笔审计。**只记形状不记正文**：输入输出都压成哈希，
 	// 想知道用户说了什么去看他自己的 Capture，那份有 RLS 管着。
@@ -478,9 +482,15 @@ func (s *Service) RunParse(ctx context.Context, args CaptureParseArgs) error {
 		}
 		capture = current
 		if parseErr != nil {
+			code := apperr.CodeAIProviderUnavailable
+			message := "智能整理暂时不可用，你仍然可以手动填写。"
+			if errors.Is(parseErr, ai.ErrSchemaInvalid) {
+				code = apperr.CodeAISchemaInvalid
+				message = "这次整理结果不完整，请重新整理，原始输入仍保留。"
+			}
 			errBody, _ := json.Marshal(map[string]any{
-				"code":      string(apperr.CodeAIProviderUnavailable),
-				"message":   "智能整理暂时不可用，你仍然可以手动填写。",
+				"code":      string(code),
+				"message":   message,
 				"retryable": true,
 			})
 			if _, err := q.UpdateCaptureStatus(ctx, dbgen.UpdateCaptureStatusParams{
@@ -663,6 +673,20 @@ func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 	}
 	sourceMedia := make(map[string]string, len(parts))
 	candidateRefs := make(map[string]string, len(result.Candidates))
+	candidateIDs := make([]string, len(result.Candidates))
+	for i, c := range result.Candidates {
+		candidateIDs[i] = idgen.New(idgen.PrefixCandidate)
+		if c.Ref != "" {
+			candidateRefs[c.Ref] = candidateIDs[i]
+		}
+	}
+	// 先收集本批字段，Record 即使排在 Tracker 前也能校验与关联。
+	trackers = append([]ai.TrackerRef(nil), trackers...)
+	for i, c := range result.Candidates {
+		if c.Type == "tracker" {
+			trackers = append(trackers, ai.TrackerRef{ID: candidateIDs[i], Name: c.Title, Fields: c.TrackerFields})
+		}
+	}
 	for _, part := range parts {
 		if part.Kind == "image" && part.MediaID != nil && *part.MediaID != "" {
 			sourceMedia[part.ID] = *part.MediaID
@@ -670,6 +694,12 @@ func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 	}
 
 	for i, c := range result.Candidates {
+		if c.Type == "record" && c.TrackerRef != "" {
+			c.TrackerID = candidateRefs[c.TrackerRef]
+		}
+		if c.Type == "record" && c.TrackerID != "" {
+			c.Missing = resolvedTrackerMissing(c.Missing)
+		}
 		payload, missing, err := buildPayload(c, defaultListID, loc, sourceMedia, trackers)
 		if err != nil {
 			return err
@@ -706,13 +736,7 @@ func (s *Service) saveParseResult(ctx context.Context, q *dbgen.Queries,
 			missing = []string{}
 		}
 
-		candidateID := idgen.New(idgen.PrefixCandidate)
-		if strings.TrimSpace(c.Ref) != "" {
-			if _, exists := candidateRefs[c.Ref]; exists {
-				return apperr.Validation(apperr.Field("candidates", "候选引用不能重复。"))
-			}
-			candidateRefs[c.Ref] = candidateID
-		}
+		candidateID := candidateIDs[i]
 		if c.Action == "update" && (strings.TrimSpace(c.TargetID) == "" || c.TargetExpectedVersion == nil) {
 			missing = appendMissing(missing, "target_id")
 		}

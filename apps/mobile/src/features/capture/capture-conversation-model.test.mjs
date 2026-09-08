@@ -50,3 +50,15 @@ test('多轮文字澄清在处理中聚合为一行，图片仍逐项显示', ()
 test('明确无保存内容的结束态不展示失败或零项确认', () => {
   assert.equal(captureConversationPhase({ captureStatus: 'discarded', operationStatus: 'succeeded' }), 'dismissed');
 });
+
+test('整理已结束但结果读取失败时，旧 parsing 缓存不能继续显示处理中', () => {
+  assert.equal(captureConversationPhase({
+    captureStatus: 'parsing', operationStatus: 'succeeded', captureFailed: true,
+  }), 'unavailable');
+  assert.equal(captureConversationPhase({
+    captureStatus: 'parsing', captureFailed: true,
+  }), 'unavailable');
+  assert.equal(captureConversationPhase({
+    captureStatus: 'needs_confirmation', operationStatus: 'succeeded', captureFailed: true,
+  }), 'confirmation');
+});

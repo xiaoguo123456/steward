@@ -29,7 +29,7 @@ const clarificationPartPositionStart = 1000
 func captureParseSchema() (*jsonschema.Schema, error) {
 	schemaOnce.Do(func() {
 		var doc any
-		if err := json.Unmarshal(assets.CaptureParseSchemaV4, &doc); err != nil {
+		if err := json.Unmarshal(assets.CaptureParseSchemaV5, &doc); err != nil {
 			schemaErr = fmt.Errorf("解析结果 Schema 不合法：%w", err)
 			return
 		}
@@ -60,7 +60,7 @@ func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest)
 	userPrompt := buildUserPrompt(req)
 	messages := []chatMessage{
 		// 系统策略与用户资料使用不同角色，边界明确。
-		{Role: "system", Content: assets.CaptureParsePromptV6},
+		{Role: "system", Content: assets.CaptureParsePromptV7},
 		{Role: "user", Content: userPrompt},
 	}
 
@@ -97,7 +97,7 @@ func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest)
 		}
 	}
 
-	result := mapToNeutral(parsed, req)
+	result := guardAmbiguousNumericInput(req, mapToNeutral(parsed, req))
 	result.Usage = usage
 	result.ProviderModel = p.cfg.ParseModel
 	result.PromptVersion = assets.CaptureParsePromptVersion
@@ -149,8 +149,16 @@ type rawResult struct {
 		ItineraryDetails      *rawItineraryDetails `json:"itinerary_details"`
 		Tags                  []string             `json:"tags"`
 		TrackerID             string               `json:"tracker_id"`
-		Timestamp             string               `json:"timestamp"`
-		Values                []struct {
+		TrackerRef            string               `json:"tracker_ref"`
+		TrackerFields         []struct {
+			Key      string `json:"key"`
+			Label    string `json:"label"`
+			Type     string `json:"type"`
+			Unit     string `json:"unit"`
+			Required bool   `json:"required"`
+		} `json:"tracker_fields"`
+		Timestamp string `json:"timestamp"`
+		Values    []struct {
 			Key    string   `json:"key"`
 			Number *float64 `json:"number"`
 			Text   string   `json:"text"`
@@ -273,7 +281,7 @@ func buildUserPrompt(req ai.CaptureParseRequest) string {
 				if f.Required {
 					label += "，必填"
 				}
-				fields = append(fields, fmt.Sprintf("%s(%s)", label, f.Key))
+				fields = append(fields, fmt.Sprintf("%s(%s，类型=%s)", label, f.Key, f.Type))
 			}
 			fmt.Fprintf(&b, "- %s [id=%s] 字段：%s\n", t.Name, t.ID, strings.Join(fields, "、"))
 		}
@@ -363,6 +371,7 @@ func mapToNeutral(parsed rawResult, req ai.CaptureParseRequest) ai.CaptureParseR
 			ProjectRef:            req.SuggestedProjectID,
 			Tags:                  c.Tags,
 			TrackerID:             c.TrackerID,
+			TrackerRef:            c.TrackerRef,
 			Missing:               c.Missing,
 			Warnings:              c.Warnings,
 			Sources:               sources,
@@ -386,6 +395,10 @@ func mapToNeutral(parsed rawResult, req ai.CaptureParseRequest) ai.CaptureParseR
 				Seat:          strings.TrimSpace(c.ItineraryDetails.Seat),
 				BookingStatus: c.ItineraryDetails.BookingStatus,
 			}
+		}
+
+		for _, f := range c.TrackerFields {
+			candidate.TrackerFields = append(candidate.TrackerFields, ai.TrackerFieldRef{Key: f.Key, Label: f.Label, Type: f.Type, Unit: f.Unit, Required: f.Required})
 		}
 
 		for _, v := range c.Values {
