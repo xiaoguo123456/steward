@@ -1,4 +1,4 @@
-import { Alert, Empty, Skeleton, Typography } from 'antd';
+import { Alert, Button, Empty, Skeleton, Typography } from 'antd';
 import type { ReactNode } from 'react';
 import { AdminApiError } from '@steward/admin-api-client';
 
@@ -13,12 +13,14 @@ export function PageState({
   error,
   empty,
   emptyText,
+  onRetry,
   children,
 }: {
   loading: boolean;
   error: unknown;
   empty?: boolean;
   emptyText?: string;
+  onRetry?: () => void;
   children: ReactNode;
 }) {
   if (loading) return <Skeleton active paragraph={{ rows: 6 }} />;
@@ -29,6 +31,7 @@ export function PageState({
       <Alert
         type="error"
         showIcon
+        action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined}
         message={api?.message ?? '加载失败。'}
         description={
           <Typography.Text type="secondary" copyable={api ? { text: api.requestId } : false}>

@@ -154,6 +154,30 @@ func (a *ReadAPI) AdminGetUser(ctx context.Context,
 		detail.DisplayName = &name
 	}
 
+	// 预算必须读取正式配置，避免编辑窗口把已有限额当成空值覆盖。
+	err = a.db.InTx(ctx, req.UserId, func(ctx context.Context, q *dbgen.Queries) error {
+		budget, err := q.AdminGetBudget(ctx, req.UserId)
+		if database.IsNoRows(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		detail.AiBudget = &adminapi.AIBudget{EffectiveFrom: &budget.EffectiveFrom, EffectiveUntil: budget.EffectiveUntil}
+		if budget.DailyCalls != nil {
+			value := int(*budget.DailyCalls)
+			detail.AiBudget.DailyCalls = &value
+		}
+		if budget.MonthlyCalls != nil {
+			value := int(*budget.MonthlyCalls)
+			detail.AiBudget.MonthlyCalls = &value
+		}
+		return nil
+	})
+	if err != nil {
+		return adminapi.AdminGetUser500JSONResponse{InternalErrorJSONResponse: adminapi.InternalErrorJSONResponse(errorBody(ctx, adminapi.ADMININTERNALERROR, "用户预算取数失败。"))}, nil
+	}
+
 	return adminapi.AdminGetUser200JSONResponse(adminapi.AdminUserDetailResponse{
 		Data: detail, Meta: meta(ctx),
 	}), nil

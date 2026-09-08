@@ -66,12 +66,6 @@ func (a *ReadAPI) AdminGetFunnel(ctx context.Context,
 
 	var steps []adminapi.FunnelStep
 	err := a.db.InTxAnonymous(ctx, func(ctx context.Context, q *dbgen.Queries) error {
-		users, err := q.AdminDashboardUsers(ctx, dbgen.AdminDashboardUsersParams{
-			Tz: a.cfg.ReportingTimezone, FromDate: from, ToDate: to,
-		})
-		if err != nil {
-			return err
-		}
 		usage, err := q.AdminDashboardUsage(ctx, dbgen.AdminDashboardUsageParams{
 			FromDate: from, ToDate: to,
 		})
@@ -81,10 +75,14 @@ func (a *ReadAPI) AdminGetFunnel(ctx context.Context,
 
 		switch funnel {
 		case "onboarding":
+			cohort, err := q.AdminOnboardingCohort(ctx, dbgen.AdminOnboardingCohortParams{Tz: a.cfg.ReportingTimezone, FromDate: from, ToDate: to})
+			if err != nil {
+				return err
+			}
 			steps = buildFunnel([]rawStep{
-				{"注册", users.NewUsers, users.NewUsers},
-				{"完成初始化", users.Initialized, users.Initialized},
-				{"首次业务操作", users.Mau, usage.CaptureSubmitted + usage.TaskCompleted},
+				{"期间注册", cohort.Registered, cohort.Registered},
+				{"当前已完成初始化", cohort.Initialized, cohort.Initialized},
+				{"期间有业务操作", cohort.Activated, cohort.Activated},
 			})
 		case "capture":
 			steps = buildFunnel([]rawStep{

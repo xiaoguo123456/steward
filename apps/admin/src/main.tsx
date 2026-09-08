@@ -1,4 +1,4 @@
-import { StrictMode, useMemo, useState } from 'react';
+import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ConfigProvider, App as AntApp } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
@@ -10,13 +10,7 @@ import { createQueryClient } from '@/api/query-client';
 import { Root } from '@/Root';
 
 function Bootstrap() {
-  const [expiredAt, setExpiredAt] = useState(0);
-  // 会话失效时换一个 QueryClient，等于把所有在途请求与缓存一起丢掉。
-  const queryClient = useMemo(
-    () => createQueryClient(() => setExpiredAt(Date.now())),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [expiredAt],
-  );
+  const [queryClient] = useState(createQueryClient);
 
   return (
     <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#07865F' } }}>

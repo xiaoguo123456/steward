@@ -14,10 +14,12 @@ type Filters = {
   user_id?: string;
   phone?: string;
   account_status?: 'active' | 'suspended';
+  initialized?: boolean;
 };
 
 export function UsersPage() {
   const navigate = useNavigate();
+  const [form] = Form.useForm();
   const [filters, setFilters] = useState<Filters>({});
   // 游标分页：每一页的游标压在栈里，「上一页」就是弹出来。
   const [cursors, setCursors] = useState<string[]>([]);
@@ -36,6 +38,8 @@ export function UsersPage() {
         </Typography.Text>
       ),
     },
+    { title: '名称', dataIndex: 'display_name', render: (value?: string) => value || '—' },
+    { title: '最近错误', dataIndex: 'latest_error_code', render: (value?: string) => value || '—' },
     { title: '手机号', dataIndex: 'masked_phone' },
     {
       title: '状态',
@@ -84,10 +88,11 @@ export function UsersPage() {
 
       <Card size="small">
         <Form
+          form={form}
           layout="inline"
           onFinish={(values: Filters) => {
             setCursors([]);
-            setFilters(values);
+            setFilters({ ...values, user_id: values.user_id?.trim() || undefined, phone: values.phone?.trim() || undefined });
           }}
         >
           <Form.Item name="user_id" label="用户 ID">
@@ -108,6 +113,8 @@ export function UsersPage() {
               ]}
             />
           </Form.Item>
+          <Form.Item name="initialized" label="初始化"><Select allowClear style={{ width: 120 }} options={[{ value: true, label: '已完成' }, { value: false, label: '未完成' }]} /></Form.Item>
+          <Button onClick={() => { form.resetFields(); setFilters({}); setCursors([]); }}>重置</Button>
           <Button type="primary" htmlType="submit">
             查询
           </Button>
@@ -118,12 +125,12 @@ export function UsersPage() {
 
       <PageState
         loading={query.isPending}
-        error={query.error}
+        error={query.error} onRetry={() => void query.refetch()}
         empty={rows.length === 0}
         emptyText="没有符合条件的用户"
       >
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Table rowKey="id" dataSource={rows} columns={columns} pagination={false} size="small" />
+          <Table rowKey="id" dataSource={rows} columns={columns} scroll={{ x: 1300 }} pagination={false} size="small" />
           <Space>
             <Button disabled={cursors.length === 0} onClick={() => setCursors((c) => c.slice(0, -1))}>
               上一页

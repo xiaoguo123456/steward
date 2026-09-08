@@ -1,8 +1,10 @@
+import { fileURLToPath } from 'node:url';
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   base: '/admin/',
   plugins: [react()],
   server: {

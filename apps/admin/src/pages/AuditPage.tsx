@@ -25,7 +25,7 @@ export function AuditPage() {
       <Card>
         <PageState
           loading={query.isPending}
-          error={query.error}
+          error={query.error} onRetry={() => void query.refetch()}
           empty={rows.length === 0}
           emptyText="还没有执行过任何管理操作"
         >

@@ -7,7 +7,7 @@ import { AdminApiError } from '@steward/admin-api-client';
  * **不持久化缓存。** 后台每一行都是跨用户的运营数据，
  * 落到磁盘就等于在每台用过后台的机器上留了一份副本。
  */
-export function createQueryClient(onSessionExpired: () => void) {
+export function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -16,7 +16,6 @@ export function createQueryClient(onSessionExpired: () => void) {
         retry: (failureCount, error) => {
           // 会话失效重试多少次都是失效，重试只会拖慢跳转。
           if (error instanceof AdminApiError && error.isSessionExpired) {
-            onSessionExpired();
             return false;
           }
           // 4xx 是请求本身的问题，重试不会变对。

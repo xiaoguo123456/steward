@@ -161,9 +161,9 @@ SELECT
     (SELECT count(DISTINCT user_id) FROM admin.user_daily_usage
       WHERE active AND report_date = $3::date)::bigint AS dau,
     (SELECT count(DISTINCT user_id) FROM admin.user_daily_usage
-      WHERE active AND report_date > $3::date - 7)::bigint AS wau,
+      WHERE active AND report_date BETWEEN $3::date - 6 AND $3::date)::bigint AS wau,
     (SELECT count(DISTINCT user_id) FROM admin.user_daily_usage
-      WHERE active AND report_date > $3::date - 30)::bigint AS mau
+      WHERE active AND report_date BETWEEN $3::date - 29 AND $3::date)::bigint AS mau
 `
 
 type AdminDashboardUsersParams struct {
@@ -415,6 +415,41 @@ func (q *Queries) AdminListUsers(ctx context.Context, arg AdminListUsersParams) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const adminOnboardingCohort = `-- name: AdminOnboardingCohort :one
+WITH cohort AS (
+    SELECT user_id, initialized FROM admin.user_index
+    WHERE (created_at AT TIME ZONE $3::text)::date
+          BETWEEN $1::date AND $2::date
+)
+SELECT count(*)::bigint AS registered,
+       count(*) FILTER (WHERE initialized)::bigint AS initialized,
+       count(*) FILTER (WHERE initialized AND EXISTS (
+           SELECT 1 FROM admin.user_daily_usage u WHERE u.user_id = cohort.user_id AND u.active
+             AND u.report_date BETWEEN $1::date AND $2::date
+       ))::bigint AS activated
+FROM cohort
+`
+
+type AdminOnboardingCohortParams struct {
+	FromDate time.Time
+	ToDate   time.Time
+	Tz       string
+}
+
+type AdminOnboardingCohortRow struct {
+	Registered  int64
+	Initialized int64
+	Activated   int64
+}
+
+// 所有阶段限定为同一注册窗口内的用户，后续阶段是前一阶段的子集。
+func (q *Queries) AdminOnboardingCohort(ctx context.Context, arg AdminOnboardingCohortParams) (AdminOnboardingCohortRow, error) {
+	row := q.db.QueryRow(ctx, adminOnboardingCohort, arg.FromDate, arg.ToDate, arg.Tz)
+	var i AdminOnboardingCohortRow
+	err := row.Scan(&i.Registered, &i.Initialized, &i.Activated)
+	return i, err
 }
 
 const adminUserDailyUsage = `-- name: AdminUserDailyUsage :many

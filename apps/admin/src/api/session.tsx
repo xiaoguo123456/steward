@@ -1,6 +1,6 @@
 import {
-  AdminApiError,
   adminGetSession,
+  onAdminSessionExpired,
   adminLogin,
   adminLogout,
   clearCsrfToken,
@@ -59,6 +59,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
     queryClient.clear();
   }, [apply, queryClient]);
 
+  useEffect(() => onAdminSessionExpired(invalidate), [invalidate]);
+
   // 启动时问一次服务端：Cookie 还在不在。
   useEffect(() => {
     let cancelled = false;
@@ -89,12 +91,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const signOut = useCallback(async () => {
     try {
       await adminLogout();
-    } catch (error) {
-      // 退出失败也要把本地状态清掉：留在页面上会让人以为还登录着，
-      // 而实际上后面每个请求都会 401。
-      if (!(error instanceof AdminApiError)) throw error;
+    } finally {
+      invalidate();
     }
-    invalidate();
   }, [invalidate]);
 
   return (

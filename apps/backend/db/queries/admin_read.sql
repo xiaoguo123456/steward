@@ -48,9 +48,9 @@ SELECT
     (SELECT count(DISTINCT user_id) FROM admin.user_daily_usage
       WHERE active AND report_date = sqlc.arg(to_date)::date)::bigint AS dau,
     (SELECT count(DISTINCT user_id) FROM admin.user_daily_usage
-      WHERE active AND report_date > sqlc.arg(to_date)::date - 7)::bigint AS wau,
+      WHERE active AND report_date BETWEEN sqlc.arg(to_date)::date - 6 AND sqlc.arg(to_date)::date)::bigint AS wau,
     (SELECT count(DISTINCT user_id) FROM admin.user_daily_usage
-      WHERE active AND report_date > sqlc.arg(to_date)::date - 30)::bigint AS mau;
+      WHERE active AND report_date BETWEEN sqlc.arg(to_date)::date - 29 AND sqlc.arg(to_date)::date)::bigint AS mau;
 
 -- name: AdminDashboardUsage :one
 SELECT
@@ -114,3 +114,18 @@ LIMIT sqlc.arg(row_limit);
 -- name: AdminLatestAggregation :one
 SELECT data_as_of, status, finished_at FROM admin.aggregation_runs
 WHERE kind = sqlc.arg(kind) ORDER BY started_at DESC LIMIT 1;
+
+-- name: AdminOnboardingCohort :one
+-- 所有阶段限定为同一注册窗口内的用户，后续阶段是前一阶段的子集。
+WITH cohort AS (
+    SELECT user_id, initialized FROM admin.user_index
+    WHERE (created_at AT TIME ZONE sqlc.arg(tz)::text)::date
+          BETWEEN sqlc.arg(from_date)::date AND sqlc.arg(to_date)::date
+)
+SELECT count(*)::bigint AS registered,
+       count(*) FILTER (WHERE initialized)::bigint AS initialized,
+       count(*) FILTER (WHERE initialized AND EXISTS (
+           SELECT 1 FROM admin.user_daily_usage u WHERE u.user_id = cohort.user_id AND u.active
+             AND u.report_date BETWEEN sqlc.arg(from_date)::date AND sqlc.arg(to_date)::date
+       ))::bigint AS activated
+FROM cohort;

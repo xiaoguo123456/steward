@@ -3,9 +3,8 @@ import {
   errorMessage,
   updateTask,
   useGetTask,
-  useListProjects,
+  useGetProject,
   useListTaskLists,
-  type ProjectStatus,
   type Task,
 } from '@steward/api-client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -46,7 +45,6 @@ const statusLabels: Record<Task['status'], string> = {
   done: '已完成',
   cancelled: '已取消',
 };
-const projectStatuses: ProjectStatus[] = ['active', 'paused', 'archived'];
 
 export default function TaskDetailScreen() {
   const router = useRouter();
@@ -57,11 +55,11 @@ export default function TaskDetailScreen() {
 
   const taskQuery = useGetTask(id ?? '', { query: { enabled: Boolean(id) } });
   const listsQuery = useListTaskLists({ list_kind: 'tasks' });
-  const projectsQuery = useListProjects({ status: projectStatuses, limit: 100 });
   const task = taskQuery.data?.data;
+  const projectQuery = useGetProject(task?.project_id ?? '', { query: { enabled: Boolean(task?.project_id) } });
 
   const listName = listsQuery.data?.data.find((list) => list.id === task?.list_id)?.name ?? '—';
-  const projectName = projectsQuery.data?.data.find((project) => project.id === task?.project_id)?.title ?? '无';
+  const projectName = projectQuery.data?.data.title;
 
   const runAction = async (action: () => Promise<unknown>) => {
     setActionError(null);
@@ -149,6 +147,16 @@ export default function TaskDetailScreen() {
       />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.taskTitle}>{task.title}</Text>
+        {task.project_id ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`打开项目：${projectName ?? '关联项目'}`}
+            onPress={() => router.push({ pathname: '/projects/[id]' as never, params: { id: task.project_id! } })}
+            style={styles.projectTag}
+          >
+            <Text style={styles.projectTagText}>{projectName ?? (projectQuery.isError ? '查看关联项目' : '正在加载项目…')}</Text>
+          </Pressable>
+        ) : null}
 
         <Pressable
           accessibilityLabel={task.status === 'done' ? '标记为未完成' : '标记为完成'}
@@ -179,11 +187,9 @@ export default function TaskDetailScreen() {
         <View style={styles.detailCard}>
           <DetailRow label="状态" value={statusLabels[task.status]} />
           <DetailRow label="所属清单" value={listName} />
-          <DetailRow label="所属项目" value={projectName} />
           <DetailRow color={priority.color} label="优先级" value={priority.label} />
           <DetailRow label="截止" value={dueLabel(task)} />
           <DetailRow label="计划时间" value={scheduleLabel(task)} />
-          <DetailRow label="加入日期" value={task.focus_date ? formatMonthDay(task.focus_date) : '未设置'} />
           <ReminderRow task={task} />
           {task.estimated_minutes ? (
             <DetailRow label="预计时长" value={`${task.estimated_minutes} 分钟`} />
@@ -276,6 +282,8 @@ function scheduleLabel(task: Task): string {
 }
 
 const styles = StyleSheet.create({
+  projectTag: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginTop: 4 },
+  projectTagText: { color: colors.primaryStrong, backgroundColor: colors.primarySoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.sm, fontFamily, ...typography.meta },
   headerActions: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 18 },
   editLabel: { color: colors.primaryStrong, fontFamily, ...typography.bodyStrong },
   reminderControl: {

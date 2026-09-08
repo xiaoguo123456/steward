@@ -1,3 +1,4 @@
+import { CursorPager, useCursorPages } from '@/components/CursorPager';
 import {
   Alert,
   App,
@@ -29,7 +30,7 @@ import {
   unwrap,
 } from '@steward/admin-api-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { Money } from '@/components/Money';
@@ -52,21 +53,33 @@ export function UserDetailPage() {
   const queryClient = useQueryClient();
   const [action, setAction] = useState<ActionKind | null>(null);
   const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const attempt = useRef<{ body: string; key: string } | null>(null);
+  const openAction = (next: ActionKind) => {
+    attempt.current = null;
+    form.resetFields();
+    if (next === 'budget') form.setFieldsValue(user?.ai_budget ?? {});
+    setAction(next);
+  };
 
   const detail = useAdminGetUser(userId);
   const user = unwrap(detail.data)?.data;
 
   const submit = async (values: Record<string, unknown>) => {
-    if (!user || !action) return;
-    // 幂等键由前端生成并在这一次提交中固定：用户点了「确认」之后
-    // 网络超时重试，服务端认得出是同一次操作，不会执行两遍。
-    const key = `${action}-${userId}-${crypto.randomUUID()}`;
+    if (!user || !action || submittingRef.current) return;
     const base = {
       expected_version: user.version,
       reason_code: values.reason_code as never,
       reason_text: values.reason_text as string,
     };
 
+    const body = JSON.stringify({ action, userId, base, daily_calls: values.daily_calls ?? null, monthly_calls: values.monthly_calls ?? null });
+    // 结果未知时保留同一请求的幂等键；修改参数或重新确认版本后才建立新尝试。
+    if (attempt.current?.body !== body) attempt.current = { body, key: crypto.randomUUID() };
+    const key = attempt.current.key;
+    submittingRef.current = true;
+    setSubmitting(true);
     try {
       if (action === 'suspend') {
         await adminSuspendUser(userId, base, { headers: { 'Idempotency-Key': key } });
@@ -85,20 +98,25 @@ export function UserDetailPage() {
           { headers: { 'Idempotency-Key': key } },
         );
       }
+      attempt.current = null;
       message.success('操作已完成');
       setAction(null);
       form.resetFields();
-      // 只失效这个用户相关的查询，不清空整个缓存。
-      await queryClient.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(userId) });
+      // 使详情与已缓存的统计重新查询，后台快照仍按其更新时间展示。
+      await queryClient.invalidateQueries();
     } catch (err) {
       if (err instanceof AdminApiError && err.code === 'ADMIN_VERSION_CONFLICT') {
         // 版本冲突要**先刷新再让人重新确认**，不能直接重试：
         // 数据已经被别人改过，用户看到的前提已经不成立了。
         message.warning('这条数据刚被改动过，已为你刷新，请确认后重试。');
+        attempt.current = null;
         await detail.refetch();
         return;
       }
-      message.error(err instanceof AdminApiError ? err.message : '操作失败');
+      message.error(err instanceof AdminApiError ? err.message : '请求结果未确认，请保留当前表单重试。');
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -108,7 +126,7 @@ export function UserDetailPage() {
         用户详情
       </Typography.Title>
 
-      <PageState loading={detail.isPending} error={detail.error}>
+      <PageState loading={detail.isPending} error={detail.error} onRetry={() => void detail.refetch()}>
         {user ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {user.account_status === 'suspended' ? (
@@ -120,20 +138,25 @@ export function UserDetailPage() {
               extra={
                 <Space>
                   {user.account_status === 'active' ? (
-                    <Button danger onClick={() => setAction('suspend')}>
+                    <Button danger onClick={() => openAction('suspend')}>
                       暂停
                     </Button>
                   ) : (
-                    <Button type="primary" onClick={() => setAction('resume')}>
+                    <Button type="primary" onClick={() => openAction('resume')}>
                       恢复
                     </Button>
                   )}
-                  <Button onClick={() => setAction('revoke')}>撤销会话</Button>
-                  <Button onClick={() => setAction('budget')}>设置预算</Button>
+                  <Button onClick={() => openAction('revoke')}>撤销会话</Button>
+                  <Button onClick={() => openAction('budget')}>设置预算</Button>
                 </Space>
               }
             >
               <Descriptions column={3} size="small">
+                <Descriptions.Item label="名称">{user.display_name || '—'}</Descriptions.Item>
+                <Descriptions.Item label="注册时间">{new Date(user.created_at).toLocaleString('zh-CN')}</Descriptions.Item>
+                <Descriptions.Item label="最近活跃">{user.last_active_at ? new Date(user.last_active_at).toLocaleDateString('zh-CN') : '—'}</Descriptions.Item>
+                <Descriptions.Item label="每日 AI 上限">{user.ai_budget?.daily_calls ?? '未设置用户上限'}</Descriptions.Item>
+                <Descriptions.Item label="每月 AI 上限">{user.ai_budget?.monthly_calls ?? '未设置用户上限'}</Descriptions.Item>
                 <Descriptions.Item label="用户 ID">
                   <Typography.Text copyable style={{ fontSize: 12 }}>
                     {user.id}
@@ -168,7 +191,7 @@ export function UserDetailPage() {
               items={[
                 { key: 'usage', label: '使用情况', children: <UsageTab userId={userId} /> },
                 { key: 'costs', label: 'AI 成本', children: <CostsTab userId={userId} /> },
-                { key: 'ops', label: 'Operation', children: <OperationsTab userId={userId} /> },
+                { key: 'ops', label: '处理记录', children: <OperationsTab userId={userId} /> },
                 { key: 'actions', label: '管理记录', children: <ActionsTab userId={userId} /> },
               ]}
             />
@@ -178,6 +201,11 @@ export function UserDetailPage() {
 
       <Modal
         open={action !== null}
+        confirmLoading={submitting}
+        cancelButtonProps={{ disabled: submitting }}
+        closable={!submitting}
+        keyboard={!submitting}
+        maskClosable={!submitting}
         title={
           action === 'suspend'
             ? '暂停用户'
@@ -188,6 +216,8 @@ export function UserDetailPage() {
                 : '设置 AI 预算'
         }
         onCancel={() => {
+          if (submittingRef.current) return;
+          attempt.current = null;
           setAction(null);
           form.resetFields();
         }}
@@ -211,7 +241,7 @@ export function UserDetailPage() {
                   : '预算按调用次数计。不会因此替用户打开他自己关掉的 AI 开关。'
           }
         />
-        <Form form={form} layout="vertical" onFinish={submit}>
+        <Form form={form} layout="vertical" onFinish={submit} disabled={submitting}>
           <Form.Item
             name="reason_code"
             label="处置原因"
@@ -230,10 +260,10 @@ export function UserDetailPage() {
           {action === 'budget' ? (
             <>
               <Form.Item name="daily_calls" label="每日调用上限" extra="留空表示不限">
-                <InputNumber min={0} style={{ width: '100%' }} />
+                <InputNumber min={0} precision={0} style={{ width: '100%' }} />
               </Form.Item>
               <Form.Item name="monthly_calls" label="每月调用上限" extra="留空表示不限">
-                <InputNumber min={0} style={{ width: '100%' }} />
+                <InputNumber min={0} precision={0} style={{ width: '100%' }} />
               </Form.Item>
             </>
           ) : null}
@@ -247,7 +277,7 @@ function UsageTab({ userId }: { userId: string }) {
   const query = useAdminGetUserUsage(userId);
   const rows = unwrap(query.data)?.data ?? [];
   return (
-    <PageState loading={query.isPending} error={query.error} empty={rows.length === 0}>
+    <PageState loading={query.isPending} error={query.error} onRetry={() => void query.refetch()} empty={rows.length === 0}>
       <Table
         rowKey="date"
         size="small"
@@ -270,7 +300,7 @@ function CostsTab({ userId }: { userId: string }) {
   const query = useAdminGetUserCosts(userId);
   const rows = unwrap(query.data)?.data ?? [];
   return (
-    <PageState loading={query.isPending} error={query.error} empty={rows.length === 0}>
+    <PageState loading={query.isPending} error={query.error} onRetry={() => void query.refetch()} empty={rows.length === 0}>
       <Space direction="vertical" style={{ width: '100%' }}>
         <Table
           rowKey={(r) => `${r.date}-${r.feature}-${r.model}`}
@@ -296,11 +326,12 @@ function CostsTab({ userId }: { userId: string }) {
 }
 
 function OperationsTab({ userId }: { userId: string }) {
-  const query = useAdminGetUserOperations(userId, { limit: 20 });
+  const paging = useCursorPages();
+  const query = useAdminGetUserOperations(userId, { limit: 20, cursor: paging.cursor });
   const rows = unwrap(query.data)?.data ?? [];
   return (
-    <PageState loading={query.isPending} error={query.error} empty={rows.length === 0}>
-      <Table
+    <PageState loading={query.isPending} error={query.error} onRetry={() => void query.refetch()} empty={rows.length === 0}>
+      <div><Table
         rowKey="id"
         size="small"
         dataSource={rows}
@@ -320,21 +351,23 @@ function OperationsTab({ userId }: { userId: string }) {
           },
         ]}
       />
+      <CursorPager paging={paging} nextCursor={unwrap(query.data)?.page.next_cursor} loading={query.isFetching} /></div>
     </PageState>
   );
 }
 
 function ActionsTab({ userId }: { userId: string }) {
-  const query = useAdminGetUserAdminActions(userId, { limit: 20 });
+  const paging = useCursorPages();
+  const query = useAdminGetUserAdminActions(userId, { limit: 20, cursor: paging.cursor });
   const rows = unwrap(query.data)?.data ?? [];
   return (
     <PageState
       loading={query.isPending}
-      error={query.error}
+      error={query.error} onRetry={() => void query.refetch()}
       empty={rows.length === 0}
       emptyText="这个用户还没有被执行过管理操作"
     >
-      <Table
+      <div><Table
         rowKey="id"
         size="small"
         dataSource={rows}
@@ -351,6 +384,7 @@ function ActionsTab({ userId }: { userId: string }) {
           { title: '说明', dataIndex: 'reason_text', render: (v?: string | null) => v ?? '—' },
         ]}
       />
+      <CursorPager paging={paging} nextCursor={unwrap(query.data)?.page.next_cursor} loading={query.isFetching} /></div>
     </PageState>
   );
 }

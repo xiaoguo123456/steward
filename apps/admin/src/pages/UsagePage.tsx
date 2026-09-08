@@ -1,3 +1,4 @@
+import { ReportRange, useReportRange } from '@/components/ReportRange';
 import { Card, Col, Row, Space, Statistic, Table, Typography } from 'antd';
 import {
   useAdminGetFunnel, useAdminUsageOverview,
@@ -8,8 +9,9 @@ import { Freshness } from '@/components/Freshness';
 import { PageState } from '@/components/PageState';
 
 export function UsagePage() {
-  const overview = useAdminUsageOverview();
-  const funnel = useAdminGetFunnel('onboarding');
+  const { range, setRange, timezone } = useReportRange();
+  const overview = useAdminUsageOverview(range);
+  const funnel = useAdminGetFunnel('onboarding', range);
   const data = unwrap(overview.data)?.data;
 
   return (
@@ -17,9 +19,10 @@ export function UsagePage() {
       <Typography.Title level={4} style={{ margin: 0 }}>
         使用分析
       </Typography.Title>
+      <ReportRange value={range} onChange={setRange} timezone={timezone} />
       <Freshness value={unwrap(overview.data)?.freshness} />
 
-      <PageState loading={overview.isPending} error={overview.error}>
+      <PageState loading={overview.isPending} error={overview.error} onRetry={() => void overview.refetch()}>
         <Row gutter={16}>
           <Col span={8}>
             <Card>
@@ -42,7 +45,7 @@ export function UsagePage() {
       <Card title="功能使用">
         <PageState
           loading={overview.isPending}
-          error={overview.error}
+          error={overview.error} onRetry={() => void overview.refetch()}
           empty={(data?.feature_usage.length ?? 0) === 0}
         >
           <Table
@@ -61,7 +64,7 @@ export function UsagePage() {
       <Card title="新用户漏斗">
         <PageState
           loading={funnel.isPending}
-          error={funnel.error}
+          error={funnel.error} onRetry={() => void funnel.refetch()}
           empty={(unwrap(funnel.data)?.data.length ?? 0) === 0}
         >
           <Table

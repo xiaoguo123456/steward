@@ -15,6 +15,7 @@ export * from './generated/admin-audit/admin-audit';
 export * from './generated/model';
 export {
   AdminApiError,
+  onAdminSessionExpired,
   setCsrfToken,
   clearCsrfToken,
   getCsrfToken,

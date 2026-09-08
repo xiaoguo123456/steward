@@ -170,7 +170,9 @@ func (a *ReadAPI) AdminDashboardTrends(ctx context.Context,
 // 「这段时间没人用」长得一模一样。
 func (a *ReadAPI) resolveRange(from, to *openapiDate) (time.Time, time.Time) {
 	loc := loadLocation(a.cfg.ReportingTimezone)
-	today := time.Now().In(loc).Truncate(24 * time.Hour)
+	local := time.Now().In(loc)
+	// 日期参数按日历值传给 PostgreSQL date，不按 UTC 时间间隔截断。
+	today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
 
 	end := today
 	if to != nil {

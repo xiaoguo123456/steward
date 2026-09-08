@@ -11,6 +11,8 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -118,10 +120,39 @@ func (s *Service) RunDaily(ctx context.Context, day time.Time) (int, error) {
 	return written, err
 }
 
+// RunRecent 按报表时区刷新昨天与今天，补齐上次小时聚合之后发生的跨日业务。
+func (s *Service) RunRecent(ctx context.Context, now time.Time) (int, error) {
+	days, err := recentReportingDays(now, s.timezone)
+	if err != nil {
+		return 0, err
+	}
+	written := 0
+	var failures []error
+	for _, day := range days {
+		n, err := s.RunDaily(ctx, day)
+		written += n
+		if err != nil {
+			failures = append(failures, err)
+		}
+	}
+	return written, errors.Join(failures...)
+}
+
+func recentReportingDays(now time.Time, timezone string) ([]time.Time, error) {
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		return nil, err
+	}
+	local := now.In(loc)
+	today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
+	return []time.Time{today.AddDate(0, 0, -1), today}, nil
+}
+
 func (s *Service) aggregateAll(ctx context.Context, day time.Time) (int, error) {
 	const pageSize = 200
 	afterID := ""
 	written := 0
+	failed := 0
 
 	// 清扫的基准时刻。整轮跑完后，updated_at 还停在这之前的行
 	// 就是这一轮没被枚举到的用户——他们已经从 users 里消失了。
@@ -134,6 +165,9 @@ func (s *Service) aggregateAll(ctx context.Context, day time.Time) (int, error) 
 			return written, err
 		}
 		if len(users) == 0 {
+			if failed > 0 {
+				return written, fmt.Errorf("%d 个用户聚合失败", failed)
+			}
 			s.pruneMissing(ctx, runStartedAt)
 			return written, nil
 		}
@@ -146,6 +180,7 @@ func (s *Service) aggregateAll(ctx context.Context, day time.Time) (int, error) 
 				// 统计算失败是另一回事；不标记的话下面的清扫会把他删掉，
 				// 一次临时故障就能抹掉一批真实用户的索引。
 				s.touch(ctx, u.ID)
+				failed++
 				continue
 			}
 			written++

@@ -53,6 +53,8 @@ type Querier interface {
 	// **必须 FOR UPDATE。** 两个运营同时点「暂停」，不加锁的话两条都会成功、
 	// 版本各加一次，而实际只该有一次状态转换。
 	AdminLockUserForUpdate(ctx context.Context, id string) (AdminLockUserForUpdateRow, error)
+	// 所有阶段限定为同一注册窗口内的用户，后续阶段是前一阶段的子集。
+	AdminOnboardingCohort(ctx context.Context, arg AdminOnboardingCohortParams) (AdminOnboardingCohortRow, error)
 	AdminRecordAccountAction(ctx context.Context, arg AdminRecordAccountActionParams) (UserAccountAction, error)
 	// 撤销该用户全部有效会话，返回撤销了几条。
 	AdminRevokeUserSessions(ctx context.Context) (int64, error)

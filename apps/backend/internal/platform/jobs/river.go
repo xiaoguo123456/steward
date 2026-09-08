@@ -550,10 +550,7 @@ func New(pool *pgxpool.Pool, deps Deps, logger *slog.Logger, runWorkers bool) (*
 				&AdminAggregateWorker{svc: deps.Aggregate, logger: logger}); err != nil {
 				return nil, fmt.Errorf("注册后台聚合 Worker 失败：%w", err)
 			}
-			// 每小时刷新当天的数据。
-			//
-			// **不是「每小时算一次昨天」**：后台最常看的就是今天，
-			// 而今天的数据一直在变。整点重算当天，昨天由零点那次固化。
+			// 每小时刷新报表时区的昨天和今天，避免午夜前最后一小时的数据漏计。
 			config.PeriodicJobs = append(config.PeriodicJobs, river.NewPeriodicJob(
 				river.PeriodicInterval(time.Hour),
 				func() (river.JobArgs, *river.InsertOpts) {
@@ -617,7 +614,13 @@ func (w *AdminAggregateWorker) Work(ctx context.Context, job *river.Job[AdminAgg
 		}
 		day = parsed
 	}
-	written, err := w.svc.RunDaily(ctx, day)
+	var written int
+	var err error
+	if job.Args.Day == "" {
+		written, err = w.svc.RunRecent(ctx, day)
+	} else {
+		written, err = w.svc.RunDaily(ctx, day)
+	}
 	if err != nil {
 		return err
 	}

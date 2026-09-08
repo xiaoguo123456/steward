@@ -94,6 +94,12 @@ jobs:
           cd apps/backend
           go run ./cmd/migrate up
           go test -race -count=1 ./internal/modules/auth
+      - name: 验证环境专属后台账号读模型权限
+        env:
+          PGHOST: 127.0.0.1
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: bash tools/check-admin-read-model-acl.sh
       - name: 运行全量检查
         run: make check
 

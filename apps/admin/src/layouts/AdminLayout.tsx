@@ -6,7 +6,7 @@ import {
   MonitorOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Layout, Menu, Space, Tag, Typography, Button } from 'antd';
+import { App, Layout, Menu, Space, Tag, Typography, Button } from 'antd';
 import type { PropsWithChildren } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -23,6 +23,7 @@ const items = [
 
 export function AdminLayout({ children }: PropsWithChildren) {
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const location = useLocation();
   const { session, signOut } = useSession();
 
@@ -63,7 +64,7 @@ export function AdminLayout({ children }: PropsWithChildren) {
               报表时区 {session?.reporting_timezone}
             </Typography.Text>
             <Typography.Text>{session?.username}</Typography.Text>
-            <Button size="small" onClick={() => void signOut()}>
+            <Button size="small" onClick={() => void signOut().catch(() => { message.warning('服务端尚未确认退出，请恢复网络后刷新并重试。'); })}>
               退出
             </Button>
           </Space>

@@ -13,6 +13,13 @@
  */
 
 let csrfToken = '';
+const sessionExpiredListeners = new Set<() => void>();
+
+/** 所有正式请求（含直接写请求）统一通知会话失效。 */
+export function onAdminSessionExpired(listener: () => void) {
+  sessionExpiredListeners.add(listener);
+  return () => { sessionExpiredListeners.delete(listener); };
+}
 
 /** 登录成功后把 CSRF Token 记到内存里。 */
 export function setCsrfToken(token: string) {
@@ -59,6 +66,7 @@ export class AdminApiError extends Error {
  * 用 unwrap() 把这件事在类型上也说清楚。
  */
 export async function adminFetch<T>(url: string, init?: RequestInit): Promise<T> {
+  const requestCsrfToken = csrfToken;
   const method = (init?.method ?? 'GET').toUpperCase();
   const isWrite = method !== 'GET' && method !== 'HEAD';
 
@@ -86,7 +94,12 @@ export async function adminFetch<T>(url: string, init?: RequestInit): Promise<T>
     const message = payload?.error?.message ?? '请求失败。';
     // request_id 一定要带出来：界面上显示它，出问题时按它就能查到整条链路。
     const requestId = payload?.meta?.request_id ?? '';
-    throw new AdminApiError(response.status, code, message, requestId);
+    const error = new AdminApiError(response.status, code, message, requestId);
+    // 新登录之后迟到的旧请求不能清掉新会话。
+    if (error.isSessionExpired && requestCsrfToken === csrfToken) {
+      for (const listener of sessionExpiredListeners) listener();
+    }
+    throw error;
   }
 
   return {

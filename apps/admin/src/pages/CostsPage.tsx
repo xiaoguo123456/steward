@@ -1,3 +1,4 @@
+import { ReportRange, useReportRange } from '@/components/ReportRange';
 import { Alert, Card, Col, Row, Space, Statistic, Table, Typography } from 'antd';
 import {
   unwrap,
@@ -10,8 +11,9 @@ import { Money } from '@/components/Money';
 import { PageState } from '@/components/PageState';
 
 export function CostsPage() {
-  const summary = useAdminAICostSummary();
-  const breakdown = useAdminAICostBreakdown({ group_by: 'date' });
+  const { range, setRange, timezone } = useReportRange();
+  const summary = useAdminAICostSummary(range);
+  const breakdown = useAdminAICostBreakdown({ ...range, group_by: 'date' });
   const prices = useAdminListAIPrices();
   const data = unwrap(summary.data)?.data;
 
@@ -20,8 +22,9 @@ export function CostsPage() {
       <Typography.Title level={4} style={{ margin: 0 }}>
         AI 与成本
       </Typography.Title>
+      <ReportRange value={range} onChange={setRange} timezone={timezone} />
 
-      <PageState loading={summary.isPending} error={summary.error}>
+      <PageState loading={summary.isPending} error={summary.error} onRetry={() => void summary.refetch()}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           {/* 缺价的调用数不为 0 时，上面的金额一定偏低。
               必须让人看见这一点，否则会把一个不完整的数当成账单。 */}
@@ -29,8 +32,8 @@ export function CostsPage() {
             <Alert
               type="warning"
               showIcon
-              message={`有 ${data.pricing_missing_calls} 天包含没有配置价格的调用`}
-              description="这些调用的金额算不出来，因此下面的成本是偏低的。在「价格版本」里补上对应的服务商与模型即可自动重算。"
+              message="有调用缺少计价，当前金额不完整"
+              description="缺价调用未计入完整成本。请通过已授权的价格管理接口补齐价格，并核对重算结果；当前页面仅查看价格版本。"
             />
           ) : null}
 
@@ -65,7 +68,7 @@ export function CostsPage() {
       <Card title="按日期">
         <PageState
           loading={breakdown.isPending}
-          error={breakdown.error}
+          error={breakdown.error} onRetry={() => void breakdown.refetch()}
           empty={(unwrap(breakdown.data)?.data.length ?? 0) === 0}
         >
           <Table
@@ -75,7 +78,6 @@ export function CostsPage() {
             dataSource={unwrap(breakdown.data)?.data ?? []}
             columns={[
               { title: '日期', dataIndex: 'group_key' },
-              { title: '调用', dataIndex: 'calls' },
               { title: '成本', render: (_: unknown, r) => <Money value={r.cost} /> },
             ]}
           />
@@ -92,7 +94,7 @@ export function CostsPage() {
       >
         <PageState
           loading={prices.isPending}
-          error={prices.error}
+          error={prices.error} onRetry={() => void prices.refetch()}
           empty={(unwrap(prices.data)?.data.length ?? 0) === 0}
           emptyText="还没有配置任何价格。在此之前所有成本都会显示为「价格缺失」。"
         >

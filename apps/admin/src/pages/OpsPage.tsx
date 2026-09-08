@@ -33,7 +33,7 @@ export function OpsPage() {
       <Card title="队列">
         <PageState
           loading={queues.isPending}
-          error={queues.error}
+          error={queues.error} onRetry={() => void queues.refetch()}
           empty={(unwrap(queues.data)?.data.length ?? 0) === 0}
           emptyText="还没有任何任务记录"
         >
@@ -67,7 +67,7 @@ export function OpsPage() {
       <Card title="外部服务">
         <PageState
           loading={providers.isPending}
-          error={providers.error}
+          error={providers.error} onRetry={() => void providers.refetch()}
           empty={(unwrap(providers.data)?.data.length ?? 0) === 0}
           emptyText="还没有配置任何服务商价格，因此这里看不到服务商"
         >
