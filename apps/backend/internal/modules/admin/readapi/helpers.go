@@ -28,7 +28,7 @@ func loadLocation(name string) *time.Location {
 // 而实际情况是「我们不知道花了多少」。
 func money(amount string, status string) adminapi.MoneyAmount {
 	out := adminapi.MoneyAmount{
-		Currency: adminapi.USD,
+		Currency: adminapi.CNY,
 		Status:   adminapi.CostStatus(statusOr(status)),
 	}
 	// 空串表示「算不出来」。有金额就带上——即使状态是 partial：

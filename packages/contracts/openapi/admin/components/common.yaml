@@ -57,7 +57,7 @@ MoneyAmount:
       example: "2.381245"
     currency:
       type: string
-      enum: [USD]
+      enum: [CNY]
     status:
       $ref: '#/CostStatus'
 

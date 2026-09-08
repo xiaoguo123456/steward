@@ -141,7 +141,7 @@ AICostBreakdownResponse:
 AIPrice:
   type: object
   additionalProperties: false
-  required: [id, provider, model, usage_unit, unit_size, unit_price_usd, effective_from]
+  required: [id, provider, model, usage_unit, unit_size, unit_price_cny, effective_from]
   properties:
     id: { type: string }
     provider: { type: string }
@@ -150,7 +150,7 @@ AIPrice:
     unit_size:
       type: string
       description: 单价对应的用量。**用字符串传 decimal**，JSON number 会漂。
-    unit_price_usd: { type: string }
+    unit_price_cny: { type: string }
     effective_from: { type: string, format: date-time }
     effective_until:
       type: string
@@ -177,13 +177,13 @@ CreateAIPriceRequest:
   description: |
     新增一个价格版本。**不覆盖旧值**——覆盖会让上个月的报表这个月一看
     变了数，那份报表就没有任何意义了。
-  required: [provider, model, usage_unit, unit_size, unit_price_usd, effective_from]
+  required: [provider, model, usage_unit, unit_size, unit_price_cny, effective_from]
   properties:
     provider: { type: string, minLength: 1 }
     model: { type: string, minLength: 1 }
     usage_unit: { $ref: '#/UsageUnit' }
     unit_size: { type: string }
-    unit_price_usd: { type: string }
+    unit_price_cny: { type: string }
     effective_from: { type: string, format: date-time }
     effective_until:
       type: string

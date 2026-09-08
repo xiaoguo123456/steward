@@ -128,7 +128,7 @@ func (s *Service) AddPrice(ctx context.Context, p PriceInput) (dbgen.AiModelPric
 	if err != nil {
 		return dbgen.AiModelPrice{}, err
 	}
-	price, err := numericOf(p.UnitPriceUSD)
+	price, err := numericOf(p.UnitPriceCNY)
 	if err != nil {
 		return dbgen.AiModelPrice{}, err
 	}
@@ -141,7 +141,7 @@ func (s *Service) AddPrice(ctx context.Context, p PriceInput) (dbgen.AiModelPric
 			Model:          p.Model,
 			UsageUnit:      p.UsageUnit,
 			UnitSize:       size,
-			UnitPriceUsd:   price,
+			UnitPriceCny:   price,
 			EffectiveFrom:  p.EffectiveFrom,
 			EffectiveUntil: p.EffectiveUntil,
 		})
@@ -160,7 +160,7 @@ type PriceInput struct {
 	Model          string
 	UsageUnit      string
 	UnitSize       string
-	UnitPriceUSD   string
+	UnitPriceCNY   string
 	EffectiveFrom  time.Time
 	EffectiveUntil *time.Time
 }

@@ -46,12 +46,12 @@ export const AdminAICostSummaryResponse = zod.object({
   "output_tokens": zod.number().int(),
   "cost": zod.object({
   "amount": zod.string().nullable(),
-  "currency": zod.enum(['USD']),
+  "currency": zod.enum(['CNY']),
   "status": zod.enum(['calculated', 'partial', 'pricing_missing', 'pending', 'not_applicable', 'no_usage'])
 }).describe('金额。\*\*用字符串传 decimal\*\*，不用 number——\nJSON 的 number 是 IEEE754 双精度，累加会漂。\n\nstatus=pricing_missing 时 amount 为 null，界面显示「价格缺失」\*\*而不是 0\*\*：\n「不知道多少钱」和「不花钱」是完全不同的两件事，\n显示成 0 会让人以为这条链路免费。\n'),
   "failed_cost": zod.object({
   "amount": zod.string().nullable(),
-  "currency": zod.enum(['USD']),
+  "currency": zod.enum(['CNY']),
   "status": zod.enum(['calculated', 'partial', 'pricing_missing', 'pending', 'not_applicable', 'no_usage'])
 }).describe('金额。\*\*用字符串传 decimal\*\*，不用 number——\nJSON 的 number 是 IEEE754 双精度，累加会漂。\n\nstatus=pricing_missing 时 amount 为 null，界面显示「价格缺失」\*\*而不是 0\*\*：\n「不知道多少钱」和「不花钱」是完全不同的两件事，\n显示成 0 会让人以为这条链路免费。\n').describe('失败调用产生的成本。\*\*失败也可能花钱\*\*——模型先算了一半才报错，\n这部分照样计费，不单列出来会以为失败是免费的。\n'),
   "pricing_missing_calls": zod.number().int(),
@@ -86,7 +86,7 @@ export const AdminAICostBreakdownResponse = zod.object({
   "output_tokens": zod.number().int(),
   "cost": zod.object({
   "amount": zod.string().nullable(),
-  "currency": zod.enum(['USD']),
+  "currency": zod.enum(['CNY']),
   "status": zod.enum(['calculated', 'partial', 'pricing_missing', 'pending', 'not_applicable', 'no_usage'])
 }).describe('金额。\*\*用字符串传 decimal\*\*，不用 number——\nJSON 的 number 是 IEEE754 双精度，累加会漂。\n\nstatus=pricing_missing 时 amount 为 null，界面显示「价格缺失」\*\*而不是 0\*\*：\n「不知道多少钱」和「不花钱」是完全不同的两件事，\n显示成 0 会让人以为这条链路免费。\n'),
   "pricing_missing_calls": zod.number().int()
@@ -107,7 +107,7 @@ export const AdminListAIPricesResponse = zod.object({
   "model": zod.string(),
   "usage_unit": zod.enum(['input_token', 'cached_input_token', 'output_token', 'audio_second', 'image', 'request']),
   "unit_size": zod.string().describe('单价对应的用量。\*\*用字符串传 decimal\*\*，JSON number 会漂。'),
-  "unit_price_usd": zod.string(),
+  "unit_price_cny": zod.string(),
   "effective_from": zod.string().datetime({"offset":true}),
   "effective_until": zod.string().datetime({"offset":true}).nullish()
 })),
@@ -140,7 +140,7 @@ export const AdminCreateAIPriceBody = zod.object({
   "model": zod.string().min(1),
   "usage_unit": zod.enum(['input_token', 'cached_input_token', 'output_token', 'audio_second', 'image', 'request']),
   "unit_size": zod.string(),
-  "unit_price_usd": zod.string(),
+  "unit_price_cny": zod.string(),
   "effective_from": zod.string().datetime({"offset":true}),
   "effective_until": zod.string().datetime({"offset":true}).nullish()
 }).describe('新增一个价格版本。\*\*不覆盖旧值\*\*——覆盖会让上个月的报表这个月一看\n变了数，那份报表就没有任何意义了。\n')
@@ -152,7 +152,7 @@ export const AdminCreateAIPriceResponse = zod.object({
   "model": zod.string(),
   "usage_unit": zod.enum(['input_token', 'cached_input_token', 'output_token', 'audio_second', 'image', 'request']),
   "unit_size": zod.string().describe('单价对应的用量。\*\*用字符串传 decimal\*\*，JSON number 会漂。'),
-  "unit_price_usd": zod.string(),
+  "unit_price_cny": zod.string(),
   "effective_from": zod.string().datetime({"offset":true}),
   "effective_until": zod.string().datetime({"offset":true}).nullish()
 }),

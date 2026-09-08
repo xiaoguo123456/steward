@@ -26,13 +26,13 @@ func (q *Queries) DeleteCostItems(ctx context.Context, aiActionID string) error 
 const insertCostItem = `-- name: InsertCostItem :exec
 INSERT INTO ai_action_cost_items (
     id, ai_action_id, price_id, usage_unit, quantity,
-    unit_size, unit_price_usd, amount_usd, cost_status
+    unit_size, unit_price_cny, amount_cny, cost_status
 )
 SELECT
     $1, $2, p.id, $3::text,
-    $4::numeric, p.unit_size, p.unit_price_usd,
+    $4::numeric, p.unit_size, p.unit_price_cny,
     CASE WHEN p.id IS NULL OR $4::numeric = 0 THEN NULL
-         ELSE $4::numeric / p.unit_size * p.unit_price_usd END,
+         ELSE $4::numeric / p.unit_size * p.unit_price_cny END,
     CASE WHEN $4::numeric = 0 THEN 'not_applicable'
          WHEN p.id IS NULL THEN 'pricing_missing'
          ELSE 'calculated' END
@@ -45,8 +45,8 @@ LEFT JOIN ai_model_prices p
       AND (p.effective_until IS NULL OR p.effective_until > $7::timestamptz)
 ON CONFLICT (ai_action_id, usage_unit) DO UPDATE SET
     price_id = excluded.price_id, quantity = excluded.quantity,
-    unit_size = excluded.unit_size, unit_price_usd = excluded.unit_price_usd,
-    amount_usd = excluded.amount_usd, cost_status = excluded.cost_status
+    unit_size = excluded.unit_size, unit_price_cny = excluded.unit_price_cny,
+    amount_cny = excluded.amount_cny, cost_status = excluded.cost_status
 `
 
 type InsertCostItemParams struct {
@@ -61,7 +61,7 @@ type InsertCostItemParams struct {
 
 // 写一条成本明细，价格按调用发生的时刻匹配。
 //
-// 匹配不到价格时 amount_usd 为 NULL、状态 pricing_missing——
+// 匹配不到价格时 amount_cny 为 NULL、状态 pricing_missing——
 // **不写 0**。「不知道多少钱」和「不花钱」是完全不同的两件事。
 func (q *Queries) InsertCostItem(ctx context.Context, arg InsertCostItemParams) error {
 	_, err := q.db.Exec(ctx, insertCostItem,
@@ -78,7 +78,7 @@ func (q *Queries) InsertCostItem(ctx context.Context, arg InsertCostItemParams) 
 
 const listAIPrices = `-- name: ListAIPrices :many
 SELECT id, provider, model, usage_unit,
-       unit_size::text AS unit_size, unit_price_usd::text AS unit_price_usd,
+       unit_size::text AS unit_size, unit_price_cny::text AS unit_price_cny,
        effective_from, effective_until, created_at
 FROM ai_model_prices
 ORDER BY provider, model, usage_unit, effective_from DESC
@@ -90,7 +90,7 @@ type ListAIPricesRow struct {
 	Model          string
 	UsageUnit      string
 	UnitSize       string
-	UnitPriceUsd   string
+	UnitPriceCny   string
 	EffectiveFrom  time.Time
 	EffectiveUntil *time.Time
 	CreatedAt      time.Time
@@ -111,7 +111,7 @@ func (q *Queries) ListAIPrices(ctx context.Context) ([]ListAIPricesRow, error) {
 			&i.Model,
 			&i.UsageUnit,
 			&i.UnitSize,
-			&i.UnitPriceUsd,
+			&i.UnitPriceCny,
 			&i.EffectiveFrom,
 			&i.EffectiveUntil,
 			&i.CreatedAt,
@@ -179,7 +179,7 @@ func (q *Queries) ListPendingCostActions(ctx context.Context, rowLimit int32) ([
 }
 
 const resetCostStatus = `-- name: ResetCostStatus :exec
-UPDATE ai_actions SET cost_status = 'pending', estimated_cost = NULL, cost_calculated_at = NULL
+UPDATE ai_actions SET cost_status = 'pending', estimated_cost_cny = NULL, cost_calculated_at = NULL
  WHERE provider = $1 AND provider_model = $2
 `
 
@@ -214,12 +214,12 @@ func (q *Queries) RetireAIPrice(ctx context.Context, arg RetireAIPriceParams) er
 
 const rollupActionCost = `-- name: RollupActionCost :exec
 UPDATE ai_actions a SET
-    estimated_cost = s.total,
+    estimated_cost_cny = s.total,
     cost_status = s.status,
     cost_calculated_at = now()
 FROM (
     SELECT
-        SUM(amount_usd) FILTER (WHERE cost_status = 'calculated') AS total,
+        SUM(amount_cny) FILTER (WHERE cost_status = 'calculated') AS total,
         CASE
             WHEN count(*) FILTER (WHERE cost_status <> 'not_applicable') = 0 THEN 'not_applicable'
             WHEN count(*) FILTER (WHERE cost_status = 'pricing_missing') = 0 THEN 'calculated'
@@ -244,14 +244,14 @@ func (q *Queries) RollupActionCost(ctx context.Context, aiActionID string) error
 const upsertAIPrice = `-- name: UpsertAIPrice :one
 
 INSERT INTO ai_model_prices (
-    id, provider, model, usage_unit, unit_size, unit_price_usd,
+    id, provider, model, usage_unit, unit_size, unit_price_cny,
     effective_from, effective_until
 ) VALUES (
     $1, $2, $3, $4,
     $5::numeric, $6::numeric,
     $7, $8
 )
-RETURNING id, provider, model, usage_unit, unit_size, unit_price_usd, effective_from, effective_until, created_at
+RETURNING id, provider, model, usage_unit, unit_size, unit_price_usd, effective_from, effective_until, created_at, unit_price_cny
 `
 
 type UpsertAIPriceParams struct {
@@ -260,7 +260,7 @@ type UpsertAIPriceParams struct {
 	Model          string
 	UsageUnit      string
 	UnitSize       pgtype.Numeric
-	UnitPriceUsd   pgtype.Numeric
+	UnitPriceCny   pgtype.Numeric
 	EffectiveFrom  time.Time
 	EffectiveUntil *time.Time
 }
@@ -276,7 +276,7 @@ func (q *Queries) UpsertAIPrice(ctx context.Context, arg UpsertAIPriceParams) (A
 		arg.Model,
 		arg.UsageUnit,
 		arg.UnitSize,
-		arg.UnitPriceUsd,
+		arg.UnitPriceCny,
 		arg.EffectiveFrom,
 		arg.EffectiveUntil,
 	)
@@ -291,6 +291,7 @@ func (q *Queries) UpsertAIPrice(ctx context.Context, arg UpsertAIPriceParams) (A
 		&i.EffectiveFrom,
 		&i.EffectiveUntil,
 		&i.CreatedAt,
+		&i.UnitPriceCny,
 	)
 	return i, err
 }

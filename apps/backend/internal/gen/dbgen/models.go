@@ -178,6 +178,7 @@ type AdminUserDailyUsage struct {
 	AiCost              pgtype.Numeric
 	AiCostStatus        string
 	UpdatedAt           time.Time
+	AiCostCny           pgtype.Numeric
 }
 
 type AdminUserIndex struct {
@@ -197,6 +198,7 @@ type AdminUserIndex struct {
 	LatestErrorCode  *string
 	SourceVersion    int32
 	UpdatedAt        time.Time
+	AiCost30dCny     pgtype.Numeric
 }
 
 type AiAction struct {
@@ -225,6 +227,7 @@ type AiAction struct {
 	CachedInputTokens   int32
 	CostStatus          string
 	CostCalculatedAt    *time.Time
+	EstimatedCostCny    pgtype.Numeric
 }
 
 type AiActionCostItem struct {
@@ -238,6 +241,8 @@ type AiActionCostItem struct {
 	AmountUsd    pgtype.Numeric
 	CostStatus   string
 	CreatedAt    time.Time
+	UnitPriceCny pgtype.Numeric
+	AmountCny    pgtype.Numeric
 }
 
 type AiModelPrice struct {
@@ -250,6 +255,7 @@ type AiModelPrice struct {
 	EffectiveFrom  time.Time
 	EffectiveUntil *time.Time
 	CreatedAt      time.Time
+	UnitPriceCny   pgtype.Numeric
 }
 
 type AiToolCall struct {

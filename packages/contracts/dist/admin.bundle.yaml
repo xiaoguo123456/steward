@@ -1134,7 +1134,7 @@ components:
         currency:
           type: string
           enum:
-            - USD
+            - CNY
         status:
           $ref: '#/components/schemas/CostStatus'
     AIMetrics:
@@ -2180,7 +2180,7 @@ components:
         - model
         - usage_unit
         - unit_size
-        - unit_price_usd
+        - unit_price_cny
         - effective_from
       properties:
         id:
@@ -2194,7 +2194,7 @@ components:
         unit_size:
           type: string
           description: 单价对应的用量。**用字符串传 decimal**，JSON number 会漂。
-        unit_price_usd:
+        unit_price_cny:
           type: string
         effective_from:
           type: string
@@ -2227,7 +2227,7 @@ components:
         - model
         - usage_unit
         - unit_size
-        - unit_price_usd
+        - unit_price_cny
         - effective_from
       properties:
         provider:
@@ -2240,7 +2240,7 @@ components:
           $ref: '#/components/schemas/UsageUnit'
         unit_size:
           type: string
-        unit_price_usd:
+        unit_price_cny:
           type: string
         effective_from:
           type: string

@@ -34,7 +34,7 @@ export interface CreateAIPriceRequest {
   model: string;
   usage_unit: UsageUnit;
   unit_size: string;
-  unit_price_usd: string;
+  unit_price_cny: string;
   effective_from: string;
   /** @nullable */
   effective_until?: string | null;

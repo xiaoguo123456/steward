@@ -95,7 +95,7 @@ func run() error {
 				if !*apply {
 					return tx.QueryRow(ctx, "SELECT count(*) FROM ai_actions WHERE provider=$1 AND provider_model=$2 AND created_at >= $3 AND created_at < $4", *provider, *model, from, until).Scan(&count)
 				}
-				result, err := tx.Exec(ctx, "UPDATE ai_actions SET cost_status='pending', estimated_cost=NULL, cost_calculated_at=NULL WHERE provider=$1 AND provider_model=$2 AND created_at >= $3 AND created_at < $4", *provider, *model, from, until)
+				result, err := tx.Exec(ctx, "UPDATE ai_actions SET cost_status='pending', estimated_cost_cny=NULL, cost_calculated_at=NULL WHERE provider=$1 AND provider_model=$2 AND created_at >= $3 AND created_at < $4", *provider, *model, from, until)
 				if err == nil {
 					count = result.RowsAffected()
 				}

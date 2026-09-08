@@ -4,12 +4,15 @@ import type { MoneyAmount } from '@steward/admin-api-client';
 /**
  * 金额展示。
  *
- * **缺价时显示「价格缺失」而不是 $0.00。** 这是整条成本链路最要紧的
+ * **缺价时显示「价格缺失」而不是 ¥0.00。** 这是整条成本链路最要紧的
  * 一条约定：0 会被读成「这次不花钱」，而实际情况是「我们不知道花了多少」。
  * 把它显示成 0，报表上的总额就会系统性偏低，而且从数字上看不出偏低。
  */
 export function Money({ value }: { value?: MoneyAmount | null }) {
   if (!value) return <Typography.Text type="secondary">—</Typography.Text>;
+
+  // 更新或回滚期间若仍收到旧币种，等待刷新，不能只替换符号后展示。
+  if (value.currency !== 'CNY') return <Typography.Text type="secondary">币种待更新</Typography.Text>;
 
   switch (value.status) {
     case 'pricing_missing':
@@ -32,7 +35,7 @@ export function Money({ value }: { value?: MoneyAmount | null }) {
     return <Typography.Text type="secondary">—</Typography.Text>;
   }
 
-  const text = `$${Number(value.amount).toFixed(4)}`;
+  const text = `¥${Number(value.amount).toFixed(4)}`;
   if (value.status === 'partial') {
     // partial 是「一部分算出来了，一部分缺价」。**金额要显示**——
     // 那部分钱是真实花掉的——但必须标出它不完整，否则会被当成全额。

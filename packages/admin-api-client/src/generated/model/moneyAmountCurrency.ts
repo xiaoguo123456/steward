@@ -26,5 +26,5 @@ export type MoneyAmountCurrency = typeof MoneyAmountCurrency[keyof typeof MoneyA
 
 
 export const MoneyAmountCurrency = {
-  USD: 'USD',
+  CNY: 'CNY',
 } as const;

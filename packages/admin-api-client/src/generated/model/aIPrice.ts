@@ -30,7 +30,7 @@ export interface AIPrice {
   usage_unit: UsageUnit;
   /** 单价对应的用量。**用字符串传 decimal**，JSON number 会漂。 */
   unit_size: string;
-  unit_price_usd: string;
+  unit_price_cny: string;
   effective_from: string;
   /** @nullable */
   effective_until?: string | null;

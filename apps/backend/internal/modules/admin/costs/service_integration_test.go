@@ -112,7 +112,7 @@ func addPrice(t *testing.T, svc *Service, provider, model, unit, size, price str
 	t.Helper()
 	row, err := svc.AddPrice(context.Background(), PriceInput{
 		Provider: provider, Model: model, UsageUnit: unit,
-		UnitSize: size, UnitPriceUSD: price,
+		UnitSize: size, UnitPriceCNY: price,
 		EffectiveFrom: from, EffectiveUntil: until,
 	})
 	if err != nil {
@@ -141,7 +141,7 @@ func actionCost(t *testing.T, db *database.DB, userID, actionID string) (string,
 			return err
 		}
 		return tx.QueryRow(ctx,
-			"SELECT coalesce(estimated_cost::text, ''), cost_status FROM ai_actions WHERE id = $1",
+			"SELECT coalesce(estimated_cost_cny::text, ''), cost_status FROM ai_actions WHERE id = $1",
 			actionID).Scan(&cost, &status)
 	})
 	if err != nil {
@@ -343,7 +343,7 @@ func TestOverlappingPricesAreRejected(t *testing.T) {
 
 	_, err := svc.AddPrice(context.Background(), PriceInput{
 		Provider: provider, Model: model, UsageUnit: UnitInputToken,
-		UnitSize: "1000", UnitPriceUSD: "0.002",
+		UnitSize: "1000", UnitPriceCNY: "0.002",
 		EffectiveFrom: base.Add(time.Hour),
 	})
 	if err == nil {
@@ -358,7 +358,7 @@ func TestInvalidAmountIsRejected(t *testing.T) {
 
 	_, err := svc.AddPrice(context.Background(), PriceInput{
 		Provider: uniqueProvider(t), Model: "m", UsageUnit: UnitInputToken,
-		UnitSize: "1000", UnitPriceUSD: "不是数字",
+		UnitSize: "1000", UnitPriceCNY: "不是数字",
 		EffectiveFrom: time.Now(),
 	})
 	if err == nil {
@@ -405,5 +405,39 @@ func TestInvalidCachedUsageIsRejected(t *testing.T) {
 	err := svc.settleOne(context.Background(), nil, dbgen.ListPendingCostActionsRow{InputTokens: 100, CachedInputTokens: 101})
 	if err == nil {
 		t.Fatal("缓存大于总输入必须拒绝")
+	}
+}
+
+// 新人民币报价原样保存，兼容列只供旧镜像读取，不能反向影响人民币精度。
+func TestCNYPriceKeepsOfficialAmount(t *testing.T) {
+	db := testDB(t)
+	svc := New(db, nil)
+	id := addPrice(t, svc, uniqueProvider(t), "model-cny", UnitInputToken, "1000000", "0.8", time.Now().Add(-time.Hour), nil)
+	var cny, usd string
+	if err := db.Pool.QueryRow(context.Background(), "SELECT unit_price_cny::text,unit_price_usd::text FROM ai_model_prices WHERE id=$1", id).Scan(&cny, &usd); err != nil {
+		t.Fatal(err)
+	}
+	if cny != "0.80000000" || usd != "0.11798714" {
+		t.Fatalf("人民币或兼容列错误：%s/%s", cny, usd)
+	}
+	// 旧镜像只修改 USD 列时按固定迁移汇率同步，新版仍读取 CNY。
+	if _, err := db.Pool.Exec(context.Background(), "UPDATE ai_model_prices SET unit_price_usd=1 WHERE id=$1", id); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Pool.QueryRow(context.Background(), "SELECT unit_price_cny::text FROM ai_model_prices WHERE id=$1", id).Scan(&cny); err != nil {
+		t.Fatal(err)
+	}
+	if cny != "6.78040000" {
+		t.Fatalf("旧列同步人民币失败：%s", cny)
+	}
+	// 非金额更新不能再次换算，避免逐次舍入漂移。
+	if _, err := db.Pool.Exec(context.Background(), "UPDATE ai_model_prices SET effective_from=effective_from WHERE id=$1", id); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Pool.QueryRow(context.Background(), "SELECT unit_price_cny::text FROM ai_model_prices WHERE id=$1", id).Scan(&cny); err != nil {
+		t.Fatal(err)
+	}
+	if cny != "6.78040000" {
+		t.Fatalf("无金额更新发生二次换算：%s", cny)
 	}
 }

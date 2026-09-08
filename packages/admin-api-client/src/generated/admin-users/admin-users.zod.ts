@@ -55,7 +55,7 @@ export const AdminListUsersResponse = zod.object({
   "active_days_30d": zod.number().int(),
   "ai_cost_30d": zod.object({
   "amount": zod.string().nullable(),
-  "currency": zod.enum(['USD']),
+  "currency": zod.enum(['CNY']),
   "status": zod.enum(['calculated', 'partial', 'pricing_missing', 'pending', 'not_applicable', 'no_usage'])
 }).describe('金额。\*\*用字符串传 decimal\*\*，不用 number——\nJSON 的 number 是 IEEE754 双精度，累加会漂。\n\nstatus=pricing_missing 时 amount 为 null，界面显示「价格缺失」\*\*而不是 0\*\*：\n「不知道多少钱」和「不花钱」是完全不同的两件事，\n显示成 0 会让人以为这条链路免费。\n'),
   "latest_error_code": zod.string().nullish().describe('稳定错误码，不是错误正文——正文里常带用户输入的片段。')
@@ -170,14 +170,14 @@ export const AdminGetUserCostsResponse = zod.object({
   "calls": zod.number().int(),
   "cost": zod.object({
   "amount": zod.string().nullable(),
-  "currency": zod.enum(['USD']),
+  "currency": zod.enum(['CNY']),
   "status": zod.enum(['calculated', 'partial', 'pricing_missing', 'pending', 'not_applicable', 'no_usage'])
 }).describe('金额。\*\*用字符串传 decimal\*\*，不用 number——\nJSON 的 number 是 IEEE754 双精度，累加会漂。\n\nstatus=pricing_missing 时 amount 为 null，界面显示「价格缺失」\*\*而不是 0\*\*：\n「不知道多少钱」和「不花钱」是完全不同的两件事，\n显示成 0 会让人以为这条链路免费。\n'),
   "pricing_missing_calls": zod.number().int().optional()
 })),
   "total": zod.object({
   "amount": zod.string().nullable(),
-  "currency": zod.enum(['USD']),
+  "currency": zod.enum(['CNY']),
   "status": zod.enum(['calculated', 'partial', 'pricing_missing', 'pending', 'not_applicable', 'no_usage'])
 }).describe('金额。\*\*用字符串传 decimal\*\*，不用 number——\nJSON 的 number 是 IEEE754 双精度，累加会漂。\n\nstatus=pricing_missing 时 amount 为 null，界面显示「价格缺失」\*\*而不是 0\*\*：\n「不知道多少钱」和「不花钱」是完全不同的两件事，\n显示成 0 会让人以为这条链路免费。\n'),
   "meta": zod.object({

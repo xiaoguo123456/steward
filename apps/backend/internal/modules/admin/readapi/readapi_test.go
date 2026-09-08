@@ -43,8 +43,8 @@ func TestMoneyLeavesAmountEmptyWhenUnknown(t *testing.T) {
 	if got.Status != adminapi.CostStatus("pricing_missing") {
 		t.Errorf("状态应当原样带出，实际 %v", got.Status)
 	}
-	if got.Currency != adminapi.USD {
-		t.Error("币种应当是 USD")
+	if got.Currency != adminapi.CNY {
+		t.Error("币种应当是 CNY")
 	}
 }
 

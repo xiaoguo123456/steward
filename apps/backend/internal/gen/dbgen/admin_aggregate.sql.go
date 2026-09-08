@@ -145,7 +145,7 @@ INSERT INTO admin.user_daily_usage (
     user_id, report_date, active, capture_submitted, capture_confirmed,
     task_completed, assistant_turns, proposal_executed, review_generated,
     ai_input_tokens, ai_cached_input_tokens, ai_output_tokens,
-    ai_cost, ai_cost_status, updated_at
+    ai_cost_cny, ai_cost_status, updated_at
 ) VALUES (
     $1, $2::date, $3,
     $4, $5, $6,
@@ -164,7 +164,7 @@ ON CONFLICT (user_id, report_date) DO UPDATE SET
     ai_input_tokens = excluded.ai_input_tokens,
     ai_cached_input_tokens = excluded.ai_cached_input_tokens,
     ai_output_tokens = excluded.ai_output_tokens,
-    ai_cost = excluded.ai_cost,
+    ai_cost_cny = excluded.ai_cost_cny,
     ai_cost_status = excluded.ai_cost_status,
     updated_at = now()
 `
@@ -213,7 +213,7 @@ const upsertUserIndex = `-- name: UpsertUserIndex :exec
 INSERT INTO admin.user_index (
     user_id, masked_phone, phone_lookup_hash, phone_hash_version, display_name,
     account_status, initialized, timezone, created_at, last_active_at,
-    active_days_30d, ai_cost_30d, ai_cost_status, latest_error_code,
+    active_days_30d, ai_cost_30d_cny, ai_cost_status, latest_error_code,
     source_version, updated_at
 ) VALUES (
     $1, $2, $3,
@@ -233,7 +233,7 @@ ON CONFLICT (user_id) DO UPDATE SET
     timezone = excluded.timezone,
     last_active_at = excluded.last_active_at,
     active_days_30d = excluded.active_days_30d,
-    ai_cost_30d = excluded.ai_cost_30d,
+    ai_cost_30d_cny = excluded.ai_cost_30d_cny,
     ai_cost_status = excluded.ai_cost_status,
     latest_error_code = excluded.latest_error_code,
     source_version = excluded.source_version,
@@ -293,7 +293,7 @@ SELECT
     coalesce(sum(output_tokens), 0)::bigint AS output_tokens,
     -- **partial 的那部分也要算进来。** 一次调用里输入 token 算出来了、
     -- 输出 token 缺价，算出来的那部分钱是真实发生的，不该丢掉。
-    (sum(estimated_cost) FILTER (WHERE cost_status IN ('calculated', 'partial')))::numeric AS cost,
+    (sum(estimated_cost_cny) FILTER (WHERE cost_status IN ('calculated', 'partial')))::numeric AS cost,
     CASE
         WHEN count(*) = 0 THEN 'no_usage'
         WHEN count(*) FILTER (WHERE cost_status IN ('pricing_missing', 'partial', 'pending')) = 0 THEN 'calculated'

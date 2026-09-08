@@ -108,7 +108,7 @@ export function CostsPage() {
               { title: '模型', dataIndex: 'model' },
               { title: '用量单位', dataIndex: 'usage_unit' },
               { title: '单位大小', dataIndex: 'unit_size' },
-              { title: '单价（USD）', dataIndex: 'unit_price_usd' },
+              { title: '单价（元）', dataIndex: 'unit_price_cny' },
               {
                 title: '生效自',
                 dataIndex: 'effective_from',

@@ -305,7 +305,7 @@ func (s *Service) rollingFor(ctx context.Context, userID string) (rollingStats, 
 		return tx.QueryRow(ctx, `
 			SELECT
 			    count(*) FILTER (WHERE active)::int,
-			    (sum(ai_cost))::numeric,
+			    (sum(ai_cost_cny))::numeric,
 			    CASE
 			        WHEN count(*) FILTER (WHERE ai_cost_status <> 'no_usage') = 0 THEN 'no_usage'
 			        WHEN count(*) FILTER (WHERE ai_cost_status IN ('pricing_missing','partial')) = 0 THEN 'calculated'

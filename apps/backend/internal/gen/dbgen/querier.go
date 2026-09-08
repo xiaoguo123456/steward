@@ -288,7 +288,7 @@ type Querier interface {
 	IncrementVerificationAttempts(ctx context.Context, id string) error
 	// 写一条成本明细，价格按调用发生的时刻匹配。
 	//
-	// 匹配不到价格时 amount_usd 为 NULL、状态 pricing_missing——
+	// 匹配不到价格时 amount_cny 为 NULL、状态 pricing_missing——
 	// **不写 0**。「不知道多少钱」和「不花钱」是完全不同的两件事。
 	InsertCostItem(ctx context.Context, arg InsertCostItemParams) error
 	InvalidateAdminPhoneChallenges(ctx context.Context, adminID string) error

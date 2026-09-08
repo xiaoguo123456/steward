@@ -1,0 +1,8 @@
+{
+  "request": { "provider": "openai", "model": "qwen3.8-flash", "usage_unit": "input_token", "unit_size": "1000000", "unit_price_cny": "0.8", "effective_from": "2026-09-08T00:00:00+08:00" },
+  "response": { "data": [
+    { "id": "aip_fixture_cny_input", "provider": "openai", "model": "qwen3.8-flash", "usage_unit": "input_token", "unit_size": "1000000", "unit_price_cny": "0.8", "effective_from": "2026-09-08T00:00:00+08:00" },
+    { "id": "aip_fixture_cny_cache", "provider": "openai", "model": "qwen3.8-flash", "usage_unit": "cached_input_token", "unit_size": "1000000", "unit_price_cny": "0.1", "effective_from": "2026-09-08T00:00:00+08:00" },
+    { "id": "aip_fixture_cny_output", "provider": "openai", "model": "qwen3.8-flash", "usage_unit": "output_token", "unit_size": "1000000", "unit_price_cny": "2.7", "effective_from": "2026-09-08T00:00:00+08:00" }
+  ], "meta": { "request_id": "fixture-cny-prices" } }
+}

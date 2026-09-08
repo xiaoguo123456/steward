@@ -43,7 +43,7 @@ func (a *ReadAPI) AdminAICostSummary(ctx context.Context,
 			// 那部分照样计费；不单列会让人以为失败是免费的。
 			// 读模型按天聚合时没有分成功失败，因此这里给的是「还没拆出来」。
 			FailedCost: adminapi.MoneyAmount{
-				Currency: adminapi.USD,
+				Currency: adminapi.CNY,
 				Status:   adminapi.CostStatus(adminapi.CostStatusPending),
 			},
 			PricingMissingCalls: int(row.PricingMissingDays),
@@ -141,7 +141,7 @@ func (a *ReadAPI) AdminGetUserCosts(ctx context.Context,
 			       coalesce(sum(cached_input_tokens), 0)::bigint,
 			       coalesce(sum(output_tokens), 0)::bigint,
 			       count(*)::bigint,
-			       coalesce((sum(estimated_cost)
+			       coalesce((sum(estimated_cost_cny)
 			           FILTER (WHERE cost_status IN ('calculated','partial')))::text, ''),
 			       CASE
 			           -- 全是「这次没用到这个单位」时是 not_applicable，
@@ -218,15 +218,15 @@ func (a *ReadAPI) totalOf(rows []adminapi.UserCostRow, anyMissing bool) adminapi
 		status = "partial"
 	}
 	if len(rows) == 0 {
-		return adminapi.MoneyAmount{Currency: adminapi.USD, Status: adminapi.CostStatus("no_usage")}
+		return adminapi.MoneyAmount{Currency: adminapi.CNY, Status: adminapi.CostStatus("no_usage")}
 	}
 
 	sum, ok := costs.SumAmounts(amountsOf(rows))
 	if !ok {
-		return adminapi.MoneyAmount{Currency: adminapi.USD, Status: adminapi.CostStatus(status)}
+		return adminapi.MoneyAmount{Currency: adminapi.CNY, Status: adminapi.CostStatus(status)}
 	}
 	return adminapi.MoneyAmount{
-		Amount: &sum, Currency: adminapi.USD, Status: adminapi.CostStatus(status),
+		Amount: &sum, Currency: adminapi.CNY, Status: adminapi.CostStatus(status),
 	}
 }
 
