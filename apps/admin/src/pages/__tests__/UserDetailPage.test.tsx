@@ -33,7 +33,9 @@ it('预算回填且结果未知时重试复用幂等键，提交期间阻止再�
  expect(screen.getByLabelText('每日调用上限')).toBeDisabled();
  rejectRequest(new TypeError('网络异常'));
  await waitFor(() => expect(screen.getByLabelText('每日调用上限')).not.toBeDisabled());
- fireEvent.click(confirm);
+ // Ant Design 的按钮加载态另有内部状态，表单恢复可编辑不代表按钮已可点击。
+ await waitFor(() => expect(screen.getByRole('button', {name:/确认执行/})).not.toHaveClass('ant-btn-loading'));
+ fireEvent.click(screen.getByRole('button', {name:/确认执行/}));
  await waitFor(() => expect(adminSetUserBudget).toHaveBeenCalledTimes(2));
  const calls = vi.mocked(adminSetUserBudget).mock.calls;
  expect(calls[0][2]?.headers).toEqual(calls[1][2]?.headers);

@@ -1,0 +1,14 @@
+diff --git a/es/hooks/useDelayState.js b/es/hooks/useDelayState.js
+--- a/es/hooks/useDelayState.js
++++ b/es/hooks/useDelayState.js
+@@ -34,2 +34,3 @@
+   });
++  React.useEffect(() => cancelPending, [cancelPending]);
+   return [value, setDelayValue];
+diff --git a/lib/hooks/useDelayState.js b/lib/hooks/useDelayState.js
+--- a/lib/hooks/useDelayState.js
++++ b/lib/hooks/useDelayState.js
+@@ -43,2 +43,3 @@
+   });
++  React.useEffect(() => cancelPending, [cancelPending]);
+   return [value, setDelayValue];
