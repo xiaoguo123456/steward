@@ -255,3 +255,27 @@ func TestCaptureParseV5MapsUpdateTargetAndRelations(t *testing.T) {
 		t.Fatal("action=update 缺 target_id/target_expected_version 时 Schema 应拒绝")
 	}
 }
+
+// 嵌套候选的修复提示必须到达具体约束，且不能泄露实际值和未知属性名。
+func TestSchemaRepairSummaryExplainsNestedConstraintWithoutInput(t *testing.T) {
+	validator, err := captureParseSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, raw, want string }{
+		{"缺少类型", `{"candidates":[{"title":"敏感正文"}]}`, "缺少必填字段"},
+		{"错误枚举", `{"candidates":[{"type":"敏感正文","title":"午餐"}]}`, "只能使用枚举值"},
+		{"错误类型", `{"candidates":[{"type":"record","title":123}]}`, "类型必须为"},
+		{"未知字段", `{"candidates":[{"type":"record","title":"午餐","敏感正文":"隐藏值"}]}`, "不允许未定义的字段"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := decodeAndValidate(tc.raw, validator)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("没有具体修复提示：%v", err)
+			}
+			if strings.Contains(err.Error(), "敏感正文") || strings.Contains(err.Error(), "隐藏值") || strings.Contains(err.Error(), "$ref") {
+				t.Fatalf("提示包含正文或引用包装层：%v", err)
+			}
+		})
+	}
+}

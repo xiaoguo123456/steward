@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/ai/assets"
@@ -208,28 +209,53 @@ func decodeAndValidate(raw string, validator *jsonschema.Schema) (rawResult, err
 	return parsed, nil
 }
 
-// summarizeSchemaError 把校验错误压成一句简短说明。
-// 只回传结构问题，不回传用户正文，避免把内容再次送进模型。
+// summarizeSchemaError 递归提取叶子约束，避免只把 $ref 包装层传给结构修复。
+// 只包含可信 Schema 路径和期望约束，不输出实际值或未知属性名。
 func summarizeSchemaError(err error) error {
 	var validationErr *jsonschema.ValidationError
-	if errors.As(err, &validationErr) {
-		causes := validationErr.BasicOutput().Errors
-		parts := make([]string, 0, 3)
-		for _, cause := range causes {
-			if cause.Error == nil {
-				continue
-			}
-			parts = append(parts, fmt.Sprintf("%s %s",
-				cause.InstanceLocation, cause.Error.Kind))
-			if len(parts) == 3 {
-				break
-			}
-		}
-		if len(parts) > 0 {
-			return errors.New(strings.Join(parts, "；"))
-		}
+	if !errors.As(err, &validationErr) {
+		return errors.New("结构不符合要求")
 	}
-	return errors.New("结构不符合要求")
+	parts := make([]string, 0, 3)
+	var visit func(*jsonschema.ValidationError)
+	visit = func(cause *jsonschema.ValidationError) {
+		if len(parts) >= 3 {
+			return
+		}
+		if len(cause.Causes) > 0 {
+			for _, child := range cause.Causes {
+				visit(child)
+			}
+			return
+		}
+		if cause.ErrorKind == nil {
+			return
+		}
+		constraint := strings.Join(cause.ErrorKind.KeywordPath(), "/")
+		switch k := cause.ErrorKind.(type) {
+		case *kind.Required:
+			constraint = "缺少必填字段：" + strings.Join(k.Missing, ", ")
+		case *kind.Type:
+			constraint = "类型必须为：" + strings.Join(k.Want, " / ")
+		case *kind.Enum:
+			allowed, _ := json.Marshal(k.Want)
+			constraint = "只能使用枚举值：" + string(allowed)
+		case *kind.Format:
+			constraint = "格式必须为：" + k.Want
+		case *kind.AdditionalProperties:
+			constraint = "不允许未定义的字段，请只保留约定字段"
+		}
+		if constraint == "" {
+			constraint = "结构不符合要求"
+		}
+		_, location, _ := strings.Cut(cause.SchemaURL, "#")
+		parts = append(parts, location+" "+constraint)
+	}
+	visit(validationErr)
+	if len(parts) == 0 {
+		return errors.New("结构不符合要求")
+	}
+	return errors.New(strings.Join(parts, "；"))
 }
 
 // stripCodeFence 去掉模型偶尔加上的 markdown 代码块包裹。
