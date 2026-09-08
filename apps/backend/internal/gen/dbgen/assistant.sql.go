@@ -453,6 +453,58 @@ func (q *Queries) GetTurn(ctx context.Context, id string) (AssistantTurn, error)
 	return i, err
 }
 
+const listHistoryTurnOutcomes = `-- name: ListHistoryTurnOutcomes :many
+SELECT t.user_message_id, t.status,
+       count(p.id)::int AS proposal_count,
+       count(p.id) FILTER (WHERE p.status = 'pending')::int AS pending_count,
+       count(p.id) FILTER (WHERE p.status = 'executed')::int AS executed_count
+FROM assistant_turns t
+LEFT JOIN action_proposals p ON p.turn_id = t.id
+WHERE t.thread_id = $1
+  AND t.user_message_id = ANY($2::text[])
+GROUP BY t.id
+`
+
+type ListHistoryTurnOutcomesParams struct {
+	ThreadID   string
+	MessageIds []string
+}
+
+type ListHistoryTurnOutcomesRow struct {
+	UserMessageID *string
+	Status        string
+	ProposalCount int32
+	PendingCount  int32
+	ExecutedCount int32
+}
+
+// 消息 completed 只代表已接收；模型上下文另取对应轮次与建议的权威处理状态。
+func (q *Queries) ListHistoryTurnOutcomes(ctx context.Context, arg ListHistoryTurnOutcomesParams) ([]ListHistoryTurnOutcomesRow, error) {
+	rows, err := q.db.Query(ctx, listHistoryTurnOutcomes, arg.ThreadID, arg.MessageIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListHistoryTurnOutcomesRow{}
+	for rows.Next() {
+		var i ListHistoryTurnOutcomesRow
+		if err := rows.Scan(
+			&i.UserMessageID,
+			&i.Status,
+			&i.ProposalCount,
+			&i.PendingCount,
+			&i.ExecutedCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMessages = `-- name: ListMessages :many
 SELECT id, user_id, thread_id, message_seq, role, content, status, turn_id, created_at, completed_at, deleted_at, interaction FROM assistant_messages
 WHERE thread_id = $1 AND deleted_at IS NULL

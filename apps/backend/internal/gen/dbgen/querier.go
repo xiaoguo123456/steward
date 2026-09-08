@@ -323,6 +323,8 @@ type Querier interface {
 	ListExpiredArchivedTaskLists(ctx context.Context, arg ListExpiredArchivedTaskListsParams) ([]TaskList, error)
 	ListFavoriteRecipeIDs(ctx context.Context) ([]string, error)
 	ListFavoriteRecipes(ctx context.Context, rowLimit int32) ([]Recipe, error)
+	// 消息 completed 只代表已接收；模型上下文另取对应轮次与建议的权威处理状态。
+	ListHistoryTurnOutcomes(ctx context.Context, arg ListHistoryTurnOutcomesParams) ([]ListHistoryTurnOutcomesRow, error)
 	// 连带菜谱一起返回：菜单页要显示菜名与营养，逐条再查一遍没有意义。
 	// 按用餐顺序而不是字母序：字母序会排成早餐、晚餐、午餐。
 	// 一格之内主食排在前面，和端上桌的顺序一致。

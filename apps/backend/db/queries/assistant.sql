@@ -107,6 +107,18 @@ WHERE thread_id = sqlc.arg(thread_id) AND deleted_at IS NULL AND status = 'compl
 ORDER BY message_seq DESC
 LIMIT sqlc.arg(row_limit);
 
+-- name: ListHistoryTurnOutcomes :many
+-- 消息 completed 只代表已接收；模型上下文另取对应轮次与建议的权威处理状态。
+SELECT t.user_message_id, t.status,
+       count(p.id)::int AS proposal_count,
+       count(p.id) FILTER (WHERE p.status = 'pending')::int AS pending_count,
+       count(p.id) FILTER (WHERE p.status = 'executed')::int AS executed_count
+FROM assistant_turns t
+LEFT JOIN action_proposals p ON p.turn_id = t.id
+WHERE t.thread_id = sqlc.arg(thread_id)
+  AND t.user_message_id = ANY(sqlc.arg(message_ids)::text[])
+GROUP BY t.id;
+
 -- name: CreateTurn :one
 INSERT INTO assistant_turns (
     id, user_id, thread_id, turn_seq, user_message_id, operation_id, status, engine_type, model_policy

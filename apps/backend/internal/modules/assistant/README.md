@@ -90,6 +90,8 @@ pgnotify 的三个代价都是结构性的，不是实现不好：LISTEN 是连�
 
 ## 默认对话连续性
 
+Context Builder 为窗口内历史用户消息批量读取对应 Turn 和 Action Proposal 最新状态，并在该条历史消息后追加系统生成的处理回执。消息 `completed` 只代表接收完成，不能当作回复或业务完成；成功回复也不能当作正式保存。没有匹配 Turn 时显式标记未知。回执只含状态和数量，不复制用户正文、内部错误或其他用户数据，查询限制在当前 RLS 用户与 Thread。执行历史不是对象当前状态，后者仍需工具读取；Capture 无回执时不推断已保存。
+
 - `GET /assistant/threads/current` 按 Users 提供的时区计算当地自然日，只读取当天最近发生用户消息的 active Thread；没有时返回空，不创建 Thread。
 - `POST /assistant/threads` 仅在用户发送第一条消息时调用。无标题且未设置 `force_new` 时复用当天 Thread；`force_new=true` 始终创建新 Thread。
 - 默认 Thread 的判断依据是用户消息时间，不是 Thread 的 `updated_at`。因此 Worker 在午夜后补完 Assistant 回复不会把昨天的对话变成今天的默认对话。

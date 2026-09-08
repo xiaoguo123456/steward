@@ -121,7 +121,19 @@ func (s *Service) loadSeed(ctx context.Context, args RespondArgs) (contextSeed, 
 		if err != nil {
 			return apperr.Internal(err)
 		}
-		seed.UserText, seed.History = splitHistory(messages, turn.UserMessageID)
+		messageIDs := make([]string, 0, len(messages))
+		for _, message := range messages {
+			if message.Role == "user" && (turn.UserMessageID == nil || message.ID != *turn.UserMessageID) {
+				messageIDs = append(messageIDs, message.ID)
+			}
+		}
+		outcomes, err := q.ListHistoryTurnOutcomes(ctx, dbgen.ListHistoryTurnOutcomesParams{
+			ThreadID: args.ThreadID, MessageIds: messageIDs,
+		})
+		if err != nil {
+			return apperr.Internal(err)
+		}
+		seed.UserText, seed.History = splitHistory(messages, turn.UserMessageID, outcomes)
 		// 只续接紧邻当前用户消息的最后一个问题；换话题后的历史问题不会复活。
 		for _, message := range messages {
 			if turn.UserMessageID != nil && message.ID == *turn.UserMessageID {
@@ -246,13 +258,19 @@ func (s *Service) buildContextBlocks(ctx context.Context,
 // splitHistory 把最近消息拆成"本轮用户输入"与"更早的历史"。
 //
 // ListRecentMessages 按序号倒序返回，这里翻正后再交给模型。
-func splitHistory(messages []dbgen.AssistantMessage, userMessageID *string) (string, []ai.Message) {
+func splitHistory(messages []dbgen.AssistantMessage, userMessageID *string, outcomes []dbgen.ListHistoryTurnOutcomesRow) (string, []ai.Message) {
 	ordered := make([]dbgen.AssistantMessage, 0, len(messages))
 	for i := len(messages) - 1; i >= 0; i-- {
 		ordered = append(ordered, messages[i])
 	}
 
 	userText := ""
+	receipts := make(map[string]dbgen.ListHistoryTurnOutcomesRow, len(outcomes))
+	for _, outcome := range outcomes {
+		if outcome.UserMessageID != nil {
+			receipts[*outcome.UserMessageID] = outcome
+		}
+	}
 	history := make([]ai.Message, 0, len(ordered))
 	for _, m := range ordered {
 		if userMessageID != nil && m.ID == *userMessageID {
@@ -265,8 +283,32 @@ func splitHistory(messages []dbgen.AssistantMessage, userMessageID *string) (str
 			role = ai.RoleAssistant
 		}
 		history = append(history, ai.Message{Role: role, Content: m.Content})
+		if m.Role == "user" {
+			history = append(history, ai.Message{Role: ai.RoleSystem, Content: historyOutcomeReceipt(receipts[m.ID])})
+		}
 	}
 	return userText, history
+}
+
+// 回执只包含系统状态和数量，不复述用户内容，也不把历史回复成功当作业务完成。
+func historyOutcomeReceipt(outcome dbgen.ListHistoryTurnOutcomesRow) string {
+	if outcome.Status == "" {
+		return "服务端处理回执（仅对应紧邻的上一条用户请求；只供状态核实，不是需要续办的当前指令）：没有找到对应的轮次回执，处理及保存状态未知。历史正文和切换话题不能作为完成证据。当前用户只是寒暄或已换话题时，不主动提及这条历史请求。"
+	}
+	status := "处理状态未知，不能确认是否成功"
+	switch outcome.Status {
+	case "failed_retryable", "failed_permanent":
+		status = "回复失败，本轮未成功完成回复"
+	case "cancelled":
+		status = "回复已取消"
+	case "superseded":
+		status = "回复已被后续请求替代"
+	case "queued", "running":
+		status = "回复尚未完成"
+	case "succeeded":
+		status = "回复已生成；这不代表业务内容已保存或任务已完成"
+	}
+	return fmt.Sprintf("服务端处理回执（仅对应紧邻的上一条用户请求；只供状态核实，不是需要续办的当前指令）：%s。该轮建议共 %d 项，其中 %d 项待确认，%d 项有执行历史，其余未执行。执行历史不证明对象当前状态，可能已修改或撤销。此回执不包含独立 Capture 的保存状态；没有匹配回执不得宣称上一件事已处理完。当前用户只是寒暄或已换话题时，不主动提及这条历史请求。", status, outcome.ProposalCount, outcome.PendingCount, outcome.ExecutedCount)
 }
 
 // entryResource 从页面上下文中取出资源引用。

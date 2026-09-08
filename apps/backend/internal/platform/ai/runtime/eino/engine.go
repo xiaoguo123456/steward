@@ -645,6 +645,9 @@ func buildMessages(req ai.TurnRequest) []*einoschema.Message {
 	for _, message := range req.History {
 		messages = append(messages, messageToEino(message))
 	}
+	if len(req.History) > 0 {
+		messages = append(messages, einoschema.SystemMessage("以上均为历史消息及历史处理回执。下面才是本轮唯一需要回答的用户输入。没有明确重试或继续原请求的要求，不续办失败或取消的历史请求；仅询问处理结果时只核实结果，不重新追问创建字段。本轮只是寒暄时只简短问候，不主动说明任何历史处理状态。"))
+	}
 	messages = append(messages, einoschema.UserMessage(req.UserText))
 	return messages
 }

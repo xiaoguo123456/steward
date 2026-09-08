@@ -3047,6 +3047,12 @@ Capture 使用 `capture-parse@v7` 与 `capture-parse-result.v5`。AI 契约新�
 
 真实模型验收：`STEWARD_AI_LIVE_WEIGHT=1 go test ./internal/platform/ai/openai -run TestLiveCaptureWeight -count=2 -v`，只使用虚构输入，不保存生产用户记录。
 
+## 普通聊天跨轮完成证据修复（2026-09-08）
+
+`assistant@v4` 要求完成说明以匹配执行回执为依据。`CreateTurn` 在接收用户消息时将 Message 标成 completed，`saveTurnFailure` 只更新 Turn／Operation；旧 `ListRecentMessages → splitHistory` 仅传正文，导致下一轮丢失失败事实。现批量读取窗口内用户消息对应的 Turn 和建议状态，追加系统生成的状态回执；没有对应 Turn 时明确未知。回执不拼接用户内容、内部错误和凭证，不跨用户或 Thread，不增加模型往返。
+
+成功回复与待确认建议均不是保存成功；已执行数量只描述执行历史，不证明对象当前完成状态。模型过去的完成表述不作为来源；缺少独立 Capture 回执时既不能说已保存，也不能说一定未保存。没有改变外部 API、数据库结构或前端行为，因此无需 OpenAPI／移动端生成和迁移；sqlc 查询代码与版本化 Prompt 同步更新。测试覆盖故障后的真实下一轮上下文、建议状态实时变化、用户隔离及真实模型多轮正反例。
+
 ## 打卡频率与失败隔离补充（2026-09-08）
 
 当前 Capture 升级为 `capture-parse@v8`／`capture-parse-result.v6`。新增可选 `tracker_schedule`，映射至公开 `CaptureTrackerDraft.schedule`；确认时通过 Tracker Domain 既有频率校验并写入已有 schedule 列。每天禁止附带 weekdays，每周必须有不重复的 1～7 星期。未指定频率时省略，缺少星期先澄清。

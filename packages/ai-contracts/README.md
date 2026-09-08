@@ -82,6 +82,8 @@ Schema、Prompt 和契约安全 Eval 已先固化。当前 Eval 只确定性检�
 
 ## Assistant 交互与字段来源
 
+`assistant/v4` 增加跨轮完成证据规则：换话题不是完成确认，历史文字不是执行回执，必须区分回复完成、建议待确认、执行历史和对象当前状态。真实服务链路验收：`STEWARD_AI_LIVE_OUTCOMES=1 go test ./internal/platform/ai/eval -run TestLiveHistoryOutcomeAcceptance -count=2 -v`，覆盖失败、取消、普通回复、独立 Capture、未确认和已确认。
+
 `schemas/assistant` 定义建议时间证据、替换引用、状态前提、澄清与撤回输入。服务端在交给 Handler 前校验原始工具 JSON；Handler 再校验当前用户事实、日期来源与领域状态。`assistant/v3` 与 `capture-parse/v6` 分别对应持久化澄清和“不记录”的入口语义。
 
 `evals/ambiguity-live.json` 固定 37 个场景；`ambiguity-holdout.json` 使用独立措辞。通过 `STEWARD_AI_AMBIGUITY_HOLDOUT=1` 切换留出集，不改写历史验收结果。
