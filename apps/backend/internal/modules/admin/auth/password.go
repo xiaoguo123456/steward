@@ -1,7 +1,6 @@
 // Package auth 是后台的登录、会话与 CSRF。
 //
-// 它和用户侧的 auth 模块没有任何共用代码，也不该有：
-// 用户走手机号验证码 + JWT，管理员走用户名口令 + 服务端会话。
+// 仅复用短信 Provider；管理员名单、验证码用途和服务端会话与 App 身份独立。
 // 两套鉴权的威胁模型不同，混用会让「改一处会不会影响另一处」变得说不清。
 package auth
 
@@ -31,7 +30,7 @@ const (
 
 // HashPassword 生成 Argon2id 散列，格式与 PHC 字符串一致。
 //
-// 只在生成初始口令的命令行工具里用；服务端运行时只做校验。
+// 首次设密、密码重设及命令行工具共用同一散列实现。
 func HashPassword(password string) (string, error) {
 	if strings.TrimSpace(password) == "" {
 		return "", errors.New("口令不能为空")

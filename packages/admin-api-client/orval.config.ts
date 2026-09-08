@@ -21,4 +21,15 @@ export default defineConfig({
       },
     },
   },
+  zod: {
+    input: '../contracts/dist/admin.bundle.yaml',
+    output: {
+      mode: 'tags-split',
+      target: './src/generated/zod.ts',
+      client: 'zod',
+      fileExtension: '.zod.ts',
+      biome: false,
+      prettier: false,
+    },
+  },
 });

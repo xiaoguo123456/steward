@@ -94,6 +94,16 @@ type ActivityEntry struct {
 	CreatedAt    time.Time
 }
 
+type AdminAccount struct {
+	ID                string
+	Phone             string
+	Enabled           bool
+	PasswordHash      *string
+	CredentialVersion int64
+	CreatedAt         time.Time
+	PasswordChangedAt *time.Time
+}
+
 type AdminAggregationRun struct {
 	ID          string
 	Kind        string
@@ -124,18 +134,32 @@ type AdminAuditLog struct {
 	ActorSessionID *string
 }
 
+type AdminPhoneChallenge struct {
+	ID         string
+	AdminID    string
+	Purpose    string
+	CodeHash   []byte
+	Attempts   int32
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+	SentAt     *time.Time
+	ConsumedAt *time.Time
+}
+
 type AdminSession struct {
-	ID                string
-	SessionTokenHash  []byte
-	CsrfSecretHash    []byte
-	CredentialVersion string
-	LastSeenAt        time.Time
-	ExpiresAt         time.Time
-	AbsoluteExpiresAt time.Time
-	RevokedAt         *time.Time
-	CreatedAt         time.Time
-	UserAgent         string
-	IpHash            []byte
+	ID                       string
+	SessionTokenHash         []byte
+	CsrfSecretHash           []byte
+	CredentialVersion        string
+	LastSeenAt               time.Time
+	ExpiresAt                time.Time
+	AbsoluteExpiresAt        time.Time
+	RevokedAt                *time.Time
+	CreatedAt                time.Time
+	UserAgent                string
+	IpHash                   []byte
+	AdminID                  *string
+	AccountCredentialVersion int64
 }
 
 type AdminUserDailyUsage struct {

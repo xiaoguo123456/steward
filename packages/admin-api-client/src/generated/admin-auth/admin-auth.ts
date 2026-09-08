@@ -42,11 +42,15 @@ import type {
 
 import type {
   BadRequestResponse,
+  ErrorResponse,
   ForbiddenResponse,
   InternalErrorResponse,
   LoginRequest,
   LoginResponse,
   LogoutResponse,
+  PasswordResetRequest,
+  PhoneCodeRequest,
+  PhoneCodeResponse,
   RateLimitedResponse,
   SessionResponse,
   UnauthorizedResponse
@@ -94,6 +98,11 @@ export type adminLoginResponse403 = {
   status: 403
 }
 
+export type adminLoginResponse428 = {
+  data: ErrorResponse
+  status: 428
+}
+
 export type adminLoginResponse429 = {
   data: RateLimitedResponse
   status: 429
@@ -107,7 +116,7 @@ export type adminLoginResponse500 = {
 export type adminLoginResponseSuccess = (adminLoginResponse200) & {
   headers: Headers;
 };
-export type adminLoginResponseError = (adminLoginResponse400 | adminLoginResponse401 | adminLoginResponse403 | adminLoginResponse429 | adminLoginResponse500) & {
+export type adminLoginResponseError = (adminLoginResponse400 | adminLoginResponse401 | adminLoginResponse403 | adminLoginResponse428 | adminLoginResponse429 | adminLoginResponse500) & {
   headers: Headers;
 };
 
@@ -122,11 +131,10 @@ export const getAdminLoginUrl = () => {
 }
 
 /**
- * 校验 Origin 与限流，再比对 Argon2id 口令散列。成功后下发
- * HttpOnly Cookie，并在响应体里返回 CSRF Token。
- *
- * 失败一律返回同一个 ADMIN_LOGIN_INVALID，**不区分「用户名不存在」
- * 与「密码不对」**：区分开等于告诉攻击者用户名猜对了。
+ * 仅数据库管理员名单中的启用账号可登录。短信验证和密码验证均独立于 App。
+ * 首次短信验证成功但尚未设置密码时返回 428，不创建后台会话。
+ * 客户端补充 new_password 后提交原挑战；已有密码不能通过登录请求覆盖。
+ * 统一校验 Origin、手机号与来源限流，成功后下发 HttpOnly Cookie。
  * @summary 管理员登录
  */
 export const adminLogin = async (loginRequest: LoginRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminLoginResponse> => {
@@ -144,7 +152,7 @@ export const adminLogin = async (loginRequest: LoginRequest, options?: Parameter
 
 
 
-export const getAdminLoginMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse,
+export const getAdminLoginMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse | RateLimitedResponse | InternalErrorResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,{data: LoginRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,{data: LoginRequest}, TContext> => {
 
@@ -173,12 +181,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type AdminLoginMutationResult = NonNullable<Awaited<ReturnType<typeof adminLogin>>>
     export type AdminLoginMutationBody = LoginRequest
-    export type AdminLoginMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse
+    export type AdminLoginMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse | RateLimitedResponse | InternalErrorResponse
 
     /**
  * @summary 管理员登录
  */
-export const useAdminLogin = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse,
+export const useAdminLogin = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse | RateLimitedResponse | InternalErrorResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminLogin>>, TError,{data: LoginRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof adminLogin>>,
@@ -187,6 +195,224 @@ export const useAdminLogin = <TError = BadRequestResponse | UnauthorizedResponse
         TContext
       > => {
       return useMutation(getAdminLoginMutationOptions(options), queryClient);
+    }
+    export type adminRequestPhoneCodeResponse200 = {
+  data: PhoneCodeResponse
+  status: 200
+}
+
+export type adminRequestPhoneCodeResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type adminRequestPhoneCodeResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type adminRequestPhoneCodeResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminRequestPhoneCodeResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type adminRequestPhoneCodeResponse500 = {
+  data: InternalErrorResponse
+  status: 500
+}
+
+export type adminRequestPhoneCodeResponseSuccess = (adminRequestPhoneCodeResponse200) & {
+  headers: Headers;
+};
+export type adminRequestPhoneCodeResponseError = (adminRequestPhoneCodeResponse400 | adminRequestPhoneCodeResponse401 | adminRequestPhoneCodeResponse403 | adminRequestPhoneCodeResponse429 | adminRequestPhoneCodeResponse500) & {
+  headers: Headers;
+};
+
+export type adminRequestPhoneCodeResponse = (adminRequestPhoneCodeResponseSuccess | adminRequestPhoneCodeResponseError)
+
+export const getAdminRequestPhoneCodeUrl = () => {
+
+
+
+
+  return `/admin/v1/phone-code`
+}
+
+/**
+ * @summary 发送后台专用验证码
+ */
+export const adminRequestPhoneCode = async (phoneCodeRequest: PhoneCodeRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminRequestPhoneCodeResponse> => {
+
+  return adminFetch<adminRequestPhoneCodeResponse>(getAdminRequestPhoneCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(phoneCodeRequest)
+  }
+);}
+
+
+
+
+
+export const getAdminRequestPhoneCodeMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRequestPhoneCode>>, TError,{data: PhoneCodeRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminRequestPhoneCode>>, TError,{data: PhoneCodeRequest}, TContext> => {
+
+const mutationKey = ['adminRequestPhoneCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminRequestPhoneCode>>, {data: PhoneCodeRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminRequestPhoneCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminRequestPhoneCodeMutationResult = NonNullable<Awaited<ReturnType<typeof adminRequestPhoneCode>>>
+    export type AdminRequestPhoneCodeMutationBody = PhoneCodeRequest
+    export type AdminRequestPhoneCodeMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse
+
+    /**
+ * @summary 发送后台专用验证码
+ */
+export const useAdminRequestPhoneCode = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRequestPhoneCode>>, TError,{data: PhoneCodeRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof adminRequestPhoneCode>>,
+        TError,
+        {data: PhoneCodeRequest},
+        TContext
+      > => {
+      return useMutation(getAdminRequestPhoneCodeMutationOptions(options), queryClient);
+    }
+    export type adminResetPasswordResponse200 = {
+  data: LogoutResponse
+  status: 200
+}
+
+export type adminResetPasswordResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type adminResetPasswordResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type adminResetPasswordResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminResetPasswordResponse429 = {
+  data: RateLimitedResponse
+  status: 429
+}
+
+export type adminResetPasswordResponse500 = {
+  data: InternalErrorResponse
+  status: 500
+}
+
+export type adminResetPasswordResponseSuccess = (adminResetPasswordResponse200) & {
+  headers: Headers;
+};
+export type adminResetPasswordResponseError = (adminResetPasswordResponse400 | adminResetPasswordResponse401 | adminResetPasswordResponse403 | adminResetPasswordResponse429 | adminResetPasswordResponse500) & {
+  headers: Headers;
+};
+
+export type adminResetPasswordResponse = (adminResetPasswordResponseSuccess | adminResetPasswordResponseError)
+
+export const getAdminResetPasswordUrl = () => {
+
+
+
+
+  return `/admin/v1/password-reset`
+}
+
+/**
+ * @summary 通过专用验证码重设密码并撤销所有旧会话
+ */
+export const adminResetPassword = async (passwordResetRequest: PasswordResetRequest, options?: Parameters<typeof adminFetch>[1]): Promise<adminResetPasswordResponse> => {
+
+  return adminFetch<adminResetPasswordResponse>(getAdminResetPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(passwordResetRequest)
+  }
+);}
+
+
+
+
+
+export const getAdminResetPasswordMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminResetPassword>>, TError,{data: PasswordResetRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminResetPassword>>, TError,{data: PasswordResetRequest}, TContext> => {
+
+const mutationKey = ['adminResetPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminResetPassword>>, {data: PasswordResetRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminResetPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminResetPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof adminResetPassword>>>
+    export type AdminResetPasswordMutationBody = PasswordResetRequest
+    export type AdminResetPasswordMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse
+
+    /**
+ * @summary 通过专用验证码重设密码并撤销所有旧会话
+ */
+export const useAdminResetPassword = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | RateLimitedResponse | InternalErrorResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminResetPassword>>, TError,{data: PasswordResetRequest}, TContext>, request?: SecondParameter<typeof adminFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof adminResetPassword>>,
+        TError,
+        {data: PasswordResetRequest},
+        TContext
+      > => {
+      return useMutation(getAdminResetPasswordMutationOptions(options), queryClient);
     }
     export type adminGetSessionResponse200 = {
   data: SessionResponse

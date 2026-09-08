@@ -3,11 +3,10 @@ Login:
     operationId: adminLogin
     summary: 管理员登录
     description: |
-      校验 Origin 与限流，再比对 Argon2id 口令散列。成功后下发
-      HttpOnly Cookie，并在响应体里返回 CSRF Token。
-
-      失败一律返回同一个 ADMIN_LOGIN_INVALID，**不区分「用户名不存在」
-      与「密码不对」**：区分开等于告诉攻击者用户名猜对了。
+      仅数据库管理员名单中的启用账号可登录。短信验证和密码验证均独立于 App。
+      首次短信验证成功但尚未设置密码时返回 428，不创建后台会话。
+      客户端补充 new_password 后提交原挑战；已有密码不能通过登录请求覆盖。
+      统一校验 Origin、手机号与来源限流，成功后下发 HttpOnly Cookie。
     tags: [admin-auth]
     security: []
     requestBody:
@@ -29,6 +28,12 @@ Login:
         $ref: '../components/responses.yaml#/Unauthorized'
       '403':
         $ref: '../components/responses.yaml#/Forbidden'
+      '428':
+        description: 验证码有效，请设置首次登录密码。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/common.yaml#/ErrorResponse'
       '429':
         $ref: '../components/responses.yaml#/RateLimited'
       '500':
@@ -70,5 +75,65 @@ Logout:
         $ref: '../components/responses.yaml#/Unauthorized'
       '403':
         $ref: '../components/responses.yaml#/Forbidden'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+PhoneCode:
+  post:
+    operationId: adminRequestPhoneCode
+    summary: 发送后台专用验证码
+    tags: [admin-auth]
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/auth.yaml#/PhoneCodeRequest'
+    responses:
+      '200':
+        description: 请求已处理，验证码仅向已授权号码发送；密码重设后需重新登录。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/auth.yaml#/PhoneCodeResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '429':
+        $ref: '../components/responses.yaml#/RateLimited'
+      '500':
+        $ref: '../components/responses.yaml#/InternalError'
+
+PasswordReset:
+  post:
+    operationId: adminResetPassword
+    summary: 通过专用验证码重设密码并撤销所有旧会话
+    tags: [admin-auth]
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../components/auth.yaml#/PasswordResetRequest'
+    responses:
+      '200':
+        description: 请求已处理，验证码仅向已授权号码发送；密码重设后需重新登录。
+        content:
+          application/json:
+            schema:
+              $ref: '../components/auth.yaml#/LogoutResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
+      '401':
+        $ref: '../components/responses.yaml#/Unauthorized'
+      '403':
+        $ref: '../components/responses.yaml#/Forbidden'
+      '429':
+        $ref: '../components/responses.yaml#/RateLimited'
       '500':
         $ref: '../components/responses.yaml#/InternalError'

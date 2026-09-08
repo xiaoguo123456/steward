@@ -37,8 +37,7 @@ func testService(t *testing.T, mutate func(*config.AdminConfig)) (*Service, *dat
 		t.Fatal(err)
 	}
 	cfg := config.AdminConfig{
-		Username:          "tester",
-		PasswordHash:      hash,
+
 		CredentialVersion: "1",
 		SessionSecret:     "session-secret-for-tests-0123456789",
 		CSRFSecret:        "csrf-secret-for-tests-0123456789ab",
@@ -48,6 +47,7 @@ func testService(t *testing.T, mutate func(*config.AdminConfig)) (*Service, *dat
 	if mutate != nil {
 		mutate(&cfg)
 	}
+	seedAdminAccount(t, db, "19900000901", &hash)
 	return NewService(db, cfg), db
 }
 
@@ -55,7 +55,7 @@ func TestLoginCreatesSessionAndValidates(t *testing.T) {
 	svc, _ := testService(t, nil)
 	ctx := context.Background()
 
-	token, session, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	token, session, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatalf("登录失败：%v", err)
 	}
@@ -83,7 +83,7 @@ func TestLoginRejectsWrongCredentials(t *testing.T) {
 
 	for name, attempt := range map[string][2]string{
 		"用户名错": {"wrong", "test-admin-password"},
-		"口令错":  {"tester", "wrong-password"},
+		"口令错":  {"19900000901", "wrong-password"},
 		"都错":   {"wrong", "wrong-password"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestSessionTokenIsNotStoredInPlaintext(t *testing.T) {
 	svc, db := testService(t, nil)
 	ctx := context.Background()
 
-	token, session, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	token, session, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestValidateRejectsRevokedSession(t *testing.T) {
 	svc, _ := testService(t, nil)
 	ctx := context.Background()
 
-	token, session, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	token, session, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestValidateRejectsIdleExpiredSession(t *testing.T) {
 	})
 	ctx := context.Background()
 
-	token, _, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	token, _, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestValidateRejectsAbsoluteExpiredSession(t *testing.T) {
 	})
 	ctx := context.Background()
 
-	token, _, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	token, _, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestValidateDoesNotExtendBeyondAbsolute(t *testing.T) {
 	})
 	ctx := context.Background()
 
-	token, _, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	token, _, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,7 @@ func TestValidateRejectsStaleCredentialVersion(t *testing.T) {
 	svc, db := testService(t, nil)
 	ctx := context.Background()
 
-	token, _, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	token, _, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,8 +223,7 @@ func TestValidateRejectsStaleCredentialVersion(t *testing.T) {
 
 	// 换一个凭证版本的服务，指向同一个库。
 	rotated := NewService(db, config.AdminConfig{
-		Username:          svc.cfg.Username,
-		PasswordHash:      svc.cfg.PasswordHash,
+
 		CredentialVersion: "2",
 		SessionSecret:     svc.cfg.SessionSecret,
 		CSRFSecret:        svc.cfg.CSRFSecret,
@@ -240,7 +239,7 @@ func TestVerifyCSRF(t *testing.T) {
 	svc, _ := testService(t, nil)
 	ctx := context.Background()
 
-	_, session, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	_, session, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +257,7 @@ func TestVerifyCSRF(t *testing.T) {
 	}
 
 	// 另一个会话的 CSRF Token 不能用在这个会话上。
-	_, other, err := svc.Login(ctx, "tester", "test-admin-password", "go-test", nil)
+	_, other, err := svc.Login(ctx, "19900000901", "test-admin-password", "go-test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

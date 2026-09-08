@@ -40,6 +40,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Fprintln(os.Stderr, "\n把下面这行写进 .env：")
-	fmt.Printf("STEWARD_ADMIN_PASSWORD_HASH='%s'\n", hash)
+	fmt.Fprintln(os.Stderr, "\n以下仅为 Argon2id 散列，正式管理员应优先通过网页短信验证设密：")
+	fmt.Println(hash)
 }

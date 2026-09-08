@@ -1,5 +1,6 @@
 import {
   adminGetSession,
+ adminSessionResponseSchema, adminLoginBodySchema, adminLoginResponseSchema,
   onAdminSessionExpired,
   adminLogin,
   adminLogout,
@@ -7,6 +8,7 @@ import {
   setCsrfToken,
   unwrap,
   type AdminSession,
+ type LoginRequest,
 } from '@steward/admin-api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -29,7 +31,7 @@ import {
 type SessionState = {
   session: AdminSession | null;
   loading: boolean;
-  signIn: (username: string, password: string) => Promise<void>;
+  signIn: (input: LoginRequest) => Promise<void>;
   signOut: () => Promise<void>;
   /** 会话失效时调用：清缓存并回到登录页。 */
   invalidate: () => void;
@@ -66,7 +68,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     let cancelled = false;
     adminGetSession()
       .then((res) => {
-        if (!cancelled) apply(unwrap(res)?.data ?? null);
+        if (!cancelled) apply(adminSessionResponseSchema.parse(unwrap(res)).data);
       })
       .catch(() => {
         if (!cancelled) apply(null);
@@ -80,9 +82,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, [apply]);
 
   const signIn = useCallback(
-    async (username: string, password: string) => {
-      const res = await adminLogin({ username, password });
-      apply(unwrap(res)?.data ?? null);
+    async (input: LoginRequest) => {
+      const res = await adminLogin(adminLoginBodySchema.parse(input), {signal: AbortSignal.timeout(20_000)});
+      apply(adminLoginResponseSchema.parse(unwrap(res)).data);
       queryClient.clear();
     },
     [apply, queryClient],

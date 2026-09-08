@@ -224,6 +224,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.2
         version: 5.101.4(react@19.2.3)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       orval:
         specifier: ^8.24.0

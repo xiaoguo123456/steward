@@ -27,8 +27,8 @@ type AdminConfig struct {
 	// 两者的权限范围不同，混用等于把后台能做的事扩大到整个业务面。
 	DatabaseURL string
 
-	Username     string
-	PasswordHash string
+	SMS        SMSConfig
+	DevSMSCode string
 	// CredentialVersion 变化后所有旧会话立刻失效。
 	// 改口令时递增它，不用逐条去删会话，也不会漏掉正在用的那些。
 	CredentialVersion string
@@ -69,8 +69,8 @@ func LoadAdmin() (AdminConfig, error) {
 		HTTPAddr:          env("STEWARD_ADMIN_HTTP_ADDR", ":8788"),
 		AllowedOrigins:    splitAndTrim(env("STEWARD_ADMIN_ALLOWED_ORIGINS", "http://localhost:8000")),
 		DatabaseURL:       env("STEWARD_ADMIN_DATABASE_URL", ""),
-		Username:          env("STEWARD_ADMIN_USERNAME", ""),
-		PasswordHash:      env("STEWARD_ADMIN_PASSWORD_HASH", ""),
+		SMS:               SMSConfig{Provider: env("STEWARD_SMS_PROVIDER", "dev"), Endpoint: env("STEWARD_ALIYUN_SMS_ENDPOINT", "dysmsapi.aliyuncs.com"), AccessKeyID: env("STEWARD_ALIYUN_SMS_ACCESS_KEY_ID", ""), AccessKeySecret: env("STEWARD_ALIYUN_SMS_ACCESS_KEY_SECRET", ""), SignName: env("STEWARD_ALIYUN_SMS_SIGN_NAME", ""), TemplateCode: env("STEWARD_ALIYUN_SMS_TEMPLATE_CODE", "")},
+		DevSMSCode:        env("STEWARD_DEV_SMS_CODE", ""),
 		CredentialVersion: env("STEWARD_ADMIN_CREDENTIAL_VERSION", "1"),
 		SessionSecret:     env("STEWARD_ADMIN_SESSION_SECRET", ""),
 		CSRFSecret:        env("STEWARD_ADMIN_CSRF_SECRET", ""),
@@ -89,8 +89,6 @@ func LoadAdmin() (AdminConfig, error) {
 	missing := []string{}
 	for key, value := range map[string]string{
 		"STEWARD_ADMIN_DATABASE_URL":   cfg.DatabaseURL,
-		"STEWARD_ADMIN_USERNAME":       cfg.Username,
-		"STEWARD_ADMIN_PASSWORD_HASH":  cfg.PasswordHash,
 		"STEWARD_ADMIN_SESSION_SECRET": cfg.SessionSecret,
 		"STEWARD_ADMIN_CSRF_SECRET":    cfg.CSRFSecret,
 	} {
@@ -101,8 +99,8 @@ func LoadAdmin() (AdminConfig, error) {
 	if len(missing) > 0 {
 		return AdminConfig{}, errors.New("后台配置缺少：" + strings.Join(missing, "、"))
 	}
-	if !strings.HasPrefix(cfg.PasswordHash, "$argon2id$") {
-		return AdminConfig{}, errors.New("STEWARD_ADMIN_PASSWORD_HASH 必须是 Argon2id 散列，不能是明文口令")
+	if err := cfg.SMS.validate(cfg.DevSMSCode, cfg.Environment); err != nil {
+		return AdminConfig{}, err
 	}
 	if len(cfg.SessionSecret) < 32 || len(cfg.CSRFSecret) < 32 {
 		return AdminConfig{}, errors.New("后台密钥至少 32 字符")

@@ -13,6 +13,7 @@ type Querier interface {
 	// 同一用户、端点和幂等键的并发请求串行化，避免先创建资源、后写幂等记录时产生重复数据。
 	AcquireIdempotencyLock(ctx context.Context, lockKey string) error
 	AdminClearBudget(ctx context.Context, userID string) error
+	AdminCodeSendCounts(ctx context.Context, adminID string) (AdminCodeSendCountsRow, error)
 	// AI 口径。
 	//
 	// 成本只汇总算得出来的部分，另外单列「有多少次调用缺价」——
@@ -92,6 +93,7 @@ type Querier interface {
 	ClearProjectFromRecords(ctx context.Context, projectID *string) error
 	ClearProjectFromTasks(ctx context.Context, projectID *string) error
 	ConsumeAccountDeletionReauthToken(ctx context.Context, id string) error
+	ConsumeAdminPhoneChallenge(ctx context.Context, id string) error
 	ConsumeVerificationCode(ctx context.Context, id string) error
 	// 追加说明后生成新 revision 时，只复制最初提交的素材。
 	// 位置从 1000 开始的文字 Part 是澄清回答，必须按 Question revision 重新建立，
@@ -121,6 +123,7 @@ type Querier interface {
 	CreateAccountDeletionStatusRecord(ctx context.Context, arg CreateAccountDeletionStatusRecordParams) (AccountDeletionStatusRecord, error)
 	CreateActivityBatch(ctx context.Context, arg CreateActivityBatchParams) (ActivityBatch, error)
 	CreateActivityEntry(ctx context.Context, arg CreateActivityEntryParams) (ActivityEntry, error)
+	CreateAdminPhoneChallenge(ctx context.Context, arg CreateAdminPhoneChallengeParams) error
 	// 后台管理的查询。
 	//
 	// 这些表在 admin schema 里，由 steward_admin 角色访问。
@@ -191,8 +194,12 @@ type Querier interface {
 	EnsureBuiltinTracker(ctx context.Context, arg EnsureBuiltinTrackerParams) (Tracker, error)
 	EnsureUserPreferences(ctx context.Context, userID string) (UserPreference, error)
 	ExpireStaleProposals(ctx context.Context) error
+	FailAdminPhoneChallengeAttempt(ctx context.Context, id string) error
 	// 幂等：重复收藏同一道菜不产生第二条记录。
 	FavoriteRecipe(ctx context.Context, arg FavoriteRecipeParams) error
+	FindAdminAccountByID(ctx context.Context, id string) (AdminAccount, error)
+	FindAdminAccountByPhone(ctx context.Context, phone string) (AdminAccount, error)
+	FindAdminPhoneChallenge(ctx context.Context, arg FindAdminPhoneChallengeParams) (AdminPhoneChallenge, error)
 	// 按令牌散列取会话。过期与撤销的判断放在 Go 里做，
 	// 因为要区分「空闲超时」「绝对超时」「已撤销」「凭证版本变了」四种情况，
 	// 各自给出的提示不一样。
@@ -284,6 +291,7 @@ type Querier interface {
 	// 匹配不到价格时 amount_usd 为 NULL、状态 pricing_missing——
 	// **不写 0**。「不知道多少钱」和「不花钱」是完全不同的两件事。
 	InsertCostItem(ctx context.Context, arg InsertCostItemParams) error
+	InvalidateAdminPhoneChallenges(ctx context.Context, adminID string) error
 	IsMediaReferencedByActiveMemoryMoment(ctx context.Context, mediaID string) (bool, error)
 	IsRelearnBlocked(ctx context.Context, arg IsRelearnBlockedParams) (bool, error)
 	// 后台每个响应都要说出「这份数据算到什么时候」。
@@ -410,6 +418,7 @@ type Querier interface {
 	// 另一个会看到状态已变成 executed 而被拒绝。
 	LockProposal(ctx context.Context, id string) (ActionProposal, error)
 	MarkActivityBatchUndone(ctx context.Context, id string) (ActivityBatch, error)
+	MarkAdminPhoneChallengeSent(ctx context.Context, id string) error
 	MarkCaptureConfirmed(ctx context.Context, arg MarkCaptureConfirmedParams) (Capture, error)
 	MarkMediaFailed(ctx context.Context, arg MarkMediaFailedParams) error
 	// byte_size 与 content_hash 来自服务端对存储侧的回查，不采信客户端上报值。
@@ -428,6 +437,7 @@ type Querier interface {
 	// **只在整轮枚举成功跑完之后调用。** 枚举中途失败时调它，
 	// 没轮到的用户会被当成已删除清掉。
 	PruneUserIndex(ctx context.Context, runStartedAt time.Time) (int64, error)
+	PurgeAdminPhoneChallenges(ctx context.Context) error
 	// 清理已经绝对过期的会话。留着也没用，还让表越来越大。
 	PurgeExpiredAdminSessions(ctx context.Context) error
 	// 写一条管理操作审计。
@@ -448,6 +458,7 @@ type Querier interface {
 	// 停用一个价格版本：给它一个结束时间，而不是删掉。
 	// 删掉会让引用它的历史成本明细失去来源，账就对不上了。
 	RetireAIPrice(ctx context.Context, arg RetireAIPriceParams) error
+	RevokeAccountAdminSessions(ctx context.Context, adminID *string) error
 	RevokeAdminSession(ctx context.Context, id string) error
 	RevokeAllRefreshTokens(ctx context.Context, userID string) error
 	RevokeOtherRefreshTokenFamilies(ctx context.Context, arg RevokeOtherRefreshTokenFamiliesParams) error
@@ -524,6 +535,7 @@ type Querier interface {
 	TouchUserIndex(ctx context.Context, userID string) error
 	UnfavoriteRecipe(ctx context.Context, recipeID string) error
 	UpdateAccountDeletionStatus(ctx context.Context, arg UpdateAccountDeletionStatusParams) error
+	UpdateAdminPassword(ctx context.Context, arg UpdateAdminPasswordParams) (AdminAccount, error)
 	UpdateAiSettings(ctx context.Context, arg UpdateAiSettingsParams) (UserAiSetting, error)
 	UpdateCapturePartResult(ctx context.Context, arg UpdateCapturePartResultParams) error
 	UpdateCaptureStatus(ctx context.Context, arg UpdateCaptureStatusParams) (Capture, error)

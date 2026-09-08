@@ -7,11 +7,12 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "generate": "orval --config orval.config.ts",
+    "generate": "orval --config orval.config.ts && node scripts/normalize-generated.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.90.2"
+    "@tanstack/react-query": "^5.90.2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "orval": "^8.24.0",

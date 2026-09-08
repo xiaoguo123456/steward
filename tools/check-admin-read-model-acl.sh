@@ -33,3 +33,19 @@ DO $$ DECLARE target text; BEGIN
   END LOOP;
 END $$;
 SQL
+
+# 管理员认证迁移同样必须验证生产角色命名分支，禁止运行账号自行授权。
+psql -d steward_prod -v ON_ERROR_STOP=1 <<'SQL'
+CREATE TABLE admin.sessions(id text PRIMARY KEY, revoked_at timestamptz);
+SQL
+sed '/-- +goose Down/,$d' apps/backend/db/migrations/00059_admin_phone_auth.sql | psql -d steward_prod -v ON_ERROR_STOP=1
+psql -d steward_prod -v ON_ERROR_STOP=1 <<'SQL'
+DO $$ BEGIN
+  IF NOT has_table_privilege('steward_p_admin','admin.accounts','SELECT')
+    OR has_table_privilege('steward_p_admin','admin.accounts','INSERT')
+    OR has_column_privilege('steward_p_admin','admin.accounts','enabled','UPDATE')
+    OR NOT has_column_privilege('steward_p_admin','admin.accounts','password_hash','UPDATE') THEN
+    RAISE EXCEPTION '生产后台管理员名单权限错误';
+  END IF;
+END $$;
+SQL

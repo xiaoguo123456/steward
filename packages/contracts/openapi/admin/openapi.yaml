@@ -58,6 +58,10 @@ components:
 paths:
   /admin/v1/login:
     $ref: './paths/auth.yaml#/Login'
+  /admin/v1/phone-code:
+    $ref: './paths/auth.yaml#/PhoneCode'
+  /admin/v1/password-reset:
+    $ref: './paths/auth.yaml#/PasswordReset'
   /admin/v1/session:
     $ref: './paths/auth.yaml#/Session'
   /admin/v1/logout:

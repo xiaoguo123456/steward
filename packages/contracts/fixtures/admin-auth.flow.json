@@ -1,0 +1,8 @@
+{
+  "phone_code_request": { "phone": "19900000901", "purpose": "login", "consent_accepted": true },
+  "phone_code_response": { "data": { "challenge_id": "fixture-admin-challenge", "expires_in_seconds": 300, "resend_after_seconds": 60 }, "meta": { "request_id": "fixture-admin-auth" } },
+  "sms_login_request": { "phone": "19900000901", "method": "sms", "challenge_id": "fixture-admin-challenge", "code": "123456" },
+  "password_login_request": { "phone": "19900000901", "method": "password", "password": "fixture-password-only" },
+  "reset_request": { "phone": "19900000901", "challenge_id": "fixture-admin-reset", "code": "123456", "new_password": "fixture-new-password-only" },
+  "session_response": { "data": { "username": "adm_fixture", "csrf_token": "fixture-csrf-not-a-secret", "expires_at": "2099-09-08T12:00:00Z", "absolute_expires_at": "2099-09-08T23:00:00Z", "environment": "test", "reporting_timezone": "Asia/Shanghai" }, "meta": { "request_id": "fixture-admin-auth" } }
+}

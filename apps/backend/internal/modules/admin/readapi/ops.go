@@ -149,7 +149,7 @@ func (a *ReadAPI) AdminGetProviders(ctx context.Context,
 	items := make([]adminapi.ProviderStatus, 0, len(providers))
 	for _, name := range providers {
 		items = append(items, adminapi.ProviderStatus{
-			Name: name, Kind: adminapi.Ai,
+			Name: name, Kind: adminapi.ProviderStatusKindAi,
 			// 成功率等指标要按 Provider 聚合 ai_actions，而那张表受 RLS 约束。
 			// **返回空而不是 0**：0% 成功率会被当成「这个服务挂了」。
 			Calls24h:        0,

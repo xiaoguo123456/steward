@@ -2,9 +2,12 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/gen/adminapi"
@@ -58,55 +61,116 @@ func (r logoutSuccess) VisitAdminLogoutResponse(w http.ResponseWriter) error {
 	return adminapi.AdminLogout200JSONResponse(r.body).VisitAdminLogoutResponse(w)
 }
 
-// AdminLogin 处理登录。
-func (a *SessionAPI) AdminLogin(ctx context.Context,
-	req adminapi.AdminLoginRequestObject) (adminapi.AdminLoginResponseObject, error) {
+// authFailure 统一公开认证接口的错误响应，不把凭据或数据库错误写入日志。
+type authFailure struct {
+	status int
+	body   adminapi.ErrorResponse
+}
 
+func (f authFailure) write(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(f.status)
+	return json.NewEncoder(w).Encode(f.body)
+}
+func (f authFailure) VisitAdminLoginResponse(w http.ResponseWriter) error { return f.write(w) }
+func (f authFailure) VisitAdminRequestPhoneCodeResponse(w http.ResponseWriter) error {
+	return f.write(w)
+}
+func (f authFailure) VisitAdminResetPasswordResponse(w http.ResponseWriter) error { return f.write(w) }
+
+func (a *SessionAPI) preflight(ctx context.Context, phone, scope string) *authFailure {
+	if len(phone) > 11 {
+		return a.failure(ctx, ErrInputInvalid)
+	}
 	r := httpx.RequestFrom(ctx)
 	if r == nil {
-		return nil, errors.New("缺少请求上下文")
+		return a.failure(ctx, errors.New("缺少请求上下文"))
 	}
-
-	// 登录时还没有会话，但仍然要校验来源：
-	// 否则任何站点都能拿着用户在别处输入的口令来打这个接口。
 	if !a.mw.CheckLoginOrigin(r) {
-		return adminapi.AdminLogin403JSONResponse{ForbiddenJSONResponse: adminapi.ForbiddenJSONResponse(a.errorBody(ctx,
-			adminapi.ADMINCSRFINVALID, "来源不被允许。"))}, nil
+		return &authFailure{http.StatusForbidden, a.errorBody(ctx, adminapi.ADMINCSRFINVALID, "来源不被允许。")}
 	}
-
-	ip := ClientIP(r)
-	username := req.Body.Username
-	if !a.limiter.Allow(ip, username) {
-		return adminapi.AdminLogin429JSONResponse{RateLimitedJSONResponse: adminapi.RateLimitedJSONResponse(a.errorBody(ctx,
-			adminapi.ADMINRATELIMITED, "尝试过于频繁，请稍后再试。"))}, nil
+	if !a.limiter.Take(scope+ClientIP(r), scope+phone) {
+		return &authFailure{http.StatusTooManyRequests, a.errorBody(ctx, adminapi.ADMINRATELIMITED, "尝试过于频繁，请稍后再试。")}
 	}
+	return nil
+}
+func (a *SessionAPI) failure(ctx context.Context, err error) *authFailure {
+	status, code, message := http.StatusInternalServerError, adminapi.ADMININTERNALERROR, "服务暂时不可用，请稍后再试。"
+	switch {
+	case errors.Is(err, ErrInvalidLogin):
+		status, code, message = 401, adminapi.ADMINLOGININVALID, "手机号或登录凭据不正确。"
+	case errors.Is(err, ErrCodeInvalid):
+		status, code, message = 401, adminapi.ADMINCODEINVALID, ErrCodeInvalid.Error()
+	case errors.Is(err, ErrPasswordSetup):
+		status, code, message = 428, adminapi.ADMINPASSWORDSETUPREQUIRED, "手机号已验证，请设置登录密码。"
+	case errors.Is(err, ErrInputInvalid):
+		status, code, message = 400, adminapi.ADMINVALIDATIONFAILED, ErrInputInvalid.Error()
+	case errors.Is(err, ErrSMSUnavailable):
+		status, code, message = 500, adminapi.ADMINSMSUNAVAILABLE, ErrSMSUnavailable.Error()
+	}
+	if status == 500 {
+		a.logger.Error("后台认证请求失败", "request_id", httpx.RequestID(ctx), "error_type", fmt.Sprintf("%T", err))
+	}
+	return &authFailure{status, a.errorBody(ctx, code, message)}
+}
+func value(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
 
-	token, session, err := a.svc.Login(ctx, username, req.Body.Password,
-		r.UserAgent(), HashIP(r.RemoteAddr, a.cfg.SessionSecret))
+func (a *SessionAPI) AdminLogin(ctx context.Context, req adminapi.AdminLoginRequestObject) (adminapi.AdminLoginResponseObject, error) {
+	if req.Body == nil {
+		return a.failure(ctx, ErrInputInvalid), nil
+	}
+	phone := strings.TrimSpace(req.Body.Phone)
+	if failed := a.preflight(ctx, phone, "auth:"); failed != nil {
+		return *failed, nil
+	}
+	r := httpx.RequestFrom(ctx)
+	token, session, err := a.svc.authenticate(ctx, loginCredentials{Phone: phone, Method: string(req.Body.Method), Password: value(req.Body.Password), ChallengeID: value(req.Body.ChallengeId), Code: value(req.Body.Code), NewPassword: value(req.Body.NewPassword)}, r.UserAgent(), HashIP(r.RemoteAddr, a.cfg.SessionSecret))
 	if err != nil {
-		if errors.Is(err, ErrInvalidLogin) {
-			a.limiter.RecordFailure(ip, username)
-			// **不区分「用户名不存在」和「口令不对」。**
-			// 区分开等于告诉攻击者用户名已经猜对了。
-			a.logger.Warn("后台登录失败", "ip", ip)
-			return adminapi.AdminLogin401JSONResponse{UnauthorizedJSONResponse: adminapi.UnauthorizedJSONResponse(a.errorBody(ctx,
-				adminapi.ADMINLOGININVALID, "用户名或口令不正确。"))}, nil
-		}
-		a.logger.Error("后台登录出错", "error", err)
-		return adminapi.AdminLogin500JSONResponse{InternalErrorJSONResponse: adminapi.InternalErrorJSONResponse(a.errorBody(ctx,
-			adminapi.ADMININTERNALERROR, "服务暂时不可用。"))}, nil
+		return *a.failure(ctx, err), nil
 	}
+	a.logger.Info("后台登录成功", "admin_id", session.Username, "session_id", session.ID)
+	return loginSuccess{body: adminapi.LoginResponse{Data: a.sessionDTO(session), Meta: a.meta(ctx)}, mw: a.mw, token: token, maxAge: int(time.Until(session.AbsoluteExpiresAt).Seconds())}, nil
+}
 
-	a.limiter.Reset(ip, username)
-	a.logger.Info("后台登录成功", "ip", ip, "session_id", session.ID)
+func (a *SessionAPI) AdminRequestPhoneCode(ctx context.Context, req adminapi.AdminRequestPhoneCodeRequestObject) (adminapi.AdminRequestPhoneCodeResponseObject, error) {
+	if req.Body == nil {
+		return a.failure(ctx, ErrInputInvalid), nil
+	}
+	phone := strings.TrimSpace(req.Body.Phone)
+	if failed := a.preflight(ctx, phone, "send:"); failed != nil {
+		return *failed, nil
+	}
+	if !req.Body.ConsentAccepted {
+		return a.failure(ctx, ErrInputInvalid), nil
+	}
+	id, err := a.svc.requestCode(ctx, phone, string(req.Body.Purpose))
+	if err != nil {
+		return *a.failure(ctx, err), nil
+	}
+	body := adminapi.PhoneCodeResponse{Meta: a.meta(ctx)}
+	body.Data.ChallengeId = id
+	body.Data.ExpiresInSeconds = 300
+	body.Data.ResendAfterSeconds = 60
+	return adminapi.AdminRequestPhoneCode200JSONResponse(body), nil
+}
 
-	return loginSuccess{
-		body:  adminapi.LoginResponse{Data: a.sessionDTO(session), Meta: a.meta(ctx)},
-		mw:    a.mw,
-		token: token,
-		// Cookie 的存活时间按绝对超时来，服务端仍然独立判断空闲超时。
-		maxAge: int(time.Until(session.AbsoluteExpiresAt).Seconds()),
-	}, nil
+func (a *SessionAPI) AdminResetPassword(ctx context.Context, req adminapi.AdminResetPasswordRequestObject) (adminapi.AdminResetPasswordResponseObject, error) {
+	if req.Body == nil {
+		return a.failure(ctx, ErrInputInvalid), nil
+	}
+	phone := strings.TrimSpace(req.Body.Phone)
+	if failed := a.preflight(ctx, phone, "auth:"); failed != nil {
+		return *failed, nil
+	}
+	if err := a.svc.resetPassword(ctx, phone, req.Body.ChallengeId, req.Body.Code, req.Body.NewPassword); err != nil {
+		return *a.failure(ctx, err), nil
+	}
+	return adminapi.AdminResetPassword200JSONResponse(adminapi.LogoutResponse{Meta: a.meta(ctx)}), nil
 }
 
 // AdminGetSession 返回当前会话。
@@ -118,8 +182,7 @@ func (a *SessionAPI) AdminGetSession(ctx context.Context,
 		return adminapi.AdminGetSession401JSONResponse{UnauthorizedJSONResponse: adminapi.UnauthorizedJSONResponse(a.errorBody(ctx,
 			adminapi.ADMINAUTHREQUIRED, "请先登录。"))}, nil
 	}
-	// CSRF Token 只在登录那一次下发。这里重新发一个的话，
-	// 任何能拿到会话的请求都能换取新的 CSRF，那这层就白加了。
+	// 仅对持有有效 Cookie 的同源请求恢复当前会话的 CSRF，供刷新页面后写操作使用。
 	return adminapi.AdminGetSession200JSONResponse(adminapi.SessionResponse{
 		Data: a.sessionDTO(session), Meta: a.meta(ctx),
 	}), nil
@@ -144,7 +207,7 @@ func (a *SessionAPI) AdminLogout(ctx context.Context,
 
 func (a *SessionAPI) sessionDTO(s Session) adminapi.AdminSession {
 	return adminapi.AdminSession{
-		Username:          a.cfg.Username,
+		Username:          s.Username,
 		CsrfToken:         s.CSRFToken,
 		ExpiresAt:         s.ExpiresAt,
 		AbsoluteExpiresAt: s.AbsoluteExpiresAt,

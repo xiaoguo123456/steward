@@ -21,16 +21,25 @@
  *
  * OpenAPI spec version: 0.1.0
  */
+import type { LoginRequestMethod } from './loginRequestMethod';
 
 export interface LoginRequest {
   /**
-     * @minLength 1
-     * @maxLength 64
+     * @maxLength 11
+     * @pattern ^1[3-9][0-9]{9}$
      */
-  username: string;
+  phone: string;
+  method: LoginRequestMethod;
+  /** @maxLength 128 */
+  password?: string;
+  /** @maxLength 64 */
+  challenge_id?: string;
+  /** @pattern ^[0-9]{6}$ */
+  code?: string;
   /**
-     * @minLength 1
-     * @maxLength 256
+     * 首次短信验证通过后设置密码；已有密码时不可通过登录请求修改。
+     * @minLength 12
+     * @maxLength 128
      */
-  password: string;
+  new_password?: string;
 }

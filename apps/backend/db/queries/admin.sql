@@ -6,11 +6,11 @@
 -- name: CreateAdminSession :one
 INSERT INTO admin.sessions (
     id, session_token_hash, csrf_secret_hash, credential_version,
-    last_seen_at, expires_at, absolute_expires_at, user_agent, ip_hash
+    last_seen_at, expires_at, absolute_expires_at, user_agent, ip_hash, admin_id, account_credential_version
 ) VALUES (
     sqlc.arg(id), sqlc.arg(session_token_hash), sqlc.arg(csrf_secret_hash),
     sqlc.arg(credential_version), now(), sqlc.arg(expires_at),
-    sqlc.arg(absolute_expires_at), sqlc.arg(user_agent), sqlc.narg(ip_hash)
+    sqlc.arg(absolute_expires_at), sqlc.arg(user_agent), sqlc.narg(ip_hash), sqlc.narg(admin_id), sqlc.arg(account_credential_version)
 )
 RETURNING *;
 

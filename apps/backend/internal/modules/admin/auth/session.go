@@ -38,7 +38,7 @@ var (
 type Session struct {
 	ID string
 	// Username 是操作者身份，审计要靠它回答「谁做的」。
-	// 取自配置：这套后台目前只有一个账号，用户名就是它的真实身份。
+	// 使用稳定管理员 ID，日志和审计不记录完整手机号。
 	Username          string
 	CSRFToken         string
 	ExpiresAt         time.Time
@@ -47,8 +47,9 @@ type Session struct {
 
 // Service 管理后台会话。
 type Service struct {
-	db  *database.DB
-	cfg config.AdminConfig
+	db     *database.DB
+	cfg    config.AdminConfig
+	sender CodeSender
 }
 
 // NewService 构造会话服务。
@@ -56,68 +57,38 @@ func NewService(db *database.DB, cfg config.AdminConfig) *Service {
 	return &Service{db: db, cfg: cfg}
 }
 
-// Login 校验口令并建立会话。
-//
-// 返回的第一个值是要写进 Cookie 的原始令牌，**它不进数据库**，
-// 库里只有它的散列。
-func (s *Service) Login(ctx context.Context, username, password, userAgent string,
-	ipHash []byte) (string, Session, error) {
+// Login 通过独立管理员名单校验密码。
+func (s *Service) Login(ctx context.Context, phone, password, userAgent string, ipHash []byte) (string, Session, error) {
+	return s.authenticate(ctx, loginCredentials{Phone: phone, Password: password, Method: "password"}, userAgent, ipHash)
+}
 
-	// 用户名也用定长比较：短路比较会按字符逐个泄漏，
-	// 让攻击者能一位一位地把用户名试出来。
-	userOK := hmac.Equal([]byte(username), []byte(s.cfg.Username))
-	passOK := VerifyPassword(password, s.cfg.PasswordHash)
-
-	// **两个都算完再判断。** 写成 userOK && VerifyPassword(...) 的话，
-	// 用户名不对时会跳过昂贵的 Argon2 计算，响应时间明显更短——
-	// 那等于免费告诉攻击者「这个用户名不存在」。
-	if !userOK || !passOK {
-		return "", Session{}, ErrInvalidLogin
-	}
-
+// createSession 必须在锁定管理员账号的事务内调用，避免密码重设与登录交错。
+func (s *Service) createSession(ctx context.Context, q *dbgen.Queries, account dbgen.AdminAccount, userAgent string, ipHash []byte) (string, Session, error) {
 	token, err := randomToken()
 	if err != nil {
 		return "", Session{}, err
 	}
-	csrfToken, err := randomToken()
-	if err != nil {
-		return "", Session{}, err
-	}
-
+	id := idgen.New(idgen.PrefixAdminSession)
+	csrfToken := s.csrfForSession(id)
 	now := time.Now()
-	row := dbgen.CreateAdminSessionParams{
-		ID:                idgen.New(idgen.PrefixAdminSession),
-		SessionTokenHash:  s.hashToken(token),
-		CsrfSecretHash:    s.hashCSRF(csrfToken),
-		CredentialVersion: s.cfg.CredentialVersion,
-		ExpiresAt:         now.Add(s.cfg.IdleTimeout),
-		AbsoluteExpiresAt: now.Add(s.cfg.AbsoluteTimeout),
-		UserAgent:         truncate(userAgent, 512),
-		IpHash:            ipHash,
-	}
-
-	var created dbgen.AdminSession
-	err = s.db.InTxAnonymous(ctx, func(ctx context.Context, q *dbgen.Queries) error {
-		out, err := q.CreateAdminSession(ctx, row)
-		if err != nil {
-			return err
-		}
-		created = out
-		// 顺手清掉早就绝对过期的会话，不另开一个定时任务。
-		_ = q.PurgeExpiredAdminSessions(ctx)
-		return nil
+	created, err := q.CreateAdminSession(ctx, dbgen.CreateAdminSessionParams{
+		ID: id, AdminID: &account.ID, AccountCredentialVersion: account.CredentialVersion,
+		SessionTokenHash: s.hashToken(token), CsrfSecretHash: s.hashCSRF(csrfToken),
+		CredentialVersion: s.cfg.CredentialVersion, ExpiresAt: now.Add(s.cfg.IdleTimeout),
+		AbsoluteExpiresAt: now.Add(s.cfg.AbsoluteTimeout), UserAgent: truncate(userAgent, 512), IpHash: ipHash,
 	})
 	if err != nil {
 		return "", Session{}, err
 	}
+	if err = q.PurgeExpiredAdminSessions(ctx); err != nil {
+		return "", Session{}, err
+	}
+	return token, Session{ID: created.ID, Username: account.ID, CSRFToken: csrfToken, ExpiresAt: created.ExpiresAt, AbsoluteExpiresAt: created.AbsoluteExpiresAt}, nil
+}
 
-	return token, Session{
-		ID:                created.ID,
-		Username:          s.cfg.Username,
-		CSRFToken:         csrfToken,
-		ExpiresAt:         created.ExpiresAt,
-		AbsoluteExpiresAt: created.AbsoluteExpiresAt,
-	}, nil
+// CSRF 由独立密钥和会话 ID 派生，刷新页面能恢复，数据库仍只存散列。
+func (s *Service) csrfForSession(id string) string {
+	return base64.RawURLEncoding.EncodeToString(s.hashCSRF("admin-csrf:" + id))
 }
 
 // Validate 校验 Cookie 里的令牌，并把空闲超时往后推。
@@ -142,8 +113,27 @@ func (s *Service) Validate(ctx context.Context, token string) (Session, error) {
 		return Session{}, err
 	}
 
+	var account dbgen.AdminAccount
+	if row.AdminID == nil {
+		return Session{}, ErrCredentialsStale
+	}
+	err = s.db.InTxAnonymous(ctx, func(ctx context.Context, q *dbgen.Queries) error {
+		var err error
+		account, err = q.FindAdminAccountByID(ctx, *row.AdminID)
+		return err
+	})
+	if err != nil {
+		if database.IsNoRows(err) {
+			return Session{}, ErrNoSession
+		}
+		return Session{}, err
+	}
 	now := time.Now()
 	switch {
+	case !account.Enabled:
+		return Session{}, ErrSessionRevoked
+	case account.CredentialVersion != row.AccountCredentialVersion:
+		return Session{}, ErrCredentialsStale
 	case row.RevokedAt != nil:
 		return Session{}, ErrSessionRevoked
 	case now.After(row.AbsoluteExpiresAt):
@@ -166,7 +156,8 @@ func (s *Service) Validate(ctx context.Context, token string) (Session, error) {
 
 	return Session{
 		ID:                row.ID,
-		Username:          s.cfg.Username,
+		Username:          account.ID,
+		CSRFToken:         s.csrfForSession(row.ID),
 		ExpiresAt:         next,
 		AbsoluteExpiresAt: row.AbsoluteExpiresAt,
 	}, nil

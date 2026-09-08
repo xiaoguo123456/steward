@@ -13,7 +13,7 @@ function Consumer() {
 afterEach(() => vi.unstubAllGlobals());
 describe('后台会话失效', () => {
   it('直接管理写请求收到会话过期后退出并清除运营缓存', async () => {
-    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ data: { username: 'fixture', csrf_token: 'fixture-csrf', environment: 'test', reporting_timezone: 'Asia/Shanghai' } }), { status: 200 })).mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'ADMIN_SESSION_EXPIRED', message: '请重新登录' }, meta: { request_id: 'fixture' } }), { status: 401 }));
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ data: { username: 'fixture', csrf_token: 'fixture-csrf', environment: 'test', reporting_timezone: 'Asia/Shanghai', expires_at: '2099-09-08T12:00:00Z', absolute_expires_at: '2099-09-08T23:00:00Z' }, meta: { request_id: 'fixture' } }), { status: 200 })).mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'ADMIN_SESSION_EXPIRED', message: '请重新登录' }, meta: { request_id: 'fixture' } }), { status: 401 }));
     vi.stubGlobal('fetch', fetch);
     const client = createQueryClient();
     render(<QueryClientProvider client={client}><SessionProvider><Consumer /></SessionProvider></QueryClientProvider>);

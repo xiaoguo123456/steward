@@ -14,24 +14,26 @@ const createAdminSession = `-- name: CreateAdminSession :one
 
 INSERT INTO admin.sessions (
     id, session_token_hash, csrf_secret_hash, credential_version,
-    last_seen_at, expires_at, absolute_expires_at, user_agent, ip_hash
+    last_seen_at, expires_at, absolute_expires_at, user_agent, ip_hash, admin_id, account_credential_version
 ) VALUES (
     $1, $2, $3,
     $4, now(), $5,
-    $6, $7, $8
+    $6, $7, $8, $9, $10
 )
-RETURNING id, session_token_hash, csrf_secret_hash, credential_version, last_seen_at, expires_at, absolute_expires_at, revoked_at, created_at, user_agent, ip_hash
+RETURNING id, session_token_hash, csrf_secret_hash, credential_version, last_seen_at, expires_at, absolute_expires_at, revoked_at, created_at, user_agent, ip_hash, admin_id, account_credential_version
 `
 
 type CreateAdminSessionParams struct {
-	ID                string
-	SessionTokenHash  []byte
-	CsrfSecretHash    []byte
-	CredentialVersion string
-	ExpiresAt         time.Time
-	AbsoluteExpiresAt time.Time
-	UserAgent         string
-	IpHash            []byte
+	ID                       string
+	SessionTokenHash         []byte
+	CsrfSecretHash           []byte
+	CredentialVersion        string
+	ExpiresAt                time.Time
+	AbsoluteExpiresAt        time.Time
+	UserAgent                string
+	IpHash                   []byte
+	AdminID                  *string
+	AccountCredentialVersion int64
 }
 
 // 后台管理的查询。
@@ -48,6 +50,8 @@ func (q *Queries) CreateAdminSession(ctx context.Context, arg CreateAdminSession
 		arg.AbsoluteExpiresAt,
 		arg.UserAgent,
 		arg.IpHash,
+		arg.AdminID,
+		arg.AccountCredentialVersion,
 	)
 	var i AdminSession
 	err := row.Scan(
@@ -62,12 +66,14 @@ func (q *Queries) CreateAdminSession(ctx context.Context, arg CreateAdminSession
 		&i.CreatedAt,
 		&i.UserAgent,
 		&i.IpHash,
+		&i.AdminID,
+		&i.AccountCredentialVersion,
 	)
 	return i, err
 }
 
 const findAdminSession = `-- name: FindAdminSession :one
-SELECT id, session_token_hash, csrf_secret_hash, credential_version, last_seen_at, expires_at, absolute_expires_at, revoked_at, created_at, user_agent, ip_hash FROM admin.sessions WHERE session_token_hash = $1
+SELECT id, session_token_hash, csrf_secret_hash, credential_version, last_seen_at, expires_at, absolute_expires_at, revoked_at, created_at, user_agent, ip_hash, admin_id, account_credential_version FROM admin.sessions WHERE session_token_hash = $1
 `
 
 // 按令牌散列取会话。过期与撤销的判断放在 Go 里做，
@@ -88,12 +94,14 @@ func (q *Queries) FindAdminSession(ctx context.Context, sessionTokenHash []byte)
 		&i.CreatedAt,
 		&i.UserAgent,
 		&i.IpHash,
+		&i.AdminID,
+		&i.AccountCredentialVersion,
 	)
 	return i, err
 }
 
 const findAdminSessionByID = `-- name: FindAdminSessionByID :one
-SELECT id, session_token_hash, csrf_secret_hash, credential_version, last_seen_at, expires_at, absolute_expires_at, revoked_at, created_at, user_agent, ip_hash FROM admin.sessions WHERE id = $1
+SELECT id, session_token_hash, csrf_secret_hash, credential_version, last_seen_at, expires_at, absolute_expires_at, revoked_at, created_at, user_agent, ip_hash, admin_id, account_credential_version FROM admin.sessions WHERE id = $1
 `
 
 func (q *Queries) FindAdminSessionByID(ctx context.Context, id string) (AdminSession, error) {
@@ -111,6 +119,8 @@ func (q *Queries) FindAdminSessionByID(ctx context.Context, id string) (AdminSes
 		&i.CreatedAt,
 		&i.UserAgent,
 		&i.IpHash,
+		&i.AdminID,
+		&i.AccountCredentialVersion,
 	)
 	return i, err
 }

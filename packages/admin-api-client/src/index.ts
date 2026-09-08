@@ -21,3 +21,6 @@ export {
   getCsrfToken,
   unwrap,
 } from './http/fetcher';
+
+// 认证边界使用从同一 OpenAPI 生成的运行时校验器。
+export { AdminLoginBody as adminLoginBodySchema, AdminLoginResponse as adminLoginResponseSchema, AdminGetSessionResponse as adminSessionResponseSchema, AdminRequestPhoneCodeBody as adminPhoneCodeBodySchema, AdminRequestPhoneCodeResponse as adminPhoneCodeResponseSchema, AdminResetPasswordBody as adminResetPasswordBodySchema, AdminResetPasswordResponse as adminResetPasswordResponseSchema } from './generated/admin-auth/admin-auth.zod';

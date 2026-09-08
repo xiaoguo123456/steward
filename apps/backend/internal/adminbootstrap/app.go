@@ -20,6 +20,7 @@ import (
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/config"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/database"
 	"github.com/guoxiaozheng1/steward/apps/backend/internal/platform/httpx"
+	smsal "github.com/guoxiaozheng1/steward/apps/backend/internal/platform/sms/aliyun"
 )
 
 // App 是后台进程的全部依赖。
@@ -63,6 +64,14 @@ func New(ctx context.Context, cfg config.AdminConfig, logger *slog.Logger) (*App
 	phoneKey := []byte(cfg.PhoneLookupKey)
 
 	sessions := auth.NewService(db, cfg)
+	if cfg.SMS.Provider == "aliyun" {
+		sender, err := smsal.New(smsal.Config{Endpoint: cfg.SMS.Endpoint, AccessKeyID: cfg.SMS.AccessKeyID, AccessKeySecret: cfg.SMS.AccessKeySecret, SignName: cfg.SMS.SignName, TemplateCode: cfg.SMS.TemplateCode}, logger)
+		if err != nil {
+			db.Close()
+			return nil, nil, err
+		}
+		sessions.SetCodeSender(sender)
+	}
 	middleware := auth.NewMiddleware(sessions, cfg, logger)
 	limiter := auth.NewLoginLimiter()
 
@@ -97,6 +106,12 @@ func (a *App) Handler() http.Handler {
 	r.Use(httpx.RequestIDMiddleware)
 	r.Use(httpx.RecovererMiddleware(a.Logger))
 	r.Use(httpx.RequestMiddleware)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+			next.ServeHTTP(w, r)
+		})
+	})
 	r.Use(a.middleware.PrivateCache)
 	r.Use(a.middleware.Authenticate)
 	r.Use(a.middleware.ProtectWrites)
