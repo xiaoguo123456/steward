@@ -109,6 +109,19 @@ jobs:
           git diff --exit-code
       - name: 验证空库迁移
         run: make migrate-test
+      - name: 验证受限函数属主下的认证续期
+        env:
+          PGPASSWORD: postgres
+          STEWARD_MIGRATE_DATABASE_URL: postgres://steward_ci_migrator:ci_migration_password@127.0.0.1:5432/steward_auth_ci?sslmode=disable
+          STEWARD_TEST_AUTH_DATABASE_URL: postgres://steward_app:steward_dev_password@127.0.0.1:5432/steward_auth_ci?sslmode=disable
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE steward_ci_migrator LOGIN PASSWORD 'ci_migration_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+          CREATE DATABASE steward_auth_ci OWNER steward_ci_migrator;
+          SQL
+          cd apps/backend
+          go run ./cmd/migrate up
+          go test -race -count=1 ./internal/modules/auth
       - name: 运行全量检查
         run: make check
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -21,6 +22,9 @@ import (
 func openAuthTestDB(t *testing.T) (*database.DB, context.Context) {
 	t.Helper()
 	cfg := config.LoadForTest()
+	if authURL := os.Getenv("STEWARD_TEST_AUTH_DATABASE_URL"); authURL != "" {
+		cfg.DatabaseURL = authURL
+	}
 	if cfg.DatabaseURL == "" {
 		t.Skip("未设置测试数据库，跳过认证并发集成测试")
 	}
@@ -252,5 +256,86 @@ func TestChangePhoneReplayKeepsCurrentFamilyAndRevokesOthers(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("检查换绑会话失败：%v", err)
+	}
+}
+
+// 连续续期模拟跨进程使用已持久化凭证；同一事务还要保持调用者原有 RLS 身份。
+func TestRefreshRotationPreservesCallerContext(t *testing.T) {
+	db, ctx := openAuthTestDB(t)
+	userID := createAuthTestUser(t, db, ctx, uniqueAuthPhone(11))
+	otherID := createAuthTestUser(t, db, ctx, uniqueAuthPhone(12))
+	tokenID := idgen.New(idgen.PrefixRefreshToken)
+	plain, hash, err := authpkg.GenerateRefreshToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
+		_, err := q.CreateRefreshToken(ctx, dbgen.CreateRefreshTokenParams{
+			ID: tokenID, UserID: userID, TokenHash: hash, FamilyID: tokenID,
+			ExpiresAt: time.Now().Add(time.Hour),
+		})
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, caller := range []string{"", otherID, ""} {
+		nextPlain, nextHash, err := authpkg.GenerateRefreshToken()
+		if err != nil {
+			t.Fatal(err)
+		}
+		tx, err := db.Pool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = tx.Exec(ctx, "SELECT set_config('app.user_id', $1, true)", caller); err != nil {
+			_ = tx.Rollback(ctx)
+			t.Fatal(err)
+		}
+		var outcome, actualUser, family string
+		err = tx.QueryRow(ctx, "SELECT outcome, user_id, family_id FROM auth_rotate_refresh_token($1,$2,$3,$4)",
+			authpkg.HashToken(plain), idgen.New(idgen.PrefixRefreshToken), nextHash, time.Now().Add(time.Hour)).
+			Scan(&outcome, &actualUser, &family)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			t.Fatal(err)
+		}
+		if outcome != "rotated" || actualUser != userID || family != tokenID {
+			_ = tx.Rollback(ctx)
+			t.Fatalf("续期未保持账号及会话族：%s", outcome)
+		}
+		var restored string
+		var visible int
+		err = tx.QueryRow(ctx, "SELECT COALESCE(current_setting('app.user_id',true),''), (SELECT count(*) FROM auth_refresh_tokens)").Scan(&restored, &visible)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			t.Fatal(err)
+		}
+		if restored != caller || visible != 0 {
+			_ = tx.Rollback(ctx)
+			t.Fatal("续期函数泄漏了目标账号的 RLS 上下文")
+		}
+		if err = tx.Commit(ctx); err != nil {
+			t.Fatal(err)
+		}
+		plain = nextPlain
+	}
+}
+
+// 发布环境的函数属主没有超级用户或 BYPASSRLS；CI 也必须覆盖这一条件。
+func TestRefreshFunctionOwnerCannotBypassRLS(t *testing.T) {
+	if os.Getenv("STEWARD_TEST_AUTH_DATABASE_URL") == "" {
+		t.Skip("通过 STEWARD_TEST_AUTH_DATABASE_URL 启用与线上一致的受限函数属主检查")
+	}
+	db, ctx := openAuthTestDB(t)
+	var bypass bool
+	err := db.Pool.QueryRow(ctx, `SELECT r.rolsuper OR r.rolbypassrls
+		FROM pg_proc p JOIN pg_roles r ON r.oid = p.proowner
+		WHERE p.oid = 'auth_rotate_refresh_token(bytea,text,bytea,timestamptz)'::regprocedure`).Scan(&bypass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bypass {
+		t.Fatal("认证集成测试必须使用无超级用户和 BYPASSRLS 权限的函数属主，以覆盖线上 RLS 行为")
 	}
 }

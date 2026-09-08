@@ -50,3 +50,17 @@ Refresh Token 带 `family_id` 并通过 `auth_rotate_refresh_token` 在单个数
 携带不含秘密的 Refresh Session ID，手机号换绑据此只保留当前 family、撤销其他设备，
 并通过 `Idempotency-Key` 重放首次成功结果。部署前签发、不含 Session ID 的旧 Access Token
 不能执行换绑，需先刷新或重新登录。
+
+## 原生登录态续期与线上 RLS
+
+原生 App 安全存储长期会话，短期 Access Token 到期后用 Refresh Token 续期。迁移
+00057 修复受限函数属主下匿名续期的行级安全上下文：先按令牌哈希确定所属用户，
+再在该用户隔离范围内锁定、重验并轮换，正常返回前恢复调用者原上下文。
+未知、过期、已撤销或账号失效的令牌仍然拒绝；并发重放仍撤销整族。
+
+认证集成测试必须让迁移角色和函数属主均为 NOSUPERUSER、NOBYPASSRLS，不能只约束
+应用连接角色。否则 SECURITY DEFINER 内部仍会绕过 RLS，无法覆盖线上行为。
+测试／生产发布流水线使用专用受限迁移角色执行空库迁移，并校验函数属主权限。
+
+该修复仅调整数据库函数实现，不改变 API 字段、错误码、网络 Schema 或 AI 行为；
+不需要修改 OpenAPI、生成 Client、移动端或 AI Fixture。运行 sqlc 确认生成无漂移。
