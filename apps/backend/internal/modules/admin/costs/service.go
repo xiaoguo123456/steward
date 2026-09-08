@@ -78,6 +78,10 @@ func (s *Service) SettleForUser(ctx context.Context, userID string, limit int32)
 // settleOne 给一次调用写明细并汇总。
 func (s *Service) settleOne(ctx context.Context, q *dbgen.Queries,
 	row dbgen.ListPendingCostActionsRow) error {
+	// Provider 的输入总量已包含缓存命中部分，不能再按普通输入单价重复收费。
+	if row.InputTokens < 0 || row.CachedInputTokens < 0 || row.OutputTokens < 0 || row.CachedInputTokens > row.InputTokens {
+		return fmt.Errorf("调用用量无效：缓存输入必须处于输入总量范围内，Token 数不能为负")
+	}
 
 	// 重算前先清空。**不这么做就不幂等**：补了价格重跑一次，
 	// 成本会变成两倍。
@@ -89,7 +93,7 @@ func (s *Service) settleOne(ctx context.Context, q *dbgen.Queries,
 		unit     string
 		quantity int32
 	}{
-		{UnitInputToken, row.InputTokens},
+		{UnitInputToken, row.InputTokens - row.CachedInputTokens},
 		{UnitCachedInputToken, row.CachedInputTokens},
 		{UnitOutputToken, row.OutputTokens},
 	}

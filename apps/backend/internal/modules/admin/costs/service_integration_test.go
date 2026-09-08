@@ -182,7 +182,7 @@ func TestCostIsComputedExactly(t *testing.T) {
 	addPrice(t, svc, provider, model, UnitOutputToken, "1000", "0.01000", from, nil)
 	addPrice(t, svc, provider, model, UnitCachedInputToken, "1000", "0.00025", from, nil)
 
-	// 1000 输入 = 0.0025，200 输出 = 0.002，400 缓存 = 0.0001，合计 0.0046
+	// 总输入 1000 含 400 缓存：普通输入 0.0015 + 输出 0.002 + 缓存 0.0001 = 0.0036。
 	id := seedAction(t, db, userID, provider, model, 1000, 400, 200, time.Now())
 	if _, err := svc.SettleForUser(context.Background(), userID, 100); err != nil {
 		t.Fatalf("结算失败：%v", err)
@@ -193,8 +193,8 @@ func TestCostIsComputedExactly(t *testing.T) {
 		t.Fatalf("三项都有价，状态应当是 calculated，实际 %q", status)
 	}
 	// 用字符串比较：走一趟 float64 就已经不是这个数了。
-	if cost != "0.00460000" {
-		t.Errorf("金额应当是 0.00460000，实际 %q", cost)
+	if cost != "0.00360000" {
+		t.Errorf("金额应当是 0.00360000，实际 %q", cost)
 	}
 }
 
@@ -363,5 +363,47 @@ func TestInvalidAmountIsRejected(t *testing.T) {
 	})
 	if err == nil {
 		t.Error("非法金额应当被拒绝，而不是当成 0")
+	}
+}
+
+// 已配置全部价格时，零用量仍无金额；全部缓存命中不收普通输入费用。
+func TestConfiguredPricesWithZeroAndFullyCachedUsage(t *testing.T) {
+	db := testDB(t)
+	svc := New(db, nil)
+	userID := seedUser(t, db)
+	provider, model := uniqueProvider(t), "model-cache-boundary"
+	from := time.Now().Add(-time.Hour)
+	addPrice(t, svc, provider, model, UnitInputToken, "1000000", "0.8", from, nil)
+	addPrice(t, svc, provider, model, UnitCachedInputToken, "1000000", "0.1", from, nil)
+	addPrice(t, svc, provider, model, UnitOutputToken, "1000000", "2.7", from, nil)
+	cases := []struct {
+		name                  string
+		input, cached, output int32
+		amount, status        string
+	}{
+		{"无缓存", 1000, 0, 100, "0.00107000", "calculated"},
+		{"全部缓存", 1000, 1000, 0, "0.00010000", "calculated"},
+		{"全部零用量", 0, 0, 0, "", "not_applicable"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			id := seedAction(t, db, userID, provider, model, tc.input, tc.cached, tc.output, time.Now())
+			if _, err := svc.SettleForUser(context.Background(), userID, 100); err != nil {
+				t.Fatal(err)
+			}
+			amount, status := actionCost(t, db, userID, id)
+			if amount != tc.amount || status != tc.status {
+				t.Fatalf("成本/状态为 %s/%s，期望 %s/%s", amount, status, tc.amount, tc.status)
+			}
+		})
+	}
+}
+
+// 错误用量在写入明细前拒绝；不把异常 Fixture 留给并行的聚合测试。
+func TestInvalidCachedUsageIsRejected(t *testing.T) {
+	svc := New(nil, nil)
+	err := svc.settleOne(context.Background(), nil, dbgen.ListPendingCostActionsRow{InputTokens: 100, CachedInputTokens: 101})
+	if err == nil {
+		t.Fatal("缓存大于总输入必须拒绝")
 	}
 }

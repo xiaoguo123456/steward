@@ -25,9 +25,10 @@ var (
 
 // Usage 是一次调用的用量统计，用于成本核算与预算控制。
 type Usage struct {
+	// InputTokens 是 Provider 返回的输入总量，包含缓存命中部分。
 	InputTokens int
 	// CachedInputTokens 是命中缓存的输入 token。
-	// 多数服务商对它另有折扣价，因此单独记；混进 InputTokens 会把成本算高。
+	// 它是 InputTokens 的子集；成本核算时普通输入用量须减去此项。
 	CachedInputTokens int
 	OutputTokens      int
 	LatencyMS         int

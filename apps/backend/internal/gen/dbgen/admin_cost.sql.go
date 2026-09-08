@@ -31,7 +31,7 @@ INSERT INTO ai_action_cost_items (
 SELECT
     $1, $2, p.id, $3::text,
     $4::numeric, p.unit_size, p.unit_price_usd,
-    CASE WHEN p.id IS NULL THEN NULL
+    CASE WHEN p.id IS NULL OR $4::numeric = 0 THEN NULL
          ELSE $4::numeric / p.unit_size * p.unit_price_usd END,
     CASE WHEN $4::numeric = 0 THEN 'not_applicable'
          WHEN p.id IS NULL THEN 'pricing_missing'

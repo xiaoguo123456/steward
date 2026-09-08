@@ -53,7 +53,7 @@ INSERT INTO ai_action_cost_items (
 SELECT
     sqlc.arg(id), sqlc.arg(ai_action_id), p.id, sqlc.arg(usage_unit)::text,
     sqlc.arg(quantity)::numeric, p.unit_size, p.unit_price_usd,
-    CASE WHEN p.id IS NULL THEN NULL
+    CASE WHEN p.id IS NULL OR sqlc.arg(quantity)::numeric = 0 THEN NULL
          ELSE sqlc.arg(quantity)::numeric / p.unit_size * p.unit_price_usd END,
     CASE WHEN sqlc.arg(quantity)::numeric = 0 THEN 'not_applicable'
          WHEN p.id IS NULL THEN 'pricing_missing'
