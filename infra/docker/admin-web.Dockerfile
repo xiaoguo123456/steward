@@ -11,6 +11,7 @@ RUN pnpm install --frozen-lockfile --filter @steward/admin...
 
 COPY apps/admin apps/admin
 COPY packages/admin-api-client packages/admin-api-client
+COPY packages/contracts/fixtures packages/contracts/fixtures
 RUN pnpm --filter @steward/admin run build
 
 FROM nginx:1.27-alpine

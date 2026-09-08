@@ -129,7 +129,7 @@ func (a *SessionAPI) AdminLogin(ctx context.Context, req adminapi.AdminLoginRequ
 		return *failed, nil
 	}
 	r := httpx.RequestFrom(ctx)
-	token, session, err := a.svc.authenticate(ctx, loginCredentials{Phone: phone, Method: string(req.Body.Method), Password: value(req.Body.Password), ChallengeID: value(req.Body.ChallengeId), Code: value(req.Body.Code), NewPassword: value(req.Body.NewPassword)}, r.UserAgent(), HashIP(r.RemoteAddr, a.cfg.SessionSecret))
+	token, session, err := a.svc.authenticate(ctx, loginCredentials{Phone: phone, Method: string(req.Body.Method), Password: value(req.Body.Password), ChallengeID: value(req.Body.ChallengeId), Code: value(req.Body.Code), NewPassword: value(req.Body.NewPassword)}, r.UserAgent(), HashIP(ClientIP(r), a.cfg.SessionSecret))
 	if err != nil {
 		return *a.failure(ctx, err), nil
 	}

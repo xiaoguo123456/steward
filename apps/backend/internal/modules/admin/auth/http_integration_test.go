@@ -20,6 +20,21 @@ type sessionTestServer struct {
 	api *SessionAPI
 }
 
+func TestAdminClientIPTrustsOnlyPrivateProxy(t *testing.T) {
+	for _, sample := range []struct{ peer, header, want string }{
+		{"172.18.0.3:1234", "203.0.113.10", "203.0.113.10"},
+		{"198.51.100.20:1234", "203.0.113.10", "198.51.100.20"},
+		{"172.18.0.3:1234", "not-an-ip", "172.18.0.3"},
+	} {
+		r := httptest.NewRequest("POST", "/admin/v1/login", nil)
+		r.RemoteAddr = sample.peer
+		r.Header.Set("X-Real-IP", sample.header)
+		if ClientIP(r) != sample.want {
+			t.Fatal("代理来源判断不符合信任边界")
+		}
+	}
+}
+
 func (s sessionTestServer) AdminLogin(ctx context.Context, r adminapi.AdminLoginRequestObject) (adminapi.AdminLoginResponseObject, error) {
 	return s.api.AdminLogin(ctx, r)
 }

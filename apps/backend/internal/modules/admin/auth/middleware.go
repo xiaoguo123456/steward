@@ -232,7 +232,15 @@ func HashIP(remoteAddr, secret string) []byte {
 func ClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
+	}
+	// Admin API 不发布宿主端口，仅接受私网 Nginx 转发；Nginx 会覆盖 X-Real-IP。
+	// 按真实来源计数，避免所有管理员共享容器 IP 限额；公网直连不能伪造此头。
+	peer := net.ParseIP(host)
+	if peer != nil && (peer.IsPrivate() || peer.IsLoopback()) {
+		if real := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); real != nil {
+			return real.String()
+		}
 	}
 	return host
 }
