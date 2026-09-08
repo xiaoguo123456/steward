@@ -60,6 +60,8 @@ services:
     <<: *backend-image
     command: ["admin-api"]
     env_file: ${STEWARD_ENV_FILE:-.env.test}
+    # 后台现在也会发送验证码，必须与用户 API 一样覆盖旧服务器短信配置。
+    environment: *test-sms
     restart: unless-stopped
     init: true
     logging: *default-logging
