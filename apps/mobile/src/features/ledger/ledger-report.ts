@@ -5,6 +5,11 @@ export type LedgerReportEntry = {
   type: 'expense' | 'income';
 };
 
+/** 兼容旧 AI 记录中的中文收支值，避免漏算已保存的账单。 */
+export function ledgerDirection(value: string | null | undefined): 'expense' | 'income' {
+  return value?.trim().toLowerCase() === 'income' || value?.trim() === '收入' ? 'income' : 'expense';
+}
+
 export type LedgerCategoryReport = {
   amount: number;
   label: string;

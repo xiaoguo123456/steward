@@ -18,7 +18,7 @@ import { AppSegmentedControl } from '@/components/ui/selection-controls';
 import { StatePanel } from '@/components/ui/state-panel';
 import { errorMessage, type Record as TrackerRecord } from '@steward/api-client';
 
-import { buildMonthlyLedgerReport, type MonthlyLedgerReport } from './ledger-report';
+import { buildMonthlyLedgerReport, ledgerDirection, type MonthlyLedgerReport } from './ledger-report';
 import {
   numberOf,
   textOf,
@@ -1091,7 +1091,7 @@ function toLedgerEntry(row: TrackerRecord): LedgerEntry {
     title: textOf(row, 'merchant') ?? category,
     category,
     amount: numberOf(row, 'amount') ?? 0,
-    type: (textOf(row, 'direction') as LedgerEntryType | undefined) ?? 'expense',
+    type: ledgerDirection(textOf(row, 'direction')),
     time: formatRelativeTime(row.timestamp),
     timestamp: new Date(row.timestamp),
     account: textOf(row, 'payment_method') ?? '默认账户',

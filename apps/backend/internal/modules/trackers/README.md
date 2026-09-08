@@ -18,6 +18,7 @@ Tracker 字段定义与 Record 录入。Tracker 是可复用的 Schema，Record 
 ## 不变量
 
 - Record 的 `values` 必须满足所属 Tracker 的字段定义，必填字段不可缺失。
+- 内置 `ledger` 的新建与更新统一归一化中文收支值为 `income`／`expense`，不修改调用方原始值；未知方向和非正金额拒绝。手工路径与 Capture 事务 Command 复用规则，自定义记录项不受影响。
 - `records.values` 在库里是**数组**：`[{key, number_value, text_value}, ...]`，
   不是以字段名为键的对象。写 SQL 时 `values -> '字段名'` 在数组上恒为 NULL，
   要用 `jsonb_array_elements` 按 `key` 找元素（见 `AggregateRecordField`）。

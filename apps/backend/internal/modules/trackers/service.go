@@ -554,6 +554,10 @@ func (s *Service) CreateRecord(ctx context.Context, userID string, body httpapi.
 		if err != nil {
 			return err
 		}
+		body.Values, err = normalizeBuiltinValues(tracker.BuiltinKey, body.Values)
+		if err != nil {
+			return err
+		}
 		if err := validateValues(fields, body.Values); err != nil {
 			return err
 		}
@@ -636,6 +640,11 @@ func (s *Service) UpdateRecord(ctx context.Context, userID, recordID string,
 		var valuesJSON []byte
 		var title *string
 		if body.Values != nil {
+			normalized, err := normalizeBuiltinValues(tracker.BuiltinKey, *body.Values)
+			if err != nil {
+				return err
+			}
+			body.Values = &normalized
 			if err := validateValues(fields, *body.Values); err != nil {
 				return err
 			}

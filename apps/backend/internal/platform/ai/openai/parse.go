@@ -60,7 +60,7 @@ func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest)
 	userPrompt := buildUserPrompt(req)
 	messages := []chatMessage{
 		// 系统策略与用户资料使用不同角色，边界明确。
-		{Role: "system", Content: assets.CaptureParsePromptV8},
+		{Role: "system", Content: assets.CaptureParsePromptV9},
 		{Role: "user", Content: userPrompt},
 	}
 

@@ -1,7 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildMonthlyLedgerReport } from './ledger-report.ts';
+import { buildMonthlyLedgerReport, ledgerDirection } from './ledger-report.ts';
+
+test('旧中文收支记录纳入正确的月报口径', () => {
+  const now = new Date('2026-09-08T12:00:00+08:00');
+  const entries = [['收入', 128], ['支出', 35.6]].map(([direction, amount]) => ({
+    type: ledgerDirection(direction), amount, category: '验收', timestamp: now,
+  }));
+  const report = buildMonthlyLedgerReport(entries, now);
+  assert.equal(report.income, 128);
+  assert.equal(report.expense, 35.6);
+  assert.equal(ledgerDirection('income'), 'income');
+  assert.equal(ledgerDirection('expense'), 'expense');
+});
 
 test('月报只统计当前月真实记录并按周与分类聚合', () => {
   const report = buildMonthlyLedgerReport([

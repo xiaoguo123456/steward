@@ -2893,6 +2893,8 @@ mutation(memory)
 
 Assistant Runtime 不复制一套“小票 Agent”；它只可以打开或解释对应 Capture 状态。
 
+记账补充（2026-09-08）：`capture-parse@v9` 明确 `direction` 的机器值、实付金额与 `timestamp` 交易时间。`TestLiveLedgerMedia` 通过 `STEWARD_AI_LIVE_LEDGER_DIR` 显式指定虚构图片／音频，覆盖真实 OCR、ASR 与结构化解析；媒体不进入仓库或测试快照。语音素材须先核验存在有效音频帧，空 WAV 不能当作产品录音失败的证据。
+
 ## A.5 删除记忆
 
 ```text

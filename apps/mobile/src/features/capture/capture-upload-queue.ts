@@ -139,7 +139,7 @@ function captureRequest(draft: CaptureDraft): CreateCaptureRequest {
       kind: 'text',
       text: content
         ? `请整理为记账记录：${content}`
-        : '请识别票据，并整理为需要我确认的记账记录。',
+        : '请将本次输入整理为需要我确认的记账记录。',
     });
   } else if (content) {
     parts.push({ kind: 'text', text: content });

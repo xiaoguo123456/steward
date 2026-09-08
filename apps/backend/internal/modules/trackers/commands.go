@@ -144,6 +144,10 @@ func (s *Service) CreateRecordInTx(ctx context.Context, q *dbgen.Queries, userID
 	if err != nil {
 		return dbgen.Record{}, err
 	}
+	values, err = normalizeBuiltinValues(tracker.BuiltinKey, values)
+	if err != nil {
+		return dbgen.Record{}, err
+	}
 	if err := validateValues(fields, values); err != nil {
 		return dbgen.Record{}, err
 	}
@@ -205,6 +209,11 @@ func (s *Service) UpdateRecordCommandInTx(ctx context.Context, q *dbgen.Queries,
 	var valuesJSON []byte
 	var title *string
 	if body.Values != nil {
+		normalized, err := normalizeBuiltinValues(tracker.BuiltinKey, *body.Values)
+		if err != nil {
+			return dbgen.GetRecordRow{}, err
+		}
+		body.Values = &normalized
 		if err := validateValues(fields, *body.Values); err != nil {
 			return dbgen.GetRecordRow{}, err
 		}

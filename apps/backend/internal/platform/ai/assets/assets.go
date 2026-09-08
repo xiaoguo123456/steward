@@ -117,7 +117,7 @@ var MoodReflectionSchemaV1 []byte
 
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion        = "capture-parse@v8"
+	CaptureParsePromptVersion        = "capture-parse@v9"
 	VisionExtractPromptVersion       = "vision-extract@v1"
 	AssistantPolicyVersion           = "assistant@v4"
 	ReviewNarrativePromptVersion     = "review-narrative@v2"
@@ -172,3 +172,8 @@ var CaptureParsePromptV8 string
 //
 //go:embed schemas/capture/capture-parse-result.v6.schema.json
 var CaptureParseSchemaV6 []byte
+
+// CaptureParsePromptV9 约束记账收支值、实付金额和交易时间。
+//
+//go:embed prompts/capture-parse/v9.md
+var CaptureParsePromptV9 string

@@ -510,12 +510,14 @@ export default function CaptureInputScreen() {
           )
         ) : (
           <TextInput
-            accessibilityLabel="输入要整理的内容"
-            autoFocus
+            accessibilityLabel={isLedgerIntent ? '记账说明' : '输入要整理的内容'}
+            autoFocus={!isLedgerIntent}
             maxLength={10000}
             multiline
             onChangeText={setText}
-            placeholder={isTrackerIntent ? '例如：每天阅读，记录阅读分钟数和页数…' : isTripIntent ? '输入行程安排…' : '输入任务、日程、想法或记录…'}
+            placeholder={isLedgerIntent
+              ? images.length ? '可补充用途或备注，例如：和朋友聚餐…' : '例如：午餐花了 28 元，用微信支付…'
+              : isTrackerIntent ? '例如：每天阅读，记录阅读分钟数和页数…' : isTripIntent ? '输入行程安排…' : '输入任务、日程、想法或记录…'}
             placeholderTextColor={colors.textSecondary}
             style={styles.textInput}
             textAlignVertical="top"
