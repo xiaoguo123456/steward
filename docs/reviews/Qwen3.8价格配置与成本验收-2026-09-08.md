@@ -22,7 +22,7 @@
 迁移 00060 新增明确的人民币金额列，历史 USD 数值按
 [2026-09-08 官方中间价](https://www.safe.gov.cn/AppStructured/hlw/RMBQuery.do?COLLCC=546877760)
 `1 USD = 6.7804 CNY` 只转换一次。旧列保留，兼容触发器让旧镜像继续读写 USD，
-新镜像读写 CNY，便于逐步切换和回滚；触发器不提升数据库权限。新官方人民币价格原样
+新镜像读写 CNY，便于逐步切换和回滚；触发器不提升数据库权限。00061 兼容线上无 BYPASSRLS 的迁移账号，按用户身份补齐受 RLS 保护的历史调用金额。新官方人民币价格原样
 保存，不从兼容 USD 列反向换算，因此 0.8 元仍精确为 0.8 元。无金额更新不会再次转换。
 
 配置文件：`infra/pricing/qwen3.8-flash-beijing-20260908.sql`。
@@ -38,7 +38,7 @@ Provider 的 `prompt_tokens` 包含缓存命中部分。落账普通输入数量
 状态仍为 `not_applicable`，避免触发成本明细约束而让整批结算失败。
 
 已同步 Admin OpenAPI（`unit_price_cny`、`currency=CNY`）、生成的 Go strict server／DTO、
-TypeScript Client、Zod、sqlc、前端金额显示与人民币 Fixture。数据库使用向前迁移 00060，
+TypeScript Client、Zod、sqlc、前端金额显示与人民币 Fixture。数据库使用向前迁移 00060／00061，
 不改写旧迁移。App 无对应后台接口，因此无需原生适配、安装包或 OTA。
 网页收到旧币种时提示刷新，不能仅替换符号后把美元数字显示成人民币。
 
@@ -61,4 +61,4 @@ cost-recalculate -provider openai -model qwen3.8-flash -day 2026-09-08 -apply
 
 成本和聚合模块的 race 回归覆盖混合缓存、全缓存、零用量、价格版本、精确人民币原价与
 旧币种兼容列。跨端 Fixture 验证人民币字段，拒绝将旧字段当作人民币价格。
-根 `make check`、后台全部模块 `go test -race -count=1`、20 项前端测试、后台构建通过，新增 golangci-lint 问题为 0。独立库中重复录价和重复补算两次均得到 CNY 0.00720000（总输入 10000、缓存 5000、输出 1000），预览不改变 pending 状态。已有美元验收库迁移后，USD 0.00106189 原值保留，对应 CNY 0.00720004，符合一次性转换。发布、配置回读及线上补算结果完成后补充。
+根 `make check`、后台全部模块 `go test -race -count=1`、20 项前端测试、后台构建通过，新增 golangci-lint 问题为 0。独立库中重复录价和重复补算两次均得到 CNY 0.00720000（总输入 10000、缓存 5000、输出 1000），预览不改变 pending 状态。已有美元验收库迁移后，USD 0.00106189 原值保留，对应 CNY 0.00720004，符合一次性转换。额外使用无 BYPASSRLS 的运行角色验证 00061：缺失的历史 CNY 值成功补为 0.00720004，原 USD 值保留。发布、配置回读及线上补算结果完成后补充。
