@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 
 import {
   applyConflictChoice,
@@ -9,6 +10,27 @@ import {
   updateCandidateField,
   updateRecordCandidateValue,
 } from './capture-confirmation-model.ts';
+
+test('正式打卡 Fixture 的字段与同批记录完整时可以确认，字段清空才阻塞', () => {
+  const fixture = JSON.parse(readFileSync(new URL('../../../../../packages/contracts/fixtures/capture-weight.response.json', import.meta.url), 'utf8'));
+  for (const candidate of fixture.data.candidates) {
+    assert.deepEqual(unresolvedCandidateFields(candidate, candidate.payload), []);
+  }
+  const tracker = fixture.data.candidates[0];
+  const empty = cloneCapturePayload(tracker.payload);
+  empty.tracker.fields = [];
+  assert.deepEqual(unresolvedCandidateFields(tracker, empty), ['fields']);
+});
+
+test('打卡数值为零或负数也属于已填写，具体范围由所属领域校验', () => {
+  for (const number_value of [0, -1, 7.5]) {
+    const candidate = { candidate_type: 'record', payload: { record: {
+      tracker_ref: 'tracker_fixture', timestamp: '2026-09-08T08:00:00Z',
+      values: [{ key: 'reading_min', number_value }],
+    } } };
+    assert.deepEqual(unresolvedCandidateFields(candidate, candidate.payload), []);
+  }
+});
 
 test('精确截止时间与截止日期互斥，提交时保留更精确的时间', () => {
   const source = {

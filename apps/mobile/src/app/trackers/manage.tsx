@@ -57,7 +57,7 @@ export default function ManageTrackersScreen() {
         onBack={() => router.back()}
         right={
           <Pressable
-            accessibilityLabel="新建打卡项"
+            accessibilityLabel="新建打卡"
             accessibilityRole="button"
             onPress={() => router.push('/trackers/new')}
             style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}

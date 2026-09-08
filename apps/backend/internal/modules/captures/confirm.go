@@ -180,7 +180,7 @@ func (s *Service) Confirm(ctx context.Context, userID, captureID, idempotencyKey
 					return apperr.Validation(apperr.Field("items", "记录项候选缺少内容。"))
 				}
 				row, err := s.trackers.CreateTrackerInTx(ctx, q, userID,
-					payload.Tracker.Name, payload.Tracker.Fields, provenanceJSON)
+					payload.Tracker.Name, payload.Tracker.Fields, payload.Tracker.Schedule, provenanceJSON)
 				if err != nil {
 					return err
 				}

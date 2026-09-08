@@ -166,6 +166,7 @@ type CandidateDraft struct {
 	TrackerID             string
 	TrackerRef            string
 	TrackerFields         []TrackerFieldRef
+	TrackerSchedule       *TrackerScheduleDraft
 	RecordValues          []RecordValueDraft
 	Timestamp             *time.Time
 	Confidences           []Confidence
@@ -258,4 +259,10 @@ type MediaProcessor interface {
 // 向量是可重建的派生索引，不是权威事实。
 type EmbeddingProvider interface {
 	Embed(ctx context.Context, texts []string) ([][]float32, Usage, error)
+}
+
+// TrackerScheduleDraft 是新打卡候选的频率，未指定时保持不定期。
+type TrackerScheduleDraft struct {
+	Frequency string `json:"frequency"`
+	Weekdays  []int  `json:"weekdays,omitempty"`
 }

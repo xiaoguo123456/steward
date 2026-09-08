@@ -236,6 +236,13 @@ func buildPayload(c ai.CandidateDraft, defaultListID string, loc *time.Location,
 		if strings.TrimSpace(c.Title) == "" {
 			missing = append(missing, "name")
 		}
+		if c.TrackerSchedule != nil {
+			draft.Schedule = &httpapi.TrackerSchedule{Frequency: httpapi.TrackerScheduleFrequency(c.TrackerSchedule.Frequency)}
+			if len(c.TrackerSchedule.Weekdays) > 0 {
+				weekdays := append([]int(nil), c.TrackerSchedule.Weekdays...)
+				draft.Schedule.Weekdays = &weekdays
+			}
+		}
 		payload.Tracker = &draft
 
 	default:

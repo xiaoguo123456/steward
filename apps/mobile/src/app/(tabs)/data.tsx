@@ -18,6 +18,8 @@ import {
 } from 'react-native';
 
 import { AI_FAB_TAB_BAR_INSET, AiFab } from '@/components/ui/ai-fab';
+import { AppButton } from '@/components/ui/app-button';
+import { TrackerPresetChoices } from '@/features/trackers/tracker-preset-choices';
 import { AppScreen } from '@/components/ui/app-screen';
 import { AppIcon } from '@/components/ui/icon';
 import { PageHeader } from '@/components/ui/page-header';
@@ -80,6 +82,8 @@ export default function DataScreen() {
           title="打卡"
         />
 
+        <AppButton label="新建打卡" onPress={() => router.push('/trackers/new')} style={styles.newButton} />
+
         {trackersQuery.isPending ? (
           <View style={styles.loading}>
             <ActivityIndicator color={colors.primary} />
@@ -93,15 +97,11 @@ export default function DataScreen() {
             title="加载失败"
           />
         ) : trackers.length === 0 ? (
-          <StatePanel
-            actionLabel="记一件事"
-            icon="stats-chart-outline"
-            message="还没有打卡项。说一句“今天体重 68 公斤”，AI 会帮你建立记录项；也可以自己填。"
-            onAction={() => router.push('/capture/new')}
-            onSecondary={() => router.push('/trackers/new')}
-            secondaryLabel="自己新建"
-            title="还没有打卡项"
-          />
+          <View style={styles.emptyGuide}>
+            <Text style={styles.guideTitle}>从一项小记录开始</Text>
+            <Text style={styles.guideHint}>选择常用模板，或新建你自己的打卡。</Text>
+            <TrackerPresetChoices onSelect={(template) => router.push({ pathname: '/trackers/new', params: { template } })} />
+          </View>
         ) : (
           <>
             <SectionTitle count={`${pending.length} 项`} title="今日待打卡" />
@@ -197,6 +197,10 @@ export default function DataScreen() {
 }
 
 const styles = StyleSheet.create({
+  newButton: { marginBottom: 20 },
+  emptyGuide: { gap: 12 },
+  guideTitle: { color: colors.text, fontFamily, ...typography.section },
+  guideHint: { color: colors.textSecondary, fontFamily, ...typography.meta, marginBottom: 4 },
   headerAction: {
     minHeight: 44,
     paddingHorizontal: 4,

@@ -110,3 +110,8 @@ function aggregateTextStatus(parts: CapturePart[]): CapturePartStatusItem {
     errorMessage: failed?.error?.message,
   };
 }
+
+/** 当前输入仍需要顺序处理时暂缓发送；失败或状态读取错误不能锁住后续消息。 */
+export function captureBlocksComposer(phase?: CaptureConversationPhase): boolean {
+  return !phase || phase === 'processing' || phase === 'clarification' || phase === 'confirmation' || phase === 'partial_failure';
+}

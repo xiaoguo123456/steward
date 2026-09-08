@@ -31,9 +31,11 @@ func TestTrackerCaptureConfirmsLinkedRecordOnce(t *testing.T) {
 	args := CaptureParseArgs{UserID: userID, CaptureID: captureID, OperationID: opID, Revision: 1, IdempotencyKey: "test-" + captureID}
 	n := 68.5
 	now := time.Now()
+	trackerDraft := weightTrackerCandidate()
+	trackerDraft.TrackerSchedule = &ai.TrackerScheduleDraft{Frequency: "weekly", Weekdays: []int{1, 3, 5}}
 	result := ai.CaptureParseResult{Candidates: []ai.CandidateDraft{
 		{Type: "record", Ref: "measurement", Title: "体重记录", TrackerRef: "weight", Timestamp: &now, RecordValues: []ai.RecordValueDraft{{Key: "weight_kg", Number: &n}}, Missing: []string{"tracker_id", "tracker_ref"}},
-		weightTrackerCandidate(),
+		trackerDraft,
 	}}
 	err := db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		c, err := q.CreateCapture(ctx, dbgen.CreateCaptureParams{ID: captureID, UserID: userID, Status: "parsing", Origin: "home", Timezone: "Asia/Shanghai"})
@@ -91,7 +93,7 @@ func TestTrackerCaptureConfirmsLinkedRecordOnce(t *testing.T) {
 			return err
 		}
 		var count int
-		if err := tx.QueryRow(ctx, "SELECT count(*) FROM records r JOIN trackers t ON t.id=r.tracker_id AND t.user_id=r.user_id WHERE t.name='体重' AND r.values @> '[{\"key\":\"weight_kg\",\"number_value\":68.5}]'::jsonb").Scan(&count); err != nil {
+		if err := tx.QueryRow(ctx, "SELECT count(*) FROM records r JOIN trackers t ON t.id=r.tracker_id AND t.user_id=r.user_id WHERE t.name='体重' AND t.schedule = '{\"frequency\":\"weekly\",\"weekdays\":[1,3,5]}'::jsonb AND r.values @> '[{\"key\":\"weight_kg\",\"number_value\":68.5}]'::jsonb").Scan(&count); err != nil {
 			return err
 		}
 		if count != 1 {

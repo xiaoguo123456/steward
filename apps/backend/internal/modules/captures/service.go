@@ -101,7 +101,7 @@ type Service struct {
 // TrackerCommands 是 trackers 模块公开的事务内写入能力。
 type TrackerCommands interface {
 	CreateTrackerInTx(ctx context.Context, q *dbgen.Queries, userID string, name string,
-		fields []httpapi.TrackerField, provenance []byte) (dbgen.Tracker, error)
+		fields []httpapi.TrackerField, schedule *httpapi.TrackerSchedule, provenance []byte) (dbgen.Tracker, error)
 	CreateRecordInTx(ctx context.Context, q *dbgen.Queries, userID, trackerID string,
 		ts time.Time, values []httpapi.RecordValue, note *string, provenance []byte) (dbgen.Record, error)
 	UpdateTrackerCommandInTx(ctx context.Context, q *dbgen.Queries, userID, trackerID string,

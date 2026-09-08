@@ -132,6 +132,8 @@ function captureRequest(draft: CaptureDraft): CreateCaptureRequest {
   const parts: CreateCaptureRequest['parts'] = [];
   if (draft.intent === 'trip') {
     parts.push({ kind: 'text', text: content ? `创建行程：${content}` : '创建行程。' });
+  } else if (draft.intent === 'tracker') {
+    parts.push({ kind: 'text', text: content ? `新建打卡：${content}` : '请根据我的描述新建打卡，先让我确认名称、字段与频率。' });
   } else if (draft.intent === 'ledger') {
     parts.push({
       kind: 'text',
@@ -149,7 +151,7 @@ function captureRequest(draft: CaptureDraft): CreateCaptureRequest {
   return {
     origin: draft.intent === 'trip' || draft.intent === 'trip_item'
       ? 'project_manager'
-      : draft.intent === 'ledger'
+      : draft.intent === 'ledger' || draft.intent === 'tracker'
         ? 'tracker'
         : 'home',
     parts,

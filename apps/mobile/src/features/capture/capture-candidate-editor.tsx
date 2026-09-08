@@ -9,6 +9,7 @@ import {
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors, fontFamily, radius, typography } from '@/theme/tokens';
+import { TrackerSchedulePicker } from '@/features/trackers/tracker-schedule-picker';
 import { updateCandidateField, updateRecordCandidateValue } from './capture-confirmation-model';
 
 export function CaptureCandidateEditor({
@@ -238,7 +239,9 @@ export function CaptureCandidateEditor({
   if (candidate.candidate_type === 'tracker' && payload.tracker) {
     return (
       <View style={styles.editor}>
-        <EditorField label="记录项名称" onChangeText={(value) => setField('name', value)} value={payload.tracker.name} />
+        <Text style={styles.label}>打卡频率</Text>
+        <TrackerSchedulePicker value={payload.tracker.schedule ?? null} onChange={(value) => setField('schedule', value ?? undefined)} />
+        <EditorField label="打卡名称" onChangeText={(value) => setField('name', value)} value={payload.tracker.name} />
         <EditorField label="说明" multiline onChangeText={(value) => setField('description', value)} value={payload.tracker.description ?? ''} />
         {(payload.tracker.fields?.length ?? 0) === 0 ? (
           <Text style={styles.blockedCopy}>字段结构还没有生成，需返回补充说明后重新整理。</Text>

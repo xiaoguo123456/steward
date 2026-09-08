@@ -76,6 +76,10 @@ Schema、Prompt 和契约安全 Eval 已先固化。当前 Eval 只确定性检�
 
 `evals/ambiguity-live.json` 定义 37 个真实模型场景，包括多轮补充、取消和 Capture 入口。该 JSON 由后端 `TestLiveAmbiguityAcceptance` 单独加载，不混入使用脚本 Provider 的 JSONL 基线；仅在 `STEWARD_AI_LIVE_AMBIGUITY=1` 时执行。当前保留已复现的质量失败，不降低断言来获得通过。说明与修复顺序见 `docs/Agent模糊输入实测与改进方案-2026-09-07.md`。
 
+## 打卡创建与频率
+
+当前 Capture 使用 `capture-parse/v8` 与 `capture-parse-result.v6`：`tracker_fields` 描述新建字段，`tracker_ref` 关联同批新建项，`tracker_schedule` 保留明确的每日／每周指定星期。完整 Schema 在 Provider 返回后继续运行时校验。真实模型回归由 `TestLiveCaptureCheckins` 覆盖九类创建、数值、频率和澄清场景，使用 `STEWARD_AI_LIVE_CHECKINS=1` 显式启用。
+
 ## Assistant 交互与字段来源
 
 `schemas/assistant` 定义建议时间证据、替换引用、状态前提、澄清与撤回输入。服务端在交给 Handler 前校验原始工具 JSON；Handler 再校验当前用户事实、日期来源与领域状态。`assistant/v3` 与 `capture-parse/v6` 分别对应持久化澄清和“不记录”的入口语义。

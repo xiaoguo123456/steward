@@ -149,6 +149,10 @@ function hasCandidateFieldValue(
   payload: CaptureDraftPayload,
   field: string,
 ): boolean {
+  // 字段结构由正式契约校验，不属于允许用文本冲突选项覆盖的字段。
+  if (candidateType === 'tracker' && field === 'fields') {
+    return (payload.tracker?.fields?.length ?? 0) > 0;
+  }
   if (candidateType === 'record' && payload.record) {
     const recordKey = field === 'amount' ? 'amount' : field;
     const recordValue = (payload.record.values ?? []).find((item) => item.key === recordKey);
@@ -172,7 +176,7 @@ function hasCandidateFieldValue(
 
 function hasRecordValue(value: RecordValue): boolean {
   if (value.number_value !== undefined && value.number_value !== null) {
-    return Number.isFinite(value.number_value) && value.number_value > 0;
+    return Number.isFinite(value.number_value);
   }
   return Boolean(value.text_value?.trim());
 }

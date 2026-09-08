@@ -252,6 +252,9 @@ CaptureTrackerDraft:
       items:
         $ref: './trackers.yaml#/TrackerField'
 
+    schedule:
+      $ref: './trackers.yaml#/TrackerSchedule'
+
 CaptureRecordDraft:
   type: object
   additionalProperties: false

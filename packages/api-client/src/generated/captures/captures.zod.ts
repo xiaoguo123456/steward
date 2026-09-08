@@ -77,6 +77,10 @@ export const getCaptureResponseDataCandidatesItemPayloadProjectDestinationMax = 
 
 export const getCaptureResponseDataCandidatesItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 
+export const getCaptureResponseDataCandidatesItemPayloadTrackerScheduleWeekdaysItemMax = 7;
+
+export const getCaptureResponseDataCandidatesItemPayloadTrackerScheduleWeekdaysMax = 7;
+
 export const getCaptureResponseDataConflictsItemOptionsMin = 2;
 
 export const getCaptureResponseDataErrorReloadTargetDefault = false;
@@ -176,7 +180,11 @@ export const GetCaptureResponse = zod.object({
   "type": zod.enum(['number', 'currency', 'percentage', 'duration', 'text']).describe('MVP 支持的字段类型。'),
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
-})).min(1)
+})).min(1),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(getCaptureResponseDataCandidatesItemPayloadTrackerScheduleWeekdaysItemMax)).min(1).max(getCaptureResponseDataCandidatesItemPayloadTrackerScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional()
 }).optional(),
   "record": zod.object({
   "tracker_ref": zod.string().nullish().describe('已有 Tracker ID，或本次候选 Tracker 的 candidate_id。'),
@@ -332,6 +340,10 @@ export const confirmCaptureBodyItemsItemPayloadProjectDestinationMax = 100;
 
 export const confirmCaptureBodyItemsItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
 
+export const confirmCaptureBodyItemsItemPayloadTrackerScheduleWeekdaysItemMax = 7;
+
+export const confirmCaptureBodyItemsItemPayloadTrackerScheduleWeekdaysMax = 7;
+
 
 
 
@@ -402,7 +414,11 @@ export const ConfirmCaptureBody = zod.object({
   "type": zod.enum(['number', 'currency', 'percentage', 'duration', 'text']).describe('MVP 支持的字段类型。'),
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
-})).min(1)
+})).min(1),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(confirmCaptureBodyItemsItemPayloadTrackerScheduleWeekdaysItemMax)).min(1).max(confirmCaptureBodyItemsItemPayloadTrackerScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional()
 }).optional(),
   "record": zod.object({
   "tracker_ref": zod.string().nullish().describe('已有 Tracker ID，或本次候选 Tracker 的 candidate_id。'),
@@ -434,6 +450,10 @@ export const confirmCaptureResponseDataCaptureCandidatesItemPayloadEventItinerar
 export const confirmCaptureResponseDataCaptureCandidatesItemPayloadProjectDestinationMax = 100;
 
 export const confirmCaptureResponseDataCaptureCandidatesItemPayloadTrackerFieldsItemKeyRegExp = new RegExp('^[a-z][a-z0-9_]{0,39}$');
+
+export const confirmCaptureResponseDataCaptureCandidatesItemPayloadTrackerScheduleWeekdaysItemMax = 7;
+
+export const confirmCaptureResponseDataCaptureCandidatesItemPayloadTrackerScheduleWeekdaysMax = 7;
 
 export const confirmCaptureResponseDataCaptureConflictsItemOptionsMin = 2;
 
@@ -535,7 +555,11 @@ export const ConfirmCaptureResponse = zod.object({
   "type": zod.enum(['number', 'currency', 'percentage', 'duration', 'text']).describe('MVP 支持的字段类型。'),
   "required": zod.boolean(),
   "unit": zod.string().nullish().describe('可选单位，例如 kg、元、分钟。\n单位换算由服务端确定性代码执行，客户端不得自行折算后写入。\n')
-})).min(1)
+})).min(1),
+  "schedule": zod.object({
+  "frequency": zod.enum(['daily', 'weekly']).describe('打卡频率；不定期用空 schedule 表示。'),
+  "weekdays": zod.array(zod.number().int().min(1).max(confirmCaptureResponseDataCaptureCandidatesItemPayloadTrackerScheduleWeekdaysItemMax)).min(1).max(confirmCaptureResponseDataCaptureCandidatesItemPayloadTrackerScheduleWeekdaysMax).optional().describe('每周打卡的星期，1 表示周一，7 表示周日；仅 frequency=weekly 时使用。')
+}).optional()
 }).optional(),
   "record": zod.object({
   "tracker_ref": zod.string().nullish().describe('已有 Tracker ID，或本次候选 Tracker 的 candidate_id。'),

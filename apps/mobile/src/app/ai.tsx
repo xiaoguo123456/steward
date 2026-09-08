@@ -16,7 +16,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -27,6 +27,8 @@ import {
   View,
 } from 'react-native';
 
+import { captureBlocksComposer, type CaptureConversationPhase } from '@/features/capture/capture-conversation-model';
+import { AppButton } from '@/components/ui/app-button';
 import { AiAssistantAvatar } from '@/components/ui/ai-assistant-avatar';
 import { AppIcon } from '@/components/ui/icon';
 import { ModalSheet } from '@/components/ui/modal-sheet';
@@ -84,12 +86,18 @@ export default function AiConversationScreen() {
   }>();
   const {
     clearSession: clearCaptureSession,
+    deferSession: deferCaptureSession,
+    deferredCaptureIds,
     openSession: storeCaptureSession,
     session: storedCaptureSession,
   } = useCaptureAssistantSession();
   const [captureSessionOverride, setCaptureSessionOverride] = useState<CaptureAssistantSession | null>(null);
   const [completedCaptureId, setCompletedCaptureId] = useState<string | null>(null);
   const [completedCaptureSummary, setCompletedCaptureSummary] = useState<string | null>(null);
+  const [captureFlowState, setCaptureFlowState] = useState<{ id: string; phase: CaptureConversationPhase } | null>(null);
+  const onCapturePhaseChange = useCallback((id: string, phase: CaptureConversationPhase) => {
+    setCaptureFlowState((current) => current?.id === id && current.phase === phase ? current : { id, phase });
+  }, []);
   const routeCaptureSession: CaptureAssistantSession | null = params.captureId
     ? {
         captureId: params.captureId,
@@ -246,6 +254,7 @@ export default function AiConversationScreen() {
       || createTurn.isPending
       || submittingCapture
       || media.uploading
+      || captureDecisionPending
     ) return;
     setFailure(null);
     setShowMediaMenu(false);
@@ -314,17 +323,19 @@ export default function AiConversationScreen() {
   const attachedProposalIds = new Set(ordered.flatMap((message) => message.proposal_ids ?? []));
   const standaloneProposals = pending.filter((proposal) => !attachedProposalIds.has(proposal.id));
   const currentQuestion = (captureQuestions.data?.data ?? []).find(
-    (question) => !captureSession || question.capture_id === captureSession.captureId,
+    (question) => !deferredCaptureIds.includes(question.capture_id) && (!captureSession || question.capture_id === captureSession.captureId),
   );
   const standaloneQuestion = captureSession ? undefined : currentQuestion;
   const sending = createThread.isPending || createTurn.isPending || submittingCapture || media.uploading;
-  const captureDecisionPending = Boolean(captureSession || standaloneQuestion);
+  const captureDecisionPending = Boolean(captureSession && captureBlocksComposer(
+    captureFlowState?.id === captureSession.captureId ? captureFlowState.phase : undefined,
+  ));
   const canSend = Boolean(hasVisibleMessage(input) || images.length)
     && !thinking
     && !restoring
     && !sending
     && !captureDecisionPending;
-  const canStartFresh = Boolean(threadId) && !thinking && !sending;
+  const canStartFresh = Boolean(threadId || captureSession || standaloneQuestion) && !thinking && !sending;
   const restoreFailure = threadSession.mode === 'default' && !threadId && currentThread.isError
     ? errorMessage(currentThread.error, '没能恢复今天的对话，发送时会再试。')
     : null;
@@ -368,6 +379,15 @@ export default function AiConversationScreen() {
     });
   };
 
+  const deferCurrentCapture = () => {
+    const id = captureSession?.captureId ?? standaloneQuestion?.capture_id;
+    if (!id) return;
+    deferCaptureSession(id);
+    setCompletedCaptureId(id);
+    setCaptureSessionOverride(null);
+    setCompletedCaptureSummary(null);
+  };
+
   const closeAssistant = () => {
     if (captureSession) storeCaptureSession(captureSession);
     router.back();
@@ -383,7 +403,7 @@ export default function AiConversationScreen() {
           <Text accessibilityRole="header" style={styles.headerTitle}>AI 管家</Text>
           <Text numberOfLines={1} style={styles.headerStatus}>
             {captureSession
-              ? '正在处理这次输入'
+              ? '这次输入'
               : standaloneQuestion
                 ? '有一项需要你补充'
                 : thinking
@@ -403,6 +423,7 @@ export default function AiConversationScreen() {
           accessibilityState={{ disabled: !canStartFresh }}
           disabled={!canStartFresh}
           onPress={() => {
+            deferCurrentCapture();
             dispatchThread({ type: 'start_fresh' });
             setTurnId('');
             setOperationId('');
@@ -525,12 +546,16 @@ export default function AiConversationScreen() {
                 question={standaloneQuestion}
                 submitting={answerCaptureQuestion.isPending}
               />
+              <AppButton compact label="先放一放" variant="text" disabled={answerCaptureQuestion.isPending} onPress={deferCurrentCapture} />
             </View>
           </View>
         ) : null}
 
         {captureSession ? (
           <AssistantCaptureFlow
+            key={captureSession.captureId}
+            onPhaseChange={onCapturePhaseChange}
+            onDefer={deferCurrentCapture}
             onCompleted={(summary) => {
               clearCaptureSession();
               setCompletedCaptureId(captureSession.captureId);

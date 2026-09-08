@@ -87,7 +87,8 @@ export default function CaptureInputScreen() {
   const isTripIntent = params.intent === 'trip';
   const isTripItemIntent = params.intent === 'trip_item';
   const isLedgerIntent = params.intent === 'ledger';
-  const [mode, setMode] = useState<InputMode>(isLedgerIntent ? 'text' : 'voice');
+  const isTrackerIntent = params.intent === 'tracker';
+  const [mode, setMode] = useState<InputMode>(isLedgerIntent || isTrackerIntent ? 'text' : 'voice');
   const [text, setText] = useState('');
   // 图片与录音只保存在本地，用户明确发送后才上传。
   const [images, setImages] = useState<CaptureDraftPart[]>([]);
@@ -158,7 +159,7 @@ export default function CaptureInputScreen() {
         ? await getCaptureDraft(accountId, params.draftId)
         : null;
       const initial = existing ?? createCaptureDraft(accountId, {
-        mode: isLedgerIntent ? 'text' : 'voice',
+        mode: isLedgerIntent || isTrackerIntent ? 'text' : 'voice',
         intent: params.intent,
         projectId: params.projectId,
       });
@@ -173,7 +174,7 @@ export default function CaptureInputScreen() {
       hydrated.current = true;
     })().catch(() => setSubmitError('草稿暂时无法打开，请稍后重试。'));
     return () => { cancelled = true; };
-  }, [isLedgerIntent, params.draftId, params.intent, params.projectId]);
+  }, [isLedgerIntent, isTrackerIntent, params.draftId, params.intent, params.projectId]);
 
   useEffect(() => {
     if (hasContent) everHadContent.current = true;
@@ -343,7 +344,7 @@ export default function CaptureInputScreen() {
             ? 'trip_item'
             : isLedgerIntent
               ? 'ledger'
-              : undefined,
+              : isTrackerIntent ? 'tracker' : undefined,
         projectId: isTripItemIntent ? params.projectId : undefined,
       };
       captureAssistant.openSession(assistantSession);
@@ -374,7 +375,7 @@ export default function CaptureInputScreen() {
               ? 'AI 添加行程安排'
               : isLedgerIntent
                 ? '拍照记账'
-                : '记一件事'}
+                : isTrackerIntent ? '新建打卡' : '记一件事'}
         </Text>
         <Pressable
           accessibilityLabel="关闭新增面板"
@@ -514,7 +515,7 @@ export default function CaptureInputScreen() {
             maxLength={10000}
             multiline
             onChangeText={setText}
-            placeholder={isTripIntent ? '输入行程安排…' : '输入任务、日程、想法或记录…'}
+            placeholder={isTrackerIntent ? '例如：每天阅读，记录阅读分钟数和页数…' : isTripIntent ? '输入行程安排…' : '输入任务、日程、想法或记录…'}
             placeholderTextColor={colors.textSecondary}
             style={styles.textInput}
             textAlignVertical="top"
@@ -591,13 +592,13 @@ export default function CaptureInputScreen() {
             </Pressable>
             {!hasContent && !isTripIntent && !isTripItemIntent && !isLedgerIntent ? (
               <Pressable
-                accessibilityLabel="手动新建任务"
+                accessibilityLabel={isTrackerIntent ? '手动新建打卡' : '手动新建任务'}
                 accessibilityRole="button"
-                onPress={() => router.replace('/tasks/new')}
+                onPress={() => isTrackerIntent ? router.back() : router.replace('/tasks/new')}
                 style={({ pressed }) => [styles.inputOption, pressed && styles.optionPressed]}
               >
                 <AppIcon color={colors.primaryStrong} name="create-outline" size={20} />
-                <Text style={styles.inputOptionText}>新建任务</Text>
+                <Text style={styles.inputOptionText}>{isTrackerIntent ? '自己填写' : '新建任务'}</Text>
               </Pressable>
             ) : null}
           </View>

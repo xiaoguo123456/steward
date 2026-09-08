@@ -7526,6 +7526,8 @@ components:
           minItems: 1
           items:
             $ref: '#/components/schemas/TrackerField'
+        schedule:
+          $ref: '#/components/schemas/TrackerSchedule'
     CaptureRecordDraft:
       type: object
       additionalProperties: false

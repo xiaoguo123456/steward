@@ -14,6 +14,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { TrackerField } from './trackerField';
+import type { TrackerSchedule } from './trackerSchedule';
 
 export interface CaptureTrackerDraft {
   name: string;
@@ -21,4 +22,5 @@ export interface CaptureTrackerDraft {
   description?: string | null;
   /** @minItems 1 */
   fields: TrackerField[];
+  schedule?: TrackerSchedule;
 }

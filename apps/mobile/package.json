@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@babel/runtime": "^7.29.7",
     "@expo/ui": "~57.0.10",
     "@hugeicons/core-free-icons": "^4.3.0",
     "@hugeicons/react-native": "^1.0.16",
@@ -43,8 +44,8 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
-    "react-native-webview": "13.16.1",
     "react-native-web": "~0.21.0",
+    "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
@@ -74,7 +75,7 @@
     "test:notes": "node --experimental-strip-types --test src/features/notes/note-polish.test.mjs",
     "test:plan": "node --experimental-strip-types --test src/features/plan/anytime-task-actions.test.mjs src/features/plan/task-list-order.test.mjs src/features/plan/task-list-appearance.test.mjs src/features/plan/task-list-policy.test.mjs src/features/plan/plan-tab-navigation.test.mjs src/features/projects/project-task-scope.test.mjs src/features/tasks/manual-task-request.test.mjs src/features/tasks/task-detail.test.mjs src/features/tasks/task-edit-model.test.mjs src/features/events/event-edit-model.test.mjs",
     "test:review": "node --experimental-strip-types --test src/features/review/review-period.test.mjs src/features/review/review-metrics.test.mjs",
-    "test:trackers": "node --experimental-strip-types --test src/features/trackers/trend-chart-model.test.mjs src/features/trackers/record-pagination.test.mjs src/features/ledger/ledger-report.test.mjs",
+    "test:trackers": "node --experimental-strip-types --test src/features/trackers/tracker-presets.test.mjs src/features/trackers/trend-chart-model.test.mjs src/features/trackers/record-pagination.test.mjs src/features/ledger/ledger-report.test.mjs",
     "test:recipes": "node --experimental-strip-types --test src/features/recipes/discovery-order.test.mjs src/features/recipes/recipe-confirmation-placement.test.mjs src/features/recipes/recipe-swap.test.mjs",
     "test:trips": "node --experimental-strip-types --test src/features/trips/trip-form.test.mjs",
     "test:ui": "node --experimental-strip-types --test src/api/network-contract-policy.test.mjs src/api/session-policy.test.mjs src/components/ui/icon-system.test.mjs src/components/ui/filter-chip-system.test.mjs src/components/ui/tab-shell-compatibility.test.mjs src/components/ui/touch-target-accessibility.test.mjs src/components/ui/confirm-action.test.mjs src/theme/theme-accessibility.test.mjs src/features/home/home-top-navigation.test.mjs src/features/capture/capture-confirmation-model.test.mjs src/features/capture/capture-conversation-model.test.mjs src/features/capture/capture-tracker-contract.test.mjs src/features/capture/capture-conversation-placement.test.mjs src/features/capture/capture-success-model.test.mjs src/features/capture/capture-offline-policy.test.mjs",

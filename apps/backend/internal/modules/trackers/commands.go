@@ -19,7 +19,7 @@ import (
 
 // CreateTrackerInTx 在调用方事务内创建 Tracker。
 func (s *Service) CreateTrackerInTx(ctx context.Context, q *dbgen.Queries, userID string,
-	name string, fields []httpapi.TrackerField, provenance []byte) (dbgen.Tracker, error) {
+	name string, fields []httpapi.TrackerField, schedule *httpapi.TrackerSchedule, provenance []byte) (dbgen.Tracker, error) {
 
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -27,6 +27,13 @@ func (s *Service) CreateTrackerInTx(ctx context.Context, q *dbgen.Queries, userI
 	}
 	if err := validateFields(fields); err != nil {
 		return dbgen.Tracker{}, err
+	}
+	if err := validateSchedule(schedule); err != nil {
+		return dbgen.Tracker{}, err
+	}
+	scheduleJSON, err := encodeSchedule(schedule)
+	if err != nil {
+		return dbgen.Tracker{}, apperr.Internal(err)
 	}
 	fieldsJSON, err := json.Marshal(fields)
 	if err != nil {
@@ -41,7 +48,7 @@ func (s *Service) CreateTrackerInTx(ctx context.Context, q *dbgen.Queries, userI
 		UserID:         userID,
 		Name:           name,
 		Fields:         fieldsJSON,
-		Schedule:       nil,
+		Schedule:       scheduleJSON,
 		Status:         "active",
 		CreatedBy:      "ai",
 		ProvenanceRefs: provenance,

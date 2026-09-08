@@ -3046,3 +3046,13 @@ Capture 使用 `capture-parse@v7` 与 `capture-parse-result.v5`。AI 契约新�
 历史缺少 Tracker 字段的快照读取为 failed 且不暴露非法候选，原始数据库内容不改变；客户端不能靠旧 parsing 缓存掩盖读取错误。本次没有变更公开 OpenAPI 字段或数据库结构，复用现有 CaptureTrackerDraft、CaptureRecordDraft 与错误码；无需迁移或手写客户端 DTO。新增跨端 Fixture 和生成 Zod 校验测试。
 
 真实模型验收：`STEWARD_AI_LIVE_WEIGHT=1 go test ./internal/platform/ai/openai -run TestLiveCaptureWeight -count=2 -v`，只使用虚构输入，不保存生产用户记录。
+
+## 打卡频率与失败隔离补充（2026-09-08）
+
+当前 Capture 升级为 `capture-parse@v8`／`capture-parse-result.v6`。新增可选 `tracker_schedule`，映射至公开 `CaptureTrackerDraft.schedule`；确认时通过 Tracker Domain 既有频率校验并写入已有 schedule 列。每天禁止附带 weekdays，每周必须有不重复的 1～7 星期。未指定频率时省略，缺少星期先澄清。
+
+本次包含 OpenAPI、Go Server／DTO、TypeScript Client／Zod、候选编辑器、确认事务与 Fixture 同步修改；数据库已有频率列，不新增迁移。旧版 App 不具备新增频率编辑器，完整体验需新版原生包。
+
+Capture Session 是否阻塞输入按当前 Capture ID 对应的阶段判断，失败、不可读取、完成与结束均可继续发送；“先放一放”仅从当前 App 会话隐藏，保留服务端候选和问题，不代表撤回。新 Capture 有独立 Operation，旧失败 Job 的迟到重投不能重启模型或影响新输入。普通 Assistant Thread 和 Capture 是两条链路；本次打卡创建通过专用 Capture 入口提供，未新增普通文本 Thread 的 Tracker 创建工具。
+
+回归入口：`STEWARD_AI_LIVE_CHECKINS=1 go test ./internal/platform/ai/openai -run TestLiveCaptureCheckins -count=1 -v`；模型只接收虚构样本。`TestFailedCaptureDoesNotBlockNextCapture` 覆盖 Provider 失败／非法候选后同用户继续成功以及旧任务重复投递。

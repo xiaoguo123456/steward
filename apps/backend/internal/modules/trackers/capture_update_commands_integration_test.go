@@ -58,7 +58,7 @@ func TestUpdateRecordCommandInTxUsesVersionCAS(t *testing.T) {
 	err = db.InTx(context.Background(), userID, func(ctx context.Context, q *dbgen.Queries) error {
 		tracker, err := service.CreateTrackerInTx(ctx, q, userID, "体重", []httpapi.TrackerField{{
 			Key: "weight", Label: "体重", Type: httpapi.TrackerFieldTypeNumber, Required: true,
-		}}, nil)
+		}}, nil, nil)
 		if err != nil {
 			return err
 		}

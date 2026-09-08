@@ -117,7 +117,7 @@ var MoodReflectionSchemaV1 []byte
 
 // 版本号随 Prompt 与 Schema 变化递增，写入 AI Action 审计记录。
 const (
-	CaptureParsePromptVersion        = "capture-parse@v7"
+	CaptureParsePromptVersion        = "capture-parse@v8"
 	VisionExtractPromptVersion       = "vision-extract@v1"
 	AssistantPolicyVersion           = "assistant@v3"
 	ReviewNarrativePromptVersion     = "review-narrative@v2"
@@ -130,7 +130,7 @@ const (
 	MoodJournalFollowUpSchemaVersion = "mood-journal-follow-up-result.v1"
 	MoodReflectionPromptVersion      = "mood-reflection@v1"
 	MoodReflectionSchemaVersion      = "mood-reflection-result.v1"
-	CaptureParseSchemaVersion        = "capture-parse-result.v5"
+	CaptureParseSchemaVersion        = "capture-parse-result.v6"
 )
 
 // ProposalGuardsSchemaV1 是建议前置条件与字段级时间来源的权威契约。
@@ -162,3 +162,13 @@ var CaptureParsePromptV7 string
 //
 //go:embed schemas/capture/capture-parse-result.v5.schema.json
 var CaptureParseSchemaV5 []byte
+
+// CaptureParsePromptV8 区分新建打卡和某次记录，并保留频率。
+//
+//go:embed prompts/capture-parse/v8.md
+var CaptureParsePromptV8 string
+
+// CaptureParseSchemaV6 增加新建打卡频率。
+//
+//go:embed schemas/capture/capture-parse-result.v6.schema.json
+var CaptureParseSchemaV6 []byte

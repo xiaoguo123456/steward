@@ -29,7 +29,7 @@ const clarificationPartPositionStart = 1000
 func captureParseSchema() (*jsonschema.Schema, error) {
 	schemaOnce.Do(func() {
 		var doc any
-		if err := json.Unmarshal(assets.CaptureParseSchemaV5, &doc); err != nil {
+		if err := json.Unmarshal(assets.CaptureParseSchemaV6, &doc); err != nil {
 			schemaErr = fmt.Errorf("解析结果 Schema 不合法：%w", err)
 			return
 		}
@@ -60,7 +60,7 @@ func (p *Provider) ParseCapture(ctx context.Context, req ai.CaptureParseRequest)
 	userPrompt := buildUserPrompt(req)
 	messages := []chatMessage{
 		// 系统策略与用户资料使用不同角色，边界明确。
-		{Role: "system", Content: assets.CaptureParsePromptV7},
+		{Role: "system", Content: assets.CaptureParsePromptV8},
 		{Role: "user", Content: userPrompt},
 	}
 
@@ -124,32 +124,33 @@ type rawItineraryDetails struct {
 
 type rawResult struct {
 	Candidates []struct {
-		Ref                   string               `json:"ref"`
-		Type                  string               `json:"type"`
-		Action                string               `json:"action"`
-		TargetID              string               `json:"target_id"`
-		TargetExpectedVersion *int32               `json:"target_expected_version"`
-		Title                 string               `json:"title"`
-		Content               string               `json:"content"`
-		Description           string               `json:"description"`
-		ProjectKind           string               `json:"project_kind"`
-		Destination           string               `json:"destination"`
-		Priority              string               `json:"priority"`
-		DueDate               string               `json:"due_date"`
-		DueAt                 string               `json:"due_at"`
-		ListID                string               `json:"list_id"`
-		AllDay                bool                 `json:"all_day"`
-		StartAt               string               `json:"start_at"`
-		EndAt                 string               `json:"end_at"`
-		StartDate             string               `json:"start_date"`
-		EndDate               string               `json:"end_date"`
-		TargetDate            string               `json:"target_date"`
-		EventKind             string               `json:"event_kind"`
-		Location              string               `json:"location"`
-		ItineraryDetails      *rawItineraryDetails `json:"itinerary_details"`
-		Tags                  []string             `json:"tags"`
-		TrackerID             string               `json:"tracker_id"`
-		TrackerRef            string               `json:"tracker_ref"`
+		Ref                   string                   `json:"ref"`
+		Type                  string                   `json:"type"`
+		Action                string                   `json:"action"`
+		TargetID              string                   `json:"target_id"`
+		TargetExpectedVersion *int32                   `json:"target_expected_version"`
+		Title                 string                   `json:"title"`
+		Content               string                   `json:"content"`
+		Description           string                   `json:"description"`
+		ProjectKind           string                   `json:"project_kind"`
+		Destination           string                   `json:"destination"`
+		Priority              string                   `json:"priority"`
+		DueDate               string                   `json:"due_date"`
+		DueAt                 string                   `json:"due_at"`
+		ListID                string                   `json:"list_id"`
+		AllDay                bool                     `json:"all_day"`
+		StartAt               string                   `json:"start_at"`
+		EndAt                 string                   `json:"end_at"`
+		StartDate             string                   `json:"start_date"`
+		EndDate               string                   `json:"end_date"`
+		TargetDate            string                   `json:"target_date"`
+		EventKind             string                   `json:"event_kind"`
+		Location              string                   `json:"location"`
+		ItineraryDetails      *rawItineraryDetails     `json:"itinerary_details"`
+		Tags                  []string                 `json:"tags"`
+		TrackerID             string                   `json:"tracker_id"`
+		TrackerRef            string                   `json:"tracker_ref"`
+		TrackerSchedule       *ai.TrackerScheduleDraft `json:"tracker_schedule"`
 		TrackerFields         []struct {
 			Key      string `json:"key"`
 			Label    string `json:"label"`
@@ -372,6 +373,7 @@ func mapToNeutral(parsed rawResult, req ai.CaptureParseRequest) ai.CaptureParseR
 			Tags:                  c.Tags,
 			TrackerID:             c.TrackerID,
 			TrackerRef:            c.TrackerRef,
+			TrackerSchedule:       c.TrackerSchedule,
 			Missing:               c.Missing,
 			Warnings:              c.Warnings,
 			Sources:               sources,

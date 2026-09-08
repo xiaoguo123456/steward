@@ -62,3 +62,9 @@ test('整理已结束但结果读取失败时，旧 parsing 缓存不能继续�
     captureStatus: 'needs_confirmation', operationStatus: 'succeeded', captureFailed: true,
   }), 'confirmation');
 });
+
+test('失败或读取异常不阻塞后续输入，处理中与待确认仍保留当前输入保护', async () => {
+  const { captureBlocksComposer } = await import('./capture-conversation-model.ts');
+  for (const phase of ['failure', 'unavailable', 'completed', 'dismissed']) assert.equal(captureBlocksComposer(phase), false);
+  for (const phase of [undefined, 'processing', 'clarification', 'confirmation', 'partial_failure']) assert.equal(captureBlocksComposer(phase), true);
+});

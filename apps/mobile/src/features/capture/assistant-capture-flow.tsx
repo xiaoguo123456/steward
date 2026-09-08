@@ -38,6 +38,7 @@ import {
   captureConversationPhase,
   capturePartStatusItems,
   captureProcessingCopy,
+  type CaptureConversationPhase,
 } from './capture-conversation-model';
 import {
   applyConflictChoice,
@@ -49,6 +50,8 @@ import { summarizeCaptureResources } from './capture-success-model';
 type AssistantCaptureFlowProps = {
   session: CaptureAssistantSession;
   onCompleted: (summary: string) => void;
+  onPhaseChange: (captureId: string, phase: CaptureConversationPhase) => void;
+  onDefer: () => void;
   onReenterCapture: () => void;
   onSessionChange: (session: CaptureAssistantSession) => void;
 };
@@ -65,7 +68,7 @@ const typeMeta: Record<CaptureCandidate['candidate_type'], CandidateMeta> = {
   event: { label: '日程', icon: 'calendar-outline', color: '#3978B8', soft: '#EAF4FF' },
   note: { label: '笔记', icon: 'document-text-outline', color: '#7657C8', soft: '#F2EEFF' },
   project: { label: '项目', icon: 'flag-outline', color: '#187A75', soft: '#E9F7F5' },
-  tracker: { label: '记录项', icon: 'stats-chart-outline', color: '#B65316', soft: '#FFF1E7' },
+  tracker: { label: '打卡', icon: 'stats-chart-outline', color: '#B65316', soft: '#FFF1E7' },
   record: { label: '记录', icon: 'analytics-outline', color: '#A83B70', soft: '#FDEEF5' },
 };
 
@@ -75,6 +78,8 @@ const typeMeta: Record<CaptureCandidate['candidate_type'], CandidateMeta> = {
  */
 export function AssistantCaptureFlow({
   onCompleted,
+  onPhaseChange,
+  onDefer,
   onReenterCapture,
   onSessionChange,
   session,
@@ -135,6 +140,10 @@ export function AssistantCaptureFlow({
   });
 
   useEffect(() => {
+    onPhaseChange(session.captureId, phase);
+  }, [onPhaseChange, session.captureId, phase]);
+
+  useEffect(() => {
     if (operationStatus !== 'succeeded') return;
     void capture.refetch();
     void questions.refetch();
@@ -166,7 +175,7 @@ export function AssistantCaptureFlow({
     && !hasUnselectedTracker
     && !saving;
   const onlyCandidate = candidates.length === 1 ? candidates[0] : undefined;
-  const currentSaveHint = hasUnselectedTracker ? '请同时选择这条记录所属的新记录项。' : saveHint(
+  const currentSaveHint = hasUnselectedTracker ? '请同时选择这条记录所属的新打卡。' : saveHint(
     selectedCandidates.length,
     blockedCandidates.length,
     unresolvedConflictCount,
@@ -530,6 +539,9 @@ export function AssistantCaptureFlow({
           />
         )}
       </AssistantRow>
+      {phase !== 'completed' && phase !== 'dismissed' ? (
+        <AppButton compact label="先放一放，继续聊" variant="text" disabled={saving || answerQuestion.isPending} onPress={onDefer} />
+      ) : null}
     </View>
   );
 }

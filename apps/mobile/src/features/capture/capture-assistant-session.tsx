@@ -17,6 +17,8 @@ export type CaptureAssistantSession = {
 
 type CaptureAssistantSessionContextValue = {
   session: CaptureAssistantSession | null;
+  deferredCaptureIds: readonly string[];
+  deferSession: (captureId: string) => void;
   clearSession: (captureId?: string) => void;
   openSession: (session: CaptureAssistantSession) => void;
 };
@@ -31,9 +33,15 @@ const CaptureAssistantSessionContext = createContext<CaptureAssistantSessionCont
  */
 export function CaptureAssistantSessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<CaptureAssistantSession | null>(null);
+  const [deferredCaptureIds, setDeferredCaptureIds] = useState<string[]>([]);
+  const deferSession = useCallback((captureId: string) => {
+    setDeferredCaptureIds((ids) => ids.includes(captureId) ? ids : [...ids, captureId]);
+    setSession((current) => current?.captureId === captureId ? null : current);
+  }, []);
 
   const openSession = useCallback((next: CaptureAssistantSession) => {
     if (!next.captureId.trim()) return;
+    setDeferredCaptureIds((ids) => ids.filter((id) => id !== next.captureId.trim()));
     setSession({ ...next, captureId: next.captureId.trim() });
   }, []);
 
@@ -45,8 +53,8 @@ export function CaptureAssistantSessionProvider({ children }: PropsWithChildren)
   }, []);
 
   const value = useMemo(
-    () => ({ clearSession, openSession, session }),
-    [clearSession, openSession, session],
+    () => ({ clearSession, deferSession, deferredCaptureIds, openSession, session }),
+    [clearSession, deferSession, deferredCaptureIds, openSession, session],
   );
 
   return (
