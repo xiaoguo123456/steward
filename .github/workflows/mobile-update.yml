@@ -236,15 +236,20 @@ jobs:
           UPDATE_CHANNEL: ${{ steps.vars.outputs.update_channel }}
           UPDATE_MESSAGE: ${{ inputs.message }}
           ROLLOUT_PERCENTAGE: ${{ inputs.rollout_percentage }}
-        run: >-
-          pnpm dlx eas-cli@22.6.0 update
-          --platform android
-          --channel "$UPDATE_CHANNEL"
-          --environment "$EAS_ENVIRONMENT"
-          --message "$UPDATE_MESSAGE"
-          --rollout-percentage "$ROLLOUT_PERCENTAGE"
-          --private-key-path "$STEWARD_EXPO_UPDATES_PRIVATE_KEY"
-          --non-interactive
+        run: |
+          # 全量发布不传灰度参数；Expo 后端只接受小于 100 的灰度比例。
+          rollout_args=()
+          if [ "$ROLLOUT_PERCENTAGE" -lt 100 ]; then
+            rollout_args=(--rollout-percentage "$ROLLOUT_PERCENTAGE")
+          fi
+          pnpm dlx eas-cli@22.6.0 update \
+            --platform android \
+            --channel "$UPDATE_CHANNEL" \
+            --environment "$EAS_ENVIRONMENT" \
+            --message "$UPDATE_MESSAGE" \
+            "${rollout_args[@]}" \
+            --private-key-path "$STEWARD_EXPO_UPDATES_PRIVATE_KEY" \
+            --non-interactive
 
       - name: 测试频道签名回退内置版本
         if: inputs.operation == 'rollback-test'
