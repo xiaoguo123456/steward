@@ -147,6 +147,7 @@ jobs:
           umask 077
           mkdir -p "$(dirname "$CERTIFICATE_PATH")"
           printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          bash tools/check-expo-update-certificate.sh "$CERTIFICATE_PATH"
           echo "STEWARD_EXPO_UPDATES_CERTIFICATE=.expo-updates/certificate.pem" >> "$GITHUB_ENV"
 
       - name: 构建并签名测试 APK

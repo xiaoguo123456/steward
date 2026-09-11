@@ -77,3 +77,12 @@ OTA 只用于与已审核原生能力一致的 JavaScript、样式、文案和�
 Expo 服务端现有项目的 slug 为 `steward`，仓库历史值为 `ai-steward`，导致首次 EAS 发布在关联校验时报错。将 `app.json` 的 `expo.slug` 对齐为 `steward`，保留原 Project ID、更新 URL、签名证书、频道、包名及 runtime version。Slug 为 Expo 项目 URL 别名，业务代码不依赖该值；不是更换项目或原生能力。
 
 OTA 门禁对此次确定的 `ai-steward` → `steward` 修正做结构化比较：除该字段外整个 JSON 必须完全一致，任何夹带的配置变化仍拒绝发布。门禁自身及测试属于 CI 工具，不进入应用包；依赖、锁文件、动态 App Config 和其他原生资源继续拒绝变化。发布仍须通过签名更新与原生冷启动验证。
+
+
+## 2026-09-11 首次签名发布验收结果
+
+后端修复已部署，项目别名关联及测试频道初始化已通过。测试 OTA 运行 `34568820741` 在签名证书验证阶段失败，未发布生产 OTA。
+
+正式 APK `steward-1.0.2-5a067498d9db.apk` 内置证书 `CN=steward-expo-updates` 仅有 CA 基础约束等扩展，缺少 `Key Usage: Digital Signature` 与 `Extended Key Usage: Code Signing`。Expo SDK 57 Android 的 `CertificateChain` 明确要求这两项，所以不能只凭开启 updates 和内置证书就认定热更新可用。1.0.2 必须由用户安装一次包含合格证书的新版本，不能通过 OTA 修复内置证书，也不能通过关闭验签解决。
+
+Android 测试包、正式包及 OTA 工作流均增加证书用途、有效期与自签信任前置检查。后续应使用 Expo 官方证书生成工具准备合格签名材料，更新两个 Environment 的证书及对应私钥，构建新 runtime 版本，在原生设备验证后再启用生产 OTA。

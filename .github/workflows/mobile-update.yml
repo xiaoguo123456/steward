@@ -180,6 +180,7 @@ jobs:
           umask 077
           mkdir -p "$(dirname "$CERTIFICATE_PATH")"
           printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          bash tools/check-expo-update-certificate.sh "$CERTIFICATE_PATH"
           printf '%s' "$PRIVATE_KEY_BASE64" | base64 --decode > "$PRIVATE_KEY_PATH"
           echo "STEWARD_EXPO_UPDATES_CERTIFICATE=.expo-updates/certificate.pem" >> "$GITHUB_ENV"
           echo "STEWARD_EXPO_UPDATES_PRIVATE_KEY=$PRIVATE_KEY_PATH" >> "$GITHUB_ENV"
