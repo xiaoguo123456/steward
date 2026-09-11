@@ -11,6 +11,17 @@ on:
         options:
           - test
           - production
+      verify_ota:
+        description: "端到端验收允许无功能变化更新，仍检查原生兼容性"
+        type: boolean
+        default: false
+      operation:
+        description: "发布更新或测试频道回退内置包演练"
+        type: choice
+        default: publish
+        options:
+          - publish
+          - rollback-test
       base_binary_sha:
         description: "当前目标安装包对应的 main commit SHA"
         required: true
@@ -50,6 +61,15 @@ jobs:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       STEWARD_EXPO_PROJECT_ID: ${{ secrets.EXPO_PROJECT_ID }}
     steps:
+      - name: 校验回滚演练范围
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          if [ "$OPERATION" = "rollback-test" ] && [ "$CHANNEL" != "test" ]; then
+            echo "回滚演练仅限测试频道" >&2
+            exit 1
+          fi
       - name: 规范化 Expo 发布凭据
         # Secret 复制时可能携带末尾换行；只去除外围空白，不输出凭据。
         run: |
@@ -155,6 +175,7 @@ jobs:
           node apps/mobile/scripts/check-ota-safe-changes.mjs
           "${{ steps.vars.outputs.base_sha }}"
           "${{ steps.vars.outputs.update_sha }}"
+          ${{ inputs.verify_ota && '--verify-ota' || '' }}
 
       - name: 校验公开 H5 发布门禁
         env:
@@ -205,6 +226,7 @@ jobs:
           fi
 
       - name: 发布签名 OTA
+        if: inputs.operation != 'rollback-test'
         working-directory: apps/mobile
         env:
           APP_VARIANT: ${{ steps.vars.outputs.app_variant }}
@@ -221,5 +243,21 @@ jobs:
           --environment "$EAS_ENVIRONMENT"
           --message "$UPDATE_MESSAGE"
           --rollout-percentage "$ROLLOUT_PERCENTAGE"
+          --private-key-path "$STEWARD_EXPO_UPDATES_PRIVATE_KEY"
+          --non-interactive
+
+      - name: 测试频道签名回退内置版本
+        if: inputs.operation == 'rollback-test'
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: test
+          STEWARD_APP_VERSION: ${{ inputs.app_version }}
+          STEWARD_REQUIRE_EXPO_UPDATES: "1"
+        run: >-
+          pnpm dlx eas-cli@22.6.0 update:roll-back-to-embedded
+          --channel steward-test
+          --runtime-version "${{ inputs.app_version }}"
+          --platform android
+          --message "测试频道验证回退内置版本"
           --private-key-path "$STEWARD_EXPO_UPDATES_PRIVATE_KEY"
           --non-interactive

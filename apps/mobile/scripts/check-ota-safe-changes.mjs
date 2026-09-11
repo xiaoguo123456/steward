@@ -63,7 +63,7 @@ export function changedFiles(baseSha, updateSha) {
 }
 
 function main() {
-  const [baseSha, updateSha] = process.argv.slice(2);
+  const [baseSha, updateSha, verificationMode] = process.argv.slice(2);
   if (!baseSha || !updateSha) {
     console.error('用法：node check-ota-safe-changes.mjs <原生包提交> <更新提交>');
     process.exit(2);
@@ -81,7 +81,7 @@ function main() {
     console.error('请提升 App 版本并重新构建原生安装包。');
     process.exit(1);
   }
-  if (result.included.length === 0) {
+  if (result.included.length === 0 && verificationMode !== '--verify-ota') {
     console.error('两个提交之间没有需要发布的移动端 JavaScript 或 OTA 资源变化。');
     process.exit(1);
   }
