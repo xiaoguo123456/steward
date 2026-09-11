@@ -178,6 +178,18 @@ jobs:
           STEWARD_REQUIRE_EXPO_UPDATES: "1"
         run: pnpm --filter mobile exec expo config --type public
 
+      - name: 确认更新频道已初始化
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: ${{ steps.vars.outputs.app_variant }}
+          STEWARD_APP_VERSION: ${{ inputs.app_version }}
+          STEWARD_REQUIRE_EXPO_UPDATES: "1"
+          UPDATE_CHANNEL: ${{ steps.vars.outputs.update_channel }}
+        run: |
+          if ! pnpm dlx eas-cli@22.6.0 channel:view "$UPDATE_CHANNEL" --json --non-interactive > "$RUNNER_TEMP/steward-update-channel.json"; then
+            pnpm dlx eas-cli@22.6.0 channel:create "$UPDATE_CHANNEL" --non-interactive
+          fi
+
       - name: 发布签名 OTA
         working-directory: apps/mobile
         env:
