@@ -86,3 +86,16 @@ OTA 门禁对此次确定的 `ai-steward` → `steward` 修正做结构化比较
 正式 APK `steward-1.0.2-5a067498d9db.apk` 内置证书 `CN=steward-expo-updates` 仅有 CA 基础约束等扩展，缺少 `Key Usage: Digital Signature` 与 `Extended Key Usage: Code Signing`。Expo SDK 57 Android 的 `CertificateChain` 明确要求这两项，所以不能只凭开启 updates 和内置证书就认定热更新可用。1.0.2 必须由用户安装一次包含合格证书的新版本，不能通过 OTA 修复内置证书，也不能通过关闭验签解决。
 
 Android 测试包、正式包及 OTA 工作流均增加证书用途、有效期与自签信任前置检查。后续应使用 Expo 官方证书生成工具准备合格签名材料，更新两个 Environment 的证书及对应私钥，构建新 runtime 版本，在原生设备验证后再启用生产 OTA。
+
+
+## 2026-09-11 Android 1.0.3 重打包结果
+
+新证书和匹配私钥经用户授权写入 GitHub test、production Secrets，原 Android 安装签名保持不变。构建提交为 `87cb7a859cefdd47250fee4eb5b0f085b1cc43a4`，版本和 runtime 均为 1.0.3。
+
+- 正式包构建 `34579986210`、公共下载 `34582613562` 成功；SHA256 为 `d6f418b295690b70180d985be6c69ad3dad4056bd93db9377aa8ba858dd962d0`。
+- 测试包构建及公共下载 `34579973847` 成功；SHA256 为 `5b52000cae5aa3e2982bb79805a082d958e1bae66dd75676ab261faf2d5ca226`。
+- 实际下载 APK 的版本、安装签名、更新 URL、频道及新证书一致性检查通过。
+- 模拟器验证测试、正式 1.0.2 → 1.0.3 覆盖升级及冷启动通过，正式登录界面正常渲染。
+- 此记录仅确认安装包验证；实际 OTA 下载、冷启动加载及回滚演练仍待完成。
+
+[正式包](https://steward.qhzhiyin.com/downloads/steward-1.0.3-87cb7a859cef.apk)、[测试包](https://test-steward.qhzhiyin.com/downloads/steward-test-1.0.3-87cb7a859cef.apk)。
