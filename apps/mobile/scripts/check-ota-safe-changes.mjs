@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
@@ -12,11 +13,26 @@ const NON_RUNTIME_PREFIXES = [
   'tools/',
 ];
 
-export function classifyOtaChanges(files) {
+// 此脚本和测试只在 CI 执行，不进入应用运行时。
+const GATE_FILES = ['apps/mobile/scripts/check-ota-safe-changes.mjs', 'apps/mobile/scripts/check-ota-safe-changes.test.mjs'];
+
+/** 仅允许已核实的项目别名纠正；其余配置必须逐字段完全一致。 */
+export function isProjectSlugCorrection(before, after) {
+  if (before?.expo?.slug !== 'ai-steward' || after?.expo?.slug !== 'steward') return false;
+  const corrected = structuredClone(before);
+  corrected.expo.slug = 'steward';
+  return isDeepStrictEqual(corrected, after);
+}
+
+export function classifyOtaChanges(files, readConfig) {
   const included = [];
   const blocked = [];
 
   for (const file of files) {
+    if (GATE_FILES.includes(file)) continue;
+    if (file === 'apps/mobile/app.json' && readConfig) {
+      if (isProjectSlugCorrection(readConfig('base'), readConfig('update'))) continue;
+    }
     if (RUNTIME_PREFIXES.some((prefix) => file.startsWith(prefix))) {
       included.push(file);
       continue;
@@ -54,7 +70,10 @@ function main() {
   }
 
   const files = changedFiles(baseSha, updateSha);
-  const result = classifyOtaChanges(files);
+  const result = classifyOtaChanges(files, (revision) => JSON.parse(execFileSync(
+    'git', ['show', `${revision === 'base' ? baseSha : updateSha}:apps/mobile/app.json`],
+    { encoding: 'utf8' },
+  )));
 
   if (result.blocked.length > 0) {
     console.error('以下文件可能改变原生运行时或构建配置，禁止通过 OTA 发布：');

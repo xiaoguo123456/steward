@@ -70,3 +70,10 @@ OTA 只用于与已审核原生能力一致的 JavaScript、样式、文案和�
 - [EAS Update rollouts](https://docs.expo.dev/eas-update/rollouts/)
 - [EAS Update rollbacks](https://docs.expo.dev/eas-update/rollbacks/)
 - [Expo Privacy Explained](https://expo.dev/privacy-explained)
+
+
+## 2026-09-11 项目别名纠正
+
+Expo 服务端现有项目的 slug 为 `steward`，仓库历史值为 `ai-steward`，导致首次 EAS 发布在关联校验时报错。将 `app.json` 的 `expo.slug` 对齐为 `steward`，保留原 Project ID、更新 URL、签名证书、频道、包名及 runtime version。Slug 为 Expo 项目 URL 别名，业务代码不依赖该值；不是更换项目或原生能力。
+
+OTA 门禁对此次确定的 `ai-steward` → `steward` 修正做结构化比较：除该字段外整个 JSON 必须完全一致，任何夹带的配置变化仍拒绝发布。门禁自身及测试属于 CI 工具，不进入应用包；依赖、锁文件、动态 App Config 和其他原生资源继续拒绝变化。发布仍须通过签名更新与原生冷启动验证。
