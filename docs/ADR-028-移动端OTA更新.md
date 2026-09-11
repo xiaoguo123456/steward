@@ -99,3 +99,15 @@ Android 测试包、正式包及 OTA 工作流均增加证书用途、有效期�
 - 此记录仅确认安装包验证；实际 OTA 下载、冷启动加载及回滚演练仍待完成。
 
 [正式包](https://steward.qhzhiyin.com/downloads/steward-1.0.3-87cb7a859cef.apk)、[测试包](https://test-steward.qhzhiyin.com/downloads/steward-test-1.0.3-87cb7a859cef.apk)。
+
+
+## 2026-09-11 OTA 实测结果与外部阻塞
+
+用户授权补交记录、修改验收流程并验证 OTA。验收流程提交 `92418f38b0a51d11cf08e25350947d5fa2ee59c2` 增加显式无功能变化发布模式和仅限测试频道的签名回退内置版本操作，原生兼容与签名门禁继续保留。
+
+1. 工作流 `34585126995` 完成证书校验、Android bundle 导出与资源上传，但服务端拒绝 `rollout_percentage=100`。提交 `c3fe59322d27dcc06fa0f8b3cb049ff19f04d69f` 修正为全量发布省略灰度参数，小比例灰度才传入该参数。
+2. 重试工作流 `34585519737` 再次完成证书校验、导出、资源上传及指纹计算，进入实际签名发布后，Expo 返回：`EAS Update code signing requires a subscription to the EAS Enterprise plan`。组织 `qionghaihuixiangtu` 当前没有订阅计划。后台给出的开通入口为 https://expo.dev/accounts/qionghaihuixiangtu/settings/subscriptions 。
+3. 此次远程更新未成功发布，因此不能声称设备下载、冷启动加载、灰度或回滚演练已通过，也未关闭签名绕过限制。
+4. 测试设备验收前基线：1.0.3 内置更新 ID `32635B4B-C905-4FED-AFB2-7FD18FA389F6`，成功启动计数 1、失败计数 0。只读取 Expo 专用更新表中的更新 ID、runtime、状态和启动计数，不复制应用私有数据库。
+
+后续需先由用户决定并开通支持签名更新的账户服务，再重跑测试签名发布、设备下载和冷启动加载、测试频道签名回滚、重新发布恢复及生产灰度验证。1.0.3 原生包及已上线后端可继续使用，日程修复已包含在安装包中。
