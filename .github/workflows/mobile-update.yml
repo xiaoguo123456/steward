@@ -133,6 +133,11 @@ jobs:
           pnpm --filter mobile test:config
 
       - name: 校验 OTA 变更范围
+        # 保留中文文件名原文，避免 Git 的带引号转义让文档被误判为原生配置。
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: core.quotePath
+          GIT_CONFIG_VALUE_0: "false"
         run: >-
           node apps/mobile/scripts/check-ota-safe-changes.mjs
           "${{ steps.vars.outputs.base_sha }}"
