@@ -50,6 +50,19 @@ jobs:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       STEWARD_EXPO_PROJECT_ID: ${{ secrets.EXPO_PROJECT_ID }}
     steps:
+      - name: 规范化 Expo 发布凭据
+        # Secret 复制时可能携带末尾换行；只去除外围空白，不输出凭据。
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          token = os.environ.get("EXPO_TOKEN", "").strip()
+          if not token or any(ord(char) < 33 or ord(char) > 126 for char in token):
+              raise SystemExit("Expo 发布凭据为空或包含非法字符，请检查 Environment Secret")
+          print("::add-mask::" + token)
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write("EXPO_TOKEN=" + token + "\n")
+          PYTHON
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
