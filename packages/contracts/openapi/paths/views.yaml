@@ -8,6 +8,15 @@ Today:
       收录与排序完全由服务端确定性代码计算，客户端不得重排。
       展开只改变客户端可见数量，不改变收录、排序或字段。
     tags: [views]
+    parameters:
+      - name: day_offset
+        in: query
+        description: 按账号时区读取今天（0）或明天（1）；明天不结转仅因逾期收录的任务。
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 1
+          default: 0
     responses:
       '200':
         description: 成功。
@@ -15,6 +24,8 @@ Today:
           application/json:
             schema:
               $ref: '../components/schemas/views.yaml#/TodayViewResponse'
+      '400':
+        $ref: '../components/responses.yaml#/BadRequest'
       '401':
         $ref: '../components/responses.yaml#/Unauthorized'
       '500':

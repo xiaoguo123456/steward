@@ -72,6 +72,14 @@ type Today struct {
 
 // GetToday 计算今天的任务与日程。
 func (s *Service) GetToday(ctx context.Context, userID string) (Today, error) {
+	return s.GetDayAgenda(ctx, userID, 0)
+}
+
+// GetDayAgenda 统一读取今天与明天；日期在账号时区内推进，避免客户端跨午夜后查询旧日期。
+func (s *Service) GetDayAgenda(ctx context.Context, userID string, offset int) (Today, error) {
+	if offset < 0 || offset > 1 {
+		return Today{}, apperr.Validation(apperr.Field("day_offset", "只支持今天或明天"))
+	}
 	var out Today
 	err := s.db.InTx(ctx, userID, func(ctx context.Context, q *dbgen.Queries) error {
 		tz, err := s.users.Timezone(ctx, q, userID)
@@ -79,15 +87,16 @@ func (s *Service) GetToday(ctx context.Context, userID string) (Today, error) {
 			return err
 		}
 		loc := timeutil.LoadLocation(tz)
-		now := s.now()
+		now := s.now().In(loc).AddDate(0, 0, offset)
 		day := timeutil.DayOf(now, loc)
 
 		tasks, err := q.ListTodayTasks(ctx, dbgen.ListTodayTasksParams{
-			Tz:       tz,
-			Today:    day.Date,
-			NowAt:    now,
-			DayStart: day.Start,
-			DayEnd:   day.End,
+			FutureOnly: offset > 0,
+			Tz:         tz,
+			Today:      day.Date,
+			NowAt:      now,
+			DayStart:   day.Start,
+			DayEnd:     day.End,
 		})
 		if err != nil {
 			return apperr.Internal(err)

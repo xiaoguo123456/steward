@@ -19,12 +19,16 @@ type ViewAPI struct {
 func NewViewAPI(svc *Service) *ViewAPI { return &ViewAPI{svc: svc} }
 
 // GetToday 读取今天的任务与日程。
-func (h *ViewAPI) GetToday(ctx context.Context, _ httpapi.GetTodayRequestObject) (httpapi.GetTodayResponseObject, error) {
+func (h *ViewAPI) GetToday(ctx context.Context, req httpapi.GetTodayRequestObject) (httpapi.GetTodayResponseObject, error) {
 	userID, err := httpx.UserID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	today, err := h.svc.GetToday(ctx, userID)
+	offset := 0
+	if req.Params.DayOffset != nil {
+		offset = int(*req.Params.DayOffset)
+	}
+	today, err := h.svc.GetDayAgenda(ctx, userID, offset)
 	if err != nil {
 		return nil, err
 	}

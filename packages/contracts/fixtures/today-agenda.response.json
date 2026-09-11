@@ -1,0 +1,33 @@
+{
+  "data": {
+    "date": "2026-09-11",
+    "timezone": "Asia/Shanghai",
+    "tasks": [],
+    "events": [
+      {
+        "id": "evt_fixture_work",
+        "type": "event",
+        "title": "上班",
+        "event_kind": "schedule",
+        "all_day": false,
+        "start_at": "2026-09-11T09:30:00+08:00",
+        "timezone": "Asia/Shanghai",
+        "recurrence": "none",
+        "created_by": "user",
+        "created_at": "2026-09-10T15:35:00+08:00",
+        "updated_at": "2026-09-10T15:35:00+08:00",
+        "version": 1
+      }
+    ],
+    "counts": {
+      "total": 0,
+      "overdue": 0,
+      "due_today": 0,
+      "scheduled_today": 0,
+      "manual": 0
+    }
+  },
+  "meta": {
+    "request_id": "req_agenda_fixture"
+  }
+}

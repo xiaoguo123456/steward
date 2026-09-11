@@ -41,6 +41,7 @@ import type {
   GenerateWeeklyReviewBody,
   GetCalendarParams,
   GetImportantDatesParams,
+  GetTodayParams,
   GetWeeklyReviewParams,
   ImportantDatesResponse,
   InternalErrorResponse,
@@ -78,12 +79,19 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getGetTodayUrl = () => {
+export const getGetTodayUrl = (params?: GetTodayParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/today`
+  return stringifiedParams.length > 0 ? `/v1/today?${stringifiedParams}` : `/v1/today`
 }
 
 /**
@@ -91,9 +99,9 @@ export const getGetTodayUrl = () => {
  * 展开只改变客户端可见数量，不改变收录、排序或字段。
  * @summary 读取今天的任务与日程
  */
-export const getToday = async ( options?: Parameters<typeof stewardFetch>[1]): Promise<TodayViewResponse> => {
+export const getToday = async (params?: GetTodayParams, options?: Parameters<typeof stewardFetch>[1]): Promise<TodayViewResponse> => {
 
-  return stewardFetch<TodayViewResponse>(getGetTodayUrl(),
+  return stewardFetch<TodayViewResponse>(getGetTodayUrl(params),
   {
     ...options,
     method: 'GET'
@@ -107,23 +115,23 @@ export const getToday = async ( options?: Parameters<typeof stewardFetch>[1]): P
 
 
 
-export const getGetTodayQueryKey = () => {
+export const getGetTodayQueryKey = (params?: GetTodayParams,) => {
     return [
-    `/v1/today`
+    `/v1/today`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetTodayQueryOptions = <TData = Awaited<ReturnType<typeof getToday>>, TError = UnauthorizedResponse | InternalErrorResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+export const getGetTodayQueryOptions = <TData = Awaited<ReturnType<typeof getToday>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(params?: GetTodayParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetTodayQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetTodayQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getToday>>> = ({ signal }) => getToday({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getToday>>> = ({ signal }) => getToday(params, { signal, ...requestOptions });
 
 
 
@@ -133,11 +141,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetTodayQueryResult = NonNullable<Awaited<ReturnType<typeof getToday>>>
-export type GetTodayQueryError = UnauthorizedResponse | InternalErrorResponse
+export type GetTodayQueryError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse
 
 
-export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError = UnauthorizedResponse | InternalErrorResponse>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>> & Pick<
+export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params: undefined |  GetTodayParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getToday>>,
           TError,
@@ -146,8 +154,8 @@ export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError
       >, request?: SecondParameter<typeof stewardFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError = UnauthorizedResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>> & Pick<
+export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetTodayParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getToday>>,
           TError,
@@ -156,20 +164,20 @@ export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError
       >, request?: SecondParameter<typeof stewardFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError = UnauthorizedResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetTodayParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary 读取今天的任务与日程
  */
 
-export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError = UnauthorizedResponse | InternalErrorResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
+export function useGetToday<TData = Awaited<ReturnType<typeof getToday>>, TError = BadRequestResponse | UnauthorizedResponse | InternalErrorResponse>(
+ params?: GetTodayParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getToday>>, TError, TData>>, request?: SecondParameter<typeof stewardFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetTodayQueryOptions(options)
+  const queryOptions = getGetTodayQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

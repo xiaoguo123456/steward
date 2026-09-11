@@ -2977,6 +2977,15 @@ paths:
         展开只改变客户端可见数量，不改变收录、排序或字段。
       tags:
         - views
+      parameters:
+        - name: day_offset
+          in: query
+          description: 按账号时区读取今天（0）或明天（1）；明天不结转仅因逾期收录的任务。
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 1
+            default: 0
       responses:
         '200':
           description: 成功。
@@ -2984,6 +2993,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TodayViewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -8708,7 +8719,7 @@ components:
         date:
           type: string
           format: date
-          description: 以用户时区计算的今天。
+          description: 以用户时区计算的查询日期。
         timezone:
           type: string
         tasks:
@@ -8718,7 +8729,7 @@ components:
             $ref: '#/components/schemas/TodayTask'
         events:
           type: array
-          description: 今天的 Event，按开始时间排序，全天事件排在最前。
+          description: 查询日期的活动 Event，按开始时间排序，全天事件排在最前。
           items:
             $ref: '#/components/schemas/Event'
         counts:

@@ -4,6 +4,7 @@ import {
   useListProjects,
   useListTaskLists,
   useListTasks,
+  type Event,
   type Project,
   type ProjectStatus,
   type Task,
@@ -50,6 +51,8 @@ import {
 } from '@/features/projects/project-task-scope';
 import { projectFilters, projectStatusLabels } from '@/features/projects/use-projects';
 import { AddTaskRow } from '@/features/tasks/components/add-task-row';
+import { AgendaEventRow } from '@/features/plan/agenda-event-row';
+import { dayAgendaCount } from '@/features/plan/day-agenda';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { useToggleTaskDone, useUpdateTaskFields } from '@/features/tasks/use-task-actions';
 import { formatDateParam } from '@/utils/format';
@@ -67,8 +70,8 @@ const scopeTitles: Record<ScopeKey, string> = {
 };
 
 const scopeEmptyCopy: Record<Exclude<ScopeKey, 'unscheduled'>, string> = {
-  today: '今天暂时没有需要处理的任务',
-  tomorrow: '明天还没有安排任务',
+  today: '今天暂时没有需要处理的事项',
+  tomorrow: '明天还没有安排事项',
   completed: '完成任务后会显示在这里',
 };
 
@@ -95,15 +98,9 @@ export default function ListsScreen() {
   }, [resetVersion]);
   const toggleDone = useToggleTaskDone();
 
-  const tomorrow = useMemo(() => {
-    const date = new Date();
-    date.setDate(date.getDate() + 1);
-    return formatDateParam(date);
-  }, []);
-
-  // 各入口的数量都来自服务端：客户端不自行推导收录条件。
-  const today = useGetToday();
-  const tomorrowTasks = useListTasks({ day: tomorrow, list_kind: 'tasks', limit: 100 });
+  // 服务端按账号时区计算相对日期，跨午夜刷新后无需重建页面。
+  const today = useGetToday(undefined, { query: { refetchInterval: 60_000 } });
+  const tomorrowAgenda = useGetToday({ day_offset: 1 }, { query: { refetchInterval: 60_000 } });
   const completedTasks = useListTasks({ status: ['done'], list_kind: 'tasks', limit: 100 });
   const unscheduledTasks = useListTasks({ unscheduled: true, list_kind: 'tasks', limit: 100 });
   const taskLists = useListTaskLists({ include_archived: true, list_kind: 'tasks' });
@@ -119,29 +116,29 @@ export default function ListsScreen() {
   );
 
   const counts = {
-    today: today.data?.data.counts.total ?? 0,
-    tomorrow: tomorrowTasks.data?.data.length ?? 0,
+    today: dayAgendaCount(today.data?.data),
+    tomorrow: dayAgendaCount(tomorrowAgenda.data?.data),
     completed: completedTasks.data?.data.length ?? 0,
     unscheduled: unscheduledTasks.data?.data.length ?? 0,
   };
 
   const loading =
     today.isPending ||
-    tomorrowTasks.isPending ||
+    tomorrowAgenda.isPending ||
     completedTasks.isPending ||
     unscheduledTasks.isPending ||
     taskLists.isPending;
 
   const failed =
     today.isError ||
-    tomorrowTasks.isError ||
+    tomorrowAgenda.isError ||
     completedTasks.isError ||
     unscheduledTasks.isError ||
     taskLists.isError;
 
   const refetchAll = () => {
     void today.refetch();
-    void tomorrowTasks.refetch();
+    void tomorrowAgenda.refetch();
     void completedTasks.refetch();
     void unscheduledTasks.refetch();
     void taskLists.refetch();
@@ -151,6 +148,14 @@ export default function ListsScreen() {
     return (
       <DetailView
         allLists={allTaskLists}
+        events={activeView.type === 'scope' && activeView.key === 'today' ? today.data?.data.events ?? []
+          : activeView.type === 'scope' && activeView.key === 'tomorrow' ? tomorrowAgenda.data?.data.events ?? [] : []}
+        timezone={(activeView.type === 'scope' && activeView.key === 'tomorrow' ? tomorrowAgenda.data?.data.timezone : today.data?.data.timezone) ?? 'Asia/Shanghai'}
+        date={(activeView.type === 'scope' && activeView.key === 'tomorrow' ? tomorrowAgenda.data?.data.date : today.data?.data.date) ?? ''}
+        loading={loading}
+        failed={failed}
+        onRefresh={refetchAll}
+        refreshing={today.isRefetching || tomorrowAgenda.isRefetching}
         onBack={() => setActiveView(null)}
         onListChanged={(change) => {
           if (change.deleted || change.list?.archived_at) {
@@ -162,7 +167,7 @@ export default function ListsScreen() {
         onToggle={(task) => toggleDone.mutate(task)}
         tasks={detailTasks(activeView, {
           today: today.data?.data.tasks.map((item) => item.task) ?? [],
-          tomorrow: tomorrowTasks.data?.data ?? [],
+          tomorrow: tomorrowAgenda.data?.data.tasks.map((item) => item.task) ?? [],
           completed: completedTasks.data?.data ?? [],
           unscheduled: unscheduledTasks.data?.data ?? [],
         })}
@@ -197,7 +202,7 @@ export default function ListsScreen() {
           <StatePanel
             actionLabel="重试"
             icon="cloud-offline-outline"
-            message={errorMessage(today.error ?? tomorrowTasks.error, '暂时无法加载计划。')}
+            message={errorMessage(today.error ?? tomorrowAgenda.error, '暂时无法加载计划。')}
             onAction={refetchAll}
             title="加载失败"
           />
@@ -299,6 +304,13 @@ export default function ListsScreen() {
 function DetailView({
   view,
   tasks,
+  events,
+  timezone,
+  date,
+  loading,
+  failed,
+  onRefresh,
+  refreshing,
   allLists,
   onBack,
   onListChanged,
@@ -306,6 +318,13 @@ function DetailView({
 }: {
   view: NonNullable<ActiveView>;
   tasks: Task[];
+  events: Event[];
+  timezone: string;
+  date: string;
+  loading: boolean;
+  failed: boolean;
+  onRefresh: () => void;
+  refreshing: boolean;
   allLists: TaskList[];
   onBack: () => void;
   onListChanged: (change: { list?: TaskList; deleted?: boolean }) => void;
@@ -334,6 +353,7 @@ function DetailView({
 
   // Project 状态和具体项目都是当前清单的展示筛选，不改变 Task 的权威归属。
   const visible = filterTasksByProjectScope(tasks, projects, projectScope);
+  const visibleEvents = filterTasksByProjectScope(events, projects, projectScope);
   const hasProjectScope = Boolean(projectScope.status || projectScope.projectId);
   const canAddTask = !hasProjectScope && (view.type === 'list' || isAnytime);
   const openManualTask = () => {
@@ -375,7 +395,7 @@ function DetailView({
         ) : undefined}
         title={title}
       />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} />} showsVerticalScrollIndicator={false}>
         <ProjectScopeBar
           onSelectProject={(project: Project) => {
             setProjectScope({ status: project.status, projectId: project.id });
@@ -385,7 +405,11 @@ function DetailView({
           selectedProjectId={projectScope.projectId}
           selectedStatus={projectScope.status}
         />
-        {visible.length === 0 ? (
+        {failed ? (
+          <StatePanel actionLabel="重试" onAction={onRefresh} title="加载失败" message="暂时无法加载计划。" />
+        ) : loading ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : visible.length + visibleEvents.length === 0 ? (
           <StatePanel
             actionLabel={canAddTask ? '添加任务' : undefined}
             icon="checkmark-done-outline"
@@ -434,6 +458,7 @@ function DetailView({
                 />
               );
             })}
+            {visibleEvents.map((event) => <AgendaEventRow date={date} event={event} key={event.id} timezone={timezone} />)}
             {canAddTask ? <AddTaskRow onPress={openManualTask} /> : null}
           </>
         )}

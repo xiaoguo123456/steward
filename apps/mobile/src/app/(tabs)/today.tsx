@@ -22,6 +22,8 @@ import {
   describeReminder,
   usePendingReminders,
 } from '@/features/reminders/use-pending-reminders';
+import { AgendaEventRow } from '@/features/plan/agenda-event-row';
+import { dayAgendaItems } from '@/features/plan/day-agenda';
 import { TaskRow } from '@/features/tasks/components/task-row';
 import { useToggleTaskDone } from '@/features/tasks/use-task-actions';
 import { colors, fontFamily, radius } from '@/theme/tokens';
@@ -106,8 +108,8 @@ export default function HomeScreen() {
   const params = useLocalSearchParams<{ homeTab?: string }>();
   const initialHomeTab = resolveHomeEntryTab(params.homeTab);
   const [activeHomeTab, setActiveHomeTab] = useState<HomeTopTabId>(initialHomeTab);
-  const [tasksExpanded, setTasksExpanded] = useState(false);
-  const today = useGetToday();
+  const [itemsExpanded, setItemsExpanded] = useState(false);
+  const today = useGetToday(undefined, { query: { refetchInterval: 60_000 } });
   const toggleDone = useToggleTaskDone();
 
   useFocusEffect(
@@ -115,20 +117,19 @@ export default function HomeScreen() {
       if (params.homeTab === undefined) return;
 
       setActiveHomeTab(resolveHomeEntryTab(params.homeTab));
-      setTasksExpanded(false);
+      setItemsExpanded(false);
 
       // 只消费显式回跳参数。普通二级页返回时没有参数，因此保留用户离开前的分区。
       router.setParams({ homeTab: undefined });
     }, [params.homeTab, router]),
   );
 
-  const tasks = useMemo(() => today.data?.data.tasks ?? [], [today.data]);
-  const counts = today.data?.data.counts;
+  const items = useMemo(() => dayAgendaItems(today.data?.data), [today.data]);
 
   // 首页默认只渲染前 4 项；展开只改变可见数量，不改变收录与排序。
-  const visibleTasks = tasksExpanded ? tasks : tasks.slice(0, 4);
-  const remainingTaskCount = Math.max(0, tasks.length - visibleTasks.length);
-  const showTaskToggle = tasksExpanded || remainingTaskCount > 0;
+  const visibleItems = itemsExpanded ? items : items.slice(0, 4);
+  const remainingItemCount = Math.max(0, items.length - visibleItems.length);
+  const showItemToggle = itemsExpanded || remainingItemCount > 0;
 
   return (
     <AppScreen>
@@ -166,7 +167,7 @@ export default function HomeScreen() {
         <HomeTopTabs
           onChange={(tab) => {
             setActiveHomeTab(tab);
-            setTasksExpanded(false);
+            setItemsExpanded(false);
           }}
           value={activeHomeTab}
         />
@@ -198,7 +199,7 @@ export default function HomeScreen() {
             </View>
 
             <SectionTitle
-              count={counts ? `${counts.total} 项` : undefined}
+              count={today.data ? `${items.length} 项` : undefined}
               style={styles.homeSectionTitle}
               title="今天要做"
             />
@@ -211,24 +212,30 @@ export default function HomeScreen() {
               <StatePanel
                 actionLabel="重试"
                 icon="cloud-offline-outline"
-                message={errorMessage(today.error, '暂时无法加载今天的待办。')}
+                message={errorMessage(today.error, '暂时无法加载今天的事项。')}
                 onAction={() => void today.refetch()}
                 title="加载失败"
               />
-            ) : tasks.length === 0 ? (
+            ) : items.length === 0 ? (
               <StatePanel
                 actionLabel="记一件事"
                 compact
                 icon="sunny-outline"
-                message="今天没有待办，想到什么就记下来。"
+                message="今天没有安排，想到什么就记下来。"
                 onAction={() => router.push('/capture/new')}
                 title="今天很清爽"
               />
             ) : (
               <>
-                {visibleTasks.map((item, index) => (
+                {visibleItems.map((entry, index) => {
+                  if (entry.kind === 'event') {
+                    return <AgendaEventRow date={today.data!.data.date} event={entry.event} key={entry.key} timezone={today.data!.data.timezone} />;
+                  }
+                  const item = entry.item;
+                  const previous = visibleItems[index - 1];
+                  return (
                   <View key={item.task.id}>
-                    {shouldShowGroupLabel(visibleTasks, index) ? (
+                    {!previous || previous.kind !== 'task' || previous.item.group !== item.group ? (
                       <Text style={styles.groupLabel}>{groupLabels[item.group]}</Text>
                     ) : null}
                     <TaskRow
@@ -247,26 +254,27 @@ export default function HomeScreen() {
                       }}
                     />
                   </View>
-                ))}
-                {showTaskToggle ? (
+                );
+                })}
+                {showItemToggle ? (
                   <Pressable
                     accessibilityLabel={
-                      tasksExpanded ? '收起今日任务' : `展开剩余 ${remainingTaskCount} 项任务`
+                      itemsExpanded ? '收起今日事项' : `展开剩余 ${remainingItemCount} 项事项`
                     }
                     accessibilityRole="button"
-                    accessibilityState={{ expanded: tasksExpanded }}
-                    onPress={() => setTasksExpanded((current) => !current)}
+                    accessibilityState={{ expanded: itemsExpanded }}
+                    onPress={() => setItemsExpanded((current) => !current)}
                     style={({ pressed }) => [
                       styles.taskToggle,
                       pressed && styles.taskTogglePressed,
                     ]}
                   >
                     <Text style={styles.taskToggleText}>
-                      {tasksExpanded ? '收起' : `展开剩余 ${remainingTaskCount} 项`}
+                      {itemsExpanded ? '收起' : `展开剩余 ${remainingItemCount} 项`}
                     </Text>
                     <AppIcon
                       color={colors.primaryStrong}
-                      name={tasksExpanded ? 'chevron-up' : 'chevron-down'}
+                      name={itemsExpanded ? 'chevron-up' : 'chevron-down'}
                       size={16}
                     />
                   </Pressable>
@@ -285,12 +293,6 @@ export default function HomeScreen() {
       <AiFab bottomInset={AI_FAB_TAB_BAR_INSET} />
     </AppScreen>
   );
-}
-
-/** 只在分组发生变化时显示一次分组标题。 */
-function shouldShowGroupLabel(items: TodayTask[], index: number): boolean {
-  if (index === 0) return true;
-  return items[index].group !== items[index - 1].group;
 }
 
 function formatToday(date: string | undefined): string {

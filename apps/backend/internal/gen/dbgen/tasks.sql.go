@@ -609,17 +609,18 @@ WITH scoped AS (
            tl.name  AS list_name,
            tl.color AS list_color,
            CASE
-               WHEN (t.due_date IS NOT NULL
-                     AND t.due_date < ($2::timestamptz AT TIME ZONE t.due_timezone)::date)
-                    OR (t.due_at IS NOT NULL AND t.due_at < $2::timestamptz)
+               WHEN NOT $2::bool AND ((t.due_date IS NOT NULL
+                     AND t.due_date < ($3::timestamptz AT TIME ZONE t.due_timezone)::date)
+                    OR (t.due_at IS NOT NULL AND t.due_at < $3::timestamptz))
                    THEN 0
                WHEN (t.due_date IS NOT NULL
-                     AND t.due_date = ($2::timestamptz AT TIME ZONE t.due_timezone)::date)
-                    OR (t.due_at IS NOT NULL AND t.due_at <= $3::timestamptz)
+                     AND t.due_date = ($3::timestamptz AT TIME ZONE t.due_timezone)::date)
+                    OR (t.due_at IS NOT NULL AND t.due_at <= $4::timestamptz
+             AND (NOT $2::bool OR t.due_at >= $5::timestamptz))
                    THEN 1
                WHEN t.scheduled_start_at IS NOT NULL
-                    AND t.scheduled_start_at >= $4::timestamptz
-                    AND t.scheduled_start_at <= $3::timestamptz
+                    AND t.scheduled_start_at >= $5::timestamptz
+                    AND t.scheduled_start_at <= $4::timestamptz
                    THEN 2
                ELSE 3
            END AS group_rank
@@ -629,13 +630,16 @@ WITH scoped AS (
       AND t.status IN ('todo', 'doing')
       AND tl.list_kind = 'tasks'
       AND (
-            t.focus_date = $5::date
+            t.focus_date = $6::date
          OR (t.scheduled_start_at IS NOT NULL
-             AND t.scheduled_start_at >= $4::timestamptz
-             AND t.scheduled_start_at <= $3::timestamptz)
+             AND t.scheduled_start_at >= $5::timestamptz
+             AND t.scheduled_start_at <= $4::timestamptz)
          OR (t.due_date IS NOT NULL
-             AND t.due_date <= ($2::timestamptz AT TIME ZONE t.due_timezone)::date)
-         OR (t.due_at IS NOT NULL AND t.due_at <= $3::timestamptz)
+             AND t.due_date <= ($3::timestamptz AT TIME ZONE t.due_timezone)::date
+             AND (NOT $2::bool
+                  OR t.due_date = ($3::timestamptz AT TIME ZONE t.due_timezone)::date))
+         OR (t.due_at IS NOT NULL AND t.due_at <= $4::timestamptz
+             AND (NOT $2::bool OR t.due_at >= $5::timestamptz))
       )
 )
 SELECT id, user_id, title, description, status, priority, due_date, due_at, due_timezone, scheduled_start_at, scheduled_end_at, scheduled_timezone, estimated_minutes, focus_date, list_id, project_id, reminders, completed_at, created_by, provenance_refs, created_at, updated_at, deleted_at, version, quantity_text, shopping_category, list_name, list_color, group_rank FROM scoped
@@ -656,11 +660,12 @@ ORDER BY
 `
 
 type ListTodayTasksParams struct {
-	Tz       string
-	NowAt    time.Time
-	DayEnd   time.Time
-	DayStart time.Time
-	Today    time.Time
+	Tz         string
+	FutureOnly bool
+	NowAt      time.Time
+	DayEnd     time.Time
+	DayStart   time.Time
+	Today      time.Time
 }
 
 type ListTodayTasksRow struct {
@@ -701,6 +706,7 @@ type ListTodayTasksRow struct {
 func (q *Queries) ListTodayTasks(ctx context.Context, arg ListTodayTasksParams) ([]ListTodayTasksRow, error) {
 	rows, err := q.db.Query(ctx, listTodayTasks,
 		arg.Tz,
+		arg.FutureOnly,
 		arg.NowAt,
 		arg.DayEnd,
 		arg.DayStart,

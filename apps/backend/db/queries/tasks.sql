@@ -136,13 +136,14 @@ WITH scoped AS (
            tl.name  AS list_name,
            tl.color AS list_color,
            CASE
-               WHEN (t.due_date IS NOT NULL
+               WHEN NOT sqlc.arg(future_only)::bool AND ((t.due_date IS NOT NULL
                      AND t.due_date < (sqlc.arg(now_at)::timestamptz AT TIME ZONE t.due_timezone)::date)
-                    OR (t.due_at IS NOT NULL AND t.due_at < sqlc.arg(now_at)::timestamptz)
+                    OR (t.due_at IS NOT NULL AND t.due_at < sqlc.arg(now_at)::timestamptz))
                    THEN 0
                WHEN (t.due_date IS NOT NULL
                      AND t.due_date = (sqlc.arg(now_at)::timestamptz AT TIME ZONE t.due_timezone)::date)
-                    OR (t.due_at IS NOT NULL AND t.due_at <= sqlc.arg(day_end)::timestamptz)
+                    OR (t.due_at IS NOT NULL AND t.due_at <= sqlc.arg(day_end)::timestamptz
+             AND (NOT sqlc.arg(future_only)::bool OR t.due_at >= sqlc.arg(day_start)::timestamptz))
                    THEN 1
                WHEN t.scheduled_start_at IS NOT NULL
                     AND t.scheduled_start_at >= sqlc.arg(day_start)::timestamptz
@@ -161,8 +162,11 @@ WITH scoped AS (
              AND t.scheduled_start_at >= sqlc.arg(day_start)::timestamptz
              AND t.scheduled_start_at <= sqlc.arg(day_end)::timestamptz)
          OR (t.due_date IS NOT NULL
-             AND t.due_date <= (sqlc.arg(now_at)::timestamptz AT TIME ZONE t.due_timezone)::date)
-         OR (t.due_at IS NOT NULL AND t.due_at <= sqlc.arg(day_end)::timestamptz)
+             AND t.due_date <= (sqlc.arg(now_at)::timestamptz AT TIME ZONE t.due_timezone)::date
+             AND (NOT sqlc.arg(future_only)::bool
+                  OR t.due_date = (sqlc.arg(now_at)::timestamptz AT TIME ZONE t.due_timezone)::date))
+         OR (t.due_at IS NOT NULL AND t.due_at <= sqlc.arg(day_end)::timestamptz
+             AND (NOT sqlc.arg(future_only)::bool OR t.due_at >= sqlc.arg(day_start)::timestamptz))
       )
 )
 SELECT * FROM scoped

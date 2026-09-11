@@ -13,17 +13,12 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { Event } from './event';
-import type { TodayCounts } from './todayCounts';
-import type { TodayTask } from './todayTask';
 
-export interface TodayView {
-  /** 以用户时区计算的查询日期。 */
-  date: string;
-  timezone: string;
-  /** 已按分组与组内规则排好序，客户端不得重排。 */
-  tasks: TodayTask[];
-  /** 查询日期的活动 Event，按开始时间排序，全天事件排在最前。 */
-  events: Event[];
-  counts: TodayCounts;
-}
+export type GetTodayParams = {
+/**
+ * 按账号时区读取今天（0）或明天（1）；明天不结转仅因逾期收录的任务。
+ * @minimum 0
+ * @maximum 1
+ */
+day_offset?: number;
+};

@@ -21,6 +21,16 @@ import * as zod from 'zod';
  * 展开只改变客户端可见数量，不改变收录、排序或字段。
  * @summary 读取今天的任务与日程
  */
+export const getTodayQueryDayOffsetDefault = 0;
+export const getTodayQueryDayOffsetMin = 0;
+export const getTodayQueryDayOffsetMax = 1;
+
+
+
+export const GetTodayQueryParams = zod.object({
+  "day_offset": zod.number().int().min(getTodayQueryDayOffsetMin).max(getTodayQueryDayOffsetMax).default(getTodayQueryDayOffsetDefault).describe('按账号时区读取今天（0）或明天（1）；明天不结转仅因逾期收录的任务。')
+})
+
 
 export const getTodayResponseDataTasksItemTaskQuantityTextMax = 40;
 
@@ -39,7 +49,7 @@ export const getTodayResponseDataEventsItemProvenanceRefsItemSourceDeletedDefaul
 
 export const GetTodayResponse = zod.object({
   "data": zod.object({
-  "date": zod.string().date().describe('以用户时区计算的今天。'),
+  "date": zod.string().date().describe('以用户时区计算的查询日期。'),
   "timezone": zod.string(),
   "tasks": zod.array(zod.object({
   "task": zod.object({
@@ -136,7 +146,7 @@ export const GetTodayResponse = zod.object({
   "updated_at": zod.string().datetime({"offset":true}),
   "deleted_at": zod.string().datetime({"offset":true}).nullish(),
   "version": zod.number().int()
-})).describe('今天的 Event，按开始时间排序，全天事件排在最前。'),
+})).describe('查询日期的活动 Event，按开始时间排序，全天事件排在最前。'),
   "counts": zod.object({
   "total": zod.number().int(),
   "overdue": zod.number().int(),

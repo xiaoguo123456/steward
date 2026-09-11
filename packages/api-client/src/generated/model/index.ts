@@ -156,6 +156,7 @@ export * from './getMealPlanShoppingDraftParams';
 export * from './getMealPlanSuggestionParams';
 export * from './getMoodJournalCalendarParams';
 export * from './getMoodJournalStatisticsParams';
+export * from './getTodayParams';
 export * from './getWeeklyReviewParams';
 export * from './idempotencyKeyParameter';
 export * from './ifMatchParameter';

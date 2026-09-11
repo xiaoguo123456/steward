@@ -1,3 +1,5 @@
+// 首页与计划使用同一份按日事项模型，一并执行其契约与边界回归。
+import '../plan/day-agenda.test.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
@@ -119,12 +121,14 @@ test('首页不再保留灵感分区或专属页面入口', async () => {
   assert.match(tabs, /tab:\s*\{[^}]*flexGrow:\s*1,/s);
 });
 
-test('今天首页只保留待办主区，不用日程数量拼装第二个今日摘要', async () => {
+test('今天首页在同一事项区展示任务与日程，不拼装第二个今日摘要', async () => {
   const home = await readFile(new URL('../../app/(tabs)/today.tsx', import.meta.url), 'utf8');
 
   assert.match(home, /title="今天要做"/);
   assert.match(home, /scheduled_today: '今天已排期'/);
-  assert.match(home, /message="今天没有待办，想到什么就记下来。"/);
+  assert.match(home, /message="今天没有安排，想到什么就记下来。"/);
   assert.doesNotMatch(home, /title="今日安排"/);
-  assert.doesNotMatch(home, /data\.events|events\.length|briefTitle|name="sparkles"/);
+  assert.doesNotMatch(home, /briefTitle|name="sparkles"/);
+  assert.match(home, /dayAgendaItems/);
+  assert.match(home, /AgendaEventRow/);
 });

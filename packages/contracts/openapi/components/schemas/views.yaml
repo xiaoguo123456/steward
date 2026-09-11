@@ -48,7 +48,7 @@ TodayView:
     date:
       type: string
       format: date
-      description: 以用户时区计算的今天。
+      description: 以用户时区计算的查询日期。
     timezone:
       type: string
     tasks:
@@ -58,7 +58,7 @@ TodayView:
         $ref: '#/TodayTask'
     events:
       type: array
-      description: 今天的 Event，按开始时间排序，全天事件排在最前。
+      description: 查询日期的活动 Event，按开始时间排序，全天事件排在最前。
       items:
         $ref: './objects.yaml#/Event'
     counts:
