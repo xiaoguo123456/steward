@@ -114,6 +114,8 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: 安装依赖并检查移动端
         run: |
