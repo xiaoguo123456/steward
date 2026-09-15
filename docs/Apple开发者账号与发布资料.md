@@ -6,8 +6,8 @@
 |---|---|
 | 文档类型 | Apple Developer Program 与 App Store Connect 账号登记资料 |
 | 适用范围 | iOS 开发者账号申请、App 备案、签名与 App Store 发布 |
-| 当前状态 | D-U-N-S 信息已取得，组织开发者会员待申请 |
-| 更新日期 | 2026-09-02 |
+| 当前状态 | App 备案已完成，D-U-N-S 信息已取得；Apple 组织开发者会员仍按下表登记 |
+| 更新日期 | 2026-09-15 |
 
 本文只登记团队协作所需的非密码资料。不得在仓库中记录 Apple 账户密码、短信验证码、双重认证恢复信息、App Store Connect API 私钥、Distribution Certificate 私钥、`.p12` 文件或其密码。
 
@@ -29,6 +29,7 @@
 
 | 事项 | 状态 | 后续动作 |
 |---|---|---|
+| 序事 App 备案 | 已完成，备案号 `琼ICP备2025059520号-88A` | 2026-09-15 用户确认并提供备案详情截图；应用商店填写此 App 备案号 |
 | Apple 账户 | 已创建 | 保持双重认证与受信任手机号有效 |
 | D-U-N-S 查询 | 已完成 | 使用 D&B 邮件中的英文名称和编号 |
 | Apple Developer Program 组织会员 | 待申请 | 在 Apple Developer App 中选择“组织”并提交核验 |
@@ -37,6 +38,13 @@
 | 正式 iOS Bundle ID | 待创建 | 计划使用 `com.aisteward.mobile`，创建前确认未被占用 |
 | Apple Distribution Certificate | 未创建 | Bundle ID 与 EAS iOS 构建配置完成后生成 |
 | iOS App 备案特征信息 | 未取得 | 从最终发布证书提取公钥与 SHA-1 指纹 |
+
+### App 备案登记
+
+- App 名称：序事；备案号：`琼ICP备2025059520号-88A`。
+- 备案成功状态由用户于 2026-09-15 确认；该日期为团队登记日期，非审批日期。
+- 截图显示内容分类为“工具”、语言为“中文简体”，接入域名包含 `steward.qhzhiyin.com`；截图未展开其余域名及发布平台详情。
+- App 内在“我的”底部展示备案号。此号登记为 App 备案号，不推导网站备案号，也不据此更改 Apple 会员、证书和 iOS 特征信息的办理状态。
 
 ## 后续登记字段
 
@@ -60,4 +68,3 @@
 - App Store 开发商名称以 Apple 核验后的法人实体名称为准；产品名称继续使用“序事”。
 - Apple 账户仅用于账户持有人登录；开发、构建和运营人员通过 App Store Connect 团队权限协作，不共享账户密码或验证码。
 - Apple Distribution Certificate 更新导致公钥或 SHA-1 指纹变化时，应同步变更 App 备案特征信息。
-

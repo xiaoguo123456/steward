@@ -213,6 +213,9 @@ export default function MeScreen() {
             variant="danger"
           />
         </View>
+        <Text selectable style={styles.filingNumber}>
+          琼ICP备2025059520号-88A
+        </Text>
       </ScrollView>
       <AiFab />
 
@@ -405,6 +408,12 @@ function MeSkeleton() {
 }
 
 const styles = StyleSheet.create({
+  filingNumber: {
+    ...typography.meta,
+    color: colors.textSecondary,
+    marginTop: 24,
+    textAlign: 'center',
+  },
   content: {
     paddingHorizontal: 16,
     paddingTop: 12,
